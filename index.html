@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CLS · Curso de reversing</title>
+<meta http-equiv="refresh" content="0; url=00_EMPEZAR_AQUI.html">
+<link rel="canonical" href="00_EMPEZAR_AQUI.html">
+<style>body{font-family:system-ui,sans-serif;max-width:40rem;margin:3rem auto;padding:0 1rem;line-height:1.6}a{color:#0b5f6b}</style>
+</head>
+<body>
+<p>La portada del curso está en <a href="00_EMPEZAR_AQUI.html">00_EMPEZAR_AQUI.html</a>.</p>
+<p>Si el navegador no redirige automáticamente, usá el enlace anterior.</p>
+<script>
+(function(){
+  function abrir(src){
+    var o=document.createElement('div'); o.className='lightbox-ov';
+    var i=document.createElement('img'); i.src=src; o.appendChild(i);
+    function cerrar(){o.remove(); document.removeEventListener('keydown', onkey);}
+    function onkey(e){ if(e.key==='Escape') cerrar(); }
+    o.addEventListener('click', cerrar);
+    document.addEventListener('keydown', onkey);
+    document.body.appendChild(o);
+  }
+  document.addEventListener('DOMContentLoaded', function(){
+    document.querySelectorAll('figure img, main img').forEach(function(img){
+      img.style.cursor='zoom-in';
+      img.addEventListener('click', function(){ abrir(img.currentSrc||img.src); });
+    });
+  });
+})();
+</script>
+</body>
+</html>

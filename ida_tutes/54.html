@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tute 54 · Práctica driver + cliente Python — Curso IDA</title>
+<meta name="description" content="Tutorial ilustrado del tute 54 del Curso IDA desde cero: Práctica driver + cliente Python.">
+<link rel="stylesheet" href="../guia/estilo.css">
+</head>
+<body>
+<a class="salto" href="#contenido">Saltar al contenido</a>
+<header class="cabecera">
+  <div class="marca"><a href="../00_EMPEZAR_AQUI.html">CLS · Curso de reversing</a> <span class="edicion">edición 5 · 27/10/2026</span></div>
+  <nav class="principal" aria-label="Navegación principal">
+    <a href="../00_EMPEZAR_AQUI.html">Inicio</a>
+    <a href="../guia/index.html">Curso</a>
+    <a href="../fichas/index.html">Fichas</a>
+    <a href="../glosario.html">Glosario</a>
+    <a href="../preguntas_y_respuestas.html">Repaso</a>
+  </nav>
+</header>
+<main id="contenido">
+<p class="migas"><a href="../ida-tutes.html">← Índice de los 69 tutes de IDA</a></p>
+<h1>Tute 54 · Práctica driver + cliente Python</h1>
+<p class="meta-tute"><strong>⏱ 6 min de lectura</strong> · 1.031 palabras · 18 capturas · grupo: Kernel de Windows y temas avanzados (drivers, HackSys/HEVD, SSDT/syscalls, VA→física)</p>
+<aside class="callout nota"><p class="callout-titulo">Qué enseña</p><p>Modificar el driver y hacer el cliente en user con Python.</p></aside>
+<p><em>se conecta con:</em> <a href="../guia/05-fuera-de-alcance.html">Fuera de alcance</a></p>
+<aside class="callout aviso"><p class="callout-titulo">Material observado, no reescrito</p><p>Es el texto y las capturas del <code>.docx</code> original del curso, solo presentados como tutorial. Puede tener erratas de origen. El autor del curso es Ricardo Narvaja.</p></aside>
+<hr>
+<p>INTRODUCCION AL REVERSING CON IDA PRO DESDE CERO PARTE 54 KERNEL.</p>
+<p>PRACTICA DRIVER KERNEL.</p>
+<p>Vamos a modificar un poco el ejercicio anterior y además vamos a hacer el programita en user, directamente en Python.</p>
+<p>Para ello en la maquina target donde esta el driver corriendo deben instalar Python, yo instale la versión 2.7, y ademas bajarse el instalador de pywin32 el que corresponda a su versión de Python.</p>
+<p>https://sourceforge.net/projects/pywin32/files/pywin32/Build%20214/</p>
+<p>Como la mía es la 2.7 baje este.</p>
+<figure><img loading="lazy" src="img/54/1.png" alt="Captura 1 del tute 54"></figure>
+<p>Es un instalador se ejecuta y listo con eso ya podremos correr el script de Python que reemplazara al programa user.</p>
+<p>Vemos que el driver ahora tiene dos IOCTL code mas</p>
+<figure><img loading="lazy" src="img/54/2.png" alt="Captura 2 del tute 54"></figure>
+<p>Además del IOCTL_SAYHELLO que ya teníamos , ahora hay dos nuevos que son IOCTL_HOOK y IOCTL_UNHOOK.</p>
+<figure><img loading="lazy" src="img/54/3.png" alt="Captura 3 del tute 54"></figure>
+<p>Vemos que dentro del caso que MajorFunction sea IRP_MJ_DEVICE_CONTROL, hay otro switch que tiene los tres cases de los IOCTL.</p>
+<p>Vemos que el IOCTL que teníamos antes sigue solo imprimiendo “Hello World”</p>
+<p>case IOCTL_SAYHELLO:</p>
+<p>DbgPrint("Hello World!\n");</p>
+<p>status = STATUS_SUCCESS;</p>
+<p>break;</p>
+<p>Veamos los otros dos</p>
+<p>case IOCTL_HOOK:</p>
+<p>PsSetCreateProcessNotifyRoutine(</p>
+<p>DriverProcessNotifyRoutine, FALSE);</p>
+<p>break;</p>
+<p>case IOCTL_UNHOOK:</p>
+<p>PsSetCreateProcessNotifyRoutine(</p>
+<p>DriverProcessNotifyRoutine, TRUE);</p>
+<p>break;</p>
+<p>Vemos que usa PsSetCreateProcessNotifyRoutine</p>
+<figure><img loading="lazy" src="img/54/4.png" alt="Captura 4 del tute 54"></figure>
+<p>Esta función permite agregar un CALLBACK o sea una función propia, que se disparara cada vez que el sistema arranque o pare un programa, pasándole para activarlo el segundo argumento FALSE, y el primero la función donde saltara.</p>
+<p>La función nuestra a la cual saltara se llama DriverProcessNotifyRoutine y si Create es verdadero imprime que hay un proceso nuevo, el PID del proceso parent que lo creo y el del creado.</p>
+<p>VOID DriverProcessNotifyRoutine(</p>
+<p>IN HANDLE ParentId,</p>
+<p>IN HANDLE ProcessId,</p>
+<p>IN BOOLEAN Create)</p>
+<p>{</p>
+<p>if (Create)</p>
+<p>{</p>
+<p>DbgPrint("Process %d created process %d\n",</p>
+<p>ParentId, ProcessId);</p>
+<p>}</p>
+<p>else</p>
+<p>{</p>
+<p>DbgPrint("Process %d has ended\n",</p>
+<p>ProcessId);</p>
+<p>}</p>
+<p>}</p>
+<p>Y lo mismo cuando el proceso se termina como Create sera falso imprimirá que el Proceso ha terminado con su PID.</p>
+<p>Por supuesto hay que asegurarse que antes de detener el driver la función sea deshookeada sino saltara a una función que no existe al no correr mi driver y producira un BSOD.</p>
+<p>case IOCTL_UNHOOK:</p>
+<p>PsSetCreateProcessNotifyRoutine(</p>
+<p>DriverProcessNotifyRoutine, TRUE);</p>
+<p>break;</p>
+<p>El segundo argumento en TRUE la deshookea y queda el sistema normal nuevamente.</p>
+<p>Bueno el código fuente del driver estará disponible recuerden que si lo compilan en Visual Studio deben cambiar en los Settings que sea para Windows 7 y la propiedad Desktop asi como bajar el nivel de rigurosidad de los errores de 4 a nivel 1 o 2.</p>
+<p>Bueno ahora viene el script de Python que le enviara los IOCTL al driver cuando este corriendo.</p>
+<figure><img loading="lazy" src="img/54/5.png" alt="Captura 5 del tute 54"></figure>
+<p>Vemos que es un script pequeño, hay que importar win32api y win32file, ademas de winioctlcon, todo ello viene en el paquete pywin32 que instalamos si no lo instalan les dará error.</p>
+<p>IOCTL_HOOK =winioctlcon.CTL_CODE( FILE_DEVICE_HELLOWORLD, 0x01, METHOD_BUFFERED, FILE_ANY_ACCESS )</p>
+<p>IOCTL_UNHOOK =winioctlcon.CTL_CODE( FILE_DEVICE_HELLOWORLD, 0x02, METHOD_BUFFERED, FILE_ANY_ACCESS )IOCTL_SAYHELLO=winioctlcon.CTL_CODE( FILE_DEVICE_HELLOWORLD, 0x00, METHOD_BUFFERED, FILE_ANY_ACCESS )</p>
+<p>Vemos que la función CTL_CODE que usábamos cuando creamos un ejecutable en C++ para hallar el IOCTL, en Python la importa winioctlcon, con ello lograremos hallar los tres IOCTLs.</p>
+<p>CreateFile</p>
+<p>Luego tenemos el llamado a CreateFile</p>
+<p>hDevice = win32file.CreateFile(r"\\.\HelloWorld",win32file.GENERIC_READ | win32file.GENERIC_WRITE, 0, None,win32file.OPEN_EXISTING, win32file.FILE_ATTRIBUTE_NORMAL, 0)</p>
+<p>En este caso en el nombre del driver hay que poner barra invertida simple en vez de doble, el resto es similar las constantes para los argumentos están en win32file.</p>
+<p>Y luego viene la llamada a DeviceIoControl hacemos que el usuario tipee una tecla y según lo que elije le enviamos el código correspondiente, si elije cero, antes de salir deshookea la función para evitar pantallas azules.</p>
+<p>while 1:    print "1=HELLO\n","2=HOOK\n","3=UNHOOK\n","0=UNHOOK AND EXIT\n"    case=raw_input()    if case ==0:        break    if case==1:        win32file.DeviceIoControl(hDevice,IOCTL_SAYHELLO, None, None, None)    if case == 2:        win32file.DeviceIoControl(hDevice,IOCTL_HOOK, None, None, None)    if case == 3:        win32file.DeviceIoControl(hDevice,IOCTL_UNHOOK, None, None, None)win32file.DeviceIoControl(hDevice,IOCTL_UNHOOK, None, None, None)win32file.CloseHandle(hDevice)</p>
+<p>Con ese script podríamos manejar el driver enviándole códigos IOCTL diferentes, probemoslo.</p>
+<figure><img loading="lazy" src="img/54/6.png" alt="Captura 6 del tute 54"></figure>
+<p>Arranco el sistema target debuggeando y arranco el driver con el OSRLOADER, y lo dejo corriendo ahora usare el script de Python a ver si va.</p>
+<p>HANDLE</p>
+<p>Vemos que despues que nos imprime el handle del driver salen las opciones para elegir.</p>
+<figure><img loading="lazy" src="img/54/7.png" alt="Captura 7 del tute 54"></figure>
+<p>Si apreto 1 no funciona que paso?</p>
+<p>case=raw_input()</p>
+<p>1</p>
+<p>case</p>
+<p>type(case)</p>
+<p>Out[6]: str</p>
+<p>Ahh lo que retorna raw_input es una string y lo estamos comparando con un entero, cambiemos eso.</p>
+<figure><img loading="lazy" src="img/54/8.png" alt="Captura 8 del tute 54"></figure>
+<p>A ver ahora</p>
+<figure><img loading="lazy" src="img/54/9.png" alt="Captura 9 del tute 54"></figure>
+<p>Ahora si, cuando tipeamos 1 nos muestra “Hello world” hookeemos ahora apretando 2.</p>
+<figure><img loading="lazy" src="img/54/10.png" alt="Captura 10 del tute 54"></figure>
+<p>Ahora arranquemos algunos programas en la maquina</p>
+<figure><img loading="lazy" src="img/54/11.png" alt="Captura 11 del tute 54"></figure>
+<p>Vemos como nos loguea los procesos que arrancan y se cierran en mi caso arranque el Internet explorer</p>
+<figure><img loading="lazy" src="img/54/12.png" alt="Captura 12 del tute 54"></figure>
+<p>Ahí esta el PID del IE es 4084 y el padre es el Explorer al arrancar con doble click, cualquier proceso que arranca en la maquina o se detiene se logueara alli, ahora cerrare el IE.</p>
+<figure><img loading="lazy" src="img/54/13.png" alt="Captura 13 del tute 54"></figure>
+<p>Bueno funciona ahora deshookeemos con 3, vemos que no se loguean mas los procesos que abrimos y cerramos.</p>
+<p>Con respecto al reversing es similar al caso anterior.</p>
+<figure><img loading="lazy" src="img/54/14.png" alt="Captura 14 del tute 54"></figure>
+<p>En el Dispatch vemos en este caso EDI que es Irp + 0x60,  tendrá la dirección de la estructura _IO_STACK_LOCATION, ademas de poner un breakpoint alli, una vez que sincronizamos las estructuras necesarias en LOCAL TYPES, nos aparecerá que ese campo es MajorFunction</p>
+<figure><img loading="lazy" src="img/54/15.png" alt="Captura 15 del tute 54"></figure>
+<p>En el caso cuando MajorFunction vale 0xE o sea que estamos usando DeviceIoControl, apretamos T y de todas las opciones elegimos esa, que es para cuando se usa DeviceIoControl.</p>
+<figure><img loading="lazy" src="img/54/16.png" alt="Captura 16 del tute 54"></figure>
+<p>Vemos que cuando es IOCTL_SAYHELLO va al bloque amarillo que imprime HELLO WORLD, en los otros dos casos va por los bloques verdes en el caso IOCTL_HOOK hace PUSH ESI que es cero para pasar el argumento FALSE a la api PsSetCreateProcessNotifyRoutine@8 y en el caso de IOCTL_UNHOOK hace PUSH 1 que es TRUE.</p>
+<p>El otro argumento es el offset de la función donde saltara.</p>
+<figure><img loading="lazy" src="img/54/17.png" alt="Captura 17 del tute 54"></figure>
+<p>Si hacemos click alli iremos a la misma.</p>
+<figure><img loading="lazy" src="img/54/18.png" alt="Captura 18 del tute 54"></figure>
+<p>Alli vemos si Create es falso o sea CERO salta a PROCESS (PID) HAS ENDED y si es verdadero PROCESS (PID) CREATED PROCESS (PID)</p>
+<p>Si ponemos un breakpoint aquí, parara cada vez que arranquemos un proceso despues de haber apretado 2 en el script de Python para HOOKEAR.</p>
+<p>Les dejo como tarea poner los breakpoints en esta función y en el Dispatch y tracear para chequear lo que hemos dicho reverseando.</p>
+<p>Hasta la parte siguiente</p>
+<p>Ricardo Narvaja</p>
+</main>
+<footer class="pie">
+  <p>Material educativo y defensivo. Las prácticas se limitan a programas propios, software abierto o crackmes diseñados para aprender. No se enseña a eludir licencias, DRM ni controles de acceso.</p>
+  <p><a href="../00_EMPEZAR_AQUI.html">Inicio</a> · <a href="../guia/etapa-0.html">Etapas</a> · <a href="../fuentes_y_limites.html">Fuentes y límites</a> · <a href="../registro_de_cobertura.csv">Registro de cobertura</a></p>
+</footer>
+<script>
+(function(){
+  function abrir(src){
+    var o=document.createElement('div'); o.className='lightbox-ov';
+    var i=document.createElement('img'); i.src=src; o.appendChild(i);
+    function cerrar(){o.remove(); document.removeEventListener('keydown', onkey);}
+    function onkey(e){ if(e.key==='Escape') cerrar(); }
+    o.addEventListener('click', cerrar);
+    document.addEventListener('keydown', onkey);
+    document.body.appendChild(o);
+  }
+  document.addEventListener('DOMContentLoaded', function(){
+    document.querySelectorAll('figure img, main img').forEach(function(img){
+      img.style.cursor='zoom-in';
+      img.addEventListener('click', function(){ abrir(img.currentSrc||img.src); });
+    });
+  });
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tute 4 · Instrucciones de transferencia — Curso IDA</title>
+<meta name="description" content="Tutorial ilustrado del tute 4 del Curso IDA desde cero: Instrucciones de transferencia.">
+<link rel="stylesheet" href="../guia/estilo.css">
+</head>
+<body>
+<a class="salto" href="#contenido">Saltar al contenido</a>
+<header class="cabecera">
+  <div class="marca"><a href="../00_EMPEZAR_AQUI.html">CLS · Curso de reversing</a> <span class="edicion">edición 5 · 27/10/2026</span></div>
+  <nav class="principal" aria-label="Navegación principal">
+    <a href="../00_EMPEZAR_AQUI.html">Inicio</a>
+    <a href="../guia/index.html">Curso</a>
+    <a href="../fichas/index.html">Fichas</a>
+    <a href="../glosario.html">Glosario</a>
+    <a href="../preguntas_y_respuestas.html">Repaso</a>
+  </nav>
+</header>
+<main id="contenido">
+<p class="migas"><a href="../ida-tutes.html">← Índice de los 69 tutes de IDA</a></p>
+<h1>Tute 4 · Instrucciones de transferencia</h1>
+<p class="meta-tute"><strong>⏱ 9 min de lectura</strong> · 1.583 palabras · 30 capturas · grupo: Base de IDA, assembly y primeras prácticas</p>
+<aside class="callout nota"><p class="callout-titulo">Qué enseña</p><p>MOV/XCHG y cómo editar una instrucción en el loader (sobre el crackme de Cruehead).</p></aside>
+<p><em>▶ video afín (mismo autor, en x64dbg):</em> <a href="../videos.html">«04 Instrucciones 2»</a> · <em>se conecta con:</em> <a href="../guia/02-herramientas.html">Herramientas</a> · <a href="../guia/02-ida.html">IDA</a> · <a href="../guia/02-instrucciones.html">Instrucciones</a> · <a href="../guia/02-flujo.html">Flujo</a> · <a href="../guia/02-debugger.html">Debugger</a> · <a href="../guia/01-numeros.html">Números</a></p>
+<aside class="callout aviso"><p class="callout-titulo">Material observado, no reescrito</p><p>Es el texto y las capturas del <code>.docx</code> original del curso, solo presentados como tutorial. Puede tener erratas de origen. El autor del curso es Ricardo Narvaja.</p></aside>
+<hr>
+<p>INTRODUCCIÓN AL REVERSING CON IDA PRO DESDE CERO PARTE 4</p>
+<p>Mas instrucciones de transferencia de datos en IDA.</p>
+<p>XCHG A, B</p>
+<p>Intercambia el valor de A con el valor de B, veamos un ejemplo.</p>
+<figure><img loading="lazy" src="img/4/1.png" alt="Captura 1 del tute 4"></figure>
+<p>Ya que no hay XCHG en el VEVIEWER, cargo el CRACKME.exe de Cruehead y cambiare la instrucción de 0x4013d8.</p>
+<p>Pongo el mouse en esa línea y voy al menú EDIT-PATCH PROGRAM-ASSEMBLE</p>
+<figure><img loading="lazy" src="img/4/2.png" alt="Captura 2 del tute 4"></figure>
+<p>Vemos que se corrompió la función ya que justo debajo del XCHG quedo una parte que está marcada como datos.</p>
+<figure><img loading="lazy" src="img/4/3.png" alt="Captura 3 del tute 4"></figure>
+<p>Ya habíamos visto que si no existe instrucción reconocida, esa zona es mostrada como data. En este caso es solo un byte que como no hay referencias en ninguna parte del programa, no hay aclaración a la derecha de la dirección, luego el tipo de dato que es db, un solo byte y el valor que es 0xc0 en este caso.</p>
+<p>Así que si escribimos la instrucción NOP que es NO OPERATION o sea una instrucción de relleno que no hace nada, para que reemplace ese 0xc0.</p>
+<figure><img loading="lazy" src="img/4/4.png" alt="Captura 4 del tute 4"></figure>
+<p>Allí queda el NOP</p>
+<figure><img loading="lazy" src="img/4/5.png" alt="Captura 5 del tute 4"></figure>
+<p>Todo muy lindo pero se me rompió la función. Si hay partes no reconocidas como código en el medio no la creara, pero ahora que quedo bien el código poniendo el NOP, intentamos haciendo click derecho en donde era el inicio de la función o sea 0x4013d8 y allí elegimos CREATE FUNCTION.</p>
+<figure><img loading="lazy" src="img/4/6.png" alt="Captura 6 del tute 4"></figure>
+<p>Y cambia el prefijo loc_ que delante de una dirección nos aclara que es una instrucción común, por el prefijo sub_ que nos informa que dicha instrucción es el inicio de una subrutina o función.</p>
+<figure><img loading="lazy" src="img/4/7.png" alt="Captura 7 del tute 4"></figure>
+<p>Ahora que ya es una función, si no está en modo grafico apretamos la barra espaciadora.</p>
+<figure><img loading="lazy" src="img/4/8.png" alt="Captura 8 del tute 4"></figure>
+<p>Ahí quedo más lindo y con nuestro XCHG allí puesto.</p>
+<p>Bueno ya vimos que por ejemplo si EAX vale 12345678 y ESI vale 55 al ejecutar el XCHG nos quedara EAX valiendo 55 y ESI 12345678 en este ejemplo.</p>
+<p>Como comentario vemos que en el menú PATCH hay un ítem llamado PATCHED BYTES que nos muestra lo que cambio y se puede REVERTEAR al original.</p>
+<figure><img loading="lazy" src="img/4/9.png" alt="Captura 9 del tute 4"></figure>
+<p>XCHG también puede intercambiar entre en registro y el contenido de un registro que apunte a una posición de memoria.</p>
+<figure><img loading="lazy" src="img/4/10.png" alt="Captura 10 del tute 4"></figure>
+<p>En este caso buscara el contenido apuntado por ESI y lo intercambiara por el valor de EAX  que se guardara en dicha posición de memoria si tiene permiso de escritura.</p>
+<p>Por ejemplo si EAX vale 55 y ESI vale 0x10000</p>
+<p>Se fijara que hay en la posición de memoria 0x10000 y si es escribible, guardara allí el 55 y leerá el valor que había y lo pondrá en EAX.</p>
+<p>Qué pasa si hacemos lo mismo pero en vez de usar un registro usamos una dirección de memoria numérica tal como hicimos en el MOV?</p>
+<p>Como el comando ASSEMBLE no funciona completamente para todas las instrucciones, deberíamos cambiar los bytes allí en el menú donde dice PATCH BYTES, pero es preferible bajarse un plugin como el keystone que habilita escribir todas las instrucciones en forma sencilla.</p>
+<p>https://github.com/keystone-engine/keypatch</p>
+<p>https://drive.google.com/file/d/0B13TW0I0f8O2eU1VdUJzVjdYTWs/view?usp=sharing</p>
+<p>KEYPATCH</p>
+<p>Allí en el segundo link está el archivo keypatch.py que se debe copiar en la carpeta plugins del IDA y el instalador keystone-0.9.1-python-win32.msi que se debe instalar.</p>
+<p>Además, se debe tener instalado Microsoft VC++ runtime library de 32 bits.</p>
+<p>https://www.microsoft.com/en-gb/download/details.aspx?id=40784</p>
+<p>Aquí si tienen problemas pueden leer los pasos de instalación.</p>
+<p>http://www.keystone-engine.org/keypatch/</p>
+<figure><img loading="lazy" src="img/4/11.png" alt="Captura 11 del tute 4"></figure>
+<figure><img loading="lazy" src="img/4/12.png" alt="Captura 12 del tute 4"></figure>
+<p>Allí eligiendo PATCHER</p>
+<p>Vemos que escribiendo la instrucción en la forma más sencilla y con corchetes la escribirá y la transformara a la sintaxis del IDA.</p>
+<figure><img loading="lazy" src="img/4/13.png" alt="Captura 13 del tute 4"></figure>
+<p>Y quedo</p>
+<figure><img loading="lazy" src="img/4/14.png" alt="Captura 14 del tute 4"></figure>
+<p>Tal como en el MOV cuando muestra el prefijo dword_ sin offset delante significa que intercambia el contenido de 0x4020dc por el valor de EAX .</p>
+<p>INSTRUCCIONES ESPECIFICAS DE TRANSFERENCIA RELATIVAS AL STACK O PILA</p>
+<p>QUE ES EL STACK o PILA?</p>
+<p>Una pila (stack en inglés) es una sección de la memoria en la que el modo de acceso es último en entrar, primero en salir. Permite almacenar y recuperar datos.</p>
+<p>Para el manejo de los datos se cuenta con dos operaciones básicas: apilar o PUSH, que coloca un objeto en la pila, y su operación inversa, retirar o POP que retira el último elemento apilado.</p>
+<p>En cada momento sólo se tiene acceso a la parte superior de la pila, es decir, al último objeto apilado. La operación POP permite la obtención de este elemento, que es retirado de la pila permitiendo el acceso al que estaba debajo (apilado con anterioridad), que pasa a ser el nuevo ultimo objeto apilado.</p>
+<p>En el CRACKME.EXE vemos ejemplos de ambas instrucciones.</p>
+<figure><img loading="lazy" src="img/4/15.png" alt="Captura 15 del tute 4"></figure>
+<p>Normalmente en 32 bits se usa PUSH para enviar los argumentos de una función al stack, antes de llamarla con un CALL, vemos allí arriba ese ejemplo en 0x40104f.</p>
+<p>PUSH 64 coloca el dword 64 en la parte superior del stack, luego PUSH EAX coloca encima del anterior el valor de EAX dejando debajo al anterior guardado y pasando este último a ser el tope del stack.</p>
+<p>ESP  valor de EAX</p>
+<p>0x64</p>
+<p>Allí vemos diferentes tipos de  PUSH, podemos pushear constantes, pero también podemos pushear direcciones de memoria, como en este caso.</p>
+<figure><img loading="lazy" src="img/4/16.png" alt="Captura 16 del tute 4"></figure>
+<p>Vemos la palabra OFFSET delante del TAG correspondiente a una string, allí lo que pushearia sería la dirección cuyo contenido es una string o array de caracteres.</p>
+<p>Si hacemos doble click en el tag que representa el nombre de la string WindowName.</p>
+<p>En código fuente en C un array de caracteres se podría definir de esta forma</p>
+<p>char cadena[] = "Hola";</p>
+<figure><img loading="lazy" src="img/4/17.png" alt="Captura 17 del tute 4"></figure>
+<p>Vemos que en este caso utiliza dos líneas para la descripción de la variable.</p>
+<p>char WindowName[] lo coloca porque detecta de la api CreateWindow, a la que se le pasa el argumento el mismo debe ser un LPCTSTR que es un char[] y que dicho argumento es una string llamada WindowName.</p>
+<figure><img loading="lazy" src="img/4/18.png" alt="Captura 18 del tute 4"></figure>
+<p>De cualquier manera, es una array de caracteres o bytes solo que IDA le agrega un poco más de info que obtiene de la api, vemos que luego de 0x4020e7 la siguiente dirección en el listado es 0x4020f4 o sea que hay varios bytes consecutivos que corresponden a los caracteres de la string “Crackme v1.0” y el cero que delimita el final de la string.</p>
+<figure><img loading="lazy" src="img/4/19.png" alt="Captura 19 del tute 4"></figure>
+<p>Si apretamos la tecla D para cambiar el tipo de dato encima de WindowName.</p>
+<p>Vemos que podemos hacer que deje de detectar que es un array de caracteres y quede como db o byte.</p>
+<figure><img loading="lazy" src="img/4/20.png" alt="Captura 20 del tute 4"></figure>
+<p>Son los mismos bytes correspondientes a la string Crackme v1.0 …</p>
+<p>Vemos que en la referencia donde está la instrucción original cambio, obviamente la palabra offset delante hace que se siga pusheando el valor 0x4020E7 pero ahora como el contenido dejo de ser un array de caracteres y paso a ser un byte, la instrucción cambio a</p>
+<figure><img loading="lazy" src="img/4/21.png" alt="Captura 21 del tute 4"></figure>
+<pre class='asm'>push offset byte_4020e7</pre>
+<p>Ya que cuando busca el contenido de 0x4020e7 para informarnos que es, allí hay un db o sea es una variable cambiada por nosotros a una de un solo byte.</p>
+<figure><img loading="lazy" src="img/4/22.png" alt="Captura 22 del tute 4"></figure>
+<p>Apretando la A que es string ASCII vuelve a mostrarse como antes.</p>
+<figure><img loading="lazy" src="img/4/23.png" alt="Captura 23 del tute 4"></figure>
+<p>Asimismo si cuando trabajamos vemos alguna string como bytes sueltos</p>
+<figure><img loading="lazy" src="img/4/24.png" alt="Captura 24 del tute 4"></figure>
+<p>Yendo al inicio de la misma y apretando la A quedara mejor.</p>
+<figure><img loading="lazy" src="img/4/25.png" alt="Captura 25 del tute 4"></figure>
+<p>En este caso vemos que esta string no está definida en dos líneas, como la anterior ni dice que es un CHAR[], sino que solo está definida con un tag que empieza con la letra a por ser una string  ASCII, en el caso anterior la aclaración que tenia de más venia porque detectaba que era un argumento de una api o función de sistema y esa le avisaba que ese argumento debía ser un char[] y por eso lo agregaba ahí, sino una string sin más aclaración, se verá como esta última.</p>
+<p>Allí vemos otra string</p>
+<figure><img loading="lazy" src="img/4/26.png" alt="Captura 26 del tute 4"></figure>
+<p>Allí en 0x402110 comienza el primer byte de la misma se puede descomponer para verlos apretando D en aMenu.</p>
+<figure><img loading="lazy" src="img/4/27.png" alt="Captura 27 del tute 4"></figure>
+<p>SI apretamos la A volvemos a lo que era originalmente</p>
+<p>Si con X busco la referencia y voy a ver dónde usa esa string</p>
+<figure><img loading="lazy" src="img/4/28.png" alt="Captura 28 del tute 4"></figure>
+<p>Vemos que allí guarda la dirección 0x402110 la ya que pone OFFSET delante.Normalmente cuando se les pasan argumentos a funciones veremos siempre el PUSH offset xxxxx ya que lo que se busca es pasar la dirección donde está la string si no tuviera la palabra offset estaríamos pusheando el contenido de la dirección 0x402110 que son los bytes 55 4e 45 4d de la misma string y las apis no trabajan de esa forma siempre se les pasa el puntero al inicio o dirección donde se inicia la string.</p>
+<p>En el caso en esta instrucción que vemos arriba el prefijo DS:TAG indica que va a guardar en una dirección de memoria de la sección data (DS=DATA), más adelante cuando veamos estructuras veremos ese caso por ahora lo que importa es que guarda en la sección DATA en una dirección de la misma, la dirección que apunta al inicio de la string</p>
+<pre class='asm'>POP</pre>
+<figure><img loading="lazy" src="img/4/29.png" alt="Captura 29 del tute 4"></figure>
+<p>Es la operación que lee el valor superior del stack y lo mueve al registro destino en este caso vemos POP EDI leerá el primer valor o TOP del stack y lo copiara a EDI y luego apuntará ESP al valor que estaba debajo para que pase a ser el TOP del stack.</p>
+<p>Si hacemos una búsqueda de texto de la palabra POP vemos que no se utilizan muchas variantes a pesar de que existe la posibilidad de POPEAR a una dirección de memoria en vez de a un registro, esta opción no es muy usada.</p>
+<figure><img loading="lazy" src="img/4/30.png" alt="Captura 30 del tute 4"></figure>
+<p>Seguiremos en la parte 5 con más instrucciones para poder meternos en el funcionamiento del LOADER.</p>
+<p>BYE</p>
+<p>Ricardo Narvaja</p>
+</main>
+<footer class="pie">
+  <p>Material educativo y defensivo. Las prácticas se limitan a programas propios, software abierto o crackmes diseñados para aprender. No se enseña a eludir licencias, DRM ni controles de acceso.</p>
+  <p><a href="../00_EMPEZAR_AQUI.html">Inicio</a> · <a href="../guia/etapa-0.html">Etapas</a> · <a href="../fuentes_y_limites.html">Fuentes y límites</a> · <a href="../registro_de_cobertura.csv">Registro de cobertura</a></p>
+</footer>
+<script>
+(function(){
+  function abrir(src){
+    var o=document.createElement('div'); o.className='lightbox-ov';
+    var i=document.createElement('img'); i.src=src; o.appendChild(i);
+    function cerrar(){o.remove(); document.removeEventListener('keydown', onkey);}
+    function onkey(e){ if(e.key==='Escape') cerrar(); }
+    o.addEventListener('click', cerrar);
+    document.addEventListener('keydown', onkey);
+    document.body.appendChild(o);
+  }
+  document.addEventListener('DOMContentLoaded', function(){
+    document.querySelectorAll('figure img, main img').forEach(function(img){
+      img.style.cursor='zoom-in';
+      img.addEventListener('click', function(){ abrir(img.currentSrc||img.src); });
+    });
+  });
+})();
+</script>
+</body>
+</html>

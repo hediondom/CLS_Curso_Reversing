@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>2D.7 · COM: registro, activación y configuración</title>
+<meta name="description" content="Seguir una activación COM de CLSID a interfaz: contexto, servidor in-proc o local, ThreadingModel, vistas de registro, AppID, typelib/IDL y COM sin registro, en modo de inspección.">
+<link rel="stylesheet" href="../guia/estilo.css">
+</head>
+<body>
+<a class="salto" href="#contenido">Saltar al contenido</a>
+<header class="cabecera">
+  <div class="marca"><a href="../00_EMPEZAR_AQUI.html">CLS · Curso de reversing</a> <span class="edicion">edición 5 · 27/10/2026</span></div>
+  <nav class="principal" aria-label="Navegación principal">
+    <a href="../00_EMPEZAR_AQUI.html">Inicio</a>
+    <a href="../guia/index.html">Curso</a>
+    <a href="../materiales.html">Materiales</a>
+    <a href="../fichas/index.html">Fichas</a>
+    <a href="../glosario.html">Glosario</a>
+    <a href="../preguntas_y_respuestas.html">Repaso</a>
+    <a href="../buscar.html">Buscar</a>
+  </nav>
+</header>
+<main id="contenido">
+<nav class="migas" aria-label="Ubicación"><a href="../00_EMPEZAR_AQUI.html">Inicio</a><span aria-hidden="true">›</span><a href="../guia/index.html">Curso</a><span aria-hidden="true">›</span><span>Etapa 2 · 2D · Windows internals (optativa)</span></nav><h1 id="com-registro-activación-y-configuración">COM: registro, activación y configuración</h1>
+<aside class="callout aviso"><p class="callout-titulo">Rama optativa 2D</p><p>El ejercicio inspecciona una clase propia o una instalación conocida. No cambia el registro de componentes ajenos, no ejecuta <code>DllRegisterServer</code>/<code>regsvr32</code> sobre binarios que no son tuyos y no configura activación automática.</p></aside>
+<aside class="callout nota"><p class="callout-titulo">Propósito</p><p>Reconstruir cómo COM pasa de un CLSID a un servidor local o dentro del proceso y cómo usar metadatos para confirmar el contrato. El objetivo es poder responder, con evidencia, <strong>qué archivo</strong> atiende una clase, <strong>en qué proceso y apartamento</strong> corre y <strong>por qué</strong> fue ese y no otro.</p></aside>
+<p><strong>Prerrequisitos</strong></p>
+<ul><li><em>Obligatorios:</em> <a href="2d-03-registro.html">2D.3 Registro</a>, <a href="2d-06-com-interfaces.html">2D.6 COM</a>.</li><li><em>Recomendados:</em> PE e imports (<a href="01-pe.html">1.4</a>); ACL y token (<a href="2d-01-objetos.html">2D.1</a>).</li></ul>
+<h2 id="el-recorrido-de-una-activación">El recorrido de una activación</h2>
+<p>La activación parte de una solicitud de clase y contexto. Con <code>CoCreateInstance(rclsid, pUnkOuter, dwClsContext, riid, ppv)</code> el cliente dice <strong>qué clase</strong> quiere, <strong>qué tipos de servidor acepta</strong> (<code>CLSCTX_INPROC_SERVER</code>, <code>CLSCTX_LOCAL_SERVER</code>, <code>CLSCTX_REMOTE_SERVER</code>, combinables) y <strong>qué interfaz</strong> espera recibir. Conceptualmente, la cadena es:</p>
+<ol><li><strong>CLSID + contexto de activación.</strong> Si el hilo tiene un <em>activation context</em> activo (manifiesto), COM busca primero ahí qué DLL aloja el CLSID. Si no lo encuentra, usa el registro.</li><li><strong>Registro efectivo.</strong> <code>HKEY_CLASSES_ROOT</code> es una vista combinada de <code>HKLM\Software\Classes</code> (máquina) y <code>HKCU\Software\Classes</code> (usuario); para una misma subclave, la entrada del usuario tiene prioridad. Además, la vista de 32 o 64 bits del proceso cambia qué subárbol se lee (ver más abajo).</li><li><strong>Servidor.</strong> Según <code>dwClsContext</code> y lo registrado, COM elige un servidor en proceso (<code>InprocServer32</code>), uno local (<code>LocalServer32</code>, o un servicio vía <code>LocalService</code> del AppID) o uno remoto (2D.8).</li><li><strong>Class factory.</strong> COM obtiene el <em>class object</em> de la clase: en una DLL, llamando a su export <code>DllGetClassObject</code>; en un EXE, esperando a que el servidor registre su class object al arrancar. Ese objeto implementa normalmente <code>IClassFactory</code>.</li><li><strong>Instancia e interfaz.</strong> <code>IClassFactory::CreateInstance</code> crea el objeto y devuelve la interfaz pedida por <code>riid</code>. Si el servidor está en otro apartamento o proceso, el cliente recibe un <strong>proxy</strong> (2D.6).</li></ol>
+<p><code>CoCreateInstance</code> equivale a <code>CoGetClassObject</code> + <code>IClassFactory::CreateInstance</code> + liberar la factory. En un binario podés ver cualquiera de las dos formas.</p>
+<h2 id="inprocserver32-y-localserver32"><code>InprocServer32</code> y <code>LocalServer32</code></h2>
+<div class="tabla"><table>
+<thead><tr>
+<th></th>
+<th><code>InprocServer32</code></th>
+<th><code>LocalServer32</code></th>
+</tr></thead><tbody>
+<tr><td>Qué señala</td><td>Ruta de una <strong>DLL</strong> que se carga <strong>en el proceso cliente</strong>.</td><td>Línea de comando de un <strong>EXE</strong> que corre en <strong>otro proceso</strong>.</td></tr>
+<tr><td>Cómo entrega la factory</td><td>Export <code>DllGetClassObject</code>.</td><td>El EXE registra su class object al arrancar; si no lo hace a tiempo (por defecto, 60 s), la activación expira.</td></tr>
+<tr><td>Arquitectura</td><td>La DLL debe coincidir con la del cliente (un proceso x64 no carga una DLL x86).</td><td>Puede tener otra arquitectura; las llamadas viajan por proxy/stub.</td></tr>
+<tr><td>Detalles útiles</td><td>Declara <code>ThreadingModel</code>.</td><td>COM agrega <code> -Embedding</code> a la línea de comando. El valor <code>ServerExecutable</code> evita ambigüedad de ruta. Si el AppID define <code>LocalService</code>, se usa el servicio y <code>LocalServer32</code> se ignora.</td></tr>
+<tr><td>Riesgo de lectura</td><td>Una ruta sin comillas o relativa es ambigua; verificá qué archivo se resolvería.</td><td>Igual; la documentación advierte sobre rutas sin comillas en <code>CreateProcess</code>.</td></tr>
+</tbody></table></div>
+<p>Una DLL también puede correr fuera de proceso dentro de un <strong>surrogate</strong> si su AppID define <code>DllSurrogate</code>. Por eso “es una DLL” no implica automáticamente “corre dentro del cliente”.</p>
+<p>La ubicación por sí sola no determina si algo es confiable: verificá ruta, firma, propietario, permisos de la carpeta y compatibilidad de arquitectura.</p>
+<h2 id="threadingmodel-valores-y-límites"><code>ThreadingModel</code>: valores y límites</h2>
+<p>Solo aplica a servidores <strong>en proceso</strong>. Declara en qué apartamento (2D.6) puede vivir el objeto; COM lo usa para decidir dónde crearlo.</p>
+<div class="tabla"><table>
+<thead><tr>
+<th>Valor</th>
+<th>Apartamento declarado</th>
+<th>Si el cliente está en un apartamento incompatible</th>
+</tr></thead><tbody>
+<tr><td><em>(ausente)</em></td><td>Solo el <strong>STA principal</strong> (el primero inicializado).</td><td>Se crea en el STA principal y el cliente recibe un proxy.</td></tr>
+<tr><td><code>Apartment</code></td><td>STA.</td><td>Si el cliente está en la MTA, COM crea o usa un <strong>host STA</strong>; el cliente recibe un proxy.</td></tr>
+<tr><td><code>Both</code></td><td>STA o MTA.</td><td>Se crea en el mismo apartamento del cliente.</td></tr>
+<tr><td><code>Free</code></td><td>MTA.</td><td>Si el cliente es STA, se crea en la MTA (o en una <em>host MTA</em> creada por COM); proxy.</td></tr>
+<tr><td><code>Neutral</code></td><td>Apartamento neutral.</td><td>Se crea en el apartamento neutral.</td></tr>
+</tbody></table></div>
+<p>Límites que conviene escribir en el informe:</p>
+<ul><li>Es una <strong>declaración del autor</strong>, no una prueba: <code>Both</code> o <code>Free</code> no demuestran que el código sea seguro entre hilos.</li><li>Debe ser el mismo valor para todos los objetos de ese servidor.</li><li>Explica <strong>por qué aparece un proxy</strong> aun en una activación in-proc: no siempre hay un salto de proceso detrás.</li></ul>
+<h2 id="registro-por-usuario-por-máquina-y-vistas-de-32-64-bits">Registro por usuario, por máquina y vistas de 32/64 bits</h2>
+<ul><li><strong>Usuario vs. máquina.</strong> Un CLSID puede estar en <code>HKCU\Software\Classes\CLSID</code>, en <code>HKLM\Software\Classes\CLSID</code> o en ambos. La vista <code>HKCR</code> da prioridad al usuario. La documentación aclara que, si una aplicación corre con derechos de administrador y UAC deshabilitado, el runtime COM ignora la configuración por usuario. Un proceso que atiende a clientes distintos del usuario interactivo (un servicio, por ejemplo) necesita abrir explícitamente la vista de ese usuario con <code>RegOpenUserClassesRoot</code>.</li><li><strong>WOW64.</strong> En Windows 7 y posteriores de 64 bits, <code>HKLM\Software\Classes\CLSID</code>, <code>HKCU\Software\Classes\CLSID</code> e <code>...\Interface</code> están <strong>redirigidas</strong>: un proceso de 32 bits ve otra copia (bajo <code>Wow6432Node</code>). En cambio <code>...\Classes\AppID</code> está <strong>compartida</strong>, y <code>Wow6432Node\Typelib</code> es un enlace a la clave compartida. Consecuencia: el mismo CLSID puede resolver a archivos distintos según la arquitectura del cliente.</li></ul>
+<p>Antes de afirmar “el CLSID no está registrado”, anotá <strong>qué vista</strong> consultaste (usuario/máquina, 32/64) y con qué herramienta. Regedit de 64 bits muestra <code>Wow6432Node</code> como una rama más; una API con <code>KEY_WOW64_32KEY</code> o <code>KEY_WOW64_64KEY</code> elige la vista explícitamente.</p>
+<h2 id="appid-typelib-e-idl-qué-prueba-cada-uno">AppID, TypeLib e IDL: qué prueba cada uno</h2>
+<div class="tabla"><table>
+<thead><tr>
+<th>Metadato</th>
+<th>Qué aporta</th>
+<th>Qué <strong>no</strong> demuestra</th>
+</tr></thead><tbody>
+<tr><td><strong>AppID</strong> (<code>HKLM\Software\Classes\AppID\{GUID}</code>, enlazado desde el valor <code>AppID</code> del CLSID)</td><td>Configuración común de los objetos DCOM de un mismo ejecutable: <code>LaunchPermission</code>, <code>AccessPermission</code>, <code>RunAs</code>, <code>LocalService</code>, <code>DllSurrogate</code>, <code>AuthenticationLevel</code>, <code>RemoteServerName</code>, entre otros.</td><td>Que esos valores sean los efectivos: si el proceso llama a <code>CoInitializeSecurity</code>, sus parámetros reemplazan a los del registro (2D.8). Tampoco prueba que la clase se active remotamente.</td></tr>
+<tr><td><strong>TypeLib</strong> (<code>.tlb</code> o recurso dentro de la DLL; referenciada por <code>TypeLib</code> o por <code>tlbid</code>)</td><td>Descripción binaria de interfaces, métodos, parámetros y tipos; base del marshaling de automatización.</td><td>Que la implementación cumpla el contrato, que todos los métodos estén implementados o que no haya métodos no documentados.</td></tr>
+<tr><td><strong>IDL</strong> (fuente que MIDL compila a headers, typelib y código proxy/stub)</td><td>El contrato tal como lo escribió el autor: herencia, orden de métodos, atributos <code>[in]</code>/<code>[out]</code>.</td><td>Que el binario distribuido se haya compilado de <strong>ese</strong> IDL o de esa versión.</td></tr>
+<tr><td><strong><code>Interface\{IID}</code></strong> con <code>ProxyStubClsid32</code></td><td>Qué proxy/stub se usa para marshalear ese IID.</td><td>Qué objeto implementa la interfaz.</td></tr>
+</tbody></table></div>
+<p>Regla práctica: los metadatos te dan <strong>hipótesis de nombres y contratos</strong>; la implementación y la ejecución en laboratorio las confirman o las refutan.</p>
+<h2 id="activación-sin-registro-registration-free-com">Activación sin registro (registration-free COM)</h2>
+<p>Una aplicación puede declarar sus clases COM en un <strong>manifiesto</strong> en lugar del registro. En un manifiesto de ensamblado, el elemento <code>file</code> (la DLL) contiene uno o más <code>comClass</code> con atributos como <code>clsid</code>, <code>threadingModel</code>, <code>progid</code> y <code>tlbid</code>, y puede incluir <code>typelib</code> y <code>comInterfaceProxyStub</code>. Cuando el hilo tiene ese <strong>contexto de activación</strong> activo, <code>CoCreateInstance</code> y <code>CLSIDFromProgID</code> lo consultan <strong>antes</strong> que el registro; si el contexto no contiene la información, COM recurre al registro como siempre. Los contextos de activación son por hilo, y COM los propaga al hilo anfitrión al cargar la DLL.</p>
+<p>Para el análisis, esto significa que <strong>una búsqueda en el registro puede dar vacío y la activación igual funcionar</strong>. Dónde mirar, en modo lectura:</p>
+<ul><li>manifiesto de aplicación embebido como recurso del EXE o archivo <code>.manifest</code> junto al ejecutable;</li><li>manifiestos de ensamblados privados (archivo junto a la DLL o recurso de la DLL);</li><li>llamadas a las APIs de contextos de activación en el cliente.</li></ul>
+<h2 id="ejemplo-trabajado-observación-frente-a-inferencia">Ejemplo trabajado: observación frente a inferencia</h2>
+<p><em>(Ejemplo <strong>ilustrativo</strong>: rutas ficticias de un componente propio; las cadenas entre llaves son marcadores didácticos, no GUID utilizables. No es salida de una VM.)</em></p>
+<pre><code class="lenguaje-text">Cliente: BlocCliente.exe (PE32+, x64)
+Llamada vista en el desensamblado:
+  CoCreateInstance(CLSID {A...1}, NULL, CLSCTX_INPROC_SERVER|CLSCTX_LOCAL_SERVER, IID {D...4}, &amp;p)
+
+Vista 64 bits:
+  HKCU\Software\Classes\CLSID\{A...1}   (no existe)
+  HKLM\Software\Classes\CLSID\{A...1}
+    AppID           {B...2}
+    InprocServer32  (Default)       C:\CLS-Lab\x64\BlocCom.dll
+                    ThreadingModel  Both
+    TypeLib         {C...3}
+HKLM\Software\Classes\AppID\{B...2}
+    (sin LaunchPermission / AccessPermission / RunAs)
+Vista 32 bits (Wow6432Node):
+  HKLM\Software\Classes\Wow6432Node\CLSID\{A...1}
+    LocalServer32   "C:\CLS-Lab\x86\BlocSrv.exe"
+Manifiesto de BlocCliente.exe: sin comClass</code></pre>
+<div class="tabla"><table>
+<thead><tr>
+<th>Afirmación</th>
+<th>Tipo</th>
+<th>Por qué</th>
+</tr></thead><tbody>
+<tr><td>El cliente acepta servidor in-proc <strong>o</strong> local.</td><td>Observación</td><td>Flags de <code>dwClsContext</code> en el código.</td></tr>
+<tr><td>En la vista de 64 bits, el CLSID resuelve a <code>BlocCom.dll</code> (x64).</td><td>Observación</td><td>Clave leída en esa vista.</td></tr>
+<tr><td>No hay registro por usuario ni registro sin manifiesto que lo pise.</td><td>Observación</td><td><code>HKCU</code> vacío y manifiesto sin <code>comClass</code>.</td></tr>
+<tr><td>Un cliente <strong>x86</strong> del mismo CLSID terminaría en <code>BlocSrv.exe</code>, fuera de proceso.</td><td>Inferencia</td><td>Depende de la vista de 32 bits; habría que confirmarlo con un cliente x86.</td></tr>
+<tr><td>Como el servidor x64 es <code>Both</code>, el objeto se crea en el apartamento del cliente y no hay proxy.</td><td>Inferencia</td><td>Se confirma resolviendo el módulo de la vtable (2D.6).</td></tr>
+<tr><td>El AppID no define permisos propios, así que regirían los valores por defecto del equipo.</td><td>Inferencia con límite</td><td>Solo si el servidor no llama a <code>CoInitializeSecurity</code>; además, para una activación in-proc los permisos de lanzamiento no intervienen.</td></tr>
+<tr><td>La typelib <code>{C...3}</code> describe <code>IID {D...4}</code>.</td><td>Hipótesis</td><td>Falta abrir la typelib y comparar; tampoco probaría la implementación.</td></tr>
+</tbody></table></div>
+<h2 id="práctica-trazado-de-solo-lectura">Práctica: trazado de solo lectura</h2>
+<ol><li>Elegí un componente propio ya registrado o una aplicación de laboratorio conocida.</li><li>Anotá la arquitectura del cliente y los flags <code>CLSCTX_*</code> que usa. Si no los ves, decilo.</li><li>Revisá si el cliente tiene manifiesto con <code>comClass</code> (recurso o archivo). Registrá el resultado aunque sea “no tiene”.</li><li>Seguí <code>CLSID → servidor → AppID → TypeLib</code> con Regedit en modo lectura, en la vista de <strong>usuario y de máquina</strong> y en la de <strong>32 y 64 bits</strong> que correspondan.</li><li>Anotá ruta, firma, arquitectura y <code>ThreadingModel</code> del servidor. No ejecutes un <code>DllRegisterServer</code> desconocido.</li><li>Clasificá cada dato como observación, inferencia o hipótesis, como en la tabla del ejemplo.</li><li>Si el componente de práctica no existe, analizá el ejemplo ilustrativo y declará que no verificaste activación en vivo.</li></ol>
+<h2 id="entregable">Entregable</h2>
+<p>Tabla de CLSID, contexto pedido, tipo de servidor, ruta, arquitectura, <code>ThreadingModel</code>, AppID y valores relevantes, typelib, vista de registro consultada, existencia de manifiesto y evidencias. Redactá anomalías como preguntas a investigar, no como diagnóstico automático.</p>
+<h2 id="repaso">Repaso</h2>
+<details class="qa"><summary>¿Qué diferencia hay entre <code>InprocServer32</code> y <code>LocalServer32</code>?</summary><div class="respuesta"><p>El primero apunta a un servidor DLL cargado en el proceso cliente (debe coincidir en arquitectura); el segundo, a un servidor ejecutable fuera del proceso, que puede tener otra arquitectura y se comunica por proxy/stub.</p></div></details>
+<details class="qa"><summary>¿Qué agrega <code>ThreadingModel</code>?</summary><div class="respuesta"><p>Declara el modelo de apartamento compatible para el servidor en proceso y determina dónde lo crea COM; no describe por sí solo toda la sincronización del código.</p></div></details>
+<details class="qa"><summary>Un servidor in-proc tiene <code>ThreadingModel=Apartment</code> y el cliente está en la MTA. ¿Qué recibe el cliente?</summary><div class="respuesta"><p>Un proxy: COM crea el objeto en un host STA y marshalea las llamadas.</p></div></details>
+<details class="qa"><summary>¿Qué aporta AppID?</summary><div class="respuesta"><p>Agrupa opciones/configuración de uno o varios objetos distribuidos (permisos, identidad, surrogate, servicio) y permite relacionar la clase con ajustes DCOM. No garantiza que sean los valores efectivos si el proceso llama a <code>CoInitializeSecurity</code>.</p></div></details>
+<details class="qa"><summary>¿Un TLB demuestra el comportamiento interno?</summary><div class="respuesta"><p>No. Describe contratos y tipos; el comportamiento se confirma siguiendo la implementación.</p></div></details>
+<details class="qa"><summary>Buscaste el CLSID en el registro y no aparece, pero la aplicación lo crea. ¿Qué dos explicaciones revisás primero?</summary><div class="respuesta"><p>Que estés mirando la vista equivocada (usuario/máquina o 32/64 bits) o que la clase se declare en un manifiesto y se resuelva por contexto de activación sin registro.</p></div></details>
+<aside class="callout nota"><p class="callout-titulo">Puerta optativa</p><p>Podés seguir una activación desde CLSID hasta servidor y metadatos, distinguir servidor in-process/local, explicar el efecto de <code>ThreadingModel</code>, declarar la vista de registro consultada y reconocer cuándo el registro no alcanza por la existencia de un manifiesto.</p></aside>
+<aside class="callout nota"><p class="callout-titulo">Lo que queda fuera</p><p>Monikers, ROT, servidores de servicio en detalle, catálogo COM+ y la creación de manifiestos o de registros propios no se desarrollan. La lección enseña a <strong>leer</strong> una configuración, no a registrar componentes.</p></aside>
+<h2 id="fuentes">Fuentes</h2>
+<ul><li>Microsoft Learn, activación: <a href="https://learn.microsoft.com/en-us/windows/win32/api/combaseapi/nf-combaseapi-cocreateinstance" rel="noopener" target="_blank">CoCreateInstance</a>, <a href="https://learn.microsoft.com/en-us/windows/win32/api/combaseapi/nf-combaseapi-cogetclassobject" rel="noopener" target="_blank">CoGetClassObject</a>, <a href="https://learn.microsoft.com/en-us/windows/win32/api/unknwn/nn-unknwn-iclassfactory" rel="noopener" target="_blank">IClassFactory</a>, <a href="https://learn.microsoft.com/en-us/windows/win32/api/combaseapi/nf-combaseapi-dllgetclassobject" rel="noopener" target="_blank">DllGetClassObject</a>, <a href="https://learn.microsoft.com/en-us/windows/win32/com/com-clients-and-servers" rel="noopener" target="_blank">COM Clients and Servers</a>.</li><li>Microsoft Learn, registro: <a href="https://learn.microsoft.com/en-us/windows/win32/com/com-registry-keys" rel="noopener" target="_blank">COM Registry Keys</a>, <a href="https://learn.microsoft.com/en-us/windows/win32/com/inprocserver32" rel="noopener" target="_blank">InprocServer32</a>, <a href="https://learn.microsoft.com/en-us/windows/win32/com/localserver32" rel="noopener" target="_blank">LocalServer32</a>, <a href="https://learn.microsoft.com/en-us/windows/win32/com/appid-key" rel="noopener" target="_blank">AppID Key</a>, <a href="https://learn.microsoft.com/en-us/windows/win32/com/interface-key" rel="noopener" target="_blank">Interface Key</a>, <a href="https://learn.microsoft.com/en-us/windows/win32/sysinfo/merged-view-of-hkey-classes-root" rel="noopener" target="_blank">Merged View of HKEY_CLASSES_ROOT</a>, <a href="https://learn.microsoft.com/en-us/windows/win32/winprog64/shared-registry-keys" rel="noopener" target="_blank">Registry Keys Affected by WOW64</a>.</li><li>Microsoft Learn, metadatos y sin registro: <a href="https://learn.microsoft.com/en-us/windows/win32/midl/generating-a-type-library-with-midl-2" rel="noopener" target="_blank">Generating a type library with MIDL</a>, <a href="https://learn.microsoft.com/en-us/windows/win32/sbscs/creating-registration-free-com-objects" rel="noopener" target="_blank">Creating Registration-Free COM Objects</a>, <a href="https://learn.microsoft.com/en-us/windows/win32/sbscs/assembly-manifests" rel="noopener" target="_blank">Assembly Manifests</a>, <a href="https://learn.microsoft.com/en-us/windows/win32/sbscs/activation-contexts" rel="noopener" target="_blank">Activation Contexts</a>.</li><li><strong>CLS:</strong> Registro/WOW64 en <a href="2d-03-registro.html">2D.3</a>; COM base en <a href="2d-06-com-interfaces.html">2D.6</a>.</li></ul>
+<aside class="callout nota"><p class="callout-titulo">Etiquetas</p><p><strong>Observado en CLS:</strong> registro y permisos tratados en 2D.3. <strong>Conocimiento externo:</strong> activación, <code>ThreadingModel</code>, vistas de registro, metadatos y COM sin registro. <strong>Ejemplo ilustrativo:</strong> claves, rutas y conclusiones del componente ficticio. <strong>Laboratorio verificado:</strong> no.</p></aside>
+</main>
+<footer class="pie">
+  <p>Material educativo y defensivo. Las prácticas se limitan a programas propios, software abierto o crackmes diseñados para aprender. No se enseña a eludir licencias, DRM ni controles de acceso.</p>
+  <p><a href="../00_EMPEZAR_AQUI.html">Inicio</a> · <a href="../guia/etapa-0.html">Etapas</a> · <a href="../fuentes_y_limites.html">Fuentes y límites</a> · <a href="../registro_de_cobertura.csv">Registro de cobertura</a></p>
+</footer>
+</body>
+</html>

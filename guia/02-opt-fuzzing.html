@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>2.24 (optativa) · Fuzzing y análisis simbólico</title>
+<meta name="description" content="Encontrar fallos en un parser o crackme propio: fuzzear, guardar entradas, reproducir crashes; y usar ejecución simbólica para hallar qué condición llega a un bloque. Ruta optativa.">
+<link rel="stylesheet" href="../guia/estilo.css">
+</head>
+<body>
+<a class="salto" href="#contenido">Saltar al contenido</a>
+<header class="cabecera">
+  <div class="marca"><a href="../00_EMPEZAR_AQUI.html">CLS · Curso de reversing</a> <span class="edicion">edición 5 · 27/10/2026</span></div>
+  <nav class="principal" aria-label="Navegación principal">
+    <a href="../00_EMPEZAR_AQUI.html">Inicio</a>
+    <a href="../guia/index.html">Curso</a>
+    <a href="../materiales.html">Materiales</a>
+    <a href="../fichas/index.html">Fichas</a>
+    <a href="../glosario.html">Glosario</a>
+    <a href="../preguntas_y_respuestas.html">Repaso</a>
+    <a href="../buscar.html">Buscar</a>
+  </nav>
+</header>
+<main id="contenido">
+<nav class="migas" aria-label="Ubicación"><a href="../00_EMPEZAR_AQUI.html">Inicio</a><span aria-hidden="true">›</span><a href="../guia/index.html">Curso</a><span aria-hidden="true">›</span><span>Etapa 2 · Windows avanzado (2C) · ruta optativa</span></nav><h1 id="fuzzing-y-análisis-simbólico">Fuzzing y análisis simbólico</h1>
+<aside class="callout aviso"><p class="callout-titulo">Ruta optativa · sobre binarios propios</p><p>Especialización, no requisito de 2C. Se practica con un <strong>parser o crackme propio</strong> y busca <strong>encontrar y entender fallos</strong> (bugs de robustez) y condiciones de entrada, en clave defensiva. <strong>Prerrequisitos:</strong> C/compilación (1.5), WinDbg/heap (<a href="02-windbg-heap.html">2.19</a>), método de análisis (4.1).</p></aside>
+<p>Dos técnicas que <strong>automatizan</strong> la búsqueda de problemas, cada una por un camino distinto:</p>
+<h2 id="fuzzing-romper-a-fuerza-de-entradas">Fuzzing: romper a fuerza de entradas</h2>
+<p>El fuzzing encuentra fallos en el parser, pero no sustituye la reconstrucción de su estructura: para deducir campos y framing desde muestras, consulta <a href="../guia/04-formatos-protocolos.html">4.5</a>.</p>
+<p>Fuzzear es alimentar al programa con <strong>muchísimas entradas</strong> (mutadas o generadas) y ver cuáles lo hacen <strong>crashear o colgarse</strong>. Un crash es una pista de un bug (overflow, desreferencia nula, consumo de memoria). El flujo (<strong>conocimiento externo</strong>):</p>
+<ol><li><strong>Elegí un objetivo chico:</strong> un <strong>parser propio</strong> (lee un formato de archivo o un input de texto) o un crackme. Cuanto más acotado, mejor.</li><li><strong>Semillas:</strong> juntá entradas válidas de ejemplo (<em>corpus</em> inicial).</li><li><strong>Fuzzer:</strong> herramientas como <strong>AFL++</strong>, <strong>libFuzzer</strong> (si compilás con instrumentación) o <strong>WinAFL</strong> en Windows. Mutan el corpus y maximizan la <strong>cobertura</strong> de código.</li><li><strong>Guardá todo:</strong> cada entrada que provoca un crash se <strong>guarda</strong> tal cual, para reproducir.</li><li><strong>Triage:</strong> reproducís el crash (con Page Heap de <a href="02-windbg-heap.html">2.19</a> si es de memoria), lo minimizás y explicás la causa.</li></ol>
+<p>La <strong>reproducibilidad</strong> es el punto: un fuzzing sirve si podés volver a disparar el crash con la entrada guardada y señalar la línea.</p>
+<h2 id="reducir-el-corpus-y-minimizar-un-crash-son-tareas-distintas">Reducir el corpus y minimizar un crash son tareas distintas</h2>
+<p>El corpus puede crecer con casos que recorren los mismos caminos. En libFuzzer, -merge=1 permite construir un corpus reducido conservando las entradas que aportan cobertura nueva; no promete conservar todas las propiedades semánticas ni elegir el archivo más corto para cada camino. Conserva el corpus original y versiona el corpus curado por separado.</p>
+<p>Minimizar un <strong>crash concreto</strong> busca una entrada más pequeña que siga reproduciendo ese mismo fallo; libFuzzer ofrece -minimize_crash=1 con un límite de ejecuciones/tiempo. Guarda siempre el crash original, la versión minimizada, hashes y el comando exacto. Los flags cambian entre fuzzers: consulta la documentación de la herramienta y no uses una opción de corpus como sustituto de reproducir el fallo.</p>
+<h2 id="análisis-simbólico-resolver-en-vez-de-adivinar">Análisis simbólico: resolver en vez de adivinar</h2>
+<p>En vez de probar entradas al azar, la <strong>ejecución simbólica</strong> trata la entrada como una <strong>incógnita</strong> y, con un <em>solver</em> (SMT), calcula <strong>qué valor</strong> hace que la ejecución tome un camino. Sirve para "¿qué entrada llega a este bloque?" sin fuerza bruta (<strong>conocimiento externo</strong>). Herramientas: <strong>angr</strong>, <strong>Triton</strong>, <strong>Miasm</strong> (el "taller actual" de <a href="02-herramientas.html">2.9</a> las nombra). Dónde brilla:</p>
+<ul><li>Un crackme con una comparación compleja: angr puede <strong>hallar la clave</strong> resolviendo las restricciones hasta el "chico bueno".</li><li>Encontrar la entrada que alcanza un bloque de error que el fuzzer no pega por azar.</li></ul>
+<p>Límite práctico: la <strong>explosión de caminos</strong>. En binarios grandes el árbol de estados crece muchísimo; por eso conviene <strong>acotar</strong> (empezar desde una función, fijar longitudes) y combinarlo con fuzzing.</p>
+<h2 id="ejemplo-fuzzing-simbólico-sobre-un-parser-propio">Ejemplo: fuzzing + simbólico sobre un parser propio</h2>
+<p><em>(Ejemplo <strong>ilustrativo</strong>: flujo y salida construidos.)</em></p>
+<pre><code class="lenguaje-text">Objetivo: parser propio  parse_registro(archivo)   (lee un header + N bytes)
+
+Fuzzing (WinAFL, 2 h, corpus de 5 archivos válidos):
+  crashes/ id:000  → len declarado 0xFFFF con archivo de 20 bytes
+  Triage con Page Heap: AV en parse_registro+0x3e (lee fuera del buffer)
+  Causa: confía en el 'len' del header sin validarlo contra el tamaño real.
+
+Simbólico (angr) para alcanzar el bloque "formato_v2":
+  entrada hallada: primeros 4 bytes = "RG02"  → toma ese camino</code></pre>
+<p>El fuzzer encontró un bug de robustez (no valida <code>len</code>); angr encontró <strong>qué bytes</strong> activan una rama concreta. Los dos resultados son <strong>reproducibles</strong> y señalan una línea.</p>
+<h2 id="práctica">Práctica</h2>
+<p>En tu VM, con un <strong>parser propio</strong> y datos de prueba inventados:</p>
+<ol><li>Definí un harness determinista que procese una entrada y termine sin depender de red, reloj, rutas personales ni servicios externos.</li><li>Prepará un corpus pequeño de archivos válidos y anotá qué estructura cubre cada uno. Guardá una copia inmutable del corpus inicial.</li><li>Activá cobertura si la herramienta lo permite; ejecutá con límites razonables de tiempo y memoria. Conservá cada entrada que produzca un fallo.</li><li>Reproducí un crash sin el fuzzer, minimizá esa entrada para conservar el mismo fallo y registra versión de herramienta, comando, hash del original y del caso reducido, y pila/síntoma.</li><li>Reducí por separado el corpus preservando cobertura (en libFuzzer, -merge=1); compara cobertura y cantidad de casos. No borres el corpus original ni los crashes.</li><li>Corregí el parser y añadí el caso reducido como regresión; comprobá que los ejemplos válidos siguen pasando.</li><li>Como ejercicio separado, usá angr sobre un binario propio pequeño para hallar una entrada que alcance una rama concreta; explicá qué restricciones resolvió y qué quedó fuera del modelo.</li></ol>
+<h2 id="preguntas-de-repaso">Preguntas de repaso</h2>
+<details class="qa"><summary>¿Qué es fuzzing y qué buscás con un crash?</summary><div class="respuesta"><p>Alimentar el programa con <strong>muchas entradas</strong> (mutadas/generadas) para ver cuáles lo rompen. Un <strong>crash</strong> es la pista de un bug (overflow, null deref, etc.); lo guardás para reproducir y explicar la causa.</p></div></details>
+<details class="qa"><summary>¿Por qué guardás cada entrada que crashea?</summary><div class="respuesta"><p>Por <strong>reproducibilidad</strong>: un hallazgo sirve si podés volver a disparar el crash con esa entrada exacta, minimizarla y señalar la línea culpable.</p></div></details>
+<details class="qa"><summary>¿En qué se diferencia el análisis simbólico del fuzzing?</summary><div class="respuesta"><p>El fuzzing <strong>prueba</strong> entradas (al azar/mutadas); el simbólico trata la entrada como <strong>incógnita</strong> y un <em>solver</em> <strong>calcula</strong> qué valor toma un camino. Uno adivina con cobertura; el otro resuelve restricciones.</p></div></details>
+<details class="qa"><summary>¿Cuál es el límite típico del análisis simbólico?</summary><div class="respuesta"><p>La <strong>explosión de caminos</strong>: el árbol de estados crece muchísimo en binarios grandes. Se acota (desde una función, fijando longitudes) y se combina con fuzzing.</p></div></details>
+<details class="qa"><summary>¿Qué herramientas nombrás para cada técnica?</summary><div class="respuesta"><p>Fuzzing: <strong>AFL++</strong>, <strong>libFuzzer</strong>, <strong>WinAFL</strong>. Simbólico: <strong>angr</strong>, <strong>Triton</strong>, <strong>Miasm</strong>.</p></div></details>
+<aside class="callout nota"><p class="callout-titulo">Puerta de salida (optativa)</p><p>Podés: (1) fuzzear un parser/crackme propio y guardar los crashes; (2) reproducir y explicar un crash con Page Heap; (3) usar ejecución simbólica para hallar la entrada que alcanza un bloque; (4) minimizar un crash reproducible y un corpus conservando cobertura; explicar la explosión de caminos y cuándo combinar ambas.</p></aside>
+<h2 id="fuentes-de-esta-lección">Fuentes de esta lección</h2>
+<ul><li>LLVM: <a href="https://www.llvm.org/docs/LibFuzzer.html" rel="noopener" target="_blank">libFuzzer: coverage-guided fuzz testing</a>.</li></ul>
+<ul><li><a href="02-herramientas.html">Herramientas: el taller actual</a> (2.9) — menciona angr, Unicorn, Triton y Miasm en el taller moderno.</li><li><a href="02-windbg-heap.html">WinDbg, TTD y heap</a> (2.19) — Page Heap para reproducir y diagnosticar los crashes de memoria del fuzzing.</li></ul>
+<aside class="callout nota"><p class="callout-titulo">Capas de esta lección</p><p><strong>Contenido observado en CLS:</strong> la mención de angr/Triton/Miasm en el taller actual (2.9). <strong>Conocimiento externo:</strong> fuzzing (AFL++/libFuzzer/WinAFL), ejecución simbólica (angr) y la explosión de caminos. <strong>Recomendación editorial:</strong> el enfoque sobre binarios propios, el ejemplo ilustrativo y la práctica de triage reproducible.</p></aside>
+</main>
+<footer class="pie">
+  <p>Material educativo y defensivo. Las prácticas se limitan a programas propios, software abierto o crackmes diseñados para aprender. No se enseña a eludir licencias, DRM ni controles de acceso.</p>
+  <p><a href="../00_EMPEZAR_AQUI.html">Inicio</a> · <a href="../guia/etapa-0.html">Etapas</a> · <a href="../fuentes_y_limites.html">Fuentes y límites</a> · <a href="../registro_de_cobertura.csv">Registro de cobertura</a></p>
+</footer>
+</body>
+</html>

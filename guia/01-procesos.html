@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Etapa 1 · Procesos, hilos y mapa de memoria</title>
+<meta name="description" content="Qué es un proceso, qué agrega un hilo y cómo leer el mapa de memoria de un programa en ejecución.">
+<link rel="stylesheet" href="../guia/estilo.css">
+</head>
+<body>
+<a class="salto" href="#contenido">Saltar al contenido</a>
+<header class="cabecera">
+  <div class="marca"><a href="../00_EMPEZAR_AQUI.html">CLS · Curso de reversing</a> <span class="edicion">edición 5 · 27/10/2026</span></div>
+  <nav class="principal" aria-label="Navegación principal">
+    <a href="../00_EMPEZAR_AQUI.html">Inicio</a>
+    <a href="../guia/index.html">Curso</a>
+    <a href="../materiales.html">Materiales</a>
+    <a href="../fichas/index.html">Fichas</a>
+    <a href="../glosario.html">Glosario</a>
+    <a href="../preguntas_y_respuestas.html">Repaso</a>
+    <a href="../buscar.html">Buscar</a>
+  </nav>
+</header>
+<main id="contenido">
+<nav class="migas" aria-label="Ubicación"><a href="../00_EMPEZAR_AQUI.html">Inicio</a><span aria-hidden="true">›</span><a href="../guia/index.html">Curso</a><span aria-hidden="true">›</span><span>Etapa 1 · Fundamentos</span></nav><h1 id="procesos-hilos-y-mapa-de-memoria">Procesos, hilos y mapa de memoria</h1>
+<aside class="callout nota"><p class="callout-titulo">Objetivo de la lección</p><p>Al terminar vas a poder distinguir programa, proceso e hilo; explicar qué comparte y qué no comparte un hilo con los demás; crear un programa propio con dos hilos y encontrarlos en el debugger; y leer las regiones del mapa de memoria de un proceso.</p></aside>
+<p><strong>Prerrequisitos:</strong> memoria y stack. <strong>Duración sugerida:</strong> 3 horas. Estimación aproximada.</p>
+<h2 id="programa-proceso-hilo">Programa, proceso, hilo</h2>
+<p>Un <strong>programa</strong> es un archivo en disco: bytes, cabeceras, código. Un <strong>proceso</strong> es ese programa cargado y en ejecución, con su propio espacio de direcciones, sus handles y sus hilos. Un <strong>hilo</strong> (<em>thread</em>) es una secuencia de ejecución dentro del proceso.</p>
+<p>La diferencia importa porque el debugger te muestra las tres cosas a la vez: el archivo que abriste, el proceso que creó y los hilos que están corriendo.</p>
+<div class="tabla"><table>
+<thead><tr>
+<th>Concepto</th>
+<th>Qué es</th>
+<th>Qué comparte</th>
+</tr></thead><tbody>
+<tr><td>Programa</td><td>Archivo <code>.exe</code> en disco</td><td>Nada: es estático</td></tr>
+<tr><td>Proceso</td><td>Instancia en ejecución</td><td>Espacio de direcciones, handles, token</td></tr>
+<tr><td>Hilo</td><td>Flujo de ejecución</td><td>Código, datos globales, heap, handles</td></tr>
+<tr><td>Hilo (propio)</td><td>Contexto de CPU, stack, estado</td><td>Nada de eso con otros hilos</td></tr>
+</tbody></table></div>
+<p>Cada hilo tiene <strong>su propio stack</strong> y <strong>su propio contexto de CPU</strong> (registros). Si dos hilos comparten una variable global, los dos ven la misma dirección; si cada uno declara una variable local, cada uno tiene su copia en su stack.</p>
+<p>El capítulo 15b lo define así: un hilo es "una función o una parte del programa que se ejecuta" al mismo tiempo que otra (<a class="fuente" href="../../CLS_resultados_intermedios/transcripciones/extraidos/Reversing%20desde%20cero%20%28Ricardo%20y%20Solid%29/Ricardo%20Narvaja%20y%20Solid%20-%20Reversing%20desde%20cero_15b%20Ap%C3%A9ndice%20te%C3%B3rico%201%20-%20Threads_15b%20Ap%C3%A9ndice%20te%C3%B3rico%201%20-%20Threads.txt">Reversing desde cero, cap. 15b</a>, 00:00:55).</p>
+<h2 id="ejemplo-paso-a-paso-dos-hilos-en-un-programa-propio">Ejemplo paso a paso: dos hilos en un programa propio</h2>
+<p>El capítulo 15b usa un programa de ejemplo con un hilo que incrementa un contador y un <code>main</code> que espera una tecla. La estructura es esta:</p>
+<pre><code class="lenguaje-c">#include &lt;windows.h&gt;
+#include &lt;stdio.h&gt;
+
+int MyCounter = 0;
+
+DWORD WINAPI MyThread(LPVOID lpParam) {
+    int *contador = (int *)lpParam;
+    while (*contador &lt; 0xFFF) {
+        (*contador)++;
+    }
+    return 0;
+}
+
+int main(void) {
+    HANDLE h = CreateThread(NULL, 0, MyThread, &amp;MyCounter, 0, NULL);
+    if (h == NULL) return 1;
+    printf("Presione Enter para terminar...\n");
+    getchar();
+    printf("Contador: %d\n", MyCounter);
+    CloseHandle(h);
+    return 0;
+}</code></pre>
+<p>Los argumentos de <code>CreateThread</code> que importan para el análisis son:</p>
+<div class="tabla"><table>
+<thead><tr>
+<th>Posición</th>
+<th>Nombre</th>
+<th>En el ejemplo</th>
+</tr></thead><tbody>
+<tr><td>3.º</td><td><code>lpStartAddress</code></td><td><code>MyThread</code>: dónde empieza el hilo</td></tr>
+<tr><td>4.º</td><td><code>lpParameter</code></td><td><code>&amp;MyCounter</code>: puntero que recibe el hilo</td></tr>
+<tr><td>5.º</td><td><code>dwCreationFlags</code></td><td><code>0</code> = arranca ya; <code>4</code> (<code>CREATE_SUSPENDED</code>) = creado detenido</td></tr>
+<tr><td>Retorno</td><td><code>HANDLE</code></td><td>Se usa con <code>ResumeThread</code> o <code>CloseHandle</code></td></tr>
+</tbody></table></div>
+<p>El capítulo muestra exactamente esto: el tercer argumento es la dirección de inicio, el cuarto es el puntero a la variable, la bandera <code>0</code> hace que arranque al instante y <code>4</code> lo deja suspendido hasta un <code>ResumeThread</code> (cap. 15b, 00:02:00–00:03:00).</p>
+<h3 id="qué-ves-en-el-debugger">Qué ves en el debugger</h3>
+<ol><li>Abrí el programa en x64dbg y dejalo en el entry point.</li><li>Abrí <strong>Debugger → Thread List</strong>. Vas a ver el hilo principal y el que creaste.</li><li>Poné un breakpoint en <code>MyThread</code> y dejá correr. Cuando el hilo llegue, el debugger se detiene <strong>en ese hilo</strong>.</li><li>En la lista de hilos, el que está detenido aparece en negrita.</li><li>Cambiá de hilo y mirá el stack: cada uno tiene el suyo.</li></ol>
+<p>En el ejemplo del curso aparecen dos hilos en la versión de 32 bits y cuatro en la de 64 bits (el principal más tres que crea el programa) (cap. 15b, 00:10:02 y 00:15:12).</p>
+<aside class="callout aviso"><p class="callout-titulo">El debugger no puede mostrar dos hilos a la vez</p><p>Cuando un hilo se detiene en un breakpoint, los demás siguen o quedan suspendidos según cómo esté configurado el debugger, pero la pantalla te muestra <strong>un contexto</strong>. Si "de repente salta a otro lado", puede ser un cambio de hilo, no un salto del programa. Revisá la columna de hilo antes de asustarte (cap. 15b, 00:09:50 y 00:14:05).</p></aside>
+<h2 id="handles-los-números-que-identifican-recursos">Handles: los números que identifican recursos</h2>
+<p>Un <strong>handle</strong> es un identificador opaco que el sistema operativo te da para referenciar un recurso: una ventana, un archivo, un hilo, un evento. No es una dirección de memoria ni un puntero; es un índice a una tabla interna del proceso.</p>
+<p>El capítulo 01 muestra la pestaña <strong>Handles</strong> de x64dbg y explica que son "identificadores de ventanas y archivos y demás cosas" (<a class="fuente" href="../../CLS_resultados_intermedios/transcripciones/extraidos/Reversing%20desde%20cero%20%28Ricardo%20y%20Solid%29/Ricardo%20Narvaja%20y%20Solid%20-%20Reversing%20desde%20cero_01%20x64dbg%20primeros%20pasos_01%20x64dbg%20primeros%20pasos.txt">Reversing desde cero, cap. 01</a>, 00:06:20).</p>
+<p>Para el análisis: cuando una API devuelve un handle y el programa lo guarda en una variable, esa variable no contiene "el archivo", contiene un número que el sistema traduce. Si ves un valor pequeño como <code>0x000000A4</code>, es un handle, no una dirección.</p>
+<h2 id="el-mapa-de-memoria">El mapa de memoria</h2>
+<p>La pestaña <strong>Memory Map</strong> de x64dbg muestra las regiones del espacio de direcciones del proceso: imagen del ejecutable, DLLs cargadas, heap, stack y regiones reservadas. Cada fila tiene base, tamaño, permisos y tipo.</p>
+<p>En el capítulo 05 se lee así: el ejecutable está mapeado desde <code>0x6D0000</code>; los primeros <code>0x1000</code> bytes son el header; después vienen <code>.text</code>, <code>.rdata</code>, <code>.data</code>, <code>.rsrc</code> y <code>.reloc</code> (<a class="fuente" href="../../CLS_resultados_intermedios/transcripciones/extraidos/Reversing%20desde%20cero%20%28Ricardo%20y%20Solid%29/Ricardo%20Narvaja%20y%20Solid%20-%20Reversing%20desde%20cero_05%20Virtual%20Adress%2C%20RVA%2C%20Offsets%20y%20Desplazamientos_05%20Virtual%20Adress%2C%20RVA%2C%20Offsets%20y%20Desplazamientos.txt">Reversing desde cero, cap. 05</a>, 00:00:10–00:01:00).</p>
+<p>Los permisos se leen en tres letras:</p>
+<div class="tabla"><table>
+<thead><tr>
+<th>Permiso</th>
+<th>Significado</th>
+<th>Ejemplo</th>
+</tr></thead><tbody>
+<tr><td><code>R</code></td><td>Lectura</td><td><code>.rdata</code></td></tr>
+<tr><td><code>W</code></td><td>Escritura</td><td><code>.data</code>, heap, stack</td></tr>
+<tr><td><code>X</code></td><td>Ejecución</td><td><code>.text</code></td></tr>
+<tr><td><code>RWX</code></td><td>Todo</td><td>Sospechoso en un binario normal; típico de unpacking o shellcode</td></tr>
+</tbody></table></div>
+<p>Una región <code>RWX</code> no es prueba de malware, pero es una pregunta que vale la pena hacerse: ¿por qué este programa necesita escribir y ejecutar en la misma página?</p>
+<h2 id="hilos-excepciones-y-tls-el-puente-a-temas-avanzados">Hilos, excepciones y TLS: el puente a temas avanzados</h2>
+<p>Cada hilo tiene su propio estado de excepciones. En 32 bits, el sistema encadena los manejadores en el stack y el primer DWORD del bloque de información del hilo (<code>FS:[0]</code>) apunta al primero de la cadena (cap. 16b, 00:02:29). En 64 bits, esa información se guarda en tablas <code>.pdata</code>/<code>.rdata</code> y no en el stack (cap. 36, 00:00:27).</p>
+<p>También cada hilo puede tener <strong>TLS</strong> (<em>Thread Local Storage</em>): variables globales que en realidad tienen una copia por hilo. El capítulo 38 lo trata en detalle; acá alcanza con saber que existe y que explica por qué una variable "global" puede tener valores distintos según el hilo.</p>
+<p>No necesitás dominar esto para seguir. Lo importante es que cuando veas <code>FS:[0]</code>, <code>GS:[0]</code>, <code>.pdata</code> o <code>TlsAlloc</code>, sepas que estás frente a infraestructura del sistema, no a código del programa.</p>
+<h2 id="práctica">Práctica</h2>
+<ol><li>Compilá el programa de dos hilos de arriba (en el guest, con Visual Studio o MinGW).</li><li>Abrilo en x64dbg y completá esta tabla:</li></ol>
+<div class="tabla"><table>
+<thead><tr>
+<th>Pregunta</th>
+<th>Tu respuesta</th>
+</tr></thead><tbody>
+<tr><td>¿Cuántos hilos hay al inicio?</td><td></td></tr>
+<tr><td>¿En qué dirección empieza <code>MyThread</code>?</td><td></td></tr>
+<tr><td>¿Qué valor tiene el argumento que recibe?</td><td></td></tr>
+<tr><td>¿Qué pasa si usás <code>CREATE_SUSPENDED</code> (<code>4</code>)?</td><td></td></tr>
+<tr><td>¿Qué región de memoria es el stack? ¿Qué permisos tiene?</td><td></td></tr>
+</tbody></table></div>
+<ol><li>Agregá un <code>Sleep(5000)</code> dentro del hilo y observá la lista de hilos mientras duerme.</li><li>Poné un breakpoint condicional que registre <code>{EAX}</code> en el hilo y explicá qué valor ves.</li></ol>
+<h2 id="preguntas-de-repaso">Preguntas de repaso</h2>
+<p><strong>1. ¿Qué comparte un hilo con los demás hilos del mismo proceso?</strong> El espacio de direcciones (código, datos globales, heap) y los handles. No comparte el stack ni los registros.</p>
+<p><strong>2. ¿Un proceso puede tener varios hilos? ¿Y varios procesos el mismo código?</strong> Sí a las dos. Varios procesos pueden ejecutar la misma imagen (por ejemplo, dos instancias del mismo <code>.exe</code>), cada uno con su propio espacio de direcciones.</p>
+<p><strong>3. ¿Qué hace <code>CREATE_SUSPENDED</code>?</strong> Crea el hilo detenido. No empieza a ejecutar hasta que otro hilo llame a <code>ResumeThread</code>.</p>
+<p><strong>4. ¿Por qué el debugger muestra un solo hilo a la vez?</strong> Porque muestra el contexto de CPU de un hilo; los demás existen pero no se pueden "mirar" simultáneamente en la misma ventana.</p>
+<p><strong>5. ¿Qué indica una región <code>RWX</code>?</strong> Que se puede leer, escribir y ejecutar. Es inusual en un binario compilado normal y aparece en etapas de desempaquetado, generación de código o shellcode. No prueba nada por sí sola, pero orienta la investigación.</p>
+<h2 id="antes-de-avanzar">Antes de avanzar</h2>
+<p>Tenés que poder:</p>
+<ul><li>Explicar la diferencia entre programa, proceso e hilo con un ejemplo.</li><li>Nombrar los argumentos de <code>CreateThread</code> que importan y qué hace cada uno.</li><li>Encontrar la lista de hilos y el mapa de memoria en x64dbg.</li><li>Leer los permisos de una región y decir si es normal o sospechosa.</li></ul>
+<aside class="callout nota"><p class="callout-titulo">Puerta de salida</p><p>Si podés crear tu propio programa de dos hilos y encontrarlo en el debugger, estás listo para el formato PE. Si no, hacelo antes: es la mejor forma de entender qué significa "contexto de hilo".</p></aside>
+<h2 id="fuentes-de-esta-lección">Fuentes de esta lección</h2>
+<ul><li><a class="fuente" href="../../CLS_resultados_intermedios/transcripciones/extraidos/Reversing%20desde%20cero%20%28Ricardo%20y%20Solid%29/Ricardo%20Narvaja%20y%20Solid%20-%20Reversing%20desde%20cero_15b%20Ap%C3%A9ndice%20te%C3%B3rico%201%20-%20Threads_15b%20Ap%C3%A9ndice%20te%C3%B3rico%201%20-%20Threads.txt">Reversing desde cero, cap. 15b</a> — hilos, <code>CreateThread</code>, lista de hilos, cambio de contexto.</li><li><a class="fuente" href="../../CLS_resultados_intermedios/transcripciones/extraidos/Reversing%20desde%20cero%20%28Ricardo%20y%20Solid%29/Ricardo%20Narvaja%20y%20Solid%20-%20Reversing%20desde%20cero_01%20x64dbg%20primeros%20pasos_01%20x64dbg%20primeros%20pasos.txt">Reversing desde cero, cap. 01</a> — handles y mapa de memoria.</li><li><a class="fuente" href="../../CLS_resultados_intermedios/transcripciones/extraidos/Reversing%20desde%20cero%20%28Ricardo%20y%20Solid%29/Ricardo%20Narvaja%20y%20Solid%20-%20Reversing%20desde%20cero_05%20Virtual%20Adress%2C%20RVA%2C%20Offsets%20y%20Desplazamientos_05%20Virtual%20Adress%2C%20RVA%2C%20Offsets%20y%20Desplazamientos.txt">Reversing desde cero, cap. 05</a> — image base y secciones en el mapa.</li><li><a class="fuente" href="../../CLS_resultados_intermedios/transcripciones/extraidos/Reversing%20desde%20cero%20%28Ricardo%20y%20Solid%29/Ricardo%20Narvaja%20y%20Solid%20-%20Reversing%20desde%20cero_16b%20Ap%C3%A9ndice%20te%C3%B3rico%202%20-%20Excepciones%201_16b%20Ap%C3%A9ndice%20te%C3%B3rico%202%20-%20Excepciones%201.txt">Reversing desde cero, cap. 16b</a> y <a class="fuente" href="../../CLS_resultados_intermedios/transcripciones/extraidos/Reversing%20desde%20cero%20%28Ricardo%20y%20Solid%29/Ricardo%20Narvaja%20y%20Solid%20-%20Reversing%20desde%20cero_36%20Excepciones%20en%2064%20bits_36%20Excepciones%20en%2064%20bits.txt">cap. 36</a> — estado de excepciones por hilo.</li></ul>
+<aside class="callout nota"><p class="callout-titulo">Capas de esta lección</p><p><strong>Contenido observado en CLS:</strong> el ejemplo de <code>CreateThread</code> con <code>MyCounter</code>, la lista de hilos y la lectura del mapa del capítulo 05. <strong>Conocimiento externo:</strong> definición de proceso, handles como tabla interna, permisos de página. <strong>Recomendación editorial:</strong> el programa de práctica y la tabla de ejercicios.</p></aside>
+</main>
+<footer class="pie">
+  <p>Material educativo y defensivo. Las prácticas se limitan a programas propios, software abierto o crackmes diseñados para aprender. No se enseña a eludir licencias, DRM ni controles de acceso.</p>
+  <p><a href="../00_EMPEZAR_AQUI.html">Inicio</a> · <a href="../guia/etapa-0.html">Etapas</a> · <a href="../fuentes_y_limites.html">Fuentes y límites</a> · <a href="../registro_de_cobertura.csv">Registro de cobertura</a></p>
+</footer>
+</body>
+</html>

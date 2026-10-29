@@ -1,0 +1,181 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>2D.9 · WMI: proveedores, filtros y consumidores</title>
+<meta name="description" content="Leer proveedores y suscripciones WMI; distinguir consultas temporales de consumidores permanentes, relacionar filtro, binding, consumidor y proveedor, revisar CreatorSID, EventAccess y ACL del namespace, y documentar sin concluir de más.">
+<link rel="stylesheet" href="../guia/estilo.css">
+</head>
+<body>
+<a class="salto" href="#contenido">Saltar al contenido</a>
+<header class="cabecera">
+  <div class="marca"><a href="../00_EMPEZAR_AQUI.html">CLS · Curso de reversing</a> <span class="edicion">edición 5 · 27/10/2026</span></div>
+  <nav class="principal" aria-label="Navegación principal">
+    <a href="../00_EMPEZAR_AQUI.html">Inicio</a>
+    <a href="../guia/index.html">Curso</a>
+    <a href="../materiales.html">Materiales</a>
+    <a href="../fichas/index.html">Fichas</a>
+    <a href="../glosario.html">Glosario</a>
+    <a href="../preguntas_y_respuestas.html">Repaso</a>
+    <a href="../buscar.html">Buscar</a>
+  </nav>
+</header>
+<main id="contenido">
+<nav class="migas" aria-label="Ubicación"><a href="../00_EMPEZAR_AQUI.html">Inicio</a><span aria-hidden="true">›</span><a href="../guia/index.html">Curso</a><span aria-hidden="true">›</span><span>Etapa 2 · 2D · Windows internals (optativa)</span></nav><h1 id="wmi-proveedores-filtros-y-consumidores">WMI: proveedores, filtros y consumidores</h1>
+<aside class="callout aviso"><p class="callout-titulo">Alcance de la práctica</p><p>La práctica principal inspecciona WMI y usa consultas temporales. No crea suscripciones permanentes, no ejecuta las acciones que encuentre y no borra ni “repara” objetos durante el triage. Si un docente prepara una demostración permanente, debe usar solo una VM aislada y un consumidor benigno, con inventario previo y limpieza verificada.</p></aside>
+<aside class="callout nota"><p class="callout-titulo">Propósito</p><p>Reconocer el modelo WMI/CIM y entender por qué un filtro unido a un consumidor permanente merece revisión, sin concluir malware solo por encontrar una suscripción. Al terminar deberías poder reconstruir una suscripción completa —qué evento la dispara, qué hace, quién la creó y con qué permisos— y dejar constancia de lo que <strong>no</strong> pudiste determinar.</p></aside>
+<p><strong>Prerrequisitos</strong></p>
+<ul><li><em>Obligatorios:</em> Registro (<a href="2d-03-registro.html">2D.3</a>) y contexto de seguridad (<a href="2d-01-objetos.html">2D.1</a>).</li><li><em>Recomendados:</em> COM (<a href="2d-06-com-interfaces.html">2D.6</a>), Task Scheduler (<a href="2d-05-task-scheduler.html">2D.5</a>), servicios (<a href="2d-04-servicios.html">2D.4</a>).</li></ul>
+<h2 id="modelo">Modelo</h2>
+<p>WMI expone clases/instancias a través de namespaces y proveedores. Un cliente consulta o se suscribe a eventos. La suscripción <strong>temporal</strong> vive mientras el cliente está conectado; una permanente permanece en el repositorio hasta cancelarse y relaciona <code>__EventFilter</code>, una instancia de <code>__EventConsumer</code> y <code>__FilterToConsumerBinding</code>. Los proveedores y consumidores tienen configuración y seguridad propias.</p>
+<p>Para revisar una suscripción, lee namespace, filtro, consumidor, binding, propietario/CreatorSID, permisos y destino. Los consumidores estándar pueden tener efectos diferentes; no ejecutes scripts ni comandos encontrados. Una suscripción inesperada es un hallazgo que requiere contexto, no una prueba automática.</p>
+<h2 id="temporal-frente-a-permanente">Temporal frente a permanente</h2>
+<div class="tabla"><table>
+<thead><tr>
+<th></th>
+<th>Consumidor <strong>temporal</strong></th>
+<th>Consumidor <strong>permanente</strong></th>
+</tr></thead><tbody>
+<tr><td>Cómo nace</td><td>Un programa o script llama a <code>ExecNotificationQuery</code> (o su variante asíncrona) y recibe eventos mientras corre.</td><td>Se guardan en el repositorio un filtro, un consumidor lógico y un binding.</td></tr>
+<tr><td>Cuánto dura</td><td>Hasta que el cliente termina, WMI se detiene o el sistema se reinicia.</td><td>Hasta que alguien cancela la registración; sobrevive a reinicios.</td></tr>
+<tr><td>Quién lo ejecuta</td><td>El propio cliente.</td><td>WMI carga el consumidor físico cuando hace falta.</td></tr>
+<tr><td>Para el analista</td><td>Es lo que usás en la práctica para observar.</td><td>Es lo que inventariás y documentás, sin tocar.</td></tr>
+</tbody></table></div>
+<p>La documentación recomienda llamadas <strong>semisíncronas</strong> antes que asíncronas para consumidores temporales, porque en el modo asíncrono un llamador no autenticado puede entregar datos al <em>sink</em>.</p>
+<h2 id="namespaces-dónde-vive-la-suscripción-y-de-dónde-vienen-los-eventos">Namespaces: dónde vive la suscripción y de dónde vienen los eventos</h2>
+<p>WMI organiza clases en <strong>namespaces</strong> (<code>root\cimv2</code>, <code>root\subscription</code>, <code>root\default</code> y muchos otros que agregan productos y roles). Para este tema importan dos ideas:</p>
+<ul><li><code>root\cimv2</code> aloja las clases del proveedor Win32 y eventos intrínsecos como <code>__InstanceCreationEvent</code> sobre esas clases.</li><li>Microsoft <strong>recomienda</strong> compilar las suscripciones permanentes en <code>root\subscription</code>, para tener un solo lugar donde buscarlas. Es una recomendación, no una garantía: los tres objetos pueden existir en <strong>cualquier</strong> namespace que tenga las clases necesarias. Un inventario que solo mira <code>root\subscription</code> puede quedar incompleto.</li></ul>
+<p>Hay que distinguir <strong>dos namespaces</strong> por suscripción:</p>
+<ol><li>El namespace donde <strong>están guardados</strong> el filtro, el consumidor y el binding (por ejemplo, <code>root\subscription</code>).</li><li>El valor de la propiedad <strong><code>EventNamespace</code></strong> del filtro: el namespace de los <strong>eventos</strong> que el filtro consulta (por ejemplo, <code>root\cimv2</code>). Con eso se arman suscripciones <em>cross-namespace</em>: el objeto vive en un lugar y escucha eventos de otro.</li></ol>
+<p>Si en la ficha anotás solo uno de los dos, la reconstrucción queda ambigua.</p>
+<h2 id="las-piezas-de-una-suscripción-permanente">Las piezas de una suscripción permanente</h2>
+<pre><code class="lenguaje-text">__EventFilter                 (Name, Query WQL, QueryLanguage, EventNamespace,
+   ^                           EventAccess, CreatorSID)
+   | Filter
+__FilterToConsumerBinding     (Filter, Consumer, MaintainSecurityContext, CreatorSID)
+   | Consumer
+   v
+&lt;consumidor lógico&gt;           instancia de una clase derivada de __EventConsumer
+                              (p. ej. NTEventLogEventConsumer, LogFileEventConsumer,
+                               CommandLineEventConsumer, ActiveScriptEventConsumer…)
+   | clase del consumidor
+   v
+__EventConsumerProviderRegistration  -&gt; __Win32Provider (proveedor de consumidor, COM)
+   v
+consumidor físico (objeto COM que realmente ejecuta la acción)</code></pre>
+<ul><li><strong>Filtro</strong>: <em>qué</em> evento interesa (consulta WQL de eventos).</li><li><strong>Consumidor lógico</strong>: <em>qué hacer</em> (escribir en el registro de eventos, en un archivo, lanzar un proceso, ejecutar un script, enviar correo…). Sus propiedades describen la acción, no el evento.</li><li><strong>Binding</strong>: la asociación que dice qué filtro alimenta a qué consumidor. Un filtro puede tener varios consumidores y un consumidor varios filtros.</li><li><strong>Proveedor de consumidor</strong>: el objeto COM que WMI localiza, mediante <code>__EventConsumerProviderRegistration</code>, para ejecutar al consumidor físico de esa clase. Por eso un consumidor de una clase no estándar te lleva a revisar también su registro COM (2D.7).</li></ul>
+<p>Entre los consumidores estándar, <code>CommandLineEventConsumer</code> lanza un proceso <strong>en el contexto de sistema local</strong>, y <code>ActiveScriptEventConsumer</code> ejecuta un script. Microsoft los señala como sensibles. Su presencia aumenta la prioridad de revisión; no define la intención.</p>
+<h2 id="leer-la-consulta-del-filtro-wql-de-eventos">Leer la consulta del filtro: WQL de eventos</h2>
+<p>La propiedad <code>Query</code> del filtro está escrita en <strong>WQL</strong>. Microsoft la describe como un subconjunto de SQL con cambios semánticos: las consultas de datos van contra <strong>una clase por vez</strong>, su lista de palabras clave no incluye <code>JOIN</code> ni sentencias de modificación, y las consultas de <strong>eventos</strong> agregan cláusulas propias. No la leas como SQL general.</p>
+<p><strong>Qué clase de evento se pide.</strong></p>
+<ul><li><strong>Intrínsecos:</strong> reflejan un cambio en el modelo de datos de WMI: creación, modificación o borrado de instancias, clases o namespaces (<code>__InstanceCreationEvent</code>, <code>__InstanceModificationEvent</code>, <code>__InstanceDeletionEvent</code>, <code>__InstanceOperationEvent</code>…). La instancia afectada viaja en <code>TargetInstance</code>, y el operador <code>ISA</code> restringe a una clase y sus subclases: <code>WHERE TargetInstance ISA 'Win32_Service'</code>.</li><li><strong>Extrínsecos:</strong> sucesos que un proveedor define como clase propia derivada de <code>__ExtrinsicEvent</code>, sin relación directa con instancias. Por ejemplo, el proveedor del registro define <code>RegistryKeyChangeEvent</code>.</li><li><strong>De temporizador:</strong> clases de reloj (<code>__TimerEvent</code> y relacionadas) que disparan en momentos o intervalos.</li></ul>
+<p><strong>Dos usos distintos de <code>WITHIN</code>.</strong> La misma palabra cumple dos funciones que no son intercambiables:</p>
+<div class="tabla"><table>
+<thead><tr>
+<th>Forma</th>
+<th>Dónde va</th>
+<th>Qué hace</th>
+<th>Qué te dice como analista</th>
+</tr></thead><tbody>
+<tr><td><code>WITHIN n</code> (sondeo)</td><td>Inmediatamente <strong>antes</strong> de <code>WHERE</code></td><td>Fija el <strong>intervalo de sondeo</strong> que WMI usa para detectar eventos intrínsecos cuando no hay un proveedor de eventos para esa clase. Admite fracciones de segundo, pero valores demasiado chicos pueden rechazarse; Microsoft recomienda intervalos mayores a 5 minutos para la mayoría de los consumidores.</td><td>El costo y la latencia de detección. Un sondeo muy frecuente sobre una clase grande es una carga constante; la notificación puede llegar hasta <code>n</code> segundos tarde.</td></tr>
+<tr><td><code>GROUP WITHIN n</code> (agrupación)</td><td><strong>Después</strong> de <code>WHERE</code>, tras <code>GROUP</code></td><td>Junta los eventos similares que llegan durante <code>n</code> segundos desde el primero y entrega <strong>un</strong> evento agregado (<code>__AggregateEvent</code>). Admite <code>BY propiedades</code> y <code>HAVING NumberOfEvents …</code>.</td><td>Que el consumidor reacciona a <strong>ráfagas o umbrales</strong>, no a cada evento.</td></tr>
+</tbody></table></div>
+<p>Ejemplos de lectura (ilustrativos):</p>
+<pre><code class="lenguaje-text">SELECT * FROM __InstanceCreationEvent WITHIN 30
+  WHERE TargetInstance ISA 'Win32_Process'
+  -&gt; sondea cada 30 s la aparición de procesos; reacciona a cada uno
+
+SELECT * FROM __InstanceCreationEvent
+  WHERE TargetInstance ISA 'Win32_NTLogEvent'
+  GROUP WITHIN 600 BY TargetInstance.SourceName
+  HAVING NumberOfEvents &gt; 25
+  -&gt; agrupa 10 minutos por origen; solo entrega si hubo más de 25</code></pre>
+<p>Microsoft indica además que crear consumidores <strong>permanentes</strong> con consultas de sondeo requiere privilegios de administrador, y que cuando la consulta de un consumidor permanente falla se registra un evento de origen <em>WinMgmt</em> con id 10. Ese evento es evidencia útil de un filtro roto.</p>
+<h2 id="seguridad-creatorsid-eventaccess-y-acl-del-namespace">Seguridad: CreatorSID, EventAccess y ACL del namespace</h2>
+<p><strong><code>CreatorSID</code>.</strong> WMI guarda en cada instancia el SID de quien la creó. Para que una suscripción permanente funcione, el filtro, el consumidor y el binding deben tener <strong>el mismo</strong> <code>CreatorSID</code>, y el creador debe ser una cuenta de dominio con privilegios de administrador local o el grupo Administradores local. Para los consumidores sensibles, WMI verifica que ese SID pertenezca a Administradores. Qué revisar:</p>
+<ul><li>¿Coinciden los tres <code>CreatorSID</code>? Si no, la suscripción probablemente no funciona; queda como hallazgo a explicar, no a reparar.</li><li>¿A qué cuenta o grupo corresponde el SID? Convertí el arreglo de bytes a SID de texto y resolvelo; si no resuelve (cuenta borrada, otro dominio), anotalo.</li></ul>
+<p><strong><code>EventAccess</code>.</strong> Es un descriptor de seguridad SDDL en el filtro que limita <strong>qué identidades pueden publicar</strong> eventos hacia él (derecho <code>WBEM_RIGHT_PUBLISH</code>). El valor por defecto es <code>NULL</code>, que permite a todos. Que esté vacío no es anómalo en sí; que esté restringido indica una configuración deliberada.</p>
+<p><strong>ACL del namespace.</strong> Cada namespace tiene un descriptor de seguridad que WMI compara con el token de quien se conecta: derechos como <em>Enable Account</em>, <em>Execute Methods</em>, <em>Full Write</em>, <em>Partial Write</em>, <em>Provider Write</em>, <em>Remote Enable</em>, <em>Read Security</em> y <em>Edit Security</em>. Revisá quién tiene escritura en el namespace donde vive la suscripción, comparalo con los permisos por defecto que documenta Microsoft y anotá las diferencias. La auditoría de namespaces existe (SACL), pero no viene habilitada; si no estaba activa <strong>antes</strong> del incidente, no esperes encontrar eventos de quién creó la suscripción.</p>
+<h2 id="leer-un-archivo-mof-sin-compilarlo">Leer un archivo MOF sin compilarlo</h2>
+<p><strong>MOF</strong> (<em>Managed Object Format</em>) es el lenguaje con el que se describen clases e instancias CIM. Un proveedor suele distribuirse como un MOF (que define sus clases) más una DLL (que entrega los datos), y el MOF se <strong>compila</strong> al repositorio con <code>mofcomp</code>. Para el triage importa porque una suscripción permanente también puede escribirse como MOF.</p>
+<p>Qué mirar en un <code>.mof</code> encontrado durante una revisión, <strong>solo leyéndolo como texto</strong>:</p>
+<ul><li><code>#pragma namespace("\\\\.\\root\\subscription")</code>: en qué namespace se crearían los objetos.</li><li>Bloques <code>instance of __EventFilter as $FLT { … }</code>, <code>instance of &lt;ClaseConsumidor&gt; as $CONS { … }</code> e <code>instance of __FilterToConsumerBinding { Filter = $FLT; Consumer = $CONS; }</code>: es exactamente la terna filtro–consumidor–binding de esta lección.</li><li><code>#pragma autorecover</code>: agrega el archivo a la lista que WMI <strong>recompila automáticamente</strong> si reconstruye un repositorio dañado (la lista vive en <code>HKLM\SOFTWARE\Microsoft\WBEM\CIMOM\autorecover mofs</code>).</li></ul>
+<p>Dos límites de interpretación:</p>
+<ul><li>Un MOF en disco <strong>no prueba</strong> que esos objetos existan en el repositorio: pudo no haberse compilado nunca. Y al revés, una suscripción puede existir en el repositorio sin ningún MOF en disco.</li><li><strong>Nunca</strong> ejecutes <code>mofcomp</code> sobre un archivo encontrado durante una revisión: compilarlo <strong>crearía</strong> los objetos que describe.</li></ul>
+<aside class="callout nota"><p class="callout-titulo">Recuadro conceptual: proveedores WMI</p><p>Un <strong>proveedor</strong> es un componente COM que entrega instancias, métodos o eventos de ciertas clases. Se registra con una instancia de <code>__Win32Provider</code>, cuyo <code>CLSID</code> apunta a su servidor COM (el recorrido de 2D.7 se aplica igual). La propiedad <code>HostingModel</code> define dónde y con qué cuenta corre: dentro de un proceso anfitrión compartido <code>WmiPrvSE.exe</code> como <em>NetworkService</em> (el predeterminado desde Vista cuando no se especifica), <em>LocalService</em> o <em>LocalSystem</em>; como servidor propio (<em>SelfHost</em>), o como proveedor desacoplado dentro de otra aplicación. Microsoft desaconseja <em>LocalSystem</em> por su privilegio y documenta eventos de registro cuando un proveedor usa ese modelo. Para la revisión basta con saber leer <code>__Win32Provider</code>, su CLSID y su <code>HostingModel</code>; <strong>escribir</strong> proveedores queda fuera del curso.</p></aside>
+<h2 id="wmi-remoto-el-modelo-sin-habilitar-nada">WMI remoto: el modelo, sin habilitar nada</h2>
+<p>Un cliente puede conectarse a WMI de <strong>otro</strong> equipo indicando el nombre del equipo en la ruta del namespace (<code>\\EQUIPO\root\cimv2</code> en <code>IWbemLocator::ConnectServer</code>, o <code>-ComputerName</code> en PowerShell). Esa conexión clásica viaja por <strong>DCOM</strong>, así que todo lo de 2D.8 aplica: firewall, permisos y autenticación DCOM, más el derecho <strong>Remote Enable</strong> sobre el namespace y las restricciones de UAC para cuentas remotas. La alternativa es <strong>WinRM</strong>, la implementación de Microsoft del protocolo WS-Management (SOAP sobre HTTP/HTTPS), que expone datos de WMI a través de su propio servicio y con su propia configuración; las sesiones CIM de PowerShell pueden usarlo.</p>
+<p>Para la evidencia: una suscripción o una consulta pudo haberse creado <strong>desde otro equipo</strong>. Por eso un <code>CreatorSID</code> de cuenta de dominio, sin actividad local que lo explique, es una pista para preguntar al administrador por herramientas de gestión remota, no una conclusión. Esta lección <strong>no</strong> habilita WMI remoto, WinRM ni reglas de firewall.</p>
+<h2 id="criterios-para-documentar-sin-concluir-de-más">Criterios para documentar sin concluir de más</h2>
+<p>Una suscripción <strong>existe</strong>: eso es una observación. Que sea <strong>maliciosa</strong> es una conclusión que necesita más evidencia. Antes de clasificar, respondé:</p>
+<ul><li><strong>Origen plausible:</strong> ¿la instaló un producto conocido (agente de gestión, monitoreo, antivirus)? Nombres, rutas y proveedores de consumidor suelen delatar al producto; confirmalo con el inventario de software o con el administrador.</li><li><strong>Coherencia:</strong> ¿coinciden los <code>CreatorSID</code>? ¿El consumidor apunta a un archivo que existe, firmado, en una ruta protegida? Una ruta escribible por usuarios en un <code>CommandLineEventConsumer</code> es un riesgo aunque el producto sea legítimo.</li><li><strong>Disparador:</strong> ¿qué hace la consulta? Un temporizador, el arranque, el inicio de sesión o la creación de un proceso tienen implicancias distintas.</li><li><strong>Temporalidad:</strong> ¿hay registros de cambio, tickets o eventos que fechen la creación? Si no, decí que no se pudo fechar.</li><li><strong>Alcance:</strong> ¿la misma suscripción aparece en otros equipos de la flota? Si es así, sugiere despliegue centralizado (legítimo o no).</li></ul>
+<p>Conclusiones calibradas posibles: “esperada y documentada”, “legítima con riesgo de configuración”, “sin origen identificado: escalar”, “inconsistente/no funcional”. Ninguna de estas habilita a borrarla durante el triage.</p>
+<h2 id="ejemplo-trabajado">Ejemplo trabajado</h2>
+<p><em>(Vista conceptual ficticia de un laboratorio, sin consulta activa. Nombres, rutas y SID son marcadores.)</em></p>
+<pre><code class="lenguaje-text">Namespace de la suscripción: ROOT\subscription
+  __EventFilter.Name           = "BlocLab-Filtro"
+  __EventFilter.Query          = SELECT * FROM __InstanceCreationEvent WITHIN 30
+                                 WHERE TargetInstance ISA 'Win32_Process'
+                                 AND TargetInstance.Name = 'BlocLab.exe'
+  __EventFilter.EventNamespace = root\cimv2
+  __EventFilter.EventAccess    = (vacío)
+  Consumidor: NTEventLogEventConsumer "BlocLab-Log"
+  Binding: Filtro "BlocLab-Filtro" -&gt; Consumidor "BlocLab-Log"
+  CreatorSID (filtro, consumidor, binding): S-1-5-32-544 (los tres iguales)</code></pre>
+<p>Lectura: la suscripción vive en <code>root\subscription</code>, pero escucha eventos de <code>root\cimv2</code> (cross-namespace). El filtro sondea cada 30 segundos (<code>WITHIN 30</code>) la creación de un proceso llamado <code>BlocLab.exe</code> y el consumidor escribe una entrada en el registro de eventos: una acción de bajo impacto. Los tres <code>CreatorSID</code> coinciden con el SID del grupo Administradores, que es una forma documentada de crear suscripciones. <code>EventAccess</code> vacío significa que cualquier proveedor puede publicar al filtro.</p>
+<p>La relación filtro–binding–consumidor permite reconstruir el flujo. Si falta un elemento o los SIDs no coinciden, la suscripción puede estar incompleta o requerir explicación; no la repares ni la borres durante triage.</p>
+<h3 id="ficha-de-evidencia">Ficha de evidencia</h3>
+<div class="tabla"><table>
+<thead><tr>
+<th>Campo</th>
+<th>Valor (ejemplo)</th>
+<th>Fuente / tipo</th>
+</tr></thead><tbody>
+<tr><td>Equipo, versión/build, fecha y hora de la revisión</td><td>VM-Lab-01, <em>(completar)</em></td><td>Observación</td></tr>
+<tr><td>Herramienta y cuenta usadas para inspeccionar</td><td><em>(completar)</em>; sesión elevada sí/no</td><td>Observación</td></tr>
+<tr><td>Namespace de la suscripción</td><td><code>ROOT\subscription</code></td><td>Observación</td></tr>
+<tr><td><code>EventNamespace</code> del filtro</td><td><code>root\cimv2</code></td><td>Observación</td></tr>
+<tr><td>Filtro: nombre, consulta, lenguaje</td><td><code>BlocLab-Filtro</code>, WQL arriba</td><td>Observación</td></tr>
+<tr><td>Lectura de la consulta</td><td>Evento intrínseco de creación; sondeo <code>WITHIN 30</code>; sin <code>GROUP</code></td><td>Interpretación de la WQL</td></tr>
+<tr><td>Consumidor: clase, nombre y propiedades de acción</td><td><code>NTEventLogEventConsumer</code>, <code>BlocLab-Log</code></td><td>Observación (no ejecutado)</td></tr>
+<tr><td>Proveedor de consumidor</td><td>Estándar de WMI</td><td>Inferencia por clase; confirmar registración</td></tr>
+<tr><td>Binding y <code>MaintainSecurityContext</code></td><td>Filtro → consumidor; <em>(completar)</em></td><td>Observación</td></tr>
+<tr><td><code>CreatorSID</code> de los tres objetos y resolución</td><td>Iguales; Administradores</td><td>Observación + resolución</td></tr>
+<tr><td><code>EventAccess</code></td><td>Vacío (<code>NULL</code>, todos pueden publicar)</td><td>Observación</td></tr>
+<tr><td>ACL del namespace (escritura)</td><td><em>(completar)</em>; diferencias con los valores documentados</td><td>Observación</td></tr>
+<tr><td>Archivos referenciados (ruta, firma, hash, ACL)</td><td>No aplica para este consumidor</td><td>Observación</td></tr>
+<tr><td>Origen plausible y evidencia</td><td>Laboratorio del curso, ticket <em>(completar)</em></td><td>Contexto</td></tr>
+<tr><td>Conclusión calibrada</td><td>Esperada y documentada</td><td>Juicio del analista</td></tr>
+<tr><td>Lo que no se pudo determinar</td><td>Fecha de creación (sin auditoría previa)</td><td>Límite declarado</td></tr>
+</tbody></table></div>
+<h2 id="práctica-inspección-y-evidencia">Práctica: inspección y evidencia</h2>
+<ol><li>En una VM de laboratorio, inspeccioná primero una clase/proveedor WMI y una consulta temporal de lectura sobre datos conocidos (por ejemplo, instancias de <code>Win32_Service</code>).</li><li>Listá los namespaces existentes y decidí cuáles revisar; no te limites a <code>root\subscription</code>. Con PowerShell, de solo lectura: <code>Get-CimInstance -Namespace root -ClassName __NAMESPACE</code> para los namespaces y <code>Get-CimInstance -Namespace root/subscription -ClassName __EventFilter</code> (y luego <code>__EventConsumer</code> y <code>__FilterToConsumerBinding</code>) para cada namespace elegido.</li><li>Para cada suscripción, completá la ficha: namespace, <code>EventNamespace</code>, filtro, consumidor, binding, <code>CreatorSID</code> convertido a SID de texto, <code>EventAccess</code> y ACL del namespace. Sin ejecutar sus acciones.</li><li>Contrastá cuenta creadora, ACL del namespace, query y destino. Para cada consulta, anotá tipo de evento, si usa sondeo (<code>WITHIN</code>) o agrupación (<code>GROUP WITHIN</code>) y con qué intervalos. Redactá rutas personales antes de compartir evidencia.</li><li>Si en la VM hay archivos <code>.mof</code> de laboratorio, leelos como texto y compará lo que describen con lo que está en el repositorio. No los compiles.</li><li>No cambies ni elimines suscripciones encontradas. Si el laboratorio incluye una permanente creada previamente por el docente, identificá su ticket/ID y seguí la hoja de limpieza del laboratorio; verificá que los tres objetos vinculados ya no aparecen.</li></ol>
+<h2 id="entregable">Entregable</h2>
+<p>Ficha de evidencia de una consulta temporal o de una suscripción auditada, con todos los campos de la tabla, la conclusión calibrada y la sección de límites. Si no había una suscripción autorizada de prueba, indicá que no realizaste el paso de eliminación.</p>
+<h2 id="repaso">Repaso</h2>
+<details class="qa"><summary>¿Qué mantiene viva una suscripción permanente?</summary><div class="respuesta"><p>La inscripción persistente de filtro, consumidor y binding en el repositorio WMI; permanece hasta que se cancela.</p></div></details>
+<details class="qa"><summary>¿Por qué hay que revisar el binding?</summary><div class="respuesta"><p>Une qué evento se busca con qué consumidor recibirá el evento.</p></div></details>
+<details class="qa"><summary>¿Qué diferencia hay entre el namespace de la suscripción y <code>EventNamespace</code>?</summary><div class="respuesta"><p>El primero es donde están guardados filtro, consumidor y binding; <code>EventNamespace</code> indica de qué namespace vienen los eventos que el filtro consulta.</p></div></details>
+<details class="qa"><summary>¿Alcanza con revisar <code>root\subscription</code>?</summary><div class="respuesta"><p>No. Es la ubicación recomendada, pero una suscripción puede crearse en otros namespaces.</p></div></details>
+<details class="qa"><summary>Los <code>CreatorSID</code> del filtro y del binding no coinciden. ¿Qué concluís?</summary><div class="respuesta"><p>Que la suscripción probablemente no funciona tal como está y que hay algo que explicar; no la reparás ni la borrás durante el triage.</p></div></details>
+<details class="qa"><summary>¿Qué controla <code>EventAccess</code>?</summary><div class="respuesta"><p>Qué identidades pueden publicar eventos hacia ese filtro; vacío (<code>NULL</code>) permite a todos.</p></div></details>
+<details class="qa"><summary>¿Qué diferencia hay entre <code>WITHIN 30</code> antes del <code>WHERE</code> y <code>GROUP WITHIN 30</code> después?</summary><div class="respuesta"><p>El primero fija un intervalo de <strong>sondeo</strong> para detectar eventos intrínsecos; el segundo <strong>agrupa</strong> eventos durante 30 s y entrega uno agregado (<code>__AggregateEvent</code>). No son intercambiables.</p></div></details>
+<details class="qa"><summary>¿Qué distingue un evento intrínseco de uno extrínseco?</summary><div class="respuesta"><p>El intrínseco refleja un cambio en el modelo de datos de WMI (instancias, clases, namespaces); el extrínseco es una clase de evento definida por un proveedor para un suceso que no es un cambio de instancia.</p></div></details>
+<details class="qa"><summary>Encontrás un <code>.mof</code> con un filtro, un consumidor y un binding. ¿Prueba que la suscripción existe?</summary><div class="respuesta"><p>No. Hay que comprobarlo en el repositorio; el archivo pudo no compilarse nunca. Y no se compila durante la revisión, porque crearía los objetos.</p></div></details>
+<details class="qa"><summary>¿Qué aporta <code>#pragma autorecover</code> en un MOF?</summary><div class="respuesta"><p>Que WMI lo recompile automáticamente si reconstruye el repositorio; por eso conviene anotarlo junto con la entrada de registro correspondiente.</p></div></details>
+<details class="qa"><summary>¿Por qué un <code>CreatorSID</code> de dominio sin actividad local no prueba nada por sí solo?</summary><div class="respuesta"><p>Porque WMI admite conexiones remotas (por DCOM o WinRM): la suscripción pudo crearse con una herramienta de gestión remota. Es una pregunta para el administrador.</p></div></details>
+<details class="qa"><summary>¿Encontrar <code>__EventFilter</code> prueba una infección?</summary><div class="respuesta"><p>No. Hace falta relacionarlo con consumidor, binding, identidad, autorización y producto que lo instaló.</p></div></details>
+<details class="qa"><summary>¿Qué no se debe hacer con un consumidor desconocido?</summary><div class="respuesta"><p>No ejecutarlo, borrarlo ni repararlo durante la revisión; preservá datos y escalá al administrador.</p></div></details>
+<aside class="callout nota"><p class="callout-titulo">Puerta optativa</p><p>Podés distinguir consulta temporal y suscripción permanente, ubicar ambos namespaces de una suscripción, leer la WQL del filtro (tipo de evento, sondeo y agrupación), reconstruir filtro–binding–consumidor–proveedor, leer un MOF sin compilarlo, revisar <code>CreatorSID</code>, <code>EventAccess</code> y ACL del namespace, y describir evidencia con una conclusión calibrada sin ejecutar la acción configurada.</p></aside>
+<aside class="callout nota"><p class="callout-titulo">Lo que queda fuera</p><p>La escritura de proveedores (solo como recuadro), la sintaxis completa de MOF y de WQL (consultas de esquema, <code>ASSOCIATORS OF</code>, <code>REFERENCES OF</code>), el formato interno del repositorio, la configuración de WMI remoto o WinRM, y la habilitación de trazas o auditoría (que son cambios de configuración y no corresponden al triage) no se desarrollan.</p></aside>
+<h2 id="fuentes">Fuentes</h2>
+<ul><li>Microsoft Learn: <a href="https://learn.microsoft.com/en-us/windows/win32/wmisdk/wmi-architecture" rel="noopener" target="_blank">WMI architecture</a>, <a href="https://learn.microsoft.com/en-us/windows/win32/wmisdk/monitoring-events" rel="noopener" target="_blank">Monitoring Events</a>, <a href="https://learn.microsoft.com/en-us/windows/win32/wmisdk/receiving-events-at-all-times" rel="noopener" target="_blank">Receiving Events at All Times</a>, <a href="https://learn.microsoft.com/en-us/windows/win32/wmisdk/receiving-events-securely" rel="noopener" target="_blank">Receiving Events Securely</a>, <a href="https://learn.microsoft.com/en-us/windows/win32/wmisdk/maintaining-wmi-security" rel="noopener" target="_blank">Maintaining WMI Security</a>.</li><li>Microsoft Learn, clases y namespaces: <a href="https://learn.microsoft.com/en-us/windows/win32/wmisdk/--eventfilter" rel="noopener" target="_blank">__EventFilter</a>, <a href="https://learn.microsoft.com/en-us/windows/win32/wmisdk/--eventconsumer" rel="noopener" target="_blank">__EventConsumer</a>, <a href="https://learn.microsoft.com/en-us/windows/win32/wmisdk/--filtertoconsumerbinding" rel="noopener" target="_blank">__FilterToConsumerBinding</a>, <a href="https://learn.microsoft.com/en-us/windows/win32/wmisdk/--eventconsumerproviderregistration" rel="noopener" target="_blank">__EventConsumerProviderRegistration</a>, <a href="https://learn.microsoft.com/en-us/windows/win32/wmisdk/standard-consumer-classes" rel="noopener" target="_blank">Standard Consumer Classes</a>, <a href="https://learn.microsoft.com/en-us/windows/win32/wmisdk/implementing-cross-namespace-permanent-event-subscriptions" rel="noopener" target="_blank">Cross-Namespace Permanent Event Subscriptions</a>, <a href="https://learn.microsoft.com/en-us/windows/win32/wmisdk/access-to-wmi-namespaces" rel="noopener" target="_blank">Access to WMI Namespaces</a>.</li><li>Microsoft Learn, WQL y MOF: <a href="https://learn.microsoft.com/en-us/windows/win32/wmisdk/wql-sql-for-wmi" rel="noopener" target="_blank">WQL (SQL for WMI)</a>, <a href="https://learn.microsoft.com/en-us/windows/win32/wmisdk/determining-the-type-of-event-to-receive" rel="noopener" target="_blank">Determining the Type of Event to Receive</a>, <a href="https://learn.microsoft.com/en-us/windows/win32/wmisdk/within-clause" rel="noopener" target="_blank">WITHIN Clause</a>, <a href="https://learn.microsoft.com/en-us/windows/win32/wmisdk/group-clause" rel="noopener" target="_blank">GROUP Clause</a>, <a href="https://learn.microsoft.com/en-us/windows/win32/wmisdk/having-clause" rel="noopener" target="_blank">HAVING Clause</a>, <a href="https://learn.microsoft.com/en-us/windows/win32/wmisdk/isa-operator-for-event-queries" rel="noopener" target="_blank">ISA Operator for Event Queries</a>, <a href="https://learn.microsoft.com/en-us/windows/win32/wmisdk/managed-object-format--mof-" rel="noopener" target="_blank">Managed Object Format (MOF)</a>, <a href="https://learn.microsoft.com/en-us/windows/win32/wmisdk/pragma-autorecover" rel="noopener" target="_blank">pragma autorecover</a>.</li><li>Microsoft Learn, proveedores y remoto: <a href="https://learn.microsoft.com/en-us/windows/win32/wmisdk/--win32provider" rel="noopener" target="_blank">__Win32Provider</a>, <a href="https://learn.microsoft.com/en-us/windows/win32/wmisdk/provider-hosting-and-security" rel="noopener" target="_blank">Provider Hosting and Security</a>, <a href="https://learn.microsoft.com/en-us/windows/win32/wmisdk/connecting-to-wmi-on-a-remote-computer" rel="noopener" target="_blank">Connecting to WMI on a Remote Computer</a>, <a href="https://learn.microsoft.com/en-us/windows/win32/winrm/about-windows-remote-management" rel="noopener" target="_blank">About Windows Remote Management</a>.</li><li><strong>CLS:</strong> servicios y tareas en <a href="2d-04-servicios.html">2D.4</a> y <a href="2d-05-task-scheduler.html">2D.5</a>; DCOM en <a href="2d-08-dcom-rpc.html">2D.8</a>.</li></ul>
+<aside class="callout nota"><p class="callout-titulo">Etiquetas</p><p><strong>Observado en CLS:</strong> análisis defensivo y persistencia como concepto. <strong>Conocimiento externo:</strong> arquitectura, namespaces, suscripciones, WQL de eventos, MOF, proveedores (recuadro), WMI remoto y seguridad de eventos WMI. <strong>Ejemplo ilustrativo:</strong> suscripción y ficha del laboratorio ficticio. <strong>Laboratorio verificado:</strong> no; inspección de solo lectura.</p></aside>
+</main>
+<footer class="pie">
+  <p>Material educativo y defensivo. Las prácticas se limitan a programas propios, software abierto o crackmes diseñados para aprender. No se enseña a eludir licencias, DRM ni controles de acceso.</p>
+  <p><a href="../00_EMPEZAR_AQUI.html">Inicio</a> · <a href="../guia/etapa-0.html">Etapas</a> · <a href="../fuentes_y_limites.html">Fuentes y límites</a> · <a href="../registro_de_cobertura.csv">Registro de cobertura</a></p>
+</footer>
+</body>
+</html>

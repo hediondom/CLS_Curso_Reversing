@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>2.14 · PE fino: los directorios que cuentan la historia</title>
+<meta name="description" content="Más allá de cabeceras e imports: Rich header, recursos, delay-load, TLS, unwind/.pdata, debug/PDB, Load Config, resolución dinámica de APIs y la capa nativa (ntdll y syscalls), y qué le dicen al que analiza.">
+<link rel="stylesheet" href="../guia/estilo.css">
+</head>
+<body>
+<a class="salto" href="#contenido">Saltar al contenido</a>
+<header class="cabecera">
+  <div class="marca"><a href="../00_EMPEZAR_AQUI.html">CLS · Curso de reversing</a> <span class="edicion">edición 5 · 27/10/2026</span></div>
+  <nav class="principal" aria-label="Navegación principal">
+    <a href="../00_EMPEZAR_AQUI.html">Inicio</a>
+    <a href="../guia/index.html">Curso</a>
+    <a href="../materiales.html">Materiales</a>
+    <a href="../fichas/index.html">Fichas</a>
+    <a href="../glosario.html">Glosario</a>
+    <a href="../preguntas_y_respuestas.html">Repaso</a>
+    <a href="../buscar.html">Buscar</a>
+  </nav>
+</header>
+<main id="contenido">
+<nav class="migas" aria-label="Ubicación"><a href="../00_EMPEZAR_AQUI.html">Inicio</a><span aria-hidden="true">›</span><a href="../guia/index.html">Curso</a><span aria-hidden="true">›</span><span>Etapa 2 · Windows intermedio</span></nav><h1 id="pe-fino-los-directorios-que-cuentan-la-historia">PE fino: los directorios que cuentan la historia</h1>
+<aside class="callout nota"><p class="callout-titulo">Objetivo de la lección</p><p>Leer los <strong>directorios del PE</strong> que la lección 1.4 solo nombra, y entender qué pista da cada uno <strong>antes</strong> de llegar al entry point. <strong>Prerrequisitos:</strong> <a href="01-pe.html">El formato PE</a> (1.4), <a href="02-tls.html">TLS</a> (2.11), <a href="02-huella-compilador.html">huella de compilador</a> (2.13).</p></aside>
+<p>En <a href="01-pe.html">1.4</a> viste la cabecera, las secciones, los imports y la IAT. Acá vamos a los <strong>otros <code>DataDirectory</code></strong>, que muchas veces resuelven el análisis sin ejecutar nada. Todo esto se lee con <strong>PE-bear</strong>, <strong>CFF Explorer</strong> o el navegador de IDA; el recorrido VA↔RVA↔offset es el del capítulo 05 (<a class="fuente" href="../../CLS_resultados_intermedios/transcripciones/extraidos/Reversing%20desde%20cero%20%28Ricardo%20y%20Solid%29/Ricardo%20Narvaja%20y%20Solid%20-%20Reversing%20desde%20cero_05%20Virtual%20Adress%2C%20RVA%2C%20Offsets%20y%20Desplazamientos_05%20Virtual%20Adress%2C%20RVA%2C%20Offsets%20y%20Desplazamientos.txt">Reversing desde cero, cap. 05</a>). El contenido de esta lección es <strong>conocimiento externo</strong> salvo donde se cite.</p>
+<h2 id="rich-header">Rich header</h2>
+<p>Entre el <code>DOS stub</code> y la cabecera PE, los linkers de Microsoft dejan el <strong>Rich header</strong>: una lista cifrada (XOR con una clave que está ahí mismo) de qué herramientas y versiones tocaron el binario (<code>@comp.id</code>). Qué te dice:</p>
+<ul><li>Es casi una <strong>firma de MSVC</strong>: si está, se armó con el toolchain de Microsoft; su <strong>ausencia sugiere</strong> otro compilador (MinGW u otro) o que lo removieron, pero <strong>no lo prueba</strong> (ver <a href="02-huella-compilador.html">2.13</a>).</li><li>Las versiones ayudan a <strong>datar</strong> el binario y a agrupar muestras de la misma máquina de compilación.</li></ul>
+<h2 id="recursos-rsrc">Recursos (<code>.rsrc</code>)</h2>
+<p>El <strong>directorio de recursos</strong> guarda íconos, menús, <em>dialogs</em>, <em>string tables</em>, <em>version info</em> y, a veces, <strong>blobs</strong> (otro ejecutable, una config, una clave). Qué mirar:</p>
+<ul><li><em>Version info</em>: nombre de producto, compañía, versión. Pistas de origen (y, en malware, mentiras).</li><li><em>Dialogs</em> y <em>string tables</em>: los textos de la interfaz, que te llevan a la lógica (como las strings del <code>.rdata</code>).</li><li>Un recurso <strong>grande o de tipo raro</strong> (RCDATA) suele ser un payload embebido: a mirar con cuidado.</li></ul>
+<h2 id="imports-diferidos-delay-load">Imports diferidos (<em>delay-load</em>)</h2>
+<p>Además de la tabla de imports normal, el PE puede tener un directorio de <strong>delay-load</strong>: DLLs que <strong>no</strong> se cargan al inicio sino la <strong>primera vez que se usan</strong>. Consecuencia para el análisis: una dependencia puede <strong>no aparecer</strong> en la lista de imports "a primera vista" y cargarse recién en runtime vía <code>__delayLoadHelper2</code>. Si buscás una API y no está en los imports normales, revisá delay-load.</p>
+<h2 id="excepciones-y-unwind-pdata">Excepciones y unwind (<code>.pdata</code>)</h2>
+<p>En x64, el manejo de excepciones <strong>no</strong> vive en el stack como el SEH de 32 bits: está en tablas <code>.pdata</code>/<code>.xdata</code> (ver la <a href="05-vulnerabilidades.html">rama de vulnerabilidades</a>, cap. 36). Para el análisis, esas tablas sirven para:</p>
+<ul><li><strong>Delimitar funciones</strong> aunque no haya símbolos (cada entrada cubre un rango de código).</li><li>Entender el prólogo/epílogo (qué registros se salvan), útil al reconstruir marcos.</li></ul>
+<h2 id="debug-directory-y-pdb">Debug directory y PDB</h2>
+<p>El <strong>directorio de debug</strong> puede traer la <strong>ruta del <code>.pdb</code></strong> (p. ej. <code>D:\proyectos\cosa\Release\cosa.pdb</code>) y un GUID/age para emparejar símbolos. Qué te da:</p>
+<ul><li>La <strong>ruta</strong> filtra información: nombre de proyecto, usuario, estructura de carpetas del que lo compiló.</li><li>El GUID/age permite <strong>cargar los símbolos</strong> correctos (si los tenés o están en un symbol server), lo que vuelve legible un binario (como el caso con <code>.pdb</code> de la <a href="../ida_tutes/27.html">serie de estructuras del Curso IDA</a>).</li></ul>
+<h2 id="load-config">Load Config</h2>
+<p>El <strong><code>Load Config</code> directory</strong> declara mitigaciones y metadatos que el loader usa:</p>
+<ul><li>Puntero al <strong><code>security cookie</code></strong> (el <code>/GS</code> que viste en <a href="05-vulnerabilidades.html">vulnerabilidades</a>).</li><li>Tabla <strong>SEH segura</strong> (SafeSEH) en 32 bits.</li><li>Tablas de <strong>CFG</strong> (<code>GuardCFFunctionTable</code>): los destinos válidos de llamadas indirectas.</li></ul>
+<p>Leerlo te dice <strong>qué defensas tiene</strong> el binario sin ejecutarlo, y complementa la tabla de mitigaciones de la rama de vulnerabilidades.</p>
+<h2 id="cuando-los-imports-no-cuentan-todo-resolución-dinámica-de-apis">Cuando los imports no cuentan todo: resolución dinámica de APIs</h2>
+<p>La tabla de imports solo lista lo que el programa enlazó <strong>al compilar</strong>. Un programa puede obtener la dirección de cualquier función <strong>en ejecución</strong>, y entonces esa API no aparece en los imports. Es una de las primeras cosas que se encuentran al analizar binarios reales, y hay tres formas típicas, de más visible a menos visible (<strong>conocimiento externo</strong> salvo lo citado):</p>
+<ol><li><strong><code>LoadLibrary</code> + <code>GetProcAddress</code>.</strong> El programa carga la DLL y pide la dirección por nombre. Señales: los dos imports, cadenas con nombres de API (<code>"VirtualAlloc"</code>, <code>"MessageBoxW"</code>) y, después, una llamada <strong>indirecta</strong> a través de un registro o una variable (<code>call rax</code>, <code>call [rbp-18h]</code>). La propia documentación de Microsoft usa este mecanismo para funciones sin biblioteca de importación, como las de <code>ntdll</code>.</li><li><strong>Recorrer el PEB y la tabla de exports.</strong> Sin llamar a ninguna API: el código lee el PEB (<code>gs:[60h]</code> en x64, <code>fs:[30h]</code> en x86), sigue <code>Ldr</code> hasta la lista <code>InMemoryOrderModuleList</code> —una lista doblemente enlazada de entradas con la base y el nombre de cada módulo cargado— y, en el módulo elegido, recorre el <strong>directorio de exports</strong> del PE (nombres, ordinales y direcciones) hasta encontrar la función. Señales: accesos a esos offsets fijos, un bucle que compara nombres de módulo y otro que recorre <code>AddressOfNames</code>.</li><li><strong>Hashing de nombres de API.</strong> Igual que el anterior, pero en vez de comparar el nombre con una cadena, calcula un <strong>hash</strong> de cada nombre exportado y lo compara con una <strong>constante</strong>. No queda ninguna cadena con el nombre de la API en el binario. Señales: un bucle corto que recorre los bytes de un nombre con rotaciones, <code>xor</code> o sumas, seguido de un <code>cmp</code> contra un valor de 32 bits. Como la misma función de hash produce la misma constante para el mismo nombre, esas constantes se pueden buscar en bases públicas de hashes conocidos para nombrar la API.</li></ol>
+<p>Qué registrar en el análisis: qué APIs resuelve dinámicamente (con evidencia: cadena, constante o traza), <strong>dónde</strong> guarda las direcciones (una tabla propia funciona como una IAT paralela) y desde dónde se llaman. En dinámico, un breakpoint en <code>GetProcAddress</code> o en el retorno del resolvedor te da la lista real.</p>
+<p>Un detalle de lectura relacionado: en binarios modernos vas a ver imports de nombres como <code>api-ms-win-core-…</code>. Son <strong>API sets</strong>: nombres de <strong>contratos</strong>, no archivos; el cargador los resuelve contra la DLL que implementa cada función en esa versión de Windows, y puede no existir ningún archivo con ese nombre.</p>
+<h2 id="firma-authenticode-integridad-y-procedencia">Firma Authenticode: integridad y procedencia</h2>
+<p>Un PE puede incluir una firma <strong>Authenticode</strong> en la tabla de certificados del directorio de datos; también puede tener firma de catálogo. La firma permite comprobar integridad según las reglas de hash de PE y validar la cadena del certificado, pero <strong>no prueba que el programa sea benigno</strong> ni que su editor sea confiable para cualquier uso. Una firma ausente tampoco demuestra intención maliciosa. La entrada de la tabla de certificados es una excepción importante al modelo general de directorios: su ubicación se expresa como <strong>offset de archivo</strong>, no como RVA.</p>
+<p>Al revisar un binario, registrá el resultado de verificación, el sujeto del certificado, la cadena y el sello de tiempo cuando estén disponibles. Interpretá todo como evidencia de identidad e integridad, no como veredicto de seguridad.</p>
+<h2 id="resolución-efectiva-de-dll">Resolución efectiva de DLL</h2>
+<p>La IAT dice qué módulos y funciones necesita el binario; <strong>no siempre revela qué archivo concreto se cargó</strong>. Si el nombre no especifica ruta, la ubicación efectiva depende del orden de búsqueda de Windows y del contexto: directorio de la aplicación, módulos ya cargados, Known DLLs, API sets, redirecciones y configuración del proceso. Por eso, al analizar un problema de carga, distinguí el nombre importado de la ruta observada en ejecución. En programas propios, usar rutas explícitas y las opciones seguras del cargador reduce ambigüedades; en reversing, documentá la ruta efectiva y el contexto, sin inferirla solo del nombre de la DLL.</p>
+<h3 id="aplicaciones-empaquetadas-manifiestos-y-búsqueda-segura">Aplicaciones empaquetadas, manifiestos y búsqueda segura</h3>
+<p>No hay un único orden que puedas aplicar sin identificar el tipo de aplicación y la forma de carga. En apps de escritorio sin paquete, las redirecciones side-by-side declaradas por manifiestos pueden intervenir. En apps empaquetadas participa el <strong>package dependency graph</strong>, cuyas dependencias se buscan según el manifiesto del paquete. También importan la lista de módulos ya cargados, Known DLLs, API sets, redirecciones y si el programa pidió una ruta completa o usó flags de búsqueda.</p>
+<p>Para analizarlo, registra si el ejecutable está empaquetado, qué manifiesto y flags de carga observas, el nombre solicitado y el <strong>path real</strong> de la imagen cargada. Confírmalo en un proceso propio con debugger o Process Monitor; no infieras el archivo final por el nombre del import. En software propio, preferí rutas explícitas o LoadLibraryEx con flags de búsqueda seguros y dependencias conocidas.</p>
+<h2 id="la-capa-nativa-de-kernel32-a-ntdll-y-la-llamada-al-sistema">La capa nativa: de kernel32 a ntdll y la llamada al sistema</h2>
+<p>Una llamada documentada de Win32 no es la última parada. En los sistemas actuales, buena parte de la implementación de las funciones de <code>kernel32.dll</code> vive en <code>kernelbase.dll</code> (conocimiento externo), y casi todo lo que necesita al kernel termina en una función <strong>nativa</strong> de <code>ntdll.dll</code> con prefijo <code>Nt</code> o <code>Zw</code>, que hace la <strong>llamada al sistema</strong> y entra en kernel mode. Microsoft documenta que, llamadas desde user mode, las versiones <code>Nt</code> y <code>Zw</code> se comportan igual, y que la API nativa es en gran parte interna: funciones como <code>NtQueryInformationProcess</code> “pueden cambiar o no estar disponibles” en versiones futuras.</p>
+<p>Cómo se ve al analizar:</p>
+<ul><li>En una pila de llamadas, el último frame de user mode suele ser <code>ntdll!NtAlgo</code>, no la API que llamó el programa. Para entender una operación de archivo, por ejemplo, la cadena típica es <code>CreateFileW</code> → (kernelbase) → <code>NtCreateFile</code> → kernel.</li><li>Un <em>stub</em> de <code>ntdll</code> en x64 es corto: carga el número de servicio en <code>EAX</code> y ejecuta <code>syscall</code>. Ese número <strong>cambia entre builds</strong> de Windows.</li><li><strong>Llamadas al sistema directas.</strong> Si encontrás una instrucción <code>syscall</code> (o <code>sysenter</code>/<code>int 2Eh</code> en x86) <strong>dentro del código del propio programa</strong>, fuera de <code>ntdll</code>, el programa está saltándose la capa de user mode: no pasa por las funciones de <code>ntdll</code> donde un depurador, una herramienta de monitoreo o un producto de seguridad suelen observar. Como los números cambian por build, ese código o los tiene fijos (y queda atado a una versión) o los lee de <code>ntdll</code> en ejecución. Es una señal de anti-análisis o evasión para <strong>documentar</strong>, no algo para replicar.</li></ul>
+<h2 id="ejemplo-ilustrativo-un-resolvedor-sin-cadenas">Ejemplo ilustrativo: un resolvedor sin cadenas</h2>
+<p><em>(Listado <strong>ilustrativo</strong> de x64, construido para mostrar el patrón; los offsets siguen las estructuras documentadas <code>PEB</code>, <code>PEB_LDR_DATA</code> y <code>LDR_DATA_TABLE_ENTRY</code>; la constante de hash es inventada.)</em></p>
+<pre><code class="lenguaje-asm">mov   rax, gs:[60h]          ; PEB
+mov   rax, [rax+18h]         ; PEB-&gt;Ldr
+mov   rsi, [rax+20h]         ; Ldr-&gt;InMemoryOrderModuleList.Flink
+siguiente_modulo:
+mov   rdi, [rsi+20h]         ; DllBase (offset relativo a InMemoryOrderLinks)
+; ... ubicar el directorio de exports de ese módulo ...
+siguiente_nombre:
+xor   edx, edx               ; hash = 0
+hash_loop:
+movzx eax, byte ptr [rcx]    ; siguiente carácter del nombre exportado
+test  al, al
+jz    comparar
+ror   edx, 0Dh               ; rotar ...
+add   edx, eax               ; ... y sumar: una función de hash simple
+inc   rcx
+jmp   hash_loop
+comparar:
+cmp   edx, 1A2B3C4Dh         ; ¿es el hash de la API buscada? (valor ilustrativo)
+jne   siguiente_nombre</code></pre>
+<p>Lectura: no hay <code>GetProcAddress</code> ni cadenas con nombres de API; la pista son <code>gs:[60h]</code>, la cadena de offsets hacia la lista de módulos, el bucle de hash y la constante. En el informe se anota “resolución dinámica por hash; API identificada como X porque la constante coincide con el hash de su nombre con esta función”, con la evidencia de esa coincidencia.</p>
+<h2 id="ejemplo-paso-a-paso-un-load-config-y-un-debug-directory-reales-de-leer">Ejemplo paso a paso: un <code>Load Config</code> y un debug directory reales de leer</h2>
+<p><em>(Ejemplo <strong>ilustrativo</strong>: valores construidos; mostrá los campos, no las direcciones exactas.)</em></p>
+<p>Compilado con <code>/GS /guard:cf</code>, PE-bear muestra:</p>
+<pre><code class="lenguaje-text">Load Config Directory
+  Size                         0x0118
+  SecurityCookie               0x0040B120   → hay /GS (stack canary)
+  SEHandlerTable               0x00000000   → x64: SEH va por .pdata, no acá
+  GuardCFCheckFunctionPointer  0x0040B008
+  GuardCFFunctionTable         0x0040A800
+  GuardFlags                   0x00010500   → CFG activo (INSTRUMENTED)
+
+Debug Directory  (type = CODEVIEW / RSDS)
+  PDB: D:\dev\miapp\x64\Release\miapp.pdb
+  GUID: 7F3A... age 1</code></pre>
+<p>Sin ejecutar nada ya sabés: tiene <strong>/GS</strong> y <strong>CFG</strong>, es <strong>x64</strong> (SEH por tablas), y el <code>.pdb</code> filtra la ruta de compilación (<code>D:\dev\miapp\...</code>: usuario, proyecto, configuración Release). Ese GUID + age es lo que usarías para cargar los símbolos correctos.</p>
+<h2 id="práctica">Práctica</h2>
+<p>En tu VM, con un <strong>binario propio</strong> (compilá con /GS /guard:cf en MSVC) y PE-bear:</p>
+<ol><li>Encontrá el <strong>Rich header</strong> y confirma qué sugiere al compararlo con una compilación propia de MinGW.</li><li>Abrí el directorio de <strong>recursos</strong> y ubicá version info y, si pusiste uno, un RCDATA.</li><li>Mirá <strong>Load Config</strong>: ¿apunta a un security cookie? ¿Hay tabla CFG?</li><li>Mirá el <strong>debug directory</strong>: ¿quedó la ruta del PDB? Anotá qué revela de tu entorno.</li><li>En un programa propio, obtené una API con LoadLibraryW + GetProcAddress y confirma por qué no figura como import estático.</li><li>En el depurador, seguí una llamada de tu programa hasta ntdll y registra lo que puedes concluir del stub en tu build, sin generalizar números de servicio entre versiones.</li><li>Con Get-AuthenticodeSignature (PowerShell) o signtool verify /pa (Windows SDK), registra el estado de firma y los datos del firmante; anota que una firma válida no demuestra que el programa sea benigno.</li><li>En una aplicación propia, identifica si está empaquetada y qué manifiesto/flags de carga aplican; compara el nombre solicitado de una DLL con la ruta realmente observada en el proceso.</li></ol>
+<h2 id="preguntas-de-repaso">Preguntas de repaso</h2>
+<details class="qa"><summary>¿Qué te dice la presencia (o ausencia) del Rich header?</summary><div class="respuesta"><p>Que el binario se armó (o no) con el toolchain de <strong>MSVC</strong>; además sus <code>@comp.id</code> ayudan a datar y agrupar. Su ausencia sugiere MinGW u otro compilador.</p></div></details>
+<details class="qa"><summary>Buscás una API en los imports y no está, pero sabés que el programa la usa. ¿Dónde más mirás?</summary><div class="respuesta"><p>En los <strong>imports diferidos</strong> (delay-load): esa DLL se carga la primera vez que se usa, vía <code>__delayLoadHelper2</code>, y no aparece en la tabla de imports normal.</p></div></details>
+<details class="qa"><summary>¿Para qué sirve <code>.pdata</code> al analizar un x64 sin símbolos?</summary><div class="respuesta"><p>Para <strong>delimitar funciones</strong> (cada entrada cubre un rango) y entender el prólogo/epílogo; en x64 el unwind vive ahí, no en el stack.</p></div></details>
+<details class="qa"><summary>¿Qué información sensible puede filtrar el debug directory?</summary><div class="respuesta"><p>La <strong>ruta del <code>.pdb</code></strong>: nombre de proyecto, usuario y estructura de carpetas del que compiló; y el GUID/age para emparejar símbolos.</p></div></details>
+<details class="qa"><summary>Un programa usa una API que no figura en sus imports ni en sus cadenas. ¿Qué buscás?</summary><div class="respuesta"><p>Resolución dinámica por <strong>hash</strong>: acceso al PEB (<code>gs:[60h]</code>/<code>fs:[30h]</code>), recorrido de la lista de módulos y de los exports, un bucle que calcula un hash y un <code>cmp</code> contra una constante.</p></div></details>
+<details class="qa"><summary>¿Qué es un import <code>api-ms-win-core-…</code>?</summary><div class="respuesta"><p>Un <strong>API set</strong>: el nombre de un contrato que el cargador resuelve contra la DLL que lo implementa; puede no existir un archivo con ese nombre.</p></div></details>
+<details class="qa"><summary>¿Por qué una instrucción <code>syscall</code> en el código del propio programa es una señal a documentar?</summary><div class="respuesta"><p>Porque el programa entra al kernel sin pasar por <code>ntdll</code>, donde suelen observar depuradores y herramientas; además los números de servicio cambian entre builds.</p></div></details>
+<details class="qa"><summary>¿Qué defensas podés leer en Load Config sin ejecutar el binario?</summary><div class="respuesta"><p>El <strong>security cookie</strong> (<code>/GS</code>), la tabla <strong>SafeSEH</strong> (32 bits) y las tablas de <strong>CFG</strong> (destinos válidos de llamadas indirectas).</p></div></details>
+<aside class="callout nota"><p class="callout-titulo">Puerta de salida</p><p>Podés: (1) ubicar y explicar Rich header, recursos, delay-load, <code>.pdata</code>, debug/PDB y Load Config y firma Authenticode; (además) explicar por qué la IAT no determina por sí sola la ruta efectiva de una DLL; (2) decir qué pista da cada uno antes del entry point; (3) deducir compilador y defensas de un binario solo leyendo sus directorios; (4) reconocer resolución dinámica de APIs (por nombre, por recorrido del PEB y por hash); (5) ubicar la capa nativa (<code>ntdll</code>, <code>Nt*</code>, <code>syscall</code>) en una pila de llamadas y reconocer una llamada al sistema directa.</p></aside>
+<aside class="callout nota"><p class="callout-titulo">Lo que queda fuera</p><p>Escribir resolvedores o llamadas al sistema propias, las tablas de números de servicio por versión, el formato completo de <code>LDR_DATA_TABLE_ENTRY</code> (la mayoría de sus campos son reservados) y las técnicas para ocultar imports en sí no se desarrollan: la lección enseña a reconocerlas.</p></aside>
+<h2 id="fuentes-de-esta-lección">Fuentes de esta lección</h2>
+<ul><li>Microsoft Learn: <a href="https://learn.microsoft.com/en-us/windows/win32/secbp/understanding-pe-signatures" rel="noopener" target="_blank">Understanding executable file signing</a>, <a href="https://learn.microsoft.com/en-us/windows/win32/dlls/dynamic-link-library-search-order" rel="noopener" target="_blank">Dynamic-link library search order</a>, <a href="https://learn.microsoft.com/en-us/windows/win32/dlls/dynamic-link-library-security" rel="noopener" target="_blank">Dynamic-link library security</a>.</li></ul>
+<ul><li><a class="fuente" href="../../CLS_resultados_intermedios/transcripciones/extraidos/Reversing%20desde%20cero%20%28Ricardo%20y%20Solid%29/Ricardo%20Narvaja%20y%20Solid%20-%20Reversing%20desde%20cero_05%20Virtual%20Adress%2C%20RVA%2C%20Offsets%20y%20Desplazamientos_05%20Virtual%20Adress%2C%20RVA%2C%20Offsets%20y%20Desplazamientos.txt">Reversing desde cero, cap. 05</a> — VA, RVA y offsets: cómo se navega dentro del PE.</li><li><a href="01-pe.html">El formato PE</a> (1.4) — base: cabeceras, secciones, imports e IAT, sobre la que se apoya esta lección.</li><li><a href="../ida_tutes/27.html">Curso IDA · tutes 25–28</a> — uso de <code>.pdb</code>/símbolos para volver legible un binario.</li><li>Microsoft Learn: <a href="https://learn.microsoft.com/en-us/windows/win32/debug/pe-format" rel="noopener" target="_blank">PE Format</a>, <a href="https://learn.microsoft.com/en-us/windows/win32/api/libloaderapi/nf-libloaderapi-getprocaddress" rel="noopener" target="_blank">GetProcAddress</a>, <a href="https://learn.microsoft.com/en-us/windows/win32/api/libloaderapi/nf-libloaderapi-loadlibraryw" rel="noopener" target="_blank">LoadLibraryW</a>, <a href="https://learn.microsoft.com/en-us/windows/win32/api/winternl/ns-winternl-peb" rel="noopener" target="_blank">PEB</a>, <a href="https://learn.microsoft.com/en-us/windows/win32/api/winternl/ns-winternl-peb_ldr_data" rel="noopener" target="_blank">PEB_LDR_DATA</a>, <a href="https://learn.microsoft.com/en-us/windows/win32/apiindex/windows-apisets" rel="noopener" target="_blank">Windows API sets</a>, <a href="https://learn.microsoft.com/en-us/windows-hardware/drivers/kernel/using-nt-and-zw-versions-of-the-native-system-services-routines" rel="noopener" target="_blank">Using Nt and Zw versions of the native system services</a>, <a href="https://learn.microsoft.com/en-us/windows/win32/api/winternl/nf-winternl-ntqueryinformationprocess" rel="noopener" target="_blank">NtQueryInformationProcess</a>.</li></ul>
+<aside class="callout nota"><p class="callout-titulo">Capas de esta lección</p><p><strong>Contenido observado en CLS:</strong> el recorrido VA/RVA/offset del capítulo 05, la base de PE de 1.4 y el uso de símbolos del Curso IDA. <strong>Conocimiento externo:</strong> Rich header, directorio de recursos, delay-load, <code>.pdata</code>/unwind, debug/PDB, Load Config, resolución dinámica de APIs (incluido el hashing), API sets, Authenticode, búsqueda de DLL en apps empaquetadas y no empaquetadas, resolución efectiva de DLL y la capa nativa. <strong>Ejemplo ilustrativo:</strong> el resolvedor por hash (constante inventada). <strong>Recomendación editorial:</strong> leer los directorios antes del entry point y la práctica con binario propio.</p></aside>
+
+<aside class="nota-ed">
+<p class="callout-titulo">Nota de lectura sobre el listado x64 — Por qué [rsi+20h] apunta a DllBase al recorrer el PEB</p>
+<p>En el listado ilustrativo x64 de esta lección, <code>mov rsi, [rax+20h]</code> lee <code>Ldr-&gt;InMemoryOrderModuleList.Flink</code>. Como ese enlace apunta al campo <code>InMemoryOrderLinks</code> (ubicado en el offset <code>+0x10</code> dentro de <code>LDR_DATA_TABLE_ENTRY</code> en x64, o <code>+0x08</code> en x86) y no al inicio <code>+0x00</code> de la estructura, todos los accesos posteriores con base en <code>rsi</code> llevan restado ese desplazamiento.</p>
+</aside>
+<aside class="ampliacion-ext">
+<p class="callout-titulo">Ampliación editorial basada en fuentes externas — Tabla completa de offsets de PEB, PEB_LDR_DATA y LDR_DATA_TABLE_ENTRY en x86 y x64</p>
+<p>De acuerdo con <a href="https://learn.microsoft.com/en-us/windows/win32/api/winternl/ns-winternl-peb" rel="noopener" target="_blank">PEB (winternl.h)</a> y <a href="https://learn.microsoft.com/en-us/windows/win32/api/winternl/ns-winternl-peb_ldr_data" rel="noopener" target="_blank">PEB_LDR_DATA (winternl.h)</a> en Microsoft Learn <em>(Hecho confirmado)</em>:</p>
+<div class="tabla"><table>
+<thead><tr><th>Estructura y campo</th><th>Offset en x86 (32 bits)</th><th>Offset en x64 (64 bits)</th><th>Relativo desde InMemoryOrderLinks (x86 / x64)</th></tr></thead>
+<tbody>
+<tr><td>Puntero al <code>PEB</code></td><td><code>fs:[0x30]</code></td><td><code>gs:[0x60]</code></td><td>—</td></tr>
+<tr><td><code>PEB-&gt;Ldr</code> (<code>PEB_LDR_DATA*</code>)</td><td><code>+0x0C</code></td><td><code>+0x18</code></td><td>—</td></tr>
+<tr><td><code>Ldr-&gt;InLoadOrderModuleList</code></td><td><code>+0x0C</code></td><td><code>+0x10</code></td><td>—</td></tr>
+<tr><td><code>Ldr-&gt;InMemoryOrderModuleList</code></td><td><code>+0x14</code></td><td><code>+0x20</code></td><td>—</td></tr>
+<tr><td><code>Ldr-&gt;InInitializationOrderModuleList</code></td><td><code>+0x1C</code></td><td><code>+0x30</code></td><td>—</td></tr>
+<tr><td><code>LDR_DATA_TABLE_ENTRY.InLoadOrderLinks</code></td><td><code>+0x00</code></td><td><code>+0x00</code></td><td><code>-0x08</code> / <code>-0x10</code></td></tr>
+<tr><td><code>LDR_DATA_TABLE_ENTRY.InMemoryOrderLinks</code></td><td><code>+0x08</code></td><td><code>+0x10</code></td><td><code>0x00</code> / <code>0x00</code> <em>(base de RSI)</em></td></tr>
+<tr><td><code>LDR_DATA_TABLE_ENTRY.InInitializationOrderLinks</code></td><td><code>+0x10</code></td><td><code>+0x20</code></td><td><code>+0x08</code> / <code>+0x10</code></td></tr>
+<tr><td><strong><code>LDR_DATA_TABLE_ENTRY.DllBase</code></strong></td><td><strong><code>+0x18</code></strong></td><td><strong><code>+0x30</code></strong></td><td><strong><code>+0x10</code> (x86) / <code>+0x20</code> (x64)</strong></td></tr>
+<tr><td><code>LDR_DATA_TABLE_ENTRY.EntryPoint</code></td><td><code>+0x1C</code></td><td><code>+0x38</code></td><td><code>+0x14</code> (x86) / <code>+0x28</code> (x64)</td></tr>
+<tr><td><code>LDR_DATA_TABLE_ENTRY.FullDllName</code> (<code>UNICODE_STRING</code>)</td><td><code>+0x24</code></td><td><code>+0x48</code></td><td><code>+0x1C</code> (x86) / <code>+0x38</code> (x64)</td></tr>
+<tr><td><code>LDR_DATA_TABLE_ENTRY.BaseDllName</code> (<code>UNICODE_STRING</code>)</td><td><code>+0x2C</code></td><td><code>+0x58</code></td><td><code>+0x24</code> (x86) / <code>+0x48</code> (x64)</td></tr>
+</tbody></table></div>
+</aside>
+</main>
+<footer class="pie">
+  <p>Material educativo y defensivo. Las prácticas se limitan a programas propios, software abierto o crackmes diseñados para aprender. No se enseña a eludir licencias, DRM ni controles de acceso.</p>
+  <p><a href="../00_EMPEZAR_AQUI.html">Inicio</a> · <a href="../guia/etapa-0.html">Etapas</a> · <a href="../fuentes_y_limites.html">Fuentes y límites</a> · <a href="../registro_de_cobertura.csv">Registro de cobertura</a></p>
+</footer>
+</body>
+</html>

@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tute 29 · Programas reales y CVE — Curso IDA</title>
+<meta name="description" content="Tutorial ilustrado del tute 29 del Curso IDA desde cero: Programas reales y CVE.">
+<link rel="stylesheet" href="../guia/estilo.css">
+</head>
+<body>
+<a class="salto" href="#contenido">Saltar al contenido</a>
+<header class="cabecera">
+  <div class="marca"><a href="../00_EMPEZAR_AQUI.html">CLS · Curso de reversing</a> <span class="edicion">edición 5 · 27/10/2026</span></div>
+  <nav class="principal" aria-label="Navegación principal">
+    <a href="../00_EMPEZAR_AQUI.html">Inicio</a>
+    <a href="../guia/index.html">Curso</a>
+    <a href="../fichas/index.html">Fichas</a>
+    <a href="../glosario.html">Glosario</a>
+    <a href="../preguntas_y_respuestas.html">Repaso</a>
+  </nav>
+</header>
+<main id="contenido">
+<p class="migas"><a href="../ida-tutes.html">← Índice de los 69 tutes de IDA</a></p>
+<h1>Tute 29 · Programas reales y CVE</h1>
+<p class="meta-tute"><strong>⏱ 1 min de lectura</strong> · 221 palabras · 0 capturas · grupo: Vulnerabilidades y exploiting en user-mode (VLC/CVE, DEP, Mona, canary/SEH, shellcode, heap)</p>
+<aside class="callout nota"><p class="callout-titulo">Qué enseña</p><p>Pasar de crackmes a software real; propone un CVE para practicar.</p></aside>
+<p><em>se conecta con:</em> <a href="../guia/05-vulnerabilidades.html">Vulnerabilidades (defensivo)</a></p>
+<aside class="callout aviso"><p class="callout-titulo">Material observado, no reescrito</p><p>Es el texto y las capturas del <code>.docx</code> original del curso, solo presentados como tutorial. Puede tener erratas de origen. El autor del curso es Ricardo Narvaja.</p></aside>
+<hr>
+<p>INTRODUCCIÓN AL REVERSING CON IDA PRO DESDE CERO PARTE 29.</p>
+<p>PROGRAMAS REALES Y CVE.</p>
+<p>Con lo que hemos visto hasta ahora podemos intentar al menos analizar programas reales, para ellos les daré un ejercicio que en la parte 30 solucionare yo, me gustaría que lo tomen como algo divertido y que me envíen lo que encuentren.</p>
+<p>Aclaro que no es nada fácil, así que no se depriman jeje.</p>
+<p>La idea es que les doy dos versiones consecutivas de un programa, así que puede haber en la más nueva parches que se pueden hallar diffeando o analizando.</p>
+<p>Yo les aconsejo hacer un diff como vimos en las partes anteriores y tratar de ver si hay overflows y me lo envían no es necesario escribir código solo hallar funciones vulnerables en el que quieran.</p>
+<p>Adjuntos están los instaladores en su versión más vieja y nueva, quizás lo mejor sería en una máquina virtual instalar el viejo hacer un snapshot y luego el nuevo y otro, así se pueden extraer los archivos para diffear de ambas.</p>
+<p>La idea es divertirse y jugar un rato no importa si les sale o no esta bueno intentar.</p>
+<p>PRACTICANDO DIFFEAR.</p>
+<p>Cómo ayuda pueden ver el CVE.</p>
+<p>https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2008-4654</p>
+<p>La vulnerabilidad es al abrir un archivo de extensión .ty en VLC hasta 0.94 inclusive.</p>
+<p>Hasta la parte 30.</p>
+<p>Ricardo Narvaja</p>
+</main>
+<footer class="pie">
+  <p>Material educativo y defensivo. Las prácticas se limitan a programas propios, software abierto o crackmes diseñados para aprender. No se enseña a eludir licencias, DRM ni controles de acceso.</p>
+  <p><a href="../00_EMPEZAR_AQUI.html">Inicio</a> · <a href="../guia/etapa-0.html">Etapas</a> · <a href="../fuentes_y_limites.html">Fuentes y límites</a> · <a href="../registro_de_cobertura.csv">Registro de cobertura</a></p>
+</footer>
+<script>
+(function(){
+  function abrir(src){
+    var o=document.createElement('div'); o.className='lightbox-ov';
+    var i=document.createElement('img'); i.src=src; o.appendChild(i);
+    function cerrar(){o.remove(); document.removeEventListener('keydown', onkey);}
+    function onkey(e){ if(e.key==='Escape') cerrar(); }
+    o.addEventListener('click', cerrar);
+    document.addEventListener('keydown', onkey);
+    document.body.appendChild(o);
+  }
+  document.addEventListener('DOMContentLoaded', function(){
+    document.querySelectorAll('figure img, main img').forEach(function(img){
+      img.style.cursor='zoom-in';
+      img.addEventListener('click', function(){ abrir(img.currentSrc||img.src); });
+    });
+  });
+})();
+</script>
+</body>
+</html>

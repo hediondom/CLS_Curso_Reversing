@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Etapa 6 · Rama optativa · Kernel y drivers</title>
+<meta name="description" content="Comprender, construir y revisar un driver KMDF didáctico con una interfaz inocua, depurarlo solo en VM descartable y explicar mitigaciones actuales.">
+<link rel="stylesheet" href="../guia/estilo.css">
+</head>
+<body>
+<a class="salto" href="#contenido">Saltar al contenido</a>
+<header class="cabecera">
+  <div class="marca"><a href="../00_EMPEZAR_AQUI.html">CLS · Curso de reversing</a> <span class="edicion">edición 5 · 27/10/2026</span></div>
+  <nav class="principal" aria-label="Navegación principal">
+    <a href="../00_EMPEZAR_AQUI.html">Inicio</a>
+    <a href="../guia/index.html">Curso</a>
+    <a href="../materiales.html">Materiales</a>
+    <a href="../fichas/index.html">Fichas</a>
+    <a href="../glosario.html">Glosario</a>
+    <a href="../preguntas_y_respuestas.html">Repaso</a>
+    <a href="../buscar.html">Buscar</a>
+  </nav>
+</header>
+<main id="contenido">
+<nav class="migas" aria-label="Ubicación"><a href="../00_EMPEZAR_AQUI.html">Inicio</a><span aria-hidden="true">›</span><a href="../guia/index.html">Curso</a><span aria-hidden="true">›</span><span>Etapa 6 · Rama optativa · Kernel y drivers</span></nav><h1 id="etapa-6-rama-optativa-kernel-y-drivers">Etapa 6 · Rama optativa · Kernel y drivers</h1>
+<aside class="callout nota"><p class="callout-titulo">Objetivo medible</p><p>Comprender, construir y revisar un driver KMDF didáctico con una interfaz inocua, depurarlo solo en VM descartable y explicar mitigaciones actuales.</p></aside>
+<p><strong>Prerrequisitos:</strong> Etapa 0 (laboratorio aislado), C, assembly, memoria y sincronización, WinDbg y 2D.1 (objetos/tokens), 2D.2 (memoria/loader) y 2D.11 (excepciones/debugging). Etapa 2C es recomendada, no requisito; no hace falta completar toda 2D. <strong>Duración estimada:</strong> 45–65 horas como estimación inicial; puede requerir más tiempo si C, WinDbg o WDK son nuevos.. Es una estimación de esta guía, derivada de la suma de las lecciones; no es una duración declarada por CLS.</p>
+<aside class="callout aviso"><p class="callout-titulo">Rama optativa; fuera de la aprobación obligatoria</p><p>La Etapa 6 profundiza en kernel/drivers y no cambia los requisitos de las Etapas 0–4. Sus prácticas de carga requieren una VM descartable; nunca modifiques las protecciones del equipo principal.</p></aside>
+<h2 id="lecciones">Lecciones</h2>
+<div class="tabla"><table>
+<thead><tr>
+<th>#</th>
+<th>Lección</th>
+<th>Qué aprendés</th>
+</tr></thead><tbody>
+<tr><td>6.1</td><td><a href="6-01-arquitectura-kernel.html">Arquitectura del kernel y modelo de E/S</a></td><td>user/kernel mode, IRQL, pool, IRP, I/O Manager, sincronización y bugchecks.</td></tr>
+<tr><td>6.2</td><td><a href="6-02-kmdf-ioctl.html">KMDF: driver propio con IOCTL inocuo</a></td><td>KMDF/UMDF y una respuesta fija con permisos restrictivos; sin acceso arbitrario a memoria.</td></tr>
+<tr><td>6.3</td><td><a href="6-03-debug-kernel.html">Debugging de kernel y bugchecks</a></td><td>WinDbg en target VM, stacks/dumps y Driver Verifier con rollback.</td></tr>
+<tr><td>6.4</td><td><a href="6-04-revision-driver.html">Revisión defensiva de un driver</a></td><td>device interfaces, IOCTLs, SDDL y validación de entradas.</td></tr>
+<tr><td>6.5</td><td><a href="6-05-minifilters.html">Minifilters y callbacks</a></td><td>Pila de filesystem, callbacks pre/post y límites de observación.</td></tr>
+<tr><td>6.6</td><td><a href="6-06-mitigaciones.html">Mitigaciones de Windows para drivers</a></td><td>firma, Secure Boot, HVCI/VBS, WDAC y vulnerable driver blocklist.</td></tr>
+</tbody></table></div>
+<h2 id="recursos-de-cls-para-esta-etapa">Recursos de CLS para esta etapa</h2>
+<ul><li><a href="../2d.html">2D · Windows internals (solo lecciones requeridas para esta rama)</a></li><li><a href="../2d-hyperv.html">Extensión Hyper-V (optativa, no requisito)</a></li></ul>
+<h2 id="evaluación-de-salida">Evaluación de salida</h2>
+<ul><li>Explicar la ruta de una solicitud y los límites de IRQL, memoria y sincronización.</li><li>Revisar un IOCTL propio de salida fija, con acceso limitado y validación completa; si no se puede cargar en VM conforme a la política vigente, entregar revisión estática.</li><li>Leer un stack/dump de driver propio o muestra didáctica, indicando límites de símbolos y causalidad.</li><li>Verificar mitigaciones en solo lectura y explicar qué protegen, sin desactivarlas.</li><li>Demostrar rollback/limpieza de la VM; Driver Verifier no es requisito de aprobación.</li></ul>
+<aside class="callout practica"><p class="callout-titulo">Entregable de la etapa</p><p>Un archivo en tu bitácora con: lecciones completadas, ejercicios resueltos, dudas abiertas y evidencia (capturas, valores, hashes). Sin evidencia no se considera aprobada.</p></aside>
+<h2 id="errores-frecuentes">Errores frecuentes</h2>
+<ul><li>Probar un driver en el equipo principal o desactivar protecciones para forzar su carga.</li><li>Crear IOCTLs de lectura/escritura arbitraria o asumir que una ACL reemplaza la validación.</li><li>Interpretar el módulo del bugcheck como causa raíz sin revisar stack y contexto.</li></ul>
+<h2 id="qué-no-entra-en-esta-etapa">Qué no entra en esta etapa</h2>
+<p>Los temas que no tienen material revisado o que exceden el marco se listan en <a href="05-fuera-de-alcance.html">Kernel y otros territorios</a>. No los uses como atajo: cada rama tiene prerrequisitos.</p>
+<aside class="callout nota"><p class="callout-titulo">Volver</p><p><a href="index.html">Mapa del curso</a> · <a href="../00_EMPEZAR_AQUI.html">Inicio</a></p></aside>
+</main>
+<footer class="pie">
+  <p>Material educativo y defensivo. Las prácticas se limitan a programas propios, software abierto o crackmes diseñados para aprender. No se enseña a eludir licencias, DRM ni controles de acceso.</p>
+  <p><a href="../00_EMPEZAR_AQUI.html">Inicio</a> · <a href="../guia/etapa-0.html">Etapas</a> · <a href="../fuentes_y_limites.html">Fuentes y límites</a> · <a href="../registro_de_cobertura.csv">Registro de cobertura</a></p>
+</footer>
+</body>
+</html>

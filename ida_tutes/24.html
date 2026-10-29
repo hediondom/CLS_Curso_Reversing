@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tute 24 · Ejercicio IDA2 (cookies) — Curso IDA</title>
+<meta name="description" content="Tutorial ilustrado del tute 24 del Curso IDA desde cero: Ejercicio IDA2 (cookies).">
+<link rel="stylesheet" href="../guia/estilo.css">
+</head>
+<body>
+<a class="salto" href="#contenido">Saltar al contenido</a>
+<header class="cabecera">
+  <div class="marca"><a href="../00_EMPEZAR_AQUI.html">CLS · Curso de reversing</a> <span class="edicion">edición 5 · 27/10/2026</span></div>
+  <nav class="principal" aria-label="Navegación principal">
+    <a href="../00_EMPEZAR_AQUI.html">Inicio</a>
+    <a href="../guia/index.html">Curso</a>
+    <a href="../fichas/index.html">Fichas</a>
+    <a href="../glosario.html">Glosario</a>
+    <a href="../preguntas_y_respuestas.html">Repaso</a>
+  </nav>
+</header>
+<main id="contenido">
+<p class="migas"><a href="../ida-tutes.html">← Índice de los 69 tutes de IDA</a></p>
+<h1>Tute 24 · Ejercicio IDA2 (cookies)</h1>
+<p class="meta-tute"><strong>⏱ 4 min de lectura</strong> · 721 palabras · 14 capturas · grupo: Crackmes, differ y ejercicios</p>
+<aside class="callout nota"><p class="callout-titulo">Qué enseña</p><p>Dos valores/cookies a comparar; soluciones de IDA2/3/4.</p></aside>
+<p><em>▶ video afín (mismo autor, en x64dbg):</em> <a href="../videos.html">«20 Ejercicio 4 - Análisis Estático»</a> · <em>se conecta con:</em> <a href="../guia/02-ida.html">IDA</a> · <a href="../guia/02-llamadas.html">Llamadas y pila</a> · <a href="../guia/02-flujo.html">Flujo</a> · <a href="../guia/05-vulnerabilidades.html">Vulnerabilidades (defensivo)</a></p>
+<aside class="callout aviso"><p class="callout-titulo">Material observado, no reescrito</p><p>Es el texto y las capturas del <code>.docx</code> original del curso, solo presentados como tutorial. Puede tener erratas de origen. El autor del curso es Ricardo Narvaja.</p></aside>
+<hr>
+<p>INTRODUCCIÓN AL REVERSING CON IDA PRO DESDE CERO PARTE 24</p>
+<p>EJERCICIO IDA2.EXE</p>
+<p>La solución al IDA2.exe es bastante similar al anterior solo que aquí hay dos variables, o podemos llamarlas cookies para comparar en vez de una sola, para que te lleve a la zona de chico bueno.</p>
+<figure><img loading="lazy" src="img/24/1.png" alt="Captura 1 del tute 24"></figure>
+<p>Veamos si hay algún lugar donde se pueden modificar esas variables, las renombramos a cookie y cookie 2 ya que el mismo programa las llama así.</p>
+<figure><img loading="lazy" src="img/24/2.png" alt="Captura 2 del tute 24"></figure>
+<p>Vemos que los únicos lugares donde hay acceso a dichas variables es cuando en el printf mediante lea obtiene las direcciones de las mismas para imprimirlas pero no se puede alterar su valor allí.</p>
+<figure><img loading="lazy" src="img/24/3.png" alt="Captura 3 del tute 24"></figure>
+<p>Si apretamos la x en cualquiera de ambas variables, solo se accede dos veces una para hallar la dirección antes de pasársela al printf y la segunda cuando ya compara el valor.</p>
+<p>Así que si no se puede cambiar el valor de dichas variables, como podremos llegar hasta el cartel de chico bueno para llegar al mismo si ambas variables deben tener un valor específico?</p>
+<p>La otra posibilidad de llenar esas variables, sería que haya un overflow en algún buffer que permita sobrescribir su valor.</p>
+<figure><img loading="lazy" src="img/24/4.png" alt="Captura 4 del tute 24"></figure>
+<p>Ahí vemos una variable var_10 veamos que es, allí vemos que la inicializa a cero veamos los otros lugares donde la usa con la x.</p>
+<figure><img loading="lazy" src="img/24/5.png" alt="Captura 5 del tute 24"></figure>
+<p>Allí vemos los tres lugares en que la usa el primero es cuando la inicializa a cero.</p>
+<p>Veamos los otros dos pero antes acomodemos los argumentos que se le pasan a las apis para que no quede tan feo, usando la técnica que vimos en mi tute del IDA 1, haciendo click derecho en las mismas y cambiando por una representación alternativa que nos muestra el ida allí.</p>
+<figure><img loading="lazy" src="img/24/6.png" alt="Captura 6 del tute 24"></figure>
+<p>Ahora quedo más lindo y se ve claro cómo guarda los argumentos en el stack para pasarlos a las apis.</p>
+<p>Ahora veamos donde usa la variable.</p>
+<figure><img loading="lazy" src="img/24/7.png" alt="Captura 7 del tute 24"></figure>
+<p>Vemos que allí con el lea obtiene la dirección de la variable y luego incrementa su contenido o sea que aumenta el valor de la misma.</p>
+<p>Luego obtiene nuevamente la dirección de la variable y la pasa como argumento de printf o sea que imprime la dirección de la misma no el valor, si llegamos a la zona buena.</p>
+<p>Como el mensaje dice flag podemos renombrarla con ese mismo nombre, lo que sí vemos es que no influye en nada.</p>
+<figure><img loading="lazy" src="img/24/8.png" alt="Captura 8 del tute 24"></figure>
+<p>Solo nos queda estudiar el buffer ya que las variables que están por encima son variables creadas por el procesador y temporales, no del programa en sí.</p>
+<p>Mirando en la representación estática del stack.</p>
+<figure><img loading="lazy" src="img/24/9.png" alt="Captura 9 del tute 24"></figure>
+<p>Haciendo doble click en buffer vemos la representación estática del stack del ida.</p>
+<p>Obvio buffer es el lugar reservado en la memoria para guardar lo que se  tipea en consola ya que se le pasa la dirección como argumento a la función gets.</p>
+<figure><img loading="lazy" src="img/24/10.png" alt="Captura 10 del tute 24"></figure>
+<p>El primer acceso a Buffer obtiene la dirección y se la pasa printf para imprimirla y el segundo le pasa la dirección a gets para que reciba lo que tipeamos.</p>
+<p>Para ver el size de ese buffer en la representación del stack hacemos click derecho- array y veamos el size que ida nos sugiere.</p>
+<figure><img loading="lazy" src="img/24/11.png" alt="Captura 11 del tute 24"></figure>
+<p>Nos sugiere 68 decimal de largo, como cada elemento es de un byte el largo será 68 decimal, aceptamos.</p>
+<figure><img loading="lazy" src="img/24/12.png" alt="Captura 12 del tute 24"></figure>
+<p>Allí vemos el buffer y además viendo esta representación sabemos que llenando el buffer con 68 caracteres  estaremos justo a punto de desbordarlo y cómo gets no tiene ninguna restricción podremos desbordar el Buffer y  pisar con cuatro bytes más la variable cookie que está a continuación luego con otros cuatro bytes piso flag que es un dword (dd)  y con otros cuatro piso cookie 2,</p>
+<figure><img loading="lazy" src="img/24/13.png" alt="Captura 13 del tute 24"></figure>
+<p>Con eso ya podríamos armar el script lo que le enviaríamos seria.</p>
+<p>fruta= 68 *”A”+ cookie + flag + cookie2</p>
+<p>from subprocess import *</p>
+<p>import struct</p>
+<p>p = Popen([r'C:\Users\ricna\Desktop\23-INTRODUCCION AL REVERSING CON IDA PRO DESDE CERO PARTE 23\IDA2.exe', 'f'], stdout=PIPE, stdin=PIPE, stderr=STDOUT)</p>
+<p>cookie=struct.pack("&lt;L",0x71727374)</p>
+<p>cookie2=struct.pack("&lt;L",0x91929394)</p>
+<p>flag=struct.pack("&lt;L",0x90909090)</p>
+<p>print "ATACHEA EL DEBUGGER Y APRETA ENTER\n"</p>
+<p>raw_input()</p>
+<p>primera=68 *"A"+ cookie + flag + cookie2</p>
+<p>p.stdin.write(primera)</p>
+<p>testresult = p.communicate()[0]</p>
+<p>print primera</p>
+<p>print(testresult)</p>
+<figure><img loading="lazy" src="img/24/14.png" alt="Captura 14 del tute 24"></figure>
+<p>Listo el pollo le ponemos a las cookies los valores correspondientes y a  flag 0x90909090 o lo que sea que no moleste pues no influye.</p>
+<p>Y allí está jeje</p>
+<p>Hasta la próxima para practicar pueden hacer el IDA3.exe y el IDA4.exe que esta adjunto</p>
+<p>Ricardo Narvaja</p>
+</main>
+<footer class="pie">
+  <p>Material educativo y defensivo. Las prácticas se limitan a programas propios, software abierto o crackmes diseñados para aprender. No se enseña a eludir licencias, DRM ni controles de acceso.</p>
+  <p><a href="../00_EMPEZAR_AQUI.html">Inicio</a> · <a href="../guia/etapa-0.html">Etapas</a> · <a href="../fuentes_y_limites.html">Fuentes y límites</a> · <a href="../registro_de_cobertura.csv">Registro de cobertura</a></p>
+</footer>
+<script>
+(function(){
+  function abrir(src){
+    var o=document.createElement('div'); o.className='lightbox-ov';
+    var i=document.createElement('img'); i.src=src; o.appendChild(i);
+    function cerrar(){o.remove(); document.removeEventListener('keydown', onkey);}
+    function onkey(e){ if(e.key==='Escape') cerrar(); }
+    o.addEventListener('click', cerrar);
+    document.addEventListener('keydown', onkey);
+    document.body.appendChild(o);
+  }
+  document.addEventListener('DOMContentLoaded', function(){
+    document.querySelectorAll('figure img, main img').forEach(function(img){
+      img.style.cursor='zoom-in';
+      img.addEventListener('click', function(){ abrir(img.currentSrc||img.src); });
+    });
+  });
+})();
+</script>
+</body>
+</html>

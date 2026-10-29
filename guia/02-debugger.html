@@ -1,0 +1,169 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Etapa 2 · El debugger: x64dbg de punta a punta</title>
+<meta name="description" content="Navegar, ejecutar paso a paso, poner los tres tipos de breakpoint y leer el estado del programa sin perderte.">
+<link rel="stylesheet" href="../guia/estilo.css">
+</head>
+<body>
+<a class="salto" href="#contenido">Saltar al contenido</a>
+<header class="cabecera">
+  <div class="marca"><a href="../00_EMPEZAR_AQUI.html">CLS · Curso de reversing</a> <span class="edicion">edición 5 · 27/10/2026</span></div>
+  <nav class="principal" aria-label="Navegación principal">
+    <a href="../00_EMPEZAR_AQUI.html">Inicio</a>
+    <a href="../guia/index.html">Curso</a>
+    <a href="../materiales.html">Materiales</a>
+    <a href="../fichas/index.html">Fichas</a>
+    <a href="../glosario.html">Glosario</a>
+    <a href="../preguntas_y_respuestas.html">Repaso</a>
+    <a href="../buscar.html">Buscar</a>
+  </nav>
+</header>
+<main id="contenido">
+<nav class="migas" aria-label="Ubicación"><a href="../00_EMPEZAR_AQUI.html">Inicio</a><span aria-hidden="true">›</span><a href="../guia/index.html">Curso</a><span aria-hidden="true">›</span><span>Etapa 2 · Introducción al reversing</span></nav><h1 id="el-debugger-x64dbg-de-punta-a-punta">El debugger: x64dbg de punta a punta</h1>
+<aside class="callout nota"><p class="callout-titulo">Objetivo de la lección</p><p>Al terminar vas a poder abrir un programa propio en x64dbg, moverte por el código, ejecutar con F7/F8/F9, poner breakpoints por software, por hardware y de memoria, condicionarlos y dejar un registro de lo observado.</p></aside>
+<p><strong>Prerrequisitos:</strong> registros, instrucciones, flujo y llamadas. <strong>Duración sugerida:</strong> 5 horas. Estimación aproximada.</p>
+<h2 id="análisis-dinámico-y-estático">Análisis dinámico y estático</h2>
+<p>Hay dos formas de mirar un programa:</p>
+<ul><li><strong>Dinámico:</strong> lo ejecutás dentro de un debugger y observás qué hace mientras corre. Te muestra la verdad de la ejecución, pero solo del camino que tomaste.</li><li><strong>Estático:</strong> lo analizás sin ejecutarlo, con un desensamblador como IDA o Ghidra. Te muestra todo el código, pero no los valores concretos.</li></ul>
+<p>El capítulo 11 lo plantea como una decisión de método: el dinámico es más visual y rápido para problemas chicos; el estático permite analizar funciones que no sabés cómo alcanzar y es obligatorio cuando no podés ejecutar (<a class="fuente" href="../../CLS_resultados_intermedios/transcripciones/extraidos/Reversing%20desde%20cero%20%28Ricardo%20y%20Solid%29/Ricardo%20Narvaja%20y%20Solid%20-%20Reversing%20desde%20cero_11%20Ejercicio%201%20-%20An%C3%A1lisis%20din%C3%A1mico_11%20Ejercicio%201%20-%20An%C3%A1lisis%20din%C3%A1mico.txt">Reversing desde cero, cap. 11</a>, 00:00:05–00:01:00).</p>
+<p>En la práctica se usan los dos: primero el estático para orientarte, después el dinámico para confirmar.</p>
+<aside class="callout nota"><p class="callout-titulo">En el Curso IDA: IDA también debuggea, y se practica con crackmes propios</p><p>El Curso IDA refuerza esta misma combinación de estático y dinámico, pero sin salir de IDA: recordá que <strong>IDA no solo desensambla, también soporta varios debuggers</strong>, así que podés estudiar el loader y después ejecutar sobre el mismo programa sin cambiar de herramienta. Lo practica con crackmes chiquitos hechos por el propio autor (<code>HOLA_REVERSER.exe</code>, <code>TEST_REVERSER.exe</code>) (<a href="../ida_tutes/10.html">Curso IDA · tute 10, Loader + debugger</a>; prácticas en <a href="../ida_tutes/9.html">tute 9</a> y <a href="../ida_tutes/12.html">tute 12</a>).</p></aside>
+<h2 id="la-ventana-de-x64dbg">La ventana de x64dbg</h2>
+<p>Al abrir un programa, x64dbg se detiene en el <strong>entry point</strong>: la primera instrucción que ejecuta el código del programa. No es necesariamente <code>main</code>; es el punto donde el cargador le pasa el control (cap. 01, 00:02:08).</p>
+<p>Las pestañas principales:</p>
+<div class="tabla"><table>
+<thead><tr>
+<th>Pestaña</th>
+<th>Qué muestra</th>
+</tr></thead><tbody>
+<tr><td><strong>CPU</strong></td><td>Desensamblado, registros, flags, stack y dump</td></tr>
+<tr><td><strong>Log</strong></td><td>Mensajes del debugger y de los breakpoints con log</td></tr>
+<tr><td><strong>Notes</strong></td><td>Notas que escribís vos</td></tr>
+<tr><td><strong>Breakpoints</strong></td><td>Lista de breakpoints con condición y estado</td></tr>
+<tr><td><strong>Memory Map</strong></td><td>Regiones del espacio de direcciones</td></tr>
+<tr><td><strong>Call Stack</strong></td><td>Cadena de llamadas actual</td></tr>
+<tr><td><strong>SEH</strong></td><td>Cadena de manejadores de excepciones (32 bits)</td></tr>
+<tr><td><strong>Symbols</strong></td><td>Módulos cargados y sus funciones</td></tr>
+<tr><td><strong>Threads</strong></td><td>Hilos del proceso</td></tr>
+<tr><td><strong>Handles</strong></td><td>Recursos abiertos</td></tr>
+<tr><td><strong>Trace</strong></td><td>Resultado del trazado</td></tr>
+<tr><td><strong>PE Viewer</strong></td><td>Cabecera PE del módulo (plugin)</td></tr>
+</tbody></table></div>
+<p>El capítulo 01 hace un recorrido por todas ellas y aclara que al principio no hace falta entenderlas todas (00:04:00–00:07:00).</p>
+<h2 id="ejecutar-paso-a-paso">Ejecutar paso a paso</h2>
+<div class="tabla"><table>
+<thead><tr>
+<th>Tecla</th>
+<th>Acción</th>
+<th>Qué hace</th>
+</tr></thead><tbody>
+<tr><td><code>F9</code></td><td>Run</td><td>Ejecuta hasta el próximo breakpoint o hasta que el programa termine</td></tr>
+<tr><td><code>F8</code></td><td>Step over</td><td>Ejecuta la instrucción; si es un <code>call</code>, ejecuta la función completa sin entrar</td></tr>
+<tr><td><code>F7</code></td><td>Step into</td><td>Ejecuta la instrucción; si es un <code>call</code>, entra a la función</td></tr>
+<tr><td><code>F2</code></td><td>Toggle breakpoint</td><td>Pone o saca un breakpoint por software</td></tr>
+<tr><td><code>Ctrl+F2</code></td><td>Restart</td><td>Reinicia el proceso</td></tr>
+<tr><td><code>*</code></td><td>Follow EIP/RIP</td><td>Vuelve a la instrucción actual</td></tr>
+</tbody></table></div>
+<p>La diferencia entre F7 y F8 es la más importante al empezar: con F8 pasás "por arriba" de una función; con F7 entrás. El capítulo 01 lo demuestra entrando a <code>main</code> con F7 y saliendo con F8 (00:15:16–00:20:00).</p>
+<aside class="callout nota"><p class="callout-titulo">El "step over" no saltea la función</p><p><code>F8</code> <strong>ejecuta</strong> la función completa, no la ignora. La diferencia es que no te detiene instrucción por instrucción dentro de ella. Si la función tiene efectos (escribe un archivo, muestra un mensaje), esos efectos ocurren igual.</p></aside>
+<h2 id="los-tres-tipos-de-breakpoint">Los tres tipos de breakpoint</h2>
+<h3 id="por-software">Por software</h3>
+<p>Es el clásico. El debugger reemplaza el primer byte de la instrucción por <code>0xCC</code> (la instrucción <code>INT3</code>). Cuando el procesador la ejecuta, genera una excepción que el debugger intercepta, muestra el estado y restaura el byte original.</p>
+<ul><li>Se pone con <code>F2</code> o con doble clic en la columna de opcodes.</li><li>No hay un límite práctico: podés poner todos los que quieras.</li><li>Es fácil de detectar por un programa: si compara el byte en memoria con el del archivo, ve <code>0xCC</code> donde debería haber otra cosa.</li></ul>
+<h3 id="por-hardware">Por hardware</h3>
+<p>Usa los registros de depuración <code>DR0</code> a <code>DR3</code> del procesador. Hay <strong>cuatro por hilo</strong> (no por proceso: cada hilo tiene su propio contexto de CPU). En x64dbg se aplican al hilo actual, salvo que configures lo contrario.</p>
+<ul><li>Se ponen con clic derecho → <em>Breakpoint</em> → <em>Set hardware on execution</em>.</li><li>Se marcan con un punto rojo, no con la línea entera.</li><li>No modifican el código, así que son más difíciles de detectar.</li><li>También permiten <em>on access</em> (lectura/escritura) sobre 1, 2 o 4 bytes.</li></ul>
+<p>El capítulo 07 los muestra y aclara que el hardware "para una instrucción después" del acceso (<a class="fuente" href="../../CLS_resultados_intermedios/transcripciones/extraidos/Reversing%20desde%20cero%20%28Ricardo%20y%20Solid%29/Ricardo%20Narvaja%20y%20Solid%20-%20Reversing%20desde%20cero_07%20Breakpoints_07%20Breakpoints.txt">Reversing desde cero, cap. 07</a>, 00:02:34–00:10:00). Es una imprecisión útil de conocer: el <em>debug exception</em> se genera después de ejecutar la instrucción que accedió a la dirección vigilada.</p>
+<aside class="callout aviso"><p class="callout-titulo">Una corrección al audio</p><p>El capítulo 07 dice "cuatro por proceso" y "funcionan solamente en el thread principal". Lo correcto es que los registros <code>DR0</code>–<code>DR3</code> son parte del contexto de cada hilo, así que el límite es por hilo. En la práctica, x64dbg te muestra y aplica los breakpoints de hardware según el hilo que estés mirando. Si no te aparecen, revisá qué hilo está seleccionado.</p></aside>
+<h3 id="de-memoria">De memoria</h3>
+<p>Vigila una región (no solo 1, 2 o 4 bytes) y se dispara cuando el programa la lee o la escribe. Internamente usa protecciones de página: el debugger marca la página como no accesible y recibe la excepción cuando alguien la toca.</p>
+<ul><li>Se pone seleccionando un rango en el dump → clic derecho → <em>Breakpoint</em> → <em>Memory on access/read/write</em>.</li><li>Opciones: <em>single shot</em> (se deshabilita después del primer impacto) o <em>restore on hit</em> (sigue activo).</li><li>Es la herramienta para responder "¿quién lee este buffer?".</li></ul>
+<p>El capítulo 07 lo prueba con el buffer donde <code>GetDlgItemText</code> escribe el nombre: pone un breakpoint de memoria sobre los primeros bytes y el programa se detiene cuando los lee (00:10:00–00:14:00).</p>
+<h2 id="breakpoints-condicionales-y-con-log">Breakpoints condicionales y con log</h2>
+<p>Un breakpoint puede tener una <strong>condición</strong> y una <strong>acción</strong>:</p>
+<ul><li><strong>Condición</strong> (<code>breakif</code>): solo se detiene si se cumple. Ejemplo: <code>EAX == 8</code>.</li><li><strong>Log</strong>: escribe un texto en el panel Log cada vez que pasa, sin detenerse. Ejemplo: <code>valor de EAX = {EAX}</code>.</li></ul>
+<p>En el capítulo 07, Ricardo usa un breakpoint en una función que devuelve la longitud del texto ingresado. Primero lo configura para loguear <code>{EAX}</code> y ve <code>5</code> cuando escribe <code>"solid"</code>. Después le pone la condición <code>EAX == 8</code> y comprueba que solo se detiene cuando el nombre tiene 8 caracteres (00:15:00–00:20:00).</p>
+<pre><code class="lenguaje-text">breakif: EAX == 8
+log:     "longitud = {EAX}"</code></pre>
+<p>Ese patrón —"no me interesa parar, me interesa saber qué valor toma"— es el que vas a usar para entender bucles y comparaciones sin detenerte cien veces.</p>
+<h2 id="etiquetas-comentarios-y-navegación">Etiquetas, comentarios y navegación</h2>
+<ul><li><strong>Etiqueta</strong> (<code>:</code>): renombra una dirección para no perderte. En el capítulo 11, Ricardo etiqueta el bloque del mensaje "acceso denegado" como <code>chico_malo</code> y el otro como <code>chico_bueno</code>.</li><li><strong>Comentario</strong> (<code>;</code>): agrega una nota a una línea.</li><li><strong>Follow in dump</strong>: muestra en el panel de memoria el contenido de una dirección.</li><li><strong>Follow in disassembler</strong>: salta a la dirección apuntada.</li><li><strong>Ctrl+G</strong>: ir a una dirección o expresión.</li><li><strong>Ctrl+Shift+G</strong>: ir a un file offset (útil para comparar con el archivo).</li></ul>
+<p>Las etiquetas y comentarios no cambian el programa: son tu mapa de lectura. El capítulo 11 muestra cómo el análisis visual se apoya en ellas (00:02:16–00:06:00).</p>
+<h2 id="encontrar-el-código-que-maneja-un-botón-o-un-mensaje">Encontrar el código que maneja un botón o un mensaje</h2>
+<p>En un programa con ventana no hay un <code>main</code> lineal: Windows le <strong>envía mensajes</strong> (se hizo clic, se escribió en un campo, se apretó un botón) y el programa los atiende en una función despachadora. Encontrar esa función es el primer paso para analizar una interfaz.</p>
+<p>Lo que hay que saber:</p>
+<ul><li>La función despachadora es el <strong>WinProc</strong> (si la ventana se creó con <code>CreateWindow</code>) o la <strong>Dialog procedure</strong> (si se creó con <code>DialogBoxParam</code>). Las dos hacen lo mismo: reciben el mensaje y lo reparten con un <code>switch</code>.</li><li>El <strong>mensaje</strong> es el <strong>segundo argumento</strong> de esa función. Un <code>WM_COMMAND</code> vale <code>0x111</code> y es el que se dispara, en general, al apretar un botón; un <code>WM_LBUTTONDOWN</code> vale <code>0x201</code>.</li><li>El <strong>Control ID</strong> identifica qué botón se tocó. Se puede ver pasando el mouse por el control en una herramienta de inspección de ventanas.</li></ul>
+<p>Tres maneras de llegar al handler, de más simple a más robusta:</p>
+<ol><li><strong>Buscar el Control ID en estático.</strong> Si el botón tiene ID <code>0x13A</code>, buscás ese inmediato en IDA (ver la lección de IDA) y caés dentro del <code>WinProc</code>. Falla cuando el ID es un número bajo y común (<code>1</code>, <code>5</code>, <code>10</code>): hay demasiadas ocurrencias.</li><li><strong>Breakpoint condicional sobre el mensaje.</strong> Poné un breakpoint donde la función carga el mensaje en un registro y condicionalo a ese mensaje. Podés además loguear los dos argumentos leyéndolos del stack:</li></ol>
+<pre><code class="lenguaje-text">log:     "msg={2}  id={3}"      ; con getdword(sp+8) y getdword(sp+C)
+breakif: getdword(sp+8) == 0x111 &amp;&amp; getdword(sp+0xC) == 0x13A</code></pre>
+<ol><li><strong>Breakpoint en <code>SendMessage</code> + breakpoint de ejecución en el código.</strong> Es el método genérico que sirve aunque no sepas nada del programa. En Windows, los mensajes llegan vía <code>SendMessageW</code>/<code>SendMessageA</code> de <code>user32.dll</code> (ahí el mensaje también es el segundo argumento). Poné un breakpoint ahí, condicionado a tu mensaje; cuando pare, poné un <strong>breakpoint de hardware por ejecución sobre toda la sección de código del ejecutable</strong> (su dirección de inicio y su tamaño, que ves en el <em>Memory Map</em> o en <em>Segments</em>). Al continuar, el programa se detiene en la primera instrucción <strong>de tu código</strong> que corre tras recibir el mensaje: esa es la entrada del WinProc. Después borrás ese breakpoint para seguir.</li></ol>
+<aside class="callout nota"><p class="callout-titulo">Cómo se registra el WinProc</p><p>Con <code>CreateWindow</code>, antes hay un <code>RegisterClassA</code> que recibe una estructura <code>WNDCLASS</code>; dentro de esa estructura está el puntero al WinProc. Con <code>DialogBoxParam</code>, el procedimiento se pasa directamente como uno de sus argumentos. Encontrar <code>RegisterClassA</code> o <code>DialogBoxParam</code> te lleva, por cualquiera de los dos caminos, a la función que maneja los mensajes.</p></aside>
+<p>El capítulo 28 ("Mensajes de Windows") muestra las tres formas sobre varios crackmes propios, incluida la carga de los símbolos de <code>user32.dll</code> para poner el breakpoint en <code>SendMessageW</code> (<a class="fuente" href="../../CLS_resultados_intermedios/transcripciones/extraidos/Reversing%20desde%20cero%20%28Ricardo%20y%20Solid%29/Ricardo%20Narvaja%20y%20Solid%20-%20Reversing%20desde%20cero_28%20Mensajes%20de%20Windows_28%20Mensajes%20de%20Windows.txt">Reversing desde cero, cap. 28</a>; transcripción .txt, sin marcas de tiempo). El capítulo 24b agrega que el <code>switch</code> de mensajes se lee mejor traduciendo los números a sus nombres <code>WM_*</code> con la tecla <code>M</code> en IDA.</p>
+<h2 id="parchear-solo-programas-propios">Parchear (solo programas propios)</h2>
+<p>x64dbg permite modificar instrucciones en memoria y guardar los cambios en un archivo:</p>
+<ol><li>Seleccioná la instrucción.</li><li>Clic derecho → <em>Binary</em> → <em>Fill with NOP</em> (o <em>Edit</em> para escribir bytes).</li><li><em>Patches</em> → <em>Patch file</em> para guardar una copia con los cambios.</li></ol>
+<p>En el capítulo 11, Ricardo reemplaza un salto condicional por dos <code>NOP</code> y guarda una copia del programa que acepta cualquier clave (00:20:00–00:25:00). Es una demostración didáctica sobre un crackme de práctica.</p>
+<aside class="callout peligro"><p class="callout-titulo">El límite legal y ético</p><p>Parchear un programa <strong>no es una técnica neutral</strong>. En esta guía se practica únicamente con programas propios, software abierto o crackmes diseñados para aprender, y se explica el efecto de un parche para entender el flujo. No se parchea software comercial para saltar licencias, DRM, autenticación ni controles de acceso. Si el programa no es tuyo o no tiene licencia para analizarlo, no lo toques.</p></aside>
+<h2 id="anti-debug-qué-cambia-cuando-hay-un-debugger">Anti-debug: qué cambia cuando hay un debugger</h2>
+<p>Un programa puede detectar que está siendo depurado. Los chequeos más comunes en Windows de 32 bits:</p>
+<div class="tabla"><table>
+<thead><tr>
+<th>Chequeo</th>
+<th>Dónde mira</th>
+<th>Qué delata</th>
+</tr></thead><tbody>
+<tr><td><code>IsDebuggerPresent</code></td><td><code>PEB+2</code></td><td>Byte en 1 si hay debugger</td></tr>
+<tr><td><code>NtGlobalFlag</code></td><td><code>PEB+0x68</code></td><td>Flags de heap activados por el debugger</td></tr>
+<tr><td>Lista de procesos</td><td><code>CreateToolhelp32Snapshot</code></td><td>Encuentra <code>x64dbg.exe</code>, <code>ida.exe</code>, etc.</td></tr>
+<tr><td><code>ParentPID</code></td><td>PID del proceso padre</td><td>El padre no es <code>explorer.exe</code></td></tr>
+<tr><td><code>CloseHandle</code> inválido</td><td>Excepción <code>0xC0000008</code></td><td>Comportamiento distinto bajo debugger</td></tr>
+<tr><td><code>INT3</code> en memoria</td><td>Byte <code>0xCC</code></td><td>Breakpoint por software</td></tr>
+<tr><td><code>ContextRecord</code> tras una excepción</td><td><code>DR0</code>–<code>DR3</code> del contexto</td><td>Breakpoints de <strong>hardware</strong></td></tr>
+</tbody></table></div>
+<p>El capítulo 21 muestra el último caso: un programa que provoca una excepción a propósito puede, en su manejador, leer el <code>ContextRecord</code> y mirar los registros de depuración <code>DR0</code>–<code>DR3</code>; si no están en cero, hay breakpoints de hardware puestos y el programa lo detecta (<a class="fuente" href="../../CLS_resultados_intermedios/transcripciones/extraidos/Reversing%20desde%20cero%20%28Ricardo%20y%20Solid%29/Ricardo%20Narvaja%20y%20Solid%20-%20Reversing%20desde%20cero_21%20Excepciones%202_21%20Excepciones%202.txt">Reversing desde cero, cap. 21</a>; transcripción .txt, sin marcas de tiempo). Es un motivo para conocer cómo funcionan las excepciones (ver la rama de vulnerabilidades).</p>
+<p>El capítulo 22 explica los dos primeros con el PEB y el comando <code>hide</code> de x64dbg (<a class="fuente" href="../../CLS_resultados_intermedios/transcripciones/extraidos/Reversing%20desde%20cero%20%28Ricardo%20y%20Solid%29/Ricardo%20Narvaja%20y%20Solid%20-%20Reversing%20desde%20cero_22%20Antidebug%201_22%20Antidebug%201.txt">Reversing desde cero, cap. 22</a>, 00:02:35–00:07:00). El capítulo 24 muestra un crackme propio con cuatro chequeos y un mensaje que dice cuál lo detectó (<a class="fuente" href="../../CLS_resultados_intermedios/transcripciones/extraidos/Reversing%20desde%20cero%20%28Ricardo%20y%20Solid%29/Ricardo%20Narvaja%20y%20Solid%20-%20Reversing%20desde%20cero_24%20Antidebug%202_24%20Antidebug%202.txt">Reversing desde cero, cap. 24</a>, 00:01:17–00:03:31).</p>
+<p>Para esta guía, el objetivo es <strong>entender</strong> esos mecanismos y reconocerlos en un binario, no enseñar a evadirlos. Si un programa se cierra solo bajo el debugger, la pregunta correcta es "¿qué chequeo está fallando?", no "¿qué truco le aplico?".</p>
+<h2 id="práctica">Práctica</h2>
+<ol><li>Compilá tu programa <code>check.exe</code> (Etapa 1) y abrilo en x64dbg.</li><li>Recorré con F8 hasta <code>main</code>. Anotá <code>EIP</code>, <code>ESP</code> y <code>EBP</code>.</li><li>Poné un breakpoint por software en la comparación <code>(a+b)*4 == 480</code>, ejecutá con <code>40</code> y <code>80</code>, y verificá los valores en el stack.</li><li>Poné un breakpoint de hardware <em>on access</em> sobre la variable <code>b</code> y observá cuándo se lee.</li><li>Poné un breakpoint de memoria sobre el buffer de <code>scanf</code> y observá cuándo se escribe.</li><li>Agregá un breakpoint con log <code>{EAX}</code> en la comparación y ejecutá varias veces con valores distintos. Guardá el log.</li><li>Etiquetá el bloque "Correcto" y el bloque "Incorrecto". Sacá una captura para tu bitácora.</li></ol>
+<h2 id="preguntas-de-repaso">Preguntas de repaso</h2>
+<p><strong>1. ¿Qué diferencia hay entre F7 y F8?</strong> F7 entra a las funciones; F8 las ejecuta sin detenerse dentro. Las dos ejecutan la instrucción actual.</p>
+<p><strong>2. ¿Qué byte usa un breakpoint por software?</strong> <code>0xCC</code>, la instrucción <code>INT3</code>. El debugger lo restaura al detenerse.</p>
+<p><strong>3. ¿Cuántos breakpoints de hardware hay y de quién son?</strong> Cuatro (<code>DR0</code>–<code>DR3</code>) por hilo. Se aplican al contexto del hilo; si no aparecen, revisá qué hilo está seleccionado.</p>
+<p><strong>4. ¿Para qué sirve un breakpoint con <code>log</code> y <code>breakif 0</code>?</strong> Para registrar valores sin detener la ejecución. Es útil en bucles donde el programa pasa muchas veces.</p>
+<p><strong>5. ¿Un breakpoint de memoria vigila bytes o páginas?</strong> Vigila un rango de bytes, pero internamente trabaja con protecciones de página. Por eso puede detenerse ante un acceso cercano al rango.</p>
+<p><strong>6. ¿Qué es el entry point?</strong> La primera instrucción del código del programa, donde el cargador le pasa el control. No es necesariamente <code>main</code>.</p>
+<h2 id="antes-de-avanzar">Antes de avanzar</h2>
+<p>Tenés que poder:</p>
+<ul><li>Abrir un programa, moverte y reconocer las pestañas principales.</li><li>Usar F7, F8 y F9 con intención.</li><li>Poner los tres tipos de breakpoint y explicar en qué se diferencian.</li><li>Configurar un breakpoint condicional con log.</li><li>Guardar un parche en un programa propio y explicar por qué no lo harías en software ajeno.</li></ul>
+<aside class="callout nota"><p class="callout-titulo">Puerta de salida</p><p>Si podés responder "¿quién escribe este buffer?" con un breakpoint de memoria y "¿cuántas veces pasa por acá y con qué valor?" con uno condicional, ya usás el debugger como herramienta, no como curiosidad.</p></aside>
+<h2 id="fuentes-de-esta-lección">Fuentes de esta lección</h2>
+<ul><li><a class="fuente" href="../../CLS_resultados_intermedios/transcripciones/extraidos/Reversing%20desde%20cero%20%28Ricardo%20y%20Solid%29/Ricardo%20Narvaja%20y%20Solid%20-%20Reversing%20desde%20cero_01%20x64dbg%20primeros%20pasos_01%20x64dbg%20primeros%20pasos.txt">Reversing desde cero, cap. 01</a> — interfaz, ventanas, F7/F8/F9, entry point.</li><li><a class="fuente" href="../../CLS_resultados_intermedios/transcripciones/extraidos/Reversing%20desde%20cero%20%28Ricardo%20y%20Solid%29/Ricardo%20Narvaja%20y%20Solid%20-%20Reversing%20desde%20cero_07%20Breakpoints_07%20Breakpoints.txt">Reversing desde cero, cap. 07</a> — breakpoints por software, hardware, memoria, condicionales y log.</li><li><a class="fuente" href="../../CLS_resultados_intermedios/transcripciones/extraidos/Reversing%20desde%20cero%20%28Ricardo%20y%20Solid%29/Ricardo%20Narvaja%20y%20Solid%20-%20Reversing%20desde%20cero_11%20Ejercicio%201%20-%20An%C3%A1lisis%20din%C3%A1mico_11%20Ejercicio%201%20-%20An%C3%A1lisis%20din%C3%A1mico.txt">Reversing desde cero, cap. 11</a> — etiquetas, análisis visual y parcheo didáctico.</li><li><a class="fuente" href="../../CLS_resultados_intermedios/transcripciones/extraidos/Reversing%20desde%20cero%20%28Ricardo%20y%20Solid%29/Ricardo%20Narvaja%20y%20Solid%20-%20Reversing%20desde%20cero_22%20Antidebug%201_22%20Antidebug%201.txt">Reversing desde cero, cap. 22</a> — PEB y detección de debugger.</li><li><a class="fuente" href="../../CLS_resultados_intermedios/transcripciones/extraidos/Reversing%20desde%20cero%20%28Ricardo%20y%20Solid%29/Ricardo%20Narvaja%20y%20Solid%20-%20Reversing%20desde%20cero_24%20Antidebug%202_24%20Antidebug%202.txt">Reversing desde cero, cap. 24</a> — cuatro chequeos anti-debug en un crackme propio.</li><li><a class="fuente" href="../../CLS_resultados_intermedios/transcripciones/extraidos/Reversing%20desde%20cero%20%28Ricardo%20y%20Solid%29/Ricardo%20Narvaja%20y%20Solid%20-%20Reversing%20desde%20cero_28%20Mensajes%20de%20Windows_28%20Mensajes%20de%20Windows.txt">Reversing desde cero, cap. 28</a> — WinProc y Dialog procedure, <code>WM_COMMAND</code>/Control ID, breakpoint condicional sobre el mensaje y el método <code>SendMessage</code> + breakpoint de ejecución en la sección de código.</li><li><a class="fuente" href="../../CLS_resultados_intermedios/transcripciones/extraidos/Reversing%20desde%20cero%20%28Ricardo%20y%20Solid%29/Ricardo%20Narvaja%20y%20Solid%20-%20Reversing%20desde%20cero_21%20Excepciones%202_21%20Excepciones%202.txt">Reversing desde cero, cap. 21</a> — lectura de <code>DR0</code>–<code>DR3</code> desde el <code>ContextRecord</code> como detección de breakpoints de hardware.</li><li><a href="../ida_tutes/10.html">Curso IDA · tutes 9, 10 y 12</a> — IDA como debugger (soporta varios) y práctica dinámica sobre crackmes propios (<code>HOLA_REVERSER</code>, <code>TEST_REVERSER</code>).</li></ul>
+<aside class="callout nota"><p class="callout-titulo">Capas de esta lección</p><p><strong>Contenido observado en CLS:</strong> el recorrido de la interfaz del capítulo 01, los tres breakpoints del capítulo 07, el log <code>{EAX}</code> y las etiquetas del capítulo 11, y los chequeos de los capítulos 22 y 24. <strong>Conocimiento externo:</strong> el mecanismo <code>INT3</code>, los registros <code>DR</code> y las protecciones de página. <strong>Recomendación editorial:</strong> el límite sobre parcheo y la corrección sobre "cuatro por proceso".</p></aside>
+
+<aside class="nota-ed">
+<p class="callout-titulo">Nota de alcance arquitectónico — Expresión getdword(sp+8) en WindowProc (x86 vs. x64)</p>
+<p>La expresión <code>getdword(sp+8) == 0x111 &amp;&amp; getdword(sp+0xC) == 0x13A</code> de esta lección aplica a binarios de <strong>32 bits (x86)</strong> (donde <code>__stdcall</code> apila <code>hWnd</code> en <code>[esp+4]</code>, <code>uMsg</code> en <code>[esp+8]</code> y <code>wParam</code> en <code>[esp+0xC]</code>) y asume que la palabra alta de <code>wParam</code> (código de notificación, p. ej. <code>BN_CLICKED = 0</code>) vale cero.</p>
+</aside>
+<aside class="ampliacion-ext">
+<p class="callout-titulo">Ampliación editorial basada en fuentes externas — Condiciones para WndProc en x64 y función arg.get() en x64dbg</p>
+<p>Según la especificación oficial de <a href="https://learn.microsoft.com/en-us/windows/win32/api/winuser/nc-winuser-wndproc" rel="noopener" target="_blank">WindowProc</a> y <a href="https://learn.microsoft.com/en-us/windows/win32/menurc/wm-command" rel="noopener" target="_blank">WM_COMMAND</a> en Microsoft Learn <em>(Hecho confirmado)</em> y la documentación de <a href="https://help.x64dbg.com/en/latest/introduction/Expressions.html" rel="noopener" target="_blank">Expressions &amp; Functions de x64dbg</a> <em>(Hecho confirmado)</em>:</p>
+<ul>
+<li><strong>En binarios de 64 bits (x64):</strong> Los cuatro argumentos llegan en <code>RCX</code> (<code>hWnd</code>), <code>RDX</code> (<code>uMsg</code>), <code>R8</code> (<code>wParam</code>) y <code>R9</code> (<code>lParam</code>), y el ID del control ocupa solo los 16 bits bajos (<code>LOWORD(wParam)</code>):
+<pre><code>breakif: rdx == 0x111 &amp;&amp; (r8 &amp; 0xFFFF) == 0x13A
+log:     "WM_COMMAND: notif={r8&gt;&gt;16} id={r8&amp;0xFFFF} hwnd={rcx}"</code></pre></li>
+<li><strong>Expresión universal (x86 y x64) en el prólogo con <code>arg.get(n)</code>:</strong>
+<pre><code>breakif: arg.get(1) == 0x111 &amp;&amp; (arg.get(2) &amp; 0xFFFF) == 0x13A
+log:     "uMsg={arg.get(1)} control_id={arg.get(2)&amp;0xFFFF}"</code></pre></li>
+</ul>
+</aside>
+</main>
+<footer class="pie">
+  <p>Material educativo y defensivo. Las prácticas se limitan a programas propios, software abierto o crackmes diseñados para aprender. No se enseña a eludir licencias, DRM ni controles de acceso.</p>
+  <p><a href="../00_EMPEZAR_AQUI.html">Inicio</a> · <a href="../guia/etapa-0.html">Etapas</a> · <a href="../fuentes_y_limites.html">Fuentes y límites</a> · <a href="../registro_de_cobertura.csv">Registro de cobertura</a></p>
+</footer>
+</body>
+</html>

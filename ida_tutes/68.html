@@ -1,0 +1,231 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tute 68 · SSDT y syscalls — Curso IDA</title>
+<meta name="description" content="Tutorial ilustrado del tute 68 del Curso IDA desde cero: SSDT y syscalls.">
+<link rel="stylesheet" href="../guia/estilo.css">
+</head>
+<body>
+<a class="salto" href="#contenido">Saltar al contenido</a>
+<header class="cabecera">
+  <div class="marca"><a href="../00_EMPEZAR_AQUI.html">CLS · Curso de reversing</a> <span class="edicion">edición 5 · 27/10/2026</span></div>
+  <nav class="principal" aria-label="Navegación principal">
+    <a href="../00_EMPEZAR_AQUI.html">Inicio</a>
+    <a href="../guia/index.html">Curso</a>
+    <a href="../fichas/index.html">Fichas</a>
+    <a href="../glosario.html">Glosario</a>
+    <a href="../preguntas_y_respuestas.html">Repaso</a>
+  </nav>
+</header>
+<main id="contenido">
+<p class="migas"><a href="../ida-tutes.html">← Índice de los 69 tutes de IDA</a></p>
+<h1>Tute 68 · SSDT y syscalls</h1>
+<p class="meta-tute"><strong>⏱ 10 min de lectura</strong> · 1.868 palabras · 70 capturas · grupo: Kernel de Windows y temas avanzados (drivers, HackSys/HEVD, SSDT/syscalls, VA→física)</p>
+<aside class="callout nota"><p class="callout-titulo">Qué enseña</p><p>Resolver syscalls: a qué función de kernel saltan.</p></aside>
+<p><em>se conecta con:</em> <a href="../guia/05-fuera-de-alcance.html">Fuera de alcance</a></p>
+<aside class="callout aviso"><p class="callout-titulo">Material observado, no reescrito</p><p>Es el texto y las capturas del <code>.docx</code> original del curso, solo presentados como tutorial. Puede tener erratas de origen. El autor del curso es Ricardo Narvaja.</p></aside>
+<hr>
+<p>SSDT Y COMO RESOLVEMOS LOS SYSCALLS.</p>
+<p>Como estoy trabajando bastante con syscalls, quería dejar escrito como resolverlos para saber a qué función en kernel terminan saltando, desde una función en user.</p>
+<p>De paso es divertido trastear un poco, y siempre se aprende.</p>
+<p>Se que al leer esto muchos dirán bueno, pero pones un breakpoint allí en el syscall y traceas y listo (no es tan alegre el tema ya veremos jeje), igual es bueno conocer cómo trabaja la SSDT y lo que agrega conocimiento no daña.</p>
+<p>Vayamos mirando algunos conceptos.</p>
+<p>Que es la SSDT?</p>
+<p>Cuando se realiza una llamada al sistema, se utiliza un índice para acceder a la función concreta que se desea utilizar, dentro de una tabla, la cual se conoce como tabla SSDT.</p>
+<p>Por ejemplo, voy a tomar una función cualquiera de user de las tantas que acceden al sistema a través de la SSDT, tal es el caso de la función CreatePalette.</p>
+<figure><img loading="lazy" src="img/68/1.png" alt="Captura 1 del tute 68"></figure>
+<p>Vemos debajo que corresponde a gdi32.dll.</p>
+<figure><img loading="lazy" src="img/68/2.png" alt="Captura 2 del tute 68"></figure>
+<p>Si abrimos gdi32.dll en este caso uso una versión correspondiente a Windows 7 de 64 bits.</p>
+<figure><img loading="lazy" src="img/68/3.png" alt="Captura 3 del tute 68"></figure>
+<figure><img loading="lazy" src="img/68/4.png" alt="Captura 4 del tute 68"></figure>
+<p>Vemos los call que realiza.</p>
+<figure><img loading="lazy" src="img/68/5.png" alt="Captura 5 del tute 68"></figure>
+<p>Casi siempre las funciones intermediarias llevan el prefijo ZW o NT en este caso es NT.</p>
+<figure><img loading="lazy" src="img/68/6.png" alt="Captura 6 del tute 68"></figure>
+<p>Bueno allí vemos la llamada al sistema que se realiza desde NtGdiCreatePaletteInternal, usando la instrucción syscall y con un índice en este caso 0x10ac que es el índice.</p>
+<p>Obviamente desde un debugger en user mode no podremos entrar y tracear para continuar a ver como resuelve adonde va usando ese índice, si tenemos armado con Windbg y VMware un sistema para debugger kernel, como hemos explicado muchas veces, en este caso usando VKD ya que el target es Windows 7 de 64 bits.</p>
+<figure><img loading="lazy" src="img/68/7.png" alt="Captura 7 del tute 68"></figure>
+<p>Ahí esta mi sistema de Windows 7 64 bits siendo debuggeando usando VKD REDUX y Windbg preview.</p>
+<p>Compilare un ejecutable para llamar a la función que quiero mirar.</p>
+<figure><img loading="lazy" src="img/68/8.png" alt="Captura 8 del tute 68"></figure>
+<p>No importa mucho esto, pero el argumento es un puntero a una estructura del tipo LOGPALETTE</p>
+<figure><img loading="lazy" src="img/68/9.png" alt="Captura 9 del tute 68"></figure>
+<figure><img loading="lazy" src="img/68/10.png" alt="Captura 10 del tute 68"></figure>
+<p>Bueno eso no importa tanto para el caso, la idea es compilarlo y si se puede, llegar a entrar al sistema y mirar la SSDT.</p>
+<p>Lo ejecuto en mi target de Windows 7 64 bits y quedara esperando en el getchar() eso me dará oportunidad para breakear el Windbg.</p>
+<figure><img loading="lazy" src="img/68/11.png" alt="Captura 11 del tute 68"></figure>
+<figure><img loading="lazy" src="img/68/12.png" alt="Captura 12 del tute 68"></figure>
+<p>Obtengo el EPROCESS de mi proceso y ya puedo poner breakpoints en mi función para que se detenga.</p>
+<p>Para switchear el contexto.</p>
+<figure><img loading="lazy" src="img/68/13.png" alt="Captura 13 del tute 68"></figure>
+<p>Usando el EPROCESS de mi proceso luego G y cuando se detiene luego chequeo con:</p>
+<p>!process -1 0</p>
+<figure><img loading="lazy" src="img/68/14.png" alt="Captura 14 del tute 68"></figure>
+<p>Ya estoy en mi proceso veamos la función buscada.</p>
+<figure><img loading="lazy" src="img/68/15.png" alt="Captura 15 del tute 68"></figure>
+<p>Cuando ejecuto el comando u rip me da error de acceso, eso suele ocurrir cuando uno debuggea kernel ya que el sistema no tiene toda la memoria disponible cargada, sino que hay partes de la misma que solo podemos acceder cuando las ejecuta.</p>
+<figure><img loading="lazy" src="img/68/16.png" alt="Captura 16 del tute 68"></figure>
+<p>Igual como dicha parte de la memoria pertenece a un módulo cargado, sabemos que, aunque no lo muestre, en el momento que ejecute la podremos ver, así que pongo un breakpoint en la función, usando el /p con el eprocess para que pare solamente cuando ese proceso llame a la función.</p>
+<figure><img loading="lazy" src="img/68/17.png" alt="Captura 17 del tute 68"></figure>
+<p>Cuando apreto ENTER en la consola en el target, para y ya veo que ahora si se puede ver el código desensamblado de la misma.</p>
+<figure><img loading="lazy" src="img/68/18.png" alt="Captura 18 del tute 68"></figure>
+<p>Por eso confirmo que hay partes de la memoria que no están disponibles siempre para listar y que el sistema las va cargando a medida que las necesita o ejecuta.</p>
+<p>Traceo hasta el syscall con F11 (STEP IN).</p>
+<figure><img loading="lazy" src="img/68/19.png" alt="Captura 19 del tute 68"></figure>
+<p>Allí estamos, la idea sería que si apreto una vez mas f11 podría entrar desde user a kernel, parando en la primera instrucción en kernel.</p>
+<figure><img loading="lazy" src="img/68/20.png" alt="Captura 20 del tute 68"></figure>
+<p>No me deja entrar a tracear aun apretando F11 pasa por encima del SYSCALL.</p>
+<p>Entonces como podemos hacer para parar en kernel y saber a qué función termina yendo de la SSDT.</p>
+<p>Obviamente si sabemos a qué función ira podemos poner un breakpoint en la misma, incluso ver con K las funciones por las que paso para llegar allí desde user.</p>
+<p>La única forma que se me ocurre es tratar de listar la SSDT y ver si mediante el índice podemos sacar a que función ira, poner un breakpoint allí y cuando pare mirar el camino que realizo.</p>
+<p>Como podemos listar la SSDT?</p>
+<p>Primero buscaremos el módulo nt de kernel</p>
+<figure><img loading="lazy" src="img/68/21.png" alt="Captura 21 del tute 68"></figure>
+<p>Allí vemos su nombre ntkrnlmp.exe y si lo buscamos en la maquina target no estará.</p>
+<figure><img loading="lazy" src="img/68/22.png" alt="Captura 22 del tute 68"></figure>
+<figure><img loading="lazy" src="img/68/23.png" alt="Captura 23 del tute 68"></figure>
+<p>Bueno ese es el archivo a buscar, está entre los archivos ocultos en la carpeta SYSTEM32, por lo cual hay que cambiar la visibilidad para que se puedan mostrar los mismos en las opciones de carpeta.</p>
+<figure><img loading="lazy" src="img/68/24.png" alt="Captura 24 del tute 68"></figure>
+<p>Lo copiare a la maquina principal para abrir en IDA.</p>
+<figure><img loading="lazy" src="img/68/25.png" alt="Captura 25 del tute 68"></figure>
+<p>Si busco en NAMES en IDA veo que esta KiServiceTable.</p>
+<figure><img loading="lazy" src="img/68/26.png" alt="Captura 26 del tute 68"></figure>
+<figure><img loading="lazy" src="img/68/27.png" alt="Captura 27 del tute 68"></figure>
+<p>Bueno ahí está la SSDT.</p>
+<p>Veamos si coincide hay una pagina</p>
+<p>https://github.com/j00ru/windows-syscalls</p>
+<p>Que se puede listar todos los índices de cada función de user, también veo que hay dos tablas una correspondiente a ntoskrl y otra wink32 y para cada una de  ellos la versión de 64 y 32 bits.</p>
+<figure><img loading="lazy" src="img/68/28.png" alt="Captura 28 del tute 68"></figure>
+<p>Vayamos por ahora a la de ntoskrnl.</p>
+<figure><img loading="lazy" src="img/68/29.png" alt="Captura 29 del tute 68"></figure>
+<p>Vemos que como todo array empieza con el índice cero</p>
+<figure><img loading="lazy" src="img/68/30.png" alt="Captura 30 del tute 68"></figure>
+<p>La primera entrada corresponde a la función de user NtMapUserPhysicalScatter y en IDA vemos la función correspondiente en kernel.</p>
+<figure><img loading="lazy" src="img/68/31.png" alt="Captura 31 del tute 68"></figure>
+<figure><img loading="lazy" src="img/68/32.png" alt="Captura 32 del tute 68"></figure>
+<p>Bueno si veo en la ntdll de user veo la llamada en este caso la llama con ZW en vez de NT pero es la misma función y con el índice cero.</p>
+<p>Vuelvo a arrancar el ejecutable en el target y cuando queda detenido en la consola hago break en el Windbg y switcheo el contexto. (no repetiré como nuevamente)</p>
+<figure><img loading="lazy" src="img/68/33.png" alt="Captura 33 del tute 68"></figure>
+<p>Puedo ver en windbg que hay dos SSDT una para ntoskrnl que acabamos de ver y otra para win32ksys.</p>
+<figure><img loading="lazy" src="img/68/34.png" alt="Captura 34 del tute 68"></figure>
+<figure><img loading="lazy" src="img/68/35.png" alt="Captura 35 del tute 68"></figure>
+<p>Allí están las 2 si abrimos una copia de win32ksys copiado de la maquina target en IDA veremos esta segunda SSDT.</p>
+<figure><img loading="lazy" src="img/68/36.png" alt="Captura 36 del tute 68"></figure>
+<p>También vimos que la pagina donde lista tiene otra página separada para esta otra SDDT.</p>
+<figure><img loading="lazy" src="img/68/37.png" alt="Captura 37 del tute 68"></figure>
+<p>Vemos que el índice mas bajo de esta tabla segunda tabla es 0x1000, ahora como podemos convertir la información que nos lista Windbg para obtener la dirección donde saltaría en cualquiera de ambas tablas, ya sabemos que índices menores que 0x1000 corresponden a la tabla de ntoskrnl y mayores a la de win32k.</p>
+<p>En 64 bits la cosa es un poco mas compleja (en 32 bits es mucho más sencillo luego compararemos)</p>
+<p>Veamos como podemos hallar en la primera tabla de ntoskrnl la dirección de la primera función, el método se aplica a cualquier función de cualquiera de las dos tablas.</p>
+<figure><img loading="lazy" src="img/68/38.png" alt="Captura 38 del tute 68"></figure>
+<p>Bueno esa es la primera entrada de esta SSDT correspondiente al índice 0, si hago doble click en IDA me muestra la función donde saltaría.</p>
+<figure><img loading="lazy" src="img/68/39.png" alt="Captura 39 del tute 68"></figure>
+<p>Obviamente sabiendo el nombre, podríamos ver en Windbg la dirección, lo haremos para chequear si nuestras cuentas dan bien, pero lo hallaremos calculando.</p>
+<figure><img loading="lazy" src="img/68/40.png" alt="Captura 40 del tute 68"></figure>
+<p>Esa es la dirección veamos lo que muestra Windbg en la tabla en el primer campo.</p>
+<figure><img loading="lazy" src="img/68/41.png" alt="Captura 41 del tute 68"></figure>
+<p>Como calculamos desde allí la dirección de la función, veamos.</p>
+<p>Debemos user la parte baja o sea en este caso 0x40d1800</p>
+<p>Veamos como se hace:</p>
+<p>Bits 4-31 correspond to the relative address to the base of the nt!KiServiceTable. Bits 0-3 are related to the number of arguments and will not be used here.</p>
+<p>To obtain the function address, we shift the value 4 bits to the right and add the result to the table base linear address:</p>
+<figure><img loading="lazy" src="img/68/42.png" alt="Captura 42 del tute 68"></figure>
+<p>Así que con la parte baja de la entrada haciendo shift con 4 y sumándole la base de la tabla llegamos a obtener la dirección de la función.</p>
+<p>hex(0xfffff800028c9900 + (0x40d1800 &gt;&gt; 4))</p>
+<p>'0xfffff80002cd6a80L'</p>
+<figure><img loading="lazy" src="img/68/43.png" alt="Captura 43 del tute 68"></figure>
+<p>Coincide</p>
+<figure><img loading="lazy" src="img/68/44.png" alt="Captura 44 del tute 68"></figure>
+<p>Ahora esto parece fácil porque es la primera entrada veamos si lo podemos propagar para cualquier entrada.</p>
+<p>Tomemos un numero arbitrario de índice digamos el 0x40.</p>
+<p>Con este comando obtendremos a partir del incide directamente la parte baja que necesitamos</p>
+<p>dd /c 1 nt!KiServiceTable L(INDICE +1)</p>
+<p>Ese comando listará las entradas y la última que muestre será la buscada, hay que sumarles uno al índice porque eso le dice a Windbg cuantas entradas listar y para listar la primera no le podemos pasar cero, siempre hay que sumarle uno, en el caso que vimos anteriormente, para el índice 0.</p>
+<figure><img loading="lazy" src="img/68/45.png" alt="Captura 45 del tute 68"></figure>
+<p>Para el caso 0x40.</p>
+<figure><img loading="lazy" src="img/68/46.png" alt="Captura 46 del tute 68"></figure>
+<p>Veamos a que función corresponde.</p>
+<figure><img loading="lazy" src="img/68/47.png" alt="Captura 47 del tute 68"></figure>
+<figure><img loading="lazy" src="img/68/48.png" alt="Captura 48 del tute 68"></figure>
+<p>En ida yendo a la entrada 0x40 ya que es un array de punteros de 8 bytes hay que multiplicar por 8 y sumar la base, vemos que corresponde a NtContinue.</p>
+<p>En la tabla correspondiente a ntoskrnl vemos que coincide.</p>
+<figure><img loading="lazy" src="img/68/49.png" alt="Captura 49 del tute 68"></figure>
+<p>Veamos en windbg.</p>
+<figure><img loading="lazy" src="img/68/50.png" alt="Captura 50 del tute 68"></figure>
+<figure><img loading="lazy" src="img/68/51.png" alt="Captura 51 del tute 68"></figure>
+<p>Coincide perfectamente.</p>
+<p>En 32 bits no es tan problemático porque no hay que realizar ninguna cuenta.</p>
+<p>Vemos que se accede en la tabla directamente sin hacer cuentas a la dirección de la función buscada.</p>
+<figure><img loading="lazy" src="img/68/52.png" alt="Captura 52 del tute 68"></figure>
+<p>Ahora tratemos de aplicar lo mismo a la otra tabla, la de win32k.sys que esta en la otra pagina y con nuestro ejemplo, en el que aún estamos detenidos.</p>
+<figure><img loading="lazy" src="img/68/53.png" alt="Captura 53 del tute 68"></figure>
+<p>Recordemos que en esta otra tabla el mínimo índice era 0x1000 tenemos que tener en cuenta eso, listemos la tabla en windbg.</p>
+<figure><img loading="lazy" src="img/68/54.png" alt="Captura 54 del tute 68"></figure>
+<p>En IDA multiplicamos por 8 sin olvidar de restarle los 0x1000 al índice.</p>
+<figure><img loading="lazy" src="img/68/55.png" alt="Captura 55 del tute 68"></figure>
+<figure><img loading="lazy" src="img/68/56.png" alt="Captura 56 del tute 68"></figure>
+<p>En windbg buscamos la tabla.</p>
+<figure><img loading="lazy" src="img/68/57.png" alt="Captura 57 del tute 68"></figure>
+<p>Como esta pertenece a win32k buscamos allí.</p>
+<figure><img loading="lazy" src="img/68/58.png" alt="Captura 58 del tute 68"></figure>
+<p>Veamos si podemos aplicar la formula y ahora hay que sumarle la base de esta tabla.</p>
+<figure><img loading="lazy" src="img/68/59.png" alt="Captura 59 del tute 68"></figure>
+<p>Me da esa dirección que puedo comprobar en Windbg.</p>
+<figure><img loading="lazy" src="img/68/60.png" alt="Captura 60 del tute 68"></figure>
+<p>Vemos que, aunque no pueda listarla como la vez anterior, dicha dirección corresponde a la función encontrada.</p>
+<p>Le pondré un breakpoint.</p>
+<figure><img loading="lazy" src="img/68/61.png" alt="Captura 61 del tute 68"></figure>
+<p>Le doy G y corro el ejecutable en el target y parara.</p>
+<figure><img loading="lazy" src="img/68/62.png" alt="Captura 62 del tute 68"></figure>
+<p>Podría haber usado el eprocess para filtrar, pero no es tan común que se llame a esta función de kernel muy seguido, así que igual paro siendo llamada por mi proceso ahí vemos que estamos en el mismo.</p>
+<p>Este era nuestro objetivo y lo logramos obtener la función donde saltaría desde user, usando el índice para calcularla.</p>
+<p>Chusmeemos un poco mas.</p>
+<p>Allí vemos el call stack como se origino en la llamada de user CreatePallete, luego entra en user a NtGdiCreatePaletteInternal, veamos donde sigue cuando entra en el syscall en el IDA.</p>
+<figure><img loading="lazy" src="img/68/63.png" alt="Captura 63 del tute 68"></figure>
+<figure><img loading="lazy" src="img/68/64.png" alt="Captura 64 del tute 68"></figure>
+<p>Buscando en los names lo encontramos en IDA</p>
+<figure><img loading="lazy" src="img/68/65.png" alt="Captura 65 del tute 68"></figure>
+<p>Allí esta la llamada en ese call r10 y retornaría al INC ese.</p>
+<figure><img loading="lazy" src="img/68/66.png" alt="Captura 66 del tute 68"></figure>
+<p>Un poco más arriba están las tablas, y realiza las operaciones que vimos hasta que resuelve la entrada y salta en el CALL R10.</p>
+<p>Por supuesto esto pertenece a ntoskrl desde allí luego decide que tabla usar si su propia tabla o la de win32ksys.</p>
+<figure><img loading="lazy" src="img/68/67.png" alt="Captura 67 del tute 68"></figure>
+<p>¿Ese es el inicio de la función, podremos poner un breakpoint allí?</p>
+<p>Arranco el proceso y switcheo el contexto cuando está detenido</p>
+<figure><img loading="lazy" src="img/68/68.png" alt="Captura 68 del tute 68"></figure>
+<figure><img loading="lazy" src="img/68/69.png" alt="Captura 69 del tute 68"></figure>
+<p>Espero que no se rompa todo veamos.</p>
+<figure><img loading="lazy" src="img/68/70.png" alt="Captura 70 del tute 68"></figure>
+<p>Glup por eso no deja entrar traceando desde SYSENTER jeje porque se rompe todo el sistema y realiza un BSOD.</p>
+<p>Bueno de cualquier manera ya sabemos como hallar la función adonde salta desde user a kernel, tanto calculándola como usando el IDA, así que bueno, cuando necesitemos ya vimos que podemos hallarla y poner un breakpoint en la función donde salta y seguir desde allí, evidentemente parar antes detiene muchos procesos importante que la maquina no puede manejar y BSOD.</p>
+<p>Pero logramos nuestro objetivo entender las tablas y saber calcular adonde saltara.</p>
+<p>Hasta la próxima</p>
+<p>Ricardo Narvaja</p>
+</main>
+<footer class="pie">
+  <p>Material educativo y defensivo. Las prácticas se limitan a programas propios, software abierto o crackmes diseñados para aprender. No se enseña a eludir licencias, DRM ni controles de acceso.</p>
+  <p><a href="../00_EMPEZAR_AQUI.html">Inicio</a> · <a href="../guia/etapa-0.html">Etapas</a> · <a href="../fuentes_y_limites.html">Fuentes y límites</a> · <a href="../registro_de_cobertura.csv">Registro de cobertura</a></p>
+</footer>
+<script>
+(function(){
+  function abrir(src){
+    var o=document.createElement('div'); o.className='lightbox-ov';
+    var i=document.createElement('img'); i.src=src; o.appendChild(i);
+    function cerrar(){o.remove(); document.removeEventListener('keydown', onkey);}
+    function onkey(e){ if(e.key==='Escape') cerrar(); }
+    o.addEventListener('click', cerrar);
+    document.addEventListener('keydown', onkey);
+    document.body.appendChild(o);
+  }
+  document.addEventListener('DOMContentLoaded', function(){
+    document.querySelectorAll('figure img, main img').forEach(function(img){
+      img.style.cursor='zoom-in';
+      img.addEventListener('click', function(){ abrir(img.currentSrc||img.src); });
+    });
+  });
+})();
+</script>
+</body>
+</html>

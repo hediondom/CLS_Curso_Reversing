@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tute 37 · Mona en WinDbg — Curso IDA</title>
+<meta name="description" content="Tutorial ilustrado del tute 37 del Curso IDA desde cero: Mona en WinDbg.">
+<link rel="stylesheet" href="../guia/estilo.css">
+</head>
+<body>
+<a class="salto" href="#contenido">Saltar al contenido</a>
+<header class="cabecera">
+  <div class="marca"><a href="../00_EMPEZAR_AQUI.html">CLS · Curso de reversing</a> <span class="edicion">edición 5 · 27/10/2026</span></div>
+  <nav class="principal" aria-label="Navegación principal">
+    <a href="../00_EMPEZAR_AQUI.html">Inicio</a>
+    <a href="../guia/index.html">Curso</a>
+    <a href="../fichas/index.html">Fichas</a>
+    <a href="../glosario.html">Glosario</a>
+    <a href="../preguntas_y_respuestas.html">Repaso</a>
+  </nav>
+</header>
+<main id="contenido">
+<p class="migas"><a href="../ida-tutes.html">← Índice de los 69 tutes de IDA</a></p>
+<h1>Tute 37 · Mona en WinDbg</h1>
+<p class="meta-tute"><strong>⏱ 5 min de lectura</strong> · 922 palabras · 31 capturas · grupo: Vulnerabilidades y exploiting en user-mode (VLC/CVE, DEP, Mona, canary/SEH, shellcode, heap)</p>
+<aside class="callout nota"><p class="callout-titulo">Qué enseña</p><p>Mismo ejemplo resuelto con Mona fuera de IDA.</p></aside>
+<p><em>se conecta con:</em> <a href="../guia/05-vulnerabilidades.html">Vulnerabilidades (defensivo)</a></p>
+<aside class="callout aviso"><p class="callout-titulo">Material observado, no reescrito</p><p>Es el texto y las capturas del <code>.docx</code> original del curso, solo presentados como tutorial. Puede tener erratas de origen. El autor del curso es Ricardo Narvaja.</p></aside>
+<hr>
+<p>INTRODUCCIÓN AL REVERSING CON IDA PRO DESDE CERO PARTE 37</p>
+<p>USANDO MONA EN WINDBG.</p>
+<p>Bueno haremos el mismo ejemplo de la parte anterior pero esta vez usando mona dentro de Windbg, sabemos que el mona no corre en IDA así que abrimos el Windbg separado de IDA.</p>
+<p>Desde una consola arranco el DEP.exe con algún argumento para que no se cierre y quede esperando lo que se tipea por teclado.</p>
+<figure><img loading="lazy" src="img/37/1.png" alt="Captura 1 del tute 37"></figure>
+<p>Podría haberlo arrancado desde el WINDBG también, es indiferente, solo que hay que parar en algún punto donde el modulo que usaremos para hacer ROP ya este cargada, no importa que haya crasheado ya.</p>
+<p>En este caso estamos dentro del gets_s y la Mypepe la cargo antes.</p>
+<figure><img loading="lazy" src="img/37/2.png" alt="Captura 2 del tute 37"></figure>
+<p>Me atacheo desde FILE-ATTACH TO PROCESS.</p>
+<figure><img loading="lazy" src="img/37/3.png" alt="Captura 3 del tute 37"></figure>
+<p>Cargar los símbolos no importa mucho pero bueno ya que estamos.</p>
+<figure><img loading="lazy" src="img/37/4.png" alt="Captura 4 del tute 37"></figure>
+<p>Ahí están los símbolos.</p>
+<p>CARGANDO MONA.</p>
+<p>Bueno carguemos el mona.</p>
+<figure><img loading="lazy" src="img/37/5.png" alt="Captura 5 del tute 37"></figure>
+<p>Ahora pidámosle ROP para mypepe.dll veremos que hace.</p>
+<p>!py mona rop -m Mypepe</p>
+<p>Vayamos a tomarnos un café mientras trabaja tardará un rato largo.</p>
+<p>Mientras termina comentemos que tiene opciones para decirle que busque direcciones sin cero, para filtrar diferentes caracteres, etc está bastante bien, aunque no siempre encuentra algún ROP completo, a veces te da un rop semi completo y te dice lo que falta, para que uno lo halle uno a mano, así que siempre hay que remar un poco.</p>
+<figure><img loading="lazy" src="img/37/6.png" alt="Captura 6 del tute 37"></figure>
+<p>shh dejémoslo pensar jeje.</p>
+<figure><img loading="lazy" src="img/37/7.png" alt="Captura 7 del tute 37"></figure>
+<p>La opción -cp nos da la posibilidad de filtrar los resultados del ROP según diferentes criterios, vemos que hay un nonnull para que no tenga ceros y varios más, también está la posibilidad de filtrar numéricamente con cpb, para caracteres específicos.</p>
+<figure><img loading="lazy" src="img/37/8.png" alt="Captura 8 del tute 37"></figure>
+<p>Ahí termino veamos, escribe un texto bastante largo si lo hubiera arrancado como admin lo guardaría a un txt pero no tenía permiso, igual copiaré aquí las partes más interesantes.</p>
+<figure><img loading="lazy" src="img/37/9.png" alt="Captura 9 del tute 37"></figure>
+<p>Vemos que nos muestra lo que deberían tener los registros antes del PUSHAD RET, que usamos en la parte anterior, incluso nos da otra alternativa para VirtualAlloc, también es bueno guardar lo que hay que acomodar en los registros cuando usamos VirtualProtect que esta por ahí también.</p>
+<figure><img loading="lazy" src="img/37/10.png" alt="Captura 10 del tute 37"></figure>
+<p>Eso es bueno guardarlo por si lo hacemos a mano, saber que hay que colocar en cada registro antes del PUSHAD-RET tanto para VirtualAlloc como para VirtualProtect, ahora veamos si hallo algún ROP para VirtualAlloc.</p>
+<figure><img loading="lazy" src="img/37/11.png" alt="Captura 11 del tute 37"></figure>
+<p>Vemos que lo halló y lo hizo más fácil porque uso la otra forma que usa directamente la entrada de la IAT en vez de la dirección de la API de esta forma salta en forma indirecta y evita los traspasos de la dirección de VA entre registros.</p>
+<p>Ahí vemos que ya está para Python, así que copiamos y pegamos en nuestro script.</p>
+<p>Vemos que define una función, así que la copiare y pegare al inicio de mi script.</p>
+<figure><img loading="lazy" src="img/37/12.png" alt="Captura 12 del tute 37"></figure>
+<p>Y se la llama con:</p>
+<p>rop_chain = create_rop_chain()</p>
+<p>Pondremos eso en la parte principal del mi script para que me devuelva el rop.</p>
+<p>Veamos si funciona.</p>
+<p>Algo falló lo cual no es raro tracearemos el rop y veremos qué pasa.</p>
+<figure><img loading="lazy" src="img/37/13.png" alt="Captura 13 del tute 37"></figure>
+<p>Ya estamos atacheados con IDA ya podemos usarlo no necesitamos mona ahora.</p>
+<figure><img loading="lazy" src="img/37/14.png" alt="Captura 14 del tute 37"></figure>
+<p>Veamos en el caso que usa que hay que poner en cada registro.</p>
+<figure><img loading="lazy" src="img/37/15.png" alt="Captura 15 del tute 37"></figure>
+<p>Ese es el modelo alternativo que usa y vemos la diferencia fácil porque en ESI coloca un JMP [EAX] mientras que el que use yo en ESI colocaba la dirección de VA.</p>
+<p>Vayamos traceando a ver que pasa.</p>
+<p>Su primer gadget es</p>
+<figure><img loading="lazy" src="img/37/16.png" alt="Captura 16 del tute 37"></figure>
+<p>Eso debería apuntar a un POP para saltear 4 bytes, ejecutémoslo y veamos que queda en EBP.</p>
+<p>Vemos que en EBP queda la misma dirección de este POP EBP-RET lo cual está bien.</p>
+<figure><img loading="lazy" src="img/37/17.png" alt="Captura 17 del tute 37"></figure>
+<p>Vamos con el siguiente gadget.</p>
+<figure><img loading="lazy" src="img/37/18.png" alt="Captura 18 del tute 37"></figure>
+<p>Mueve a EBX el valor 1 que es el dwsize así que concuerda con el modelo, sigamos son poquitos.</p>
+<figure><img loading="lazy" src="img/37/19.png" alt="Captura 19 del tute 37"></figure>
+<p>Pone en EDX el valor 0x1000 como dice el modelo, sigamos.</p>
+<figure><img loading="lazy" src="img/37/20.png" alt="Captura 20 del tute 37"></figure>
+<p>Pone en ECX el valor 40 como dice el modelo, vamos bien, sigamos.</p>
+<figure><img loading="lazy" src="img/37/21.png" alt="Captura 21 del tute 37"></figure>
+<p>Luego se rompe salta a cualquier cosa y no sigue el ROP como debería ya que lo que continúa no está, eso suele ocurrir cuando hay algún carácter invalido, que no nos dimos cuenta, que corta la entrada de bytes veamos lo que seguiría.</p>
+<figure><img loading="lazy" src="img/37/22.png" alt="Captura 22 del tute 37"></figure>
+<p>Allí se cortó lo que viene es un 0x1a puede ser que no le guste, busquemos otro pop edi que no tenga 0x1a a ver que pasa.</p>
+<p>0x78028756 es el POP EDI que había encontrado la parte anterior usemos este.</p>
+<figure><img loading="lazy" src="img/37/23.png" alt="Captura 23 del tute 37"></figure>
+<p>Volvamos a tracear.</p>
+<figure><img loading="lazy" src="img/37/24.png" alt="Captura 24 del tute 37"></figure>
+<p>Funcionó y se ve el ROP que queda en el stack no se cortó ahora, veamos que guarda en EDI.</p>
+<p>Un puntero a un C3 o RET como dice el modelo, parece que era solo eso, pero ya que estamos terminémoslo de tracear.</p>
+<figure><img loading="lazy" src="img/37/25.png" alt="Captura 25 del tute 37"></figure>
+<p>Vemos que luego del POP ESI, el mismo queda apuntando al JMP [EAX] como decía el modelo.</p>
+<figure><img loading="lazy" src="img/37/26.png" alt="Captura 26 del tute 37"></figure>
+<p>En EAX debe quedar la entrada de la IAT de VA no la dirección.</p>
+<figure><img loading="lazy" src="img/37/27.png" alt="Captura 27 del tute 37"></figure>
+<p>Esa era la entrada de la IAT de VA correcta pero si seguimos dará error</p>
+<figure><img loading="lazy" src="img/37/28.png" alt="Captura 28 del tute 37"></figure>
+<p>Si sigo veo que el error en este caso se produce por el ADD AL, 80 que se le suma a la dirección de la IAT de VA, así que para compensar deberemos restarle 0x80 a la dirección de la entrada de la IAT.</p>
+<figure><img loading="lazy" src="img/37/29.png" alt="Captura 29 del tute 37"></figure>
+<p>Python&gt;hex(0x7802E0B0-0x80)</p>
+<p>0x7802e030</p>
+<p>ROP FINAL</p>
+<figure><img loading="lazy" src="img/37/30.png" alt="Captura 30 del tute 37"></figure>
+<p>Ahora ya debería funcionar.</p>
+<figure><img loading="lazy" src="img/37/31.png" alt="Captura 31 del tute 37"></figure>
+<p>Vimos que el mona ayuda mucho, nos da casi todo bien, pero a veces hay que corregir algo, no siempre es perfecto, igual cuando no hay mucho tiempo, se suele hacer así, aunque no es tan divertido jeje.</p>
+<p>Hasta la parte 38</p>
+<p>Ricardo Narvaja</p>
+</main>
+<footer class="pie">
+  <p>Material educativo y defensivo. Las prácticas se limitan a programas propios, software abierto o crackmes diseñados para aprender. No se enseña a eludir licencias, DRM ni controles de acceso.</p>
+  <p><a href="../00_EMPEZAR_AQUI.html">Inicio</a> · <a href="../guia/etapa-0.html">Etapas</a> · <a href="../fuentes_y_limites.html">Fuentes y límites</a> · <a href="../registro_de_cobertura.csv">Registro de cobertura</a></p>
+</footer>
+<script>
+(function(){
+  function abrir(src){
+    var o=document.createElement('div'); o.className='lightbox-ov';
+    var i=document.createElement('img'); i.src=src; o.appendChild(i);
+    function cerrar(){o.remove(); document.removeEventListener('keydown', onkey);}
+    function onkey(e){ if(e.key==='Escape') cerrar(); }
+    o.addEventListener('click', cerrar);
+    document.addEventListener('keydown', onkey);
+    document.body.appendChild(o);
+  }
+  document.addEventListener('DOMContentLoaded', function(){
+    document.querySelectorAll('figure img, main img').forEach(function(img){
+      img.style.cursor='zoom-in';
+      img.addEventListener('click', function(){ abrir(img.currentSrc||img.src); });
+    });
+  });
+})();
+</script>
+</body>
+</html>

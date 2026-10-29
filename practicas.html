@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Banco de prácticas (CLS)</title>
+<meta name="description" content="Crackmes y targets didácticos del corpus para practicar en VM, con hash y mapeo al curso.">
+<link rel="stylesheet" href="guia/estilo.css">
+</head>
+<body>
+<a class="salto" href="#contenido">Saltar al contenido</a>
+<header class="cabecera">
+  <div class="marca"><a href="00_EMPEZAR_AQUI.html">CLS · Curso de reversing</a> <span class="edicion">edición 5 · 27/10/2026</span></div>
+  <nav class="principal" aria-label="Navegación principal">
+    <a href="00_EMPEZAR_AQUI.html">Inicio</a>
+    <a href="guia/index.html">Curso</a>
+    <a href="materiales.html">Materiales</a>
+    <a href="fichas/index.html">Fichas</a>
+    <a href="glosario.html">Glosario</a>
+    <a href="preguntas_y_respuestas.html">Repaso</a>
+    <a href="buscar.html">Buscar</a>
+  </nav>
+</header>
+<main id="contenido">
+<p class="migas"><a href="00_EMPEZAR_AQUI.html">← Inicio</a></p>
+<h1>Banco de prácticas</h1>
+<p class="meta-tute"><strong>🧪 15 crackmes listos</strong> + 51 targets empacados · todos marcados «práctica (solo VM)» en el inventario</p>
+<aside class="callout peligro"><p class="callout-titulo">Antes de ejecutar NADA de acá</p><p>Estos binarios están en el corpus y el inventario los marcó como material de práctica, pero <strong>no verificamos que sean seguros</strong>. Ejecutalos <strong>solo</strong> así:</p><ul><li><strong>VM aislada</strong> (sin carpetas compartidas ni red), con un <strong>snapshot</strong> previo para revertir.</li><li><strong>Nunca</strong> en tu máquina real ni en una VM con datos tuyos.</li><li>Verificá el <strong>SHA-256</strong> antes de usarlos (está al lado de cada uno) para confirmar que son los mismos que acá.</li><li>Son <strong>crackmes</strong> —programas hechos para practicar reversing—, no software ajeno: el objetivo es entenderlos, no eludir licencias reales.</li></ul><p>Corré bajo tu responsabilidad.</p></aside>
+<h2>Los que usa el curso</h2>
+<p><strong><a class="fuente" href="../telegram/ChatExport_2026-10-23%20%282%29/files/Crackme_cruehead%201.0.EXE">Crackme_cruehead 1.0.EXE</a></strong> (0.01 MB · <code>0c7cdfdb6d4c8876…</code>)<br>El crackme clásico de **Cruehead**, el mismo que reversea el Curso IDA.<br><em>Se usa en:</em> [tutes 3](ida_tutes/3.html), [4](ida_tutes/4.html), [10](ida_tutes/10.html) y [19](ida_tutes/19.html) · lecciones [IDA](guia/02-ida.html) y [Debugger](guia/02-debugger.html).</p>
+<aside class="callout nota"><p class="callout-titulo">Qué NO está</p><p>Varios targets que el Curso IDA nombra (los `HOLA_REVERSER.exe`, `TEST_REVERSER.exe`, `IDA1`–`IDA3.exe`) <strong>no están</strong> como archivo en el corpus, o están en <strong>cuarentena</strong> (por eso no aparecen). Igual podés practicar lo mismo con cualquiera de los crackmes de abajo.</p></aside>
+<h2>Práctica libre (crackmes listos)</h2>
+<p>Crackmes para analizar con el método del curso (strings → <code>main</code> → xrefs → renombrar → confirmar en el debugger). De menor a mayor dificultad, a ojo por tamaño:</p>
+<ul>
+<li><a class="fuente" href="../telegram/ChatExport_2026-10-24%20%281%29/files/crackme%201%20by%20RedH%40wK.exe">crackme 1 by RedH@wK.exe</a> — 0.03 MB · <code>c8442c65f13dce30…</code></li>
+<li><a class="fuente" href="../telegram/ChatExport_2026-10-23%20%282%29/files/Crackme%20SoftDat%233.exe">Crackme SoftDat#3.exe</a> — 0.38 MB · <code>73e7c2be19ef167c…</code></li>
+<li><a class="fuente" href="../telegram/ChatExport_2026-10-24%20%281%29/files/CrackME%21_patched.EXE">CrackME!_patched.EXE</a> — 0.05 MB · <code>91c1d8d80134a946…</code></li>
+<li><a class="fuente" href="../telegram/ChatExport_2026-10-24%20%281%29/files/crackme0x01.exe">crackme0x01.exe</a> — 0.03 MB · <code>2e71f8e41fb780ad…</code></li>
+<li><a class="fuente" href="../telegram/ChatExport_2026-10-23%20%282%29/files/Crackme_4.exe">Crackme_4.exe</a> — 0.11 MB · <code>0f74296f42ccd261…</code></li>
+<li><a class="fuente" href="../telegram/ChatExport_2026-10-23%20%282%29/files/Crackme_packed_dump_SCY.exe">Crackme_packed_dump_SCY.exe</a> — 0.04 MB · <code>6d6f9cda69c886fd…</code></li>
+<li><a class="fuente" href="../telegram/ChatExport_2026-10-24%20%281%29/files/crackmebymike.exe">crackmebymike.exe</a> — 0.03 MB · <code>c69bc2a59141a6c3…</code></li>
+<li><a class="fuente" href="../telegram/ChatExport_2026-10-24%20%281%29/files/CrackMePls.exe">CrackMePls.exe</a> — 0.03 MB · <code>9a6851316378f2a1…</code></li>
+<li><a class="fuente" href="../telegram/ChatExport_2026-10-23%20%282%29/files/IvinCrackMe.exe">IvinCrackMe.exe</a> — 0.5 MB · <code>326f632343e55244…</code></li>
+<li><a class="fuente" href="../telegram/ChatExport_2026-10-23%20%282%29/files/KeyGenMe%23MD5%2BTEAN%20%2BBLOWFISH%2BCRC32%20Boom_unpacked.exe">KeyGenMe#MD5+TEAN +BLOWFISH+CRC32 Boom_unpacked.exe</a> — 0.39 MB · <code>790cf1f313035eef…</code></li>
+<li><a class="fuente" href="../telegram/ChatExport_2026-10-24%20%281%29/files/MiguelKeygenme1.exe">MiguelKeygenme1.exe</a> — 0.1 MB · <code>4375407249f71b93…</code></li>
+<li><a class="fuente" href="../telegram/ChatExport_2026-10-24%20%281%29/files/threadhell-crackme-nyan-fix.exe">threadhell-crackme-nyan-fix.exe</a> — 1.77 MB · <code>1ba29f046b45622f…</code></li>
+<li><a class="fuente" href="../telegram/ChatExport_2026-10-24%20%281%29/files/threadhell-crackme-nyan.exe">threadhell-crackme-nyan.exe</a> — 1.77 MB · <code>7541dc7819ee51db…</code></li>
+<li><a class="fuente" href="../telegram/ChatExport_2026-10-23%20%282%29/files/Unpackme_Confuser1.9.exe">Unpackme_Confuser1.9.exe</a> — 0.06 MB · <code>da9ac0656d4e7cc0…</code></li>
+</ul>
+<h2>Targets empacados (avanzado, fuera del recorrido base)</h2>
+<p>Para practicar <strong>desempaquetado</strong> (UPX, ASPack, etc.). El unpacking de protectores queda fuera del recorrido base de esta guía; se listan por completitud.</p>
+<ul>
+<li><a class="fuente" href="../CLS_fuentes_externas/mega_OTROS/OTROS/COLABORACIONES/COLABORACIONES/Aguml.rar">Aguml.rar</a> — 0.0 MB · <code>ba755b7449221c6f…</code></li>
+<li><a class="fuente" href="../telegram/ChatExport_2026-10-24%20%281%29/files/Crackme.rar">Crackme.rar</a> — 1.32 MB · <code>d087168a2dbf6e73…</code></li>
+<li><a class="fuente" href="../CLS_fuentes_externas/links_chat/CrackMe1/CrackMe1.zip">CrackMe1.zip</a> — 0.04 MB · <code>d550b106a30920a5…</code></li>
+<li><a class="fuente" href="../telegram/ChatExport_2026-10-23%20%282%29/files/CrackMe16.zip">CrackMe16.zip</a> — 0.69 MB · <code>d54499383081d3cd…</code></li>
+<li><a class="fuente" href="../telegram/ChatExport_2026-10-23%20%282%29/files/CrackMe17.zip">CrackMe17.zip</a> — 0.69 MB · <code>f8aa3d5bf30c1d6a…</code></li>
+<li><a class="fuente" href="../telegram/ChatExport_2026-10-24%20%281%29/files/crackme_2%20by_RedH%40wK.rar">crackme_2 by_RedH@wK.rar</a> — 0.01 MB · <code>fc5dbf2636891eca…</code></li>
+<li><a class="fuente" href="../telegram/ChatExport_2026-10-24%20%281%29/files/Crackme_cruehead%201.0.zip">Crackme_cruehead 1.0.zip</a> — 0.0 MB · <code>e737ed08cdb8a23b…</code></li>
+<li><a class="fuente" href="../telegram/ChatExport_2026-10-23%20%282%29/files/crackme_solid_by_F9.zip">crackme_solid_by_F9.zip</a> — 9.01 MB · <code>2d322b07e4898c9a…</code></li>
+<li><a class="fuente" href="../telegram/ChatExport_2026-10-23%20%282%29/files/crackmebymike%20%281%29.rar">crackmebymike (1).rar</a> — 0.01 MB · <code>0cc29978aa98a230…</code></li>
+<li><a class="fuente" href="../telegram/ChatExport_2026-10-23%20%282%29/files/crackmebymike.rar">crackmebymike.rar</a> — 0.01 MB · <code>8dc48022c40a63e6…</code></li>
+<li><a class="fuente" href="../telegram/ChatExport_2026-10-23%20%282%29/files/Crackmes%20SoftDat%20CLS.7z">Crackmes SoftDat CLS.7z</a> — 0.53 MB · <code>c0516f2f0a3960b4…</code></li>
+<li><a class="fuente" href="../CLS_fuentes_externas/links_chat/EJERCICIO_3/EJERCICIO_3.zip">EJERCICIO_3.zip</a> — 0.01 MB · <code>543fe15ebfbb9be0…</code></li>
+<li><a class="fuente" href="../CLS_fuentes_externas/links_chat/EJERCICIO_4.v2/EJERCICIO_4.v2.zip">EJERCICIO_4.v2.zip</a> — 0.01 MB · <code>6b03c85d819a1b58…</code></li>
+<li><a class="fuente" href="../CLS_fuentes_externas/links_chat/EJERCICIO_5/EJERCICIO_5.zip">EJERCICIO_5.zip</a> — 0.01 MB · <code>30b6a44e448499bc…</code></li>
+<li><a class="fuente" href="../CLS_fuentes_externas/links_chat/EJERCICIO_6/EJERCICIO_6.zip">EJERCICIO_6.zip</a> — 0.01 MB · <code>c64ed36ab1d9f032…</code></li>
+<li><a class="fuente" href="../CLS_fuentes_externas/links_chat/EJERCICIO_6_src/EJERCICIO_6_src.zip">EJERCICIO_6_src.zip</a> — 0.71 MB · <code>b35a2429d754df96…</code></li>
+<li><a class="fuente" href="../CLS_fuentes_externas/links_chat/EJERCICIO_6b/EJERCICIO_6b.zip">EJERCICIO_6b.zip</a> — 0.01 MB · <code>ef38797a8d72b8d8…</code></li>
+<li><a class="fuente" href="../telegram/ChatExport_2026-10-24%20%281%29/files/EJERCICIO_6c.zip">EJERCICIO_6c.zip</a> — 0.01 MB · <code>a651f59bc27d8be5…</code></li>
+<li><a class="fuente" href="../CLS_fuentes_externas/links_chat/EJERCICIO_6d/EJERCICIO_6d.zip">EJERCICIO_6d.zip</a> — 0.01 MB · <code>c236bd1b8d4ee71b…</code></li>
+<li><a class="fuente" href="../telegram/ChatExport_2026-10-23%20%282%29/files/EJERCICIO_RICARDO_JUNTADA_1_SOLUCION_Fare9.zip">EJERCICIO_RICARDO_JUNTADA_1_SOLUCION_Fare9.zip</a> — 1.3 MB · <code>5a42abf15f932772…</code></li>
+<li><a class="fuente" href="../telegram/ChatExport_2026-10-23%20%282%29/files/EJERCICIO_SOLID_UNPACKME_EXE_PACK_SOLUCION_Fare9.zip">EJERCICIO_SOLID_UNPACKME_EXE_PACK_SOLUCION_Fare9.zip</a> — 2.37 MB · <code>946cba482c86a190…</code></li>
+<li><a class="fuente" href="../telegram/ChatExport_2026-10-24%20%281%29/files/EJERCICIOS_JUNTADA%20password%20a_2.rar">EJERCICIOS_JUNTADA password a_2.rar</a> — 0.27 MB · <code>936b2fd13d7fe438…</code></li>
+<li><a class="fuente" href="../telegram/ChatExport_2026-10-23%20%282%29/files/Ejercicios_solos-20200806T151631Z-001.zip">Ejercicios_solos-20200806T151631Z-001.zip</a> — 10.05 MB · <code>777f14b6f3521042…</code></li>
+<li><a class="fuente" href="../telegram/ChatExport_2026-10-24%20%281%29/files/Generando_Serial_con_Fuerza_Bruta_Scripts_en_x32dbg_Crackme6_Por.rar">Generando_Serial_con_Fuerza_Bruta_Scripts_en_x32dbg_Crackme6_Por.rar</a> — 4.11 MB · <code>4c2c6083d91e961e…</code></li>
+<li><a class="fuente" href="../telegram/ChatExport_2026-10-23%20%282%29/files/IvinCrackMe%20Setup.rar">IvinCrackMe Setup.rar</a> — 5.14 MB · <code>70167a5aed660d1c…</code></li>
+<li><a class="fuente" href="../telegram/ChatExport_2026-10-23%20%282%29/files/IvinCrackMe%20v1.0.rar">IvinCrackMe v1.0.rar</a> — 1.69 MB · <code>178a8aa3127e0bd5…</code></li>
+<li><a class="fuente" href="../telegram/ChatExport_2026-10-23%20%282%29/files/IvinCrackMeBugFixedNoPacker.rar">IvinCrackMeBugFixedNoPacker.rar</a> — 2.36 MB · <code>6813c3aee1ca536a…</code></li>
+<li><a class="fuente" href="../telegram/ChatExport_2026-10-23%20%282%29/files/IvinCrackMeFinal.rar">IvinCrackMeFinal.rar</a> — 2.36 MB · <code>aa4bbc0b5a1f8506…</code></li>
+<li><a class="fuente" href="../telegram/ChatExport_2026-10-23%20%282%29/files/Keygen%20crackme%20Crueshead%20con%20clase.rar">Keygen crackme Crueshead con clase.rar</a> — 0.36 MB · <code>042e1effcc1f8220…</code></li>
+<li><a class="fuente" href="../telegram/ChatExport_2026-10-23%20%282%29/files/Keygen%20crackme%20Crueshead.rar">Keygen crackme Crueshead.rar</a> — 0.35 MB · <code>7ec8c5ba555243f3…</code></li>
+<li><a class="fuente" href="../CLS_fuentes_externas/links_chat/Keygenme%20mas%20dificil%20by%20AGUML/Keygenme%20mas%20dificil%20by%20AGUML.zip">Keygenme mas dificil by AGUML.zip</a> — 0.21 MB · <code>03899ea64e2f51c0…</code></li>
+<li><a class="fuente" href="../telegram/ChatExport_2026-10-23%20%282%29/files/keygenme.rar">keygenme.rar</a> — 0.0 MB · <code>735b5b28be6e28f0…</code></li>
+<li><a class="fuente" href="../telegram/ChatExport_2026-10-24%20%281%29/files/keygenmePeque%C3%B1o2Keygen.rar">keygenmePequeño2Keygen.rar</a> — 0.97 MB · <code>af635c874ec48b00…</code></li>
+<li><a class="fuente" href="../CLS_fuentes_externas/links_chat/KeygenmeZLT/KeygenmeZLT.rar">KeygenmeZLT.rar</a> — 0.57 MB · <code>959a8f4508d5dc0d…</code></li>
+<li><a class="fuente" href="../telegram/ChatExport_2026-10-24%20%281%29/files/MatlabDecompiler.rar">MatlabDecompiler.rar</a> — 1.51 MB · <code>962b000498d7d3c5…</code></li>
+<li><a class="fuente" href="../telegram/ChatExport_2026-10-24%20%281%29/files/MCrackme.zip">MCrackme.zip</a> — 0.07 MB · <code>723d69369d910904…</code></li>
+<li><a class="fuente" href="../CLS_fuentes_externas/mega_OTROS/OTROS/COLABORACIONES/COLABORACIONES/PROGRAMAS%20JOE%20CRACKER.rar">PROGRAMAS JOE CRACKER.rar</a> — 6.35 MB · <code>120843c7c41d7286…</code></li>
+<li><a class="fuente" href="../telegram/ChatExport_2026-10-24%20%281%29/files/RDG_Crackme_2022_es.zip">RDG_Crackme_2022_es.zip</a> — 0.18 MB · <code>52c2b3bf1d9f20d3…</code></li>
+<li><a class="fuente" href="../telegram/ChatExport_2026-10-23%20%282%29/files/RE_Lab_10.zip">RE_Lab_10.zip</a> — 1.56 MB · <code>7d4bee247d2f43c3…</code></li>
+<li><a class="fuente" href="../telegram/ChatExport_2026-10-23%20%282%29/files/RE_Lab_11.zip">RE_Lab_11.zip</a> — 1.56 MB · <code>6537725e761216d9…</code></li>
+<li><a class="fuente" href="../telegram/ChatExport_2026-10-23%20%282%29/files/RE_Lab_12.zip">RE_Lab_12.zip</a> — 1.56 MB · <code>e831c9922fc0efc7…</code></li>
+<li><a class="fuente" href="../telegram/ChatExport_2026-10-23%20%282%29/files/RE_Lab_13.zip">RE_Lab_13.zip</a> — 1.56 MB · <code>9f4a1bb75c675ae7…</code></li>
+<li><a class="fuente" href="../telegram/ChatExport_2026-10-23%20%282%29/files/RE_Lab_15.rar">RE_Lab_15.rar</a> — 0.05 MB · <code>9554935c7f301646…</code></li>
+<li><a class="fuente" href="../telegram/ChatExport_2026-10-23%20%282%29/files/RE_Lab_5.zip">RE_Lab_5.zip</a> — 1.27 MB · <code>4bd728a8e2ec9e70…</code></li>
+<li><a class="fuente" href="../telegram/ChatExport_2026-10-23%20%282%29/files/RE_Lab_6.zip">RE_Lab_6.zip</a> — 1.27 MB · <code>a272533c48eb2828…</code></li>
+<li><a class="fuente" href="../telegram/ChatExport_2026-10-23%20%282%29/files/RE_Lab_7.zip">RE_Lab_7.zip</a> — 1.27 MB · <code>21cbc593d93c2f00…</code></li>
+<li><a class="fuente" href="../telegram/ChatExport_2026-10-23%20%282%29/files/RE_Lab_8.zip">RE_Lab_8.zip</a> — 1.27 MB · <code>60eaf2f9df2b80e9…</code></li>
+<li><a class="fuente" href="../telegram/ChatExport_2026-10-23%20%282%29/files/RE_Lab_9.zip">RE_Lab_9.zip</a> — 1.27 MB · <code>69fa578c9243f162…</code></li>
+<li><a class="fuente" href="../telegram/ChatExport_2026-10-24%20%281%29/files/Realist%20KeygenMe%203%20-%20Bakasura%20pwd%20a.rar">Realist KeygenMe 3 - Bakasura pwd a.rar</a> — 4.27 MB · <code>441db8c252ac9839…</code></li>
+<li><a class="fuente" href="../telegram/ChatExport_2026-10-23%20%282%29/files/Resolucion_EJERCICIO_RICARDO.EXE_CTF.zip">Resolucion_EJERCICIO_RICARDO.EXE_CTF.zip</a> — 0.74 MB · <code>9f4c5bc77e09b2d3…</code></li>
+<li><a class="fuente" href="../telegram/ChatExport_2026-10-24%20%281%29/files/SDUE1.exe__menu_secreto_activado.rar">SDUE1.exe__menu_secreto_activado.rar</a> — 0.21 MB · <code>5dcb1c572f305154…</code></li>
+</ul>
+<p class="migas"><a href="materiales.html">← Todos los materiales</a> · <a href="00_EMPEZAR_AQUI.html">Inicio</a></p>
+</main>
+<footer class="pie">
+  <p>Material educativo y defensivo. Las prácticas se limitan a programas propios, software abierto o crackmes diseñados para aprender. No se enseña a eludir licencias, DRM ni controles de acceso.</p>
+  <p><a href="00_EMPEZAR_AQUI.html">Inicio</a> · <a href="guia/etapa-0.html">Etapas</a> · <a href="fuentes_y_limites.html">Fuentes y límites</a> · <a href="registro_de_cobertura.csv">Registro de cobertura</a></p>
+</footer>
+<script>
+(function(){
+  function abrir(src){
+    var o=document.createElement('div'); o.className='lightbox-ov';
+    var i=document.createElement('img'); i.src=src; o.appendChild(i);
+    function cerrar(){o.remove(); document.removeEventListener('keydown', onkey);}
+    function onkey(e){ if(e.key==='Escape') cerrar(); }
+    o.addEventListener('click', cerrar);
+    document.addEventListener('keydown', onkey);
+    document.body.appendChild(o);
+  }
+  document.addEventListener('DOMContentLoaded', function(){
+    document.querySelectorAll('figure img, main img').forEach(function(img){
+      img.style.cursor='zoom-in';
+      img.addEventListener('click', function(){ abrir(img.currentSrc||img.src); });
+    });
+  });
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,183 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tute 3 · El LOADER de IDA — Curso IDA</title>
+<meta name="description" content="Tutorial ilustrado del tute 3 del Curso IDA desde cero: El LOADER de IDA.">
+<link rel="stylesheet" href="../guia/estilo.css">
+</head>
+<body>
+<a class="salto" href="#contenido">Saltar al contenido</a>
+<header class="cabecera">
+  <div class="marca"><a href="../00_EMPEZAR_AQUI.html">CLS · Curso de reversing</a> <span class="edicion">edición 5 · 27/10/2026</span></div>
+  <nav class="principal" aria-label="Navegación principal">
+    <a href="../00_EMPEZAR_AQUI.html">Inicio</a>
+    <a href="../guia/index.html">Curso</a>
+    <a href="../fichas/index.html">Fichas</a>
+    <a href="../glosario.html">Glosario</a>
+    <a href="../preguntas_y_respuestas.html">Repaso</a>
+  </nav>
+</header>
+<main id="contenido">
+<p class="migas"><a href="../ida-tutes.html">← Índice de los 69 tutes de IDA</a></p>
+<h1>Tute 3 · El LOADER de IDA</h1>
+<p class="meta-tute"><strong>⏱ 12 min de lectura</strong> · 2.213 palabras · 33 capturas · grupo: Base de IDA, assembly y primeras prácticas</p>
+<aside class="callout nota"><p class="callout-titulo">Qué enseña</p><p>El analizador estático: recorrer sus partes y las primeras instrucciones de transferencia.</p></aside>
+<p><em>▶ video afín (mismo autor, en x64dbg):</em> <a href="../videos.html">«14 Conociendo IDA»</a> · <em>se conecta con:</em> <a href="../guia/02-herramientas.html">Herramientas</a> · <a href="../guia/02-ida.html">IDA</a> · <a href="../guia/02-instrucciones.html">Instrucciones</a> · <a href="../guia/02-flujo.html">Flujo</a> · <a href="../guia/02-debugger.html">Debugger</a> · <a href="../guia/01-numeros.html">Números</a></p>
+<aside class="callout aviso"><p class="callout-titulo">Material observado, no reescrito</p><p>Es el texto y las capturas del <code>.docx</code> original del curso, solo presentados como tutorial. Puede tener erratas de origen. El autor del curso es Ricardo Narvaja.</p></aside>
+<hr>
+<p>INTRODUCCIÓN AL REVERSING CON IDA PRO DESDE CERO PARTE 3</p>
+<p>EL LOADER</p>
+<p>Ya vimos que cuando en IDA abrimos un ejecutable, el mismo se abre en el LOADER que es el analizador estático del mismo.</p>
+<p>Iremos analizando sus partes y peculiaridades, mucho de lo que hemos visto hasta ahora se aplican tanto al LOADER como al DEBUGGER, en el caso que no sea así se aclarara.</p>
+<p>Obviamente ya el hecho de que en el LOADER no se ejecute absolutamente el programa sino se analice y se cree una database con la información del mismo hace una diferencia significativa con respecto al DEBUGGER.</p>
+<p>En el LOADER no hay ventana de REGISTROS, ventana de STACK ni listado de módulos que están cargados en memoria esas son cosas que se ven al correr y debuggear el programa.</p>
+<p>Habiendo abierto el CRACKME.EXE que es el ejecutable del crackme de Cruehead si miramos en la lista de procesos de Windows, vemos que no está corriendo ni nunca se ejecuta el mismo si no abrimos voluntariamente el DEBUGGER en IDA.</p>
+<p>Esto para ciertos usos como el análisis de malware, exploit etc es muy útil, porque no siempre vamos a poder acceder a alguna función que necesitemos estudiar debuggeando, mientras que en el LOADER podemos analizar cualquiera de las funciones del programa, sepamos cómo se llega a ella o no.</p>
+<p>Por supuesto el análisis de las funciones merece que hablemos un poco antes de los registros y las instrucciones, para qué sirve cada uno, porque a pesar de no estar debuggeando y no tener una ventana de los registros con los valores de cada momento, las instrucciones los usan y necesitamos entenderlas para poder saber qué hace un programa.</p>
+<p>Ahora para que sirven y que son exactamente los registros?</p>
+<p>Bueno el procesador necesita asistentes en su tarea de ejecutar los programas.</p>
+<p>Los registros lo ayudan en ello, cuando veamos las instrucciones ASM veremos por ejemplo que no se pueden sumar el contenido de dos posiciones de memoria directamente, el procesador tiene que pasar una de ellas a un registro y luego sumarla con la otra posición de memoria, este es un ejemplo pero por supuesto ciertos registros tienen usos más específicos veamos.</p>
+<p>Los registros que se usan en 32 bits  son EAX, ECX, EDX, EBX, ESP, EBP, ESI, EDI y EIP (al final del curso habrá una parte dedicada a 64 bits).</p>
+<figure><img loading="lazy" src="img/3/1.png" alt="Captura 1 del tute 3"></figure>
+<p>Registros de propósito múltiples EAX (acumulador): El acumulador se utiliza para instrucciones tales como la división, la multiplicación y algunas instrucciones de formato, y como registro de propósito general.</p>
+<p>EBX (índice de base): El registro EBX puede direccionar datos de memoria y lógicamente también es un registro de propósito general. ECX (cuenta): El ECX es un registro de propósito general que se puede usar como contador para las distintas instrucciones. También puede contener la dirección de desplazamiento de los datos en memoria. Las instrucciones que usan un contador son las instrucciones de cadena repetidas, las instrucciones de desplazamiento, rotación y LOOP/LOOPD.</p>
+<p>EDX (datos): es un registro de propósito general que contiene parte del producto de una multiplicación o parte del dividendo de una división. También puede direccionar datos en memoria. EBP (apuntador de base): EBP apunta hacia una localidad de memoria, casi siempre como base de la localización de argumentos y variables en una función, además de ser también de propósito general.</p>
+<p>EDI (índice de destino): A menudo, EDI direcciona datos del destino o destination de las cadenas para las instrucciones de cadena. También funciona como registro de propósito general.</p>
+<p>ESI (índice de fuente): El registro del índice fuente o source con frecuencia direcciona datos del origen de las cadenas para las instrucciones de cadena. Al igual que EDI, ESI también funciona como un registro de propósito general.</p>
+<p>EIP: Índice que apunta a la siguiente instrucción a ejecutar</p>
+<p>ESP: Índice que apunta a la parte superior del stack o pila.</p>
+<p>Resumiendo lo que dice este tipo al cual copie.</p>
+<p>Los ocho registros son el EAX (acumulador), EBX (base), ECX (contador), EDX (datos), ESP (puntero de pila), EBP (puntero base), ESI (índice fuente) y EDI (índice destino).</p>
+<p>También existen los registros de 16 bits y 8 bits, que son partes de los registros anteriores.</p>
+<p>Si EAX vale 12345678</p>
+<p>AX son las últimas cuatro cifras (16 bits)</p>
+<figure><img loading="lazy" src="img/3/2.png" alt="Captura 2 del tute 3"></figure>
+<p>AH la 5 y 6 cifra y a su vez AL las últimas dos cifras (8 bits cada uno)</p>
+<figure><img loading="lazy" src="img/3/3.png" alt="Captura 3 del tute 3"></figure>
+<p>Existe entonces un registro de 16 bits para la parte baja de EAX llamado AX y dos registros de 8 bits llamados AH y AL, no existen registros especiales para la parte alta de cualquier registro.</p>
+<p>Existen de la misma forma estos registros también para EBX (BX, BH y BL), para ECX (CX, CH y CL) y así para casi todos los registros (ESP solo tiene SP de 16 bits pero no SL de 8 bits por ejemplo)</p>
+<figure><img loading="lazy" src="img/3/4.png" alt="Captura 4 del tute 3"></figure>
+<p>Allí se pueden apreciar los registros como EAX EDX ECX y EBX que si tienen subregistros de 16 y 8 bits y EBP, ESI, EDI y ESP que solo tienen subregistros de 16 bits.</p>
+<figure><img loading="lazy" src="img/3/5.png" alt="Captura 5 del tute 3"></figure>
+<p>Ya iremos viendo los demás registros solo queda como registro auxiliar importante el EFLAGS que según el valor que tenga enciende flags que tomaran decisiones en ciertos momentos del programa como veremos más adelante, los segments registers direccionan a diferentes partes del ejecutable CS=CODE, DS=DATA etc.</p>
+<p>Otro detalle importante son los tamaños de los tipos de datos más usados</p>
+<figure><img loading="lazy" src="img/3/6.png" alt="Captura 6 del tute 3"></figure>
+<p>IDA maneja más tipos de datos que iremos viendo poco a poco para no complicar, lo importante es saber de movida que BYTE es un 1 byte en la memoria, WORD son 2 bytes y DWORD 4 bytes.</p>
+<p>INSTRUCCIONES</p>
+<p>IDA trabaja con una sintaxis de instrucciones que no es la más sencilla del mundo ni mucho menos, la mayoría están acostumbrados al desensamblado del OLLYDBG que es más sencillo y descafeinado (más fácil de entender jeje), aunque da menos información como verán.</p>
+<p>Instrucciones de Transferencia de Datos</p>
+<pre class='asm'>MOV</pre>
+<p>MOV dest,src: Copia el contenido del operando fuente (src) en el destino (dest).Operación: dest &lt;- src</p>
+<p>Aquí se dan varias posibilidades podemos como primera posibilidad mover el valor de un registro a otro, por ejemplo.</p>
+<pre class='asm'>MOV EAX, EDI</pre>
+<figure><img loading="lazy" src="img/3/7.png" alt="Captura 7 del tute 3"></figure>
+<p>En general se puede mover desde o hacia un registro directamente solo con la salvedad de EIP que no puede ser DESTINATION ni SOURCE de ninguna operación en forma directa, no podríamos hacer</p>
+<pre class='asm'>MOV EIP, EAX</pre>
+<p>Eso no es válido.</p>
+<p>Otra opción es mover una constante a un registro como por ejemplo</p>
+<pre class='asm'>MOV EAX, 1</pre>
+<figure><img loading="lazy" src="img/3/8.png" alt="Captura 8 del tute 3"></figure>
+<p>Otra opción es mover el valor de una dirección de memoria no su contenido (estas instrucciones que puse en las imágenes  pertenecen a otro ejecutable no al CRACKME.exe no había ejemplos de estas instrucciones en el mismo sino al VEViewer.exe que esta adjunto con este parte 3)</p>
+<figure><img loading="lazy" src="img/3/9.png" alt="Captura 9 del tute 3"></figure>
+<p>En ese caso cuando el valor que se va a mover es una dirección de memoria, la palabra OFFSET adelante nos indica que debemos usar la dirección, no su contenido.</p>
+<p>O sea esto si apreto Q me lo cambia a</p>
+<figure><img loading="lazy" src="img/3/10.png" alt="Captura 10 del tute 3"></figure>
+<pre class='asm'>MOV EAX, 46f038</pre>
+<p>Que es una instrucción mas tipo OLLY pero que no me da ninguna información acerca del contenido de dicha dirección, si hacemos click derecho en la dirección 46f038 podemos volver a la instrucción original.</p>
+<figure><img loading="lazy" src="img/3/11.png" alt="Captura 11 del tute 3"></figure>
+<p>Y quedara como antes</p>
+<p>Que me dice esa información extra que me da el IDA sobre dicha dirección de memoria?</p>
+<figure><img loading="lazy" src="img/3/12.png" alt="Captura 12 del tute 3"></figure>
+<p>Si abro la ventana HEX DUMP y busco dicha dirección veo que inicialmente hay ceros, podría saber que es un DWORD pero eso realmente no lo sé porque depende de donde usa ese valor el programa, lo que define el tipo de variable.</p>
+<figure><img loading="lazy" src="img/3/13.png" alt="Captura 13 del tute 3"></figure>
+<p>Si vuelvo al listado y hago doble click en la dirección.</p>
+<figure><img loading="lazy" src="img/3/14.png" alt="Captura 14 del tute 3"></figure>
+<p>Ahí veré porque el IDA me dice que el contenido de dicha dirección es un DWORD, en el listado desensamblado del IDA cuando vemos zonas de memoria que no son código, como en este caso perteneciente a la sección data,  por supuesto la primera columna son las direcciones.</p>
+<p>Justo al lado dice dword_46F038 que quiere decir que el contenido de esa dirección es un DWORD es como una aclaración de la dirección que está a la izquierda, luego está el tipo  de datos dd que es DWORD y luego el valor que contiene dicha posición de memoria que es cero.</p>
+<p>O sea IDA me está diciendo que el programa usa esa dirección para guardar un DWORD y más a la derecha veo la referencia adonde está siendo usado ese DWORD.</p>
+<figure><img loading="lazy" src="img/3/15.png" alt="Captura 15 del tute 3"></figure>
+<p>Allí hay dos referencias cada flechita es una y posando el mouse encima puedo ver el código, también si apreto la X encima de la dirección veo desde donde es accedida.</p>
+<figure><img loading="lazy" src="img/3/16.png" alt="Captura 16 del tute 3"></figure>
+<p>La primera es cuando lee la dirección donde estábamos antes, la segunda escribe un DWORD en el contenido de 0x46F038, por eso el IDA en la primera instrucción nos dijo que esa dirección apuntaba a un DWORD, porque había otra referencia que accedía a ella y allí escribía un dword y así todo cierra.</p>
+<figure><img loading="lazy" src="img/3/17.png" alt="Captura 17 del tute 3"></figure>
+<p>Así que el IDA en la instrucción original no solo me informaba que iba a mover la dirección tal a un registro, sino que me decía que esa dirección contenía un DWORD, lo cual es un plus.</p>
+<p>Así que ahí vemos que cuando se trata de direcciones numéricas, IDA marca la misma como OFFSET y cuando vamos a buscar el contenido de la misma, como en este caso sería el cero, no usa corchetes si es una dirección numérica.</p>
+<p>Como vimos</p>
+<pre class='asm'>mov     eax, offset dword_46F908</pre>
+<p>Mueve la dirección 0x46F908 a EAX</p>
+<pre class='asm'>mov     eax, dword_46F908</pre>
+<p>Mueve el contenido o el valor que se halla en dicha dirección</p>
+<figure><img loading="lazy" src="img/3/18.png" alt="Captura 18 del tute 3"></figure>
+<p>Esta instrucción se vería en el OLLY con corchetes para los que están acostumbrados al uso del mismo.</p>
+<pre class='asm'>MOV EAX,DWORD PTR DS:[46f908]</pre>
+<p>O sea que cuando una dirección tiene la palabra OFFSET completa delante, se refiere al valor numérico de la dirección en sí, y cuando no lo tiene se refiere al contenido de dicha dirección.</p>
+<p>Esto solo ocurre cuando nos referimos a direcciones numéricas, si trabajamos con registros solamente.</p>
+<figure><img loading="lazy" src="img/3/19.png" alt="Captura 19 del tute 3"></figure>
+<p>Ahí si usa corchetes porque obviamente no sabe estáticamente que valor puede tener el registro en ese momento, y no puede saber a qué dirección apuntara para sacar algo más de información de allí.</p>
+<p>Por supuesto en este caso si EDI apunta a por ejemplo 0x10000 dicha instrucción buscara el contenido en dicha dirección de memoria y lo copiara en ECX.</p>
+<p>Así que es vital entender que cuando IDA usa la palabra OFFSET completa delante de una dirección, se refiera al valor numérico de la misma dirección y no a su contenido hagamos un ejemplo más.</p>
+<figure><img loading="lazy" src="img/3/20.png" alt="Captura 20 del tute 3"></figure>
+<p>Allí vemos que mueve a EAX el valor 0x45f4d0 ya que esta la palabra OFFSET completa delante y me aclara que dicha dirección contiene una stru_ o sea una estructura.</p>
+<figure><img loading="lazy" src="img/3/21.png" alt="Captura 21 del tute 3"></figure>
+<p>En este otro caso, en la primera instrucción marcada mueve el contenido de 0x46fc50 que es un DWORD y en la de abajo mueve la dirección en si o sea el número 0x46FC50.</p>
+<p>Podemos ver qué valor contiene dicha dirección para ver que moverá en 0x42f302, si hago click en 0x46fc50 veamos que hay allí.</p>
+<figure><img loading="lazy" src="img/3/22.png" alt="Captura 22 del tute 3"></figure>
+<p>Vemos que moverá un cero, si es que no se ejecutó alguna otra instrucción que guarde algún valor allí y lo modifique, como nos muestra las referencias.</p>
+<p>Allí vemos al ver las referencias con X, que en esa instrucción guarda un DWORD</p>
+<figure><img loading="lazy" src="img/3/23.png" alt="Captura 23 del tute 3"></figure>
+<p>Justo en esa instrucción que está marcada en amarillo guarda un DWORD en dicha dirección de memoria, todos los otros o bien leen la dirección con offset o bien leen el valor como las que no tienen la palabra offset.</p>
+<p>Por supuesto se pueden mover también contantes a los registros de 16 bits y 8 bits que vimos antes.</p>
+<figure><img loading="lazy" src="img/3/24.png" alt="Captura 24 del tute 3"></figure>
+<p>Mueve a AL el valor 1 dejando el resto de EAX con el valor que tenía antes solo cambia el byte más bajo.</p>
+<figure><img loading="lazy" src="img/3/25.png" alt="Captura 25 del tute 3"></figure>
+<p>Allí mueve a AX, el contenido de la dirección de memoria 0x459c24 que nos dice que es un WORD.</p>
+<figure><img loading="lazy" src="img/3/26.png" alt="Captura 26 del tute 3"></figure>
+<p>Y vemos que inicialmente es un cero, quizás más adelante al correr el programa se modifique.</p>
+<figure><img loading="lazy" src="img/3/27.png" alt="Captura 27 del tute 3"></figure>
+<p>Allí mueve AX al contenido de EBX que como es un registro y no sabe cuánto valdrá en ese momento, no puede aclarar más y usa corchete para indicar que escribe en el contenido de EBX.</p>
+<figure><img loading="lazy" src="img/3/28.png" alt="Captura 28 del tute 3"></figure>
+<p>Allí igualmente escribirá en el contenido de ESI+8 el valor de AX.</p>
+<p>Otro ejemplo</p>
+<figure><img loading="lazy" src="img/3/29.png" alt="Captura 29 del tute 3"></figure>
+<p>Si hago click en el nombre feo me lleva a</p>
+<figure><img loading="lazy" src="img/3/30.png" alt="Captura 30 del tute 3"></figure>
+<p>Sabemos que la IAT o sea la tabla que guarda cuando arranca el ejecutable, las direcciones de las funciones importadas está casi siempre en la sección idata.</p>
+<p>Si voy a ver a la vista HEX DUMP esa dirección todavía no tiene el valor de la función ya que se rellena la IAT cuando arranca y el proceso no arranco.</p>
+<figure><img loading="lazy" src="img/3/31.png" alt="Captura 31 del tute 3"></figure>
+<p>Si voy a OPTIONS-DEMANGLE NAMES y pongo la tilde en NAMES se ve un poco mejor.</p>
+<figure><img loading="lazy" src="img/3/32.png" alt="Captura 32 del tute 3"></figure>
+<p>El prefijo extrn se refiere a que es una función importada EXTERNA a este ejecutable.</p>
+<p>Si subimos vemos que nos dice que son funciones importadas de la DVCORE.dll y más arriba hay más funciones de otras dll.</p>
+<figure><img loading="lazy" src="img/3/33.png" alt="Captura 33 del tute 3"></figure>
+<p>Bueno hemos visto diferentes ejemplos de MOV que pueden practicar y mirar en el IDA con el ejecutable que adjunte.</p>
+<p>En la parte 4 seguiremos con más instrucciones.</p>
+<p>Bye</p>
+<p>Ricardo Narvaja</p>
+</main>
+<footer class="pie">
+  <p>Material educativo y defensivo. Las prácticas se limitan a programas propios, software abierto o crackmes diseñados para aprender. No se enseña a eludir licencias, DRM ni controles de acceso.</p>
+  <p><a href="../00_EMPEZAR_AQUI.html">Inicio</a> · <a href="../guia/etapa-0.html">Etapas</a> · <a href="../fuentes_y_limites.html">Fuentes y límites</a> · <a href="../registro_de_cobertura.csv">Registro de cobertura</a></p>
+</footer>
+<script>
+(function(){
+  function abrir(src){
+    var o=document.createElement('div'); o.className='lightbox-ov';
+    var i=document.createElement('img'); i.src=src; o.appendChild(i);
+    function cerrar(){o.remove(); document.removeEventListener('keydown', onkey);}
+    function onkey(e){ if(e.key==='Escape') cerrar(); }
+    o.addEventListener('click', cerrar);
+    document.addEventListener('keydown', onkey);
+    document.body.appendChild(o);
+  }
+  document.addEventListener('DOMContentLoaded', function(){
+    document.querySelectorAll('figure img, main img').forEach(function(img){
+      img.style.cursor='zoom-in';
+      img.addEventListener('click', function(){ abrir(img.currentSrc||img.src); });
+    });
+  });
+})();
+</script>
+</body>
+</html>

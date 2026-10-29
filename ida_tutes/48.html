@@ -1,0 +1,378 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tute 48 · LFH vs. heap estándar — Curso IDA</title>
+<meta name="description" content="Tutorial ilustrado del tute 48 del Curso IDA desde cero: LFH vs. heap estándar.">
+<link rel="stylesheet" href="../guia/estilo.css">
+</head>
+<body>
+<a class="salto" href="#contenido">Saltar al contenido</a>
+<header class="cabecera">
+  <div class="marca"><a href="../00_EMPEZAR_AQUI.html">CLS · Curso de reversing</a> <span class="edicion">edición 5 · 27/10/2026</span></div>
+  <nav class="principal" aria-label="Navegación principal">
+    <a href="../00_EMPEZAR_AQUI.html">Inicio</a>
+    <a href="../guia/index.html">Curso</a>
+    <a href="../fichas/index.html">Fichas</a>
+    <a href="../glosario.html">Glosario</a>
+    <a href="../preguntas_y_respuestas.html">Repaso</a>
+  </nav>
+</header>
+<main id="contenido">
+<p class="migas"><a href="../ida-tutes.html">← Índice de los 69 tutes de IDA</a></p>
+<h1>Tute 48 · LFH vs. heap estándar</h1>
+<p class="meta-tute"><strong>⏱ 15 min de lectura</strong> · 2.633 palabras · 120 capturas · grupo: Vulnerabilidades y exploiting en user-mode (VLC/CVE, DEP, Mona, canary/SEH, shellcode, heap)</p>
+<aside class="callout nota"><p class="callout-titulo">Qué enseña</p><p>Seguir una alocación y ver dónde cae (LFH o heap estándar).</p></aside>
+<p><em>se conecta con:</em> <a href="../guia/05-vulnerabilidades.html">Vulnerabilidades (defensivo)</a></p>
+<aside class="callout aviso"><p class="callout-titulo">Material observado, no reescrito</p><p>Es el texto y las capturas del <code>.docx</code> original del curso, solo presentados como tutorial. Puede tener erratas de origen. El autor del curso es Ricardo Narvaja.</p></aside>
+<hr>
+<p>INTRODUCCIÓN AL REVERSING CON IDA PRO DESDE CERO PARTE 48</p>
+<p>ALLOCA EN LFH O HEAP ESTÁNDAR?</p>
+<p>Trataremos de seguir una allocacion a ver si podemos entender la lógica de la misma y ver como dice si alloca en el LFH o en el HEAP ESTANDAR.</p>
+<p>Seguiremos usando el ejecutable de la misma práctica.</p>
+<p>Arrancamos el ejecutable fuera de IDA desde una consola, sin usar el script de Python</p>
+<p>Ingresamos el numero que nos pide 1073741828 a mano, atacheamos el IDA con WINDBG como debugger, ponemos un breakpoint en el malloc y apretamos ENTER.</p>
+<figure><img loading="lazy" src="img/48/1.png" alt="Captura 1 del tute 48"></figure>
+<figure><img loading="lazy" src="img/48/2.png" alt="Captura 2 del tute 48"></figure>
+<p>Si traceamos entrando en el malloc con f7 vemos que el size lo pasa a ESI, lo compara si es mas grande que 0xFFFFFFE0 como en nuestro caso es 0x10 no hay problema, lo pushea como argumento y ahí mismo vemos que pushea en mi caso 0x240000 que era uno de los heaps asi que ya sabemos que va a trabajar con ese.</p>
+<figure><img loading="lazy" src="img/48/3.png" alt="Captura 3 del tute 48"></figure>
+<figure><img loading="lazy" src="img/48/4.png" alt="Captura 4 del tute 48"></figure>
+<p>Ahí llegamos a podemos crear la función con click derecho - Create function y renombrar los argumentos que eran el size, un cero y la base del heap.</p>
+<p>Aca esta la estructura del heap listada para poder copiar y pegar.</p>
+<p># +0x000 Entry            : _HEAP_ENTRY</p>
+<p># +0x008 SegmentSignature : Uint4B</p>
+<p># +0x00c SegmentFlags     : Uint4B</p>
+<p># +0x010 SegmentListEntry : _LIST_ENTRY</p>
+<p># +0x018 Heap             : Ptr32 _HEAP</p>
+<p># +0x01c BaseAddress      : Ptr32 Void</p>
+<p># +0x020 NumberOfPages    : Uint4B</p>
+<p># +0x024 FirstEntry       : Ptr32 _HEAP_ENTRY</p>
+<p># +0x028 LastValidEntry   : Ptr32 _HEAP_ENTRY</p>
+<p># +0x02c NumberOfUnCommittedPages : Uint4B</p>
+<p># +0x030 NumberOfUnCommittedRanges : Uint4B</p>
+<p># +0x034 SegmentAllocatorBackTraceIndex : Uint2B</p>
+<p># +0x036 Reserved         : Uint2B</p>
+<p># +0x038 UCRSegmentList   : _LIST_ENTRY</p>
+<p># +0x040 Flags            : Uint4B</p>
+<p># +0x044 ForceFlags       : Uint4B</p>
+<p># +0x048 CompatibilityFlags : Uint4B</p>
+<p># +0x04c EncodeFlagMask   : Uint4B</p>
+<p># +0x050 Encoding         : _HEAP_ENTRY</p>
+<p># +0x058 PointerKey       : Uint4B</p>
+<p># +0x05c Interceptor      : Uint4B</p>
+<p># +0x060 VirtualMemoryThreshold : Uint4B</p>
+<p># +0x064 Signature        : Uint4B</p>
+<p># +0x068 SegmentReserve   : Uint4B</p>
+<p># +0x06c SegmentCommit    : Uint4B</p>
+<p># +0x070 DeCommitFreeBlockThreshold : Uint4B</p>
+<p># +0x074 DeCommitTotalFreeThreshold : Uint4B</p>
+<p># +0x078 TotalFreeSize    : Uint4B</p>
+<p># +0x07c MaximumAllocationSize : Uint4B</p>
+<p># +0x080 ProcessHeapsListIndex : Uint2B</p>
+<p># +0x082 HeaderValidateLength : Uint2B</p>
+<p># +0x084 HeaderValidateCopy : Ptr32 Void</p>
+<p># +0x088 NextAvailableTagIndex : Uint2B</p>
+<p># +0x08a MaximumTagIndex  : Uint2B</p>
+<p># +0x08c TagEntries       : Ptr32 _HEAP_TAG_ENTRY</p>
+<p># +0x090 UCRList          : _LIST_ENTRY</p>
+<p># +0x098 AlignRound       : Uint4B</p>
+<p># +0x09c AlignMask        : Uint4B</p>
+<p># +0x0a0 VirtualAllocdBlocks : _LIST_ENTRY</p>
+<p># +0x0a8 SegmentList      : _LIST_ENTRY</p>
+<p># +0x0b0 AllocatorBackTraceIndex : Uint2B</p>
+<p># +0x0b4 NonDedicatedListLength : Uint4B</p>
+<p># +0x0b8 BlocksIndex      : Ptr32 Void</p>
+<p># +0x0bc UCRIndex         : Ptr32 Void</p>
+<p># +0x0c0 PseudoTagEntries : Ptr32 _HEAP_PSEUDO_TAG_ENTRY</p>
+<p># +0x0c4 FreeLists        : _LIST_ENTRY</p>
+<p># +0x0cc LockVariable     : Ptr32 _HEAP_LOCK</p>
+<p># +0x0d0 CommitRoutine    : Ptr32     long</p>
+<p># +0x0d4 FrontEndHeap     : Ptr32 Void</p>
+<p># +0x0d8 FrontHeapLockCount : Uint2B</p>
+<p># +0x0da FrontEndHeapType : UChar</p>
+<p># +0x0dc Counters         : _HEAP_COUNTERS</p>
+<p># +0x130 TuningParameters : _HEAP_TUNING_PARAMETERS</p>
+<p>No vamos a hacer las estructuras en IDA con todos los campos, solo crearemos una estructura vacía para renombrar solo los campos que usemos.</p>
+<figure><img loading="lazy" src="img/48/5.png" alt="Captura 5 del tute 48"></figure>
+<p>Ahí la cree en la pestaña estructuras con INSERTAR y luego la agrandare a 0x130 despues veré si necesito agrandarla mas.</p>
+<p>Ya sabíamos como hacer esto le agrego un campo de un byte colocándome en el ends y apretando la tecla D y luego click derecho EXPAND y le agrego 0x12f.</p>
+<figure><img loading="lazy" src="img/48/6.png" alt="Captura 6 del tute 48"></figure>
+<figure><img loading="lazy" src="img/48/7.png" alt="Captura 7 del tute 48"></figure>
+<p>Allí quedo de 0x130 seguro será un poco más grande por el largo del último campo, pero ya veré.</p>
+<figure><img loading="lazy" src="img/48/8.png" alt="Captura 8 del tute 48"></figure>
+<p>Allí usa el campo 44 y abajo el 5c apretando T en ambos elijo la estructura HEAP.</p>
+<figure><img loading="lazy" src="img/48/9.png" alt="Captura 9 del tute 48"></figure>
+<p>Ahora tengo que definir esos campos en la estructura.</p>
+<p># +0x044 ForceFlags       : Uint4B</p>
+<p># +0x048 CompatibilityFlags : Uint4B</p>
+<p># +0x04c EncodeFlagMask   : Uint4B</p>
+<p># +0x050 Encoding         : _HEAP_ENTRY</p>
+<p># +0x058 PointerKey       : Uint4B</p>
+<p># +0x05c Interceptor      : Uint4B</p>
+<p>Son dos campos de 4 bytes, los renombrare, voy a 0x44 y apreto la D hasta que cambia a DD.</p>
+<figure><img loading="lazy" src="img/48/10.png" alt="Captura 10 del tute 48"></figure>
+<p>Y los renombro.</p>
+<p>Bueno no tenemos ni idea de para qué sirve pero al menos quedo lindo jeje</p>
+<figure><img loading="lazy" src="img/48/11.png" alt="Captura 11 del tute 48"></figure>
+<p>Obviamente no todos los campos ni todo lo que hace lo interpretaremos, pero iremos viendo que hace.</p>
+<p>Una vez que traceamos hasta allí y EBX tomo el valor de la base del heap 240000 en mi caso puedo ir ahí y asignarle a esa dirección la estructura heap que, aunque por ahora está vacía algo tiene jeje.</p>
+<figure><img loading="lazy" src="img/48/12.png" alt="Captura 12 del tute 48"></figure>
+<p>Con ALT más Q o Convert to struct variable del menú.</p>
+<figure><img loading="lazy" src="img/48/13.png" alt="Captura 13 del tute 48"></figure>
+<figure><img loading="lazy" src="img/48/14.png" alt="Captura 14 del tute 48"></figure>
+<p>No queda muy lindo, pero ahí se ven los campos ForceFlags e Interceptor ambos a cero.</p>
+<p>Coincide con</p>
+<figure><img loading="lazy" src="img/48/15.png" alt="Captura 15 del tute 48"></figure>
+<p>Y con</p>
+<figure><img loading="lazy" src="img/48/16.png" alt="Captura 16 del tute 48"></figure>
+<figure><img loading="lazy" src="img/48/17.png" alt="Captura 17 del tute 48"></figure>
+<p>Copié el ejecutable a otra carpeta sin cerrar el anterior para comprobar y lo abrí directo en un segundo IDA no atacheando, sino directamente dentro del mismo y ese valor cambia a 0x40000060, es un valor que indica si está siendo debuggeado.</p>
+<figure><img loading="lazy" src="img/48/18.png" alt="Captura 18 del tute 48"></figure>
+<p>En el que se atacheo</p>
+<figure><img loading="lazy" src="img/48/19.png" alt="Captura 19 del tute 48"></figure>
+<p>En el que abrí en el debugger.</p>
+<figure><img loading="lazy" src="img/48/20.png" alt="Captura 20 del tute 48"></figure>
+<p>Allí dice que entre otras cosas se puede usar como anti-debugger.</p>
+<figure><img loading="lazy" src="img/48/21.png" alt="Captura 21 del tute 48"></figure>
+<p>Vemos que el argumento que era cero lo reúsa haciendo OR con ForceFlags, de esta forma como era cero quedara valiendo ForceFlags.</p>
+<p>Y ECX que tenía Interceptor lo guarda en var_C por eso la renombro, aunque no encontré detalle de para que sirve ya veremos, lo que si vi que no varía si está siendo debuggeado o no vale 0 en ambos casos.</p>
+<p>Como Interceptor en mi caso vale cero y ESI vale cero, salta por la flecha roja ya que son iguales.</p>
+<figure><img loading="lazy" src="img/48/22.png" alt="Captura 22 del tute 48"></figure>
+<p>Allí hace test de ForceFlags que es cero contra la constante 7d810f61 el resultado será cero y ira por la flecha roja. (si se abrió en un debugger ira por la flecha verde)</p>
+<p>Compara si el size es cero en nuestro caso es 0x10 asi que va por acá.</p>
+<figure><img loading="lazy" src="img/48/23.png" alt="Captura 23 del tute 48"></figure>
+<p>Le suma 0xf y luego hace AND con -8 con lo cual queda 0x18, que sería el size completo a alocar sumándole el header y para que sea múltiplo de 8.</p>
+<figure><img loading="lazy" src="img/48/24.png" alt="Captura 24 del tute 48"></figure>
+<p>Queda en EAX el size full a 18.</p>
+<p>Luego guarda en var_8 ese size asi que lo renombro.</p>
+<figure><img loading="lazy" src="img/48/25.png" alt="Captura 25 del tute 48"></figure>
+<p>Luego lee el campo 0xb8 que era BlockIndex, asi que lo renombro en la estructura y aqui apreto T para que lo tome.</p>
+<p># +0x0b8 BlocksIndex      : Ptr32 Void</p>
+<figure><img loading="lazy" src="img/48/26.png" alt="Captura 26 del tute 48"></figure>
+<figure><img loading="lazy" src="img/48/27.png" alt="Captura 27 del tute 48"></figure>
+<p>Asi que ese valor es un puntero que vale 0x240150 en mi caso.</p>
+<p>Recordemos que</p>
+<p>shr eax, 3   ;Signed division by 8</p>
+<p>Y eso es lo que hace divide el size_full por 8, recordemos también que el size que figuraba en los encabezados como size total había que multiplicarlo por 8 para hallar el total del size del bloque.</p>
+<p>Por ejemplo copiado de otro tute anterior un UserSize de 0x10, terminaba siendo un size total de 0x3 al que multiplicándolo por 8 daba el total de bytes.</p>
+<figure><img loading="lazy" src="img/48/28.png" alt="Captura 28 del tute 48"></figure>
+<p>Python&gt;hex(0x3*0x8)</p>
+<p>0x18</p>
+<p>Acá es la operación inversa del size full halla ese 0x3 al dividir por 0x8.</p>
+<figure><img loading="lazy" src="img/48/29.png" alt="Captura 29 del tute 48"></figure>
+<p>Vemos que ahora empieza a trabajar con la estructura BlocksIndex que habíamos visto en el tutorial pasado. (la imagen siguiente es del tutorial anterior)</p>
+<figure><img loading="lazy" src="img/48/30.png" alt="Captura 30 del tute 48"></figure>
+<p>Asi que podemos crear una estructura vacía nueva de 0x24 bytes asi entra el ultimo dword.</p>
+<figure><img loading="lazy" src="img/48/31.png" alt="Captura 31 del tute 48"></figure>
+<p>Asi que ahora apreto T en la instrucción y elijo esta nueva estructura.</p>
+<figure><img loading="lazy" src="img/48/32.png" alt="Captura 32 del tute 48"></figure>
+<p>Ahora me queda renombrar el campo ese que está en 0x4 era ArraySize.</p>
+<p>Como EAX apuntaba al inicio de esta estructura puedo ir allí en la memoria y asignarle la misma con ALT mas Q.</p>
+<figure><img loading="lazy" src="img/48/33.png" alt="Captura 33 del tute 48"></figure>
+<p>Vemos que el ArraySize es 0x80 en este caso, el resto de los campos esta sin definir aun, por eso se ve feo.</p>
+<p>Vemos que como es menor no pasa por los bloques rosados</p>
+<figure><img loading="lazy" src="img/48/34.png" alt="Captura 34 del tute 48"></figure>
+<p>Vemos que estamos en esta parte</p>
+<figure><img loading="lazy" src="img/48/35.png" alt="Captura 35 del tute 48"></figure>
+<p>Aquí el size full dividido 8 lo llama BlockSize, nosotros aun lo tenemos en ECX y no se guardó solo se comparó, y vemos que allí también lo hace, compara contra el ArraySize igual que el nuestro.</p>
+<p>Vemos que le resta 1 quedando 0x7f y lo vuelve a comparar con 0x3 que está en ECX.</p>
+<figure><img loading="lazy" src="img/48/36.png" alt="Captura 36 del tute 48"></figure>
+<p>Como sigue siendo menor no va por los bloques rosados.</p>
+<p>Ahora lee el campo 0x14 de BlockList que era BaseIndex asi que lo renombro.</p>
+<figure><img loading="lazy" src="img/48/37.png" alt="Captura 37 del tute 48"></figure>
+<figure><img loading="lazy" src="img/48/38.png" alt="Captura 38 del tute 48"></figure>
+<p>Como BaseIndex es cero ECX sigue siendo 0x3 o sea el BlockSize.</p>
+<figure><img loading="lazy" src="img/48/39.png" alt="Captura 39 del tute 48"></figure>
+<p>Como el campo ExtraItem que está en 0x8 offset vale 1 (no repetiré como renombrarlo en la estructura) llegamos al ADD ECX, ECX donde multiplica por 2 el valor del BlockSize.</p>
+<figure><img loading="lazy" src="img/48/40.png" alt="Captura 40 del tute 48"></figure>
+<p>Luego usa el offset 0x20 ListHints.</p>
+<figure><img loading="lazy" src="img/48/41.png" alt="Captura 41 del tute 48"></figure>
+<p>Al 0x6 lo multiplica por 4 y le suma al puntero ListHints queda en ESI 0x24019c</p>
+<figure><img loading="lazy" src="img/48/42.png" alt="Captura 42 del tute 48"></figure>
+<p>ListHints apunta a las Freelist que es otro tipo de allocacion mas sencilla ya veremos por ahora veamos que hace.</p>
+<figure><img loading="lazy" src="img/48/43.png" alt="Captura 43 del tute 48"></figure>
+<p>Así que podemos crear una nueva estructura de 8 bytes, pero en mi IDA ya la tenía (si no la crean)</p>
+<figure><img loading="lazy" src="img/48/44.png" alt="Captura 44 del tute 48"></figure>
+<figure><img loading="lazy" src="img/48/45.png" alt="Captura 45 del tute 48"></figure>
+<p>O sea, si LFH no está habilitado, el Blink tiene un contador y si está habilitado tiene un puntero. (HEAP_BUCKET+1)</p>
+<p>Bueno ya veremos la cuestión es que compara si Al es 1 para ver si es un contador que está en 1.</p>
+<figure><img loading="lazy" src="img/48/46.png" alt="Captura 46 del tute 48"></figure>
+<p>RtlpAllocateHeap o RtlpLowFragHeapAllocFromContext</p>
+<p>Si es 1 va a ese bloque verde con una llamada a RtlpAllocateHeap y si no como en mi caso va al bloque celeste que va a RtlpLowFragHeapAllocFromContext.</p>
+<p>O sea que ciertas cosas vamos viendo en nuestro caso comparo el size 0x3 contra 0x80 y como era menor y el AL del Blink era diferente del byte 0x1 llegamos por acá a algo que parece que maneja el LFH.</p>
+<figure><img loading="lazy" src="img/48/47.png" alt="Captura 47 del tute 48"></figure>
+<figure><img loading="lazy" src="img/48/48.png" alt="Captura 48 del tute 48"></figure>
+<p>ECX tiene el puntero que había en BLINK-1 y en EDX está el UserSize 0x10.</p>
+<figure><img loading="lazy" src="img/48/49.png" alt="Captura 49 del tute 48"></figure>
+<p>Ya que en la función no mostraba las variables y eran basadas en EBP (eran variables ebp - x), lo cambie poniendo la tilde ahí.</p>
+<p>Recordemos que el Blink tenia el valor HEAP_BUCKET+1 o sea que restándole 1 quedaría (HEAP_BUCKET) asi que renombro la variable a HEAP_BUCKET.</p>
+<figure><img loading="lazy" src="img/48/50.png" alt="Captura 50 del tute 48"></figure>
+<figure><img loading="lazy" src="img/48/51.png" alt="Captura 51 del tute 48"></figure>
+<p>O sea que EDI es la base de la estructura HEAP_BUCKET la creare, parece tener 0x3 bytes.</p>
+<figure><img loading="lazy" src="img/48/52.png" alt="Captura 52 del tute 48"></figure>
+<p>Bueno el SizeIndex es 2 lo mueve a EAX</p>
+<figure><img loading="lazy" src="img/48/53.png" alt="Captura 53 del tute 48"></figure>
+<pre class='asm'>lea     eax, ds:110h[eax*4]</pre>
+<p>Multiplica el 0x2 por 4 y le suma 0x110 y luego se lo resta al Heap_Bucket hallado y lo guarda en var_2c.</p>
+<p>Esa dirección que guarda en var_2c es el inicio de la tabla LFH, ya que Heap_Bucket esta en 0x110 y el 8 debe ser porque está dentro de la tabla de los Buckets, de esta forma en var_2c guarda el valor 0x24acf8 que era el inicio de la tabla LFH.</p>
+<figure><img loading="lazy" src="img/48/54.png" alt="Captura 54 del tute 48"></figure>
+<figure><img loading="lazy" src="img/48/55.png" alt="Captura 55 del tute 48"></figure>
+<figure><img loading="lazy" src="img/48/56.png" alt="Captura 56 del tute 48"></figure>
+<p>Lo que está haciendo es lo que dice allí, tratando de hallar la dirección del LFH para este bucket, usando el SizeIndex.</p>
+<figure><img loading="lazy" src="img/48/57.png" alt="Captura 57 del tute 48"></figure>
+<figure><img loading="lazy" src="img/48/58.png" alt="Captura 58 del tute 48"></figure>
+<p>Obviamente estamos en esa parte solo que en mi caso no es igual a uno y sigue por aquí.</p>
+<figure><img loading="lazy" src="img/48/59.png" alt="Captura 59 del tute 48"></figure>
+<figure><img loading="lazy" src="img/48/60.png" alt="Captura 60 del tute 48"></figure>
+<p>Vemos que llega al LEA donde por ahora EAX vale cero ya que viene de una multiplicación de 0x3418 con const_cero y suma ESI que era el inicio de la tabla LFH y le suma 0x310.</p>
+<figure><img loading="lazy" src="img/48/61.png" alt="Captura 61 del tute 48"></figure>
+<p>Recordemos que desde LFH el offset 0x310 es _HEAP_LOCAL_DATA.</p>
+<figure><img loading="lazy" src="img/48/62.png" alt="Captura 62 del tute 48"></figure>
+<p>Esa cuenta la guarda en var_44 renombro HEAP_LOCAL_DATA.</p>
+<figure><img loading="lazy" src="img/48/63.png" alt="Captura 63 del tute 48"></figure>
+<figure><img loading="lazy" src="img/48/64.png" alt="Captura 64 del tute 48"></figure>
+<figure><img loading="lazy" src="img/48/65.png" alt="Captura 65 del tute 48"></figure>
+<p>La idea es que está tratando de localizar esas estructuras ya veremos si podemos localizar e identificarlas.</p>
+<p>Bueno tenemos que hacer una estructura para HEAP_LOCAL_DATA.</p>
+<figure><img loading="lazy" src="img/48/66.png" alt="Captura 66 del tute 48"></figure>
+<p>Creo una estructura de 0x22 aunque seguro será mucho más por ahora servirá.</p>
+<p>Vemos que a partir del offset 0x18 están las estructuras hay 0x128 de ellas</p>
+<p>[128] _HEAP_LOCAL_SEGMENT_INFO</p>
+<p>Vemos que está pivoteando a través de esas 128 estructuras usando SizeIndex como índice al cual lo multiplica por 0x68 y luego se lo suma para hallar la dirección de ese SegmentInfo.</p>
+<figure><img loading="lazy" src="img/48/67.png" alt="Captura 67 del tute 48"></figure>
+<p>Quiere decir que la direccion3 es HEAP_LOCAL_SEGMENT_INFO.</p>
+<figure><img loading="lazy" src="img/48/68.png" alt="Captura 68 del tute 48"></figure>
+<figure><img loading="lazy" src="img/48/69.png" alt="Captura 69 del tute 48"></figure>
+<p>Así que haremos una estructura más de 0x64.</p>
+<figure><img loading="lazy" src="img/48/70.png" alt="Captura 70 del tute 48"></figure>
+<figure><img loading="lazy" src="img/48/71.png" alt="Captura 71 del tute 48"></figure>
+<p>Bueno dentro de</p>
+<p>ntdll!_HEAP_LOCAL_SEGMENT_INFO</p>
+<p>+0x000 Hint : Ptr32 _HEAP_SUBSEGMENT</p>
+<p>El primer campo que intenta usar allí lo dice es el Hint y ese es el que levanta aquí.</p>
+<figure><img loading="lazy" src="img/48/72.png" alt="Captura 72 del tute 48"></figure>
+<p>Y lo guarda en var_30 renombro a Hint.</p>
+<figure><img loading="lazy" src="img/48/73.png" alt="Captura 73 del tute 48"></figure>
+<p>Si el valor de Hint fuera cero intenta acá, buscando en ActiveSubsegment que es el siguiente campo.</p>
+<figure><img loading="lazy" src="img/48/74.png" alt="Captura 74 del tute 48"></figure>
+<p>Y si ese es cero intenta aquí</p>
+<figure><img loading="lazy" src="img/48/75.png" alt="Captura 75 del tute 48"></figure>
+<p>Vemos que en cualquiera de los tres casos guarda el resultado en la variable que nombramos Hint pero que puede ser cualquiera de los tres.</p>
+<figure><img loading="lazy" src="img/48/76.png" alt="Captura 76 del tute 48"></figure>
+<p>Bueno estábamos aquí</p>
+<figure><img loading="lazy" src="img/48/77.png" alt="Captura 77 del tute 48"></figure>
+<p>Renombramos Hint como resultado ya que puede ser cualquiera de los tres.</p>
+<figure><img loading="lazy" src="img/48/78.png" alt="Captura 78 del tute 48"></figure>
+<p>Allí vemos que muestra las tres posibilidades por ahora estamos en Hint.</p>
+<p>Ese resultado debería ser _HEAP_SUBSEGMENT.</p>
+<figure><img loading="lazy" src="img/48/79.png" alt="Captura 79 del tute 48"></figure>
+<figure><img loading="lazy" src="img/48/80.png" alt="Captura 80 del tute 48"></figure>
+<p>Allí me dice que _HEAP_LOCAL_SEGMENT_INFO está en 0x24b0f0 y que 0x282660 _HEAP_USERDATA_HEADER y en 0x08 esta INTERLOCK_SEQ.</p>
+<p>Ya estamos llegando uf.</p>
+<p>Allí agregue la estructura</p>
+<figure><img loading="lazy" src="img/48/81.png" alt="Captura 81 del tute 48"></figure>
+<figure><img loading="lazy" src="img/48/82.png" alt="Captura 82 del tute 48"></figure>
+<p>Allí veo que halla con LEA la dirección de _INTERLOCK_SEQ</p>
+<figure><img loading="lazy" src="img/48/83.png" alt="Captura 83 del tute 48"></figure>
+<figure><img loading="lazy" src="img/48/84.png" alt="Captura 84 del tute 48"></figure>
+<p>Por ahora la creo de 4 bytes</p>
+<p>Vemos que puede leer el campo cero como word o como dword, se complica para el nombre, en mi caso lee el DWORD o sea el valor 0x56000d (ESTE VALOR ES MUY IMPORTANTE)</p>
+<figure><img loading="lazy" src="img/48/85.png" alt="Captura 85 del tute 48"></figure>
+<figure><img loading="lazy" src="img/48/86.png" alt="Captura 86 del tute 48"></figure>
+<figure><img loading="lazy" src="img/48/87.png" alt="Captura 87 del tute 48"></figure>
+<p>Agrego el campo Sequence</p>
+<figure><img loading="lazy" src="img/48/88.png" alt="Captura 88 del tute 48"></figure>
+<p>Testea DI que tiene Depth que es 0d en mi caso.</p>
+<figure><img loading="lazy" src="img/48/89.png" alt="Captura 89 del tute 48"></figure>
+<p>Allí lee UserBlocks que es el offset 0x4 de HEAP_SUBSEGMENT.</p>
+<figure><img loading="lazy" src="img/48/90.png" alt="Captura 90 del tute 48"></figure>
+<p>Compara el EDX que tenía el LocalInfo calculado con el puntero de HEAP_SUBSEGMENT.localinfo y deberían ser iguales.</p>
+<p>Como son iguales va a este bloque</p>
+<figure><img loading="lazy" src="img/48/91.png" alt="Captura 91 del tute 48"></figure>
+<figure><img loading="lazy" src="img/48/92.png" alt="Captura 92 del tute 48"></figure>
+<p>Bueno no me voy a poner a hacer todas esas cuentas, pero es obvio que lo que hace es sacar el primer bloque libre del size pedido a partir de los valores de la estructura _INTERLOCK_SEQ, y cuando sale de ese bloque lo guarda aquí.</p>
+<figure><img loading="lazy" src="img/48/93.png" alt="Captura 93 del tute 48"></figure>
+<p>ECX vale allí 282918 que si miro la lista de bloques de size 0x10.</p>
+<p>!heap -flt s 0x10</p>
+<p>En la lista esta</p>
+<figure><img loading="lazy" src="img/48/94.png" alt="Captura 94 del tute 48"></figure>
+<p>Y es el primero de este LFH porque los anteriores de size 0x10 que dicen free, son de otro LFH de dirección menor posiblemente correspondientes al otro heap.</p>
+<figure><img loading="lazy" src="img/48/95.png" alt="Captura 95 del tute 48"></figure>
+<p>Vemos que allí a la dirección del chunk 0x282918 sin el header, le resta 8, y queda la dirección del bloque completa con header 0x282910.</p>
+<figure><img loading="lazy" src="img/48/96.png" alt="Captura 96 del tute 48"></figure>
+<p>La estructura que no agregamos fue la de LFH, lo hare.</p>
+<figure><img loading="lazy" src="img/48/97.png" alt="Captura 97 del tute 48"></figure>
+<figure><img loading="lazy" src="img/48/98.png" alt="Captura 98 del tute 48"></figure>
+<p>Ahora usa el campo 0x24 que es hallar la dirección base del HEAP 0x240000 que la mueve a ESI.</p>
+<figure><img loading="lazy" src="img/48/99.png" alt="Captura 99 del tute 48"></figure>
+<p>BlockUnits era 0x3 en el SHL EAX, 3 es similar a multiplicar por 8 asi que</p>
+<figure><img loading="lazy" src="img/48/100.png" alt="Captura 100 del tute 48"></figure>
+<p>A eso le resta el Usersize</p>
+<figure><img loading="lazy" src="img/48/101.png" alt="Captura 101 del tute 48"></figure>
+<p>Y a ese valor lo compara contra 0x3f como es menor vamos a.</p>
+<figure><img loading="lazy" src="img/48/102.png" alt="Captura 102 del tute 48"></figure>
+<p>Allí esta escribiendo en el header del chunk LFH, no hicimos la estructura.</p>
+<figure><img loading="lazy" src="img/48/103.png" alt="Captura 103 del tute 48"></figure>
+<figure><img loading="lazy" src="img/48/104.png" alt="Captura 104 del tute 48"></figure>
+<figure><img loading="lazy" src="img/48/105.png" alt="Captura 105 del tute 48"></figure>
+<p>Pisa el byte 7 lo cambia de 0x80 a 0x88</p>
+<figure><img loading="lazy" src="img/48/106.png" alt="Captura 106 del tute 48"></figure>
+<figure><img loading="lazy" src="img/48/107.png" alt="Captura 107 del tute 48"></figure>
+<p>Vemos que ahora marca como que esta ocupado, si vemos el siguiente libre de 282928.</p>
+<figure><img loading="lazy" src="img/48/108.png" alt="Captura 108 del tute 48"></figure>
+<p>Vemos que los libres están con el valor 0x80 y los ocupados con el valor 0x88.</p>
+<figure><img loading="lazy" src="img/48/109.png" alt="Captura 109 del tute 48"></figure>
+<p>La cuestión es que el valor que esta en INTERLOCK_SEQ y que decide cual es el próximo bloque a entregar esta en 0x282a78 (0x8 a partir del inicio de la estructura HEAP_SUBSEGMENT)</p>
+<p>Antes valía</p>
+<figure><img loading="lazy" src="img/48/110.png" alt="Captura 110 del tute 48"></figure>
+<p>Y ahora vale</p>
+<figure><img loading="lazy" src="img/48/111.png" alt="Captura 111 del tute 48"></figure>
+<figure><img loading="lazy" src="img/48/112.png" alt="Captura 112 del tute 48"></figure>
+<p>Vemos que la distancia desde el inicio del chunk que puedo escribir, al que decide cual es el próximo que me va a entregar es solo 0x168 y es un bloque de 0x10 que si se overflodea se puede llegar a pisar.</p>
+<figure><img loading="lazy" src="img/48/113.png" alt="Captura 113 del tute 48"></figure>
+<p>Lo que decíamos en el tute anterior se verifica aqui.</p>
+<figure><img loading="lazy" src="img/48/114.png" alt="Captura 114 del tute 48"></figure>
+<p>A ese valor UserBlocks 0x282660 que lo mueve a ESI y apunta a la estructura HEAP_USER_DATA_HEADER, se le suma aquí EAX que sale luego de varias cuentas del EDI que viene de aquí.</p>
+<figure><img loading="lazy" src="img/48/115.png" alt="Captura 115 del tute 48"></figure>
+<figure><img loading="lazy" src="img/48/116.png" alt="Captura 116 del tute 48"></figure>
+<p>Quiere decir que la próxima vez que se pida un size 0x010, moverá a EDI el valor 0x59000c si es que no esta pisado.</p>
+<p>Lo mueve a EAX y luego SHR EAX,0d</p>
+<p>Equivalent to dividing by 2 la 0d =08192 decimal o sea 0x2000 hexa</p>
+<p>O sea que es equivalente a 0x59000c dividido 0x2000 que da 0x2c8</p>
+<figure><img loading="lazy" src="img/48/117.png" alt="Captura 117 del tute 48"></figure>
+<p>A eso el hace AND 0x7FFF8</p>
+<figure><img loading="lazy" src="img/48/118.png" alt="Captura 118 del tute 48"></figure>
+<p>Queda igual luego lo suma a ESI que vale 0x282660</p>
+<figure><img loading="lazy" src="img/48/119.png" alt="Captura 119 del tute 48"></figure>
+<p>Y me da 0x282928 que es el siguiente libre</p>
+<figure><img loading="lazy" src="img/48/120.png" alt="Captura 120 del tute 48"></figure>
+<p>Quiere decir que si hay un overflow podemos alterar esta cuenta pisando el valor dentro del INTERLOCK_SEQ  y que me de un bloque anterior, eso lo probaremos en la siguiente parte.</p>
+<p>Hasta la siguiente</p>
+<p>Ricardo Narvaja</p>
+</main>
+<footer class="pie">
+  <p>Material educativo y defensivo. Las prácticas se limitan a programas propios, software abierto o crackmes diseñados para aprender. No se enseña a eludir licencias, DRM ni controles de acceso.</p>
+  <p><a href="../00_EMPEZAR_AQUI.html">Inicio</a> · <a href="../guia/etapa-0.html">Etapas</a> · <a href="../fuentes_y_limites.html">Fuentes y límites</a> · <a href="../registro_de_cobertura.csv">Registro de cobertura</a></p>
+</footer>
+<script>
+(function(){
+  function abrir(src){
+    var o=document.createElement('div'); o.className='lightbox-ov';
+    var i=document.createElement('img'); i.src=src; o.appendChild(i);
+    function cerrar(){o.remove(); document.removeEventListener('keydown', onkey);}
+    function onkey(e){ if(e.key==='Escape') cerrar(); }
+    o.addEventListener('click', cerrar);
+    document.addEventListener('keydown', onkey);
+    document.body.appendChild(o);
+  }
+  document.addEventListener('DOMContentLoaded', function(){
+    document.querySelectorAll('figure img, main img').forEach(function(img){
+      img.style.cursor='zoom-in';
+      img.addEventListener('click', function(){ abrir(img.currentSrc||img.src); });
+    });
+  });
+})();
+</script>
+</body>
+</html>

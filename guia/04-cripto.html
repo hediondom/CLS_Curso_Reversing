@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Etapa 4 · Reconocer criptografía y encoding en un binario</title>
+<meta name="description" content="Identificar XOR, base64 y algoritmos conocidos por sus constantes y tablas en binarios de Windows, sin implementar criptografía.">
+<link rel="stylesheet" href="../guia/estilo.css">
+</head>
+<body>
+<a class="salto" href="#contenido">Saltar al contenido</a>
+<header class="cabecera">
+  <div class="marca"><a href="../00_EMPEZAR_AQUI.html">CLS · Curso de reversing</a> <span class="edicion">edición 5 · 27/10/2026</span></div>
+  <nav class="principal" aria-label="Navegación principal">
+    <a href="../00_EMPEZAR_AQUI.html">Inicio</a>
+    <a href="../guia/index.html">Curso</a>
+    <a href="../materiales.html">Materiales</a>
+    <a href="../fichas/index.html">Fichas</a>
+    <a href="../glosario.html">Glosario</a>
+    <a href="../preguntas_y_respuestas.html">Repaso</a>
+    <a href="../buscar.html">Buscar</a>
+  </nav>
+</header>
+<main id="contenido">
+<nav class="migas" aria-label="Ubicación"><a href="../00_EMPEZAR_AQUI.html">Inicio</a><span aria-hidden="true">›</span><a href="../guia/index.html">Curso</a><span aria-hidden="true">›</span><span>Etapa 4 · Práctica guiada</span></nav><h1 id="reconocer-criptografía-y-encoding-en-un-binario">Reconocer criptografía y encoding en un binario</h1>
+<aside class="callout aviso"><p class="callout-titulo">De dónde sale esta lección</p><p>Este tema <strong>no está en el corpus CLS</strong>: es <strong>conocimiento externo</strong> que agregamos para completar la guía. Se incluye porque reconocer cripto y encoding es rutina en análisis de malware de Windows y en CTF. El enfoque es <strong>defensivo y de identificación</strong>: reconocer qué algoritmo hay, no implementar criptografía ni romperla.</p></aside>
+<aside class="callout nota"><p class="callout-titulo">Objetivo de la lección</p><p>Al terminar vas a poder distinguir encoding de cifrado, reconocer un XOR y un base64 en un listado, e identificar algoritmos conocidos (AES, RC4, MD5/SHA, TEA, CRC32) por sus <strong>constantes y tablas</strong>.</p></aside>
+<p><strong>Prerrequisitos:</strong> instrucciones, flujo, método (Etapas 2 y 4). <strong>Duración sugerida:</strong> 3 horas.</p>
+<h2 id="encoding-no-es-cifrado">Encoding no es cifrado</h2>
+<p>Es la primera distinción, y la que más se confunde:</p>
+<ul><li><strong>Encoding</strong> (base64, hex, URL-encoding) transforma datos para transportarlos. <strong>No tiene clave</strong>: cualquiera lo revierte. Si algo está en base64, está "ofuscado", no "cifrado".</li><li><strong>Cifrado</strong> usa una <strong>clave</strong>. Sin la clave no se recupera el texto (salvo error de implementación).</li><li><strong>Hashing</strong> (MD5, SHA) es de <strong>una sola vía</strong>: no se "descifra". Se usa para comparar o verificar.</li></ul>
+<p>Para el análisis, la pregunta no es "¿cómo lo rompo?", sino "¿qué transformación es y con qué parámetros?".</p>
+<h2 id="xor-el-disfraz-más-común">XOR: el disfraz más común</h2>
+<p>El XOR byte a byte contra una clave fija es el modismo número uno para esconder strings en malware:</p>
+<pre><code class="lenguaje-asm">loop:
+    mov   al, [esi]
+    xor   al, 0x5A        ; clave de 1 byte
+    mov   [edi], al
+    inc   esi
+    inc   edi
+    loop  loop</code></pre>
+<p>Señales de XOR:</p>
+<ul><li>Un bucle corto con <code>xor</code> contra una constante o contra bytes de otra zona.</li><li>Strings que <strong>no aparecen</strong> con <code>strings</code>/<code>Shift+F12</code> pero que el programa "tiene" (están XOR-eadas y se desXOR-ean en runtime).</li><li>Datos en <code>.data</code> que parecen basura hasta que corre una rutina.</li></ul>
+<p>El XOR de 1 byte es trivial de deshacer (hay 255 claves posibles). Para análisis, muchas veces alcanza con un breakpoint <strong>después</strong> del bucle para leer el texto ya desXOR-eado en memoria, sin tocar el algoritmo.</p>
+<h2 id="base64-la-tabla-que-lo-delata">Base64: la tabla que lo delata</h2>
+<p>Base64 se reconoce por su <strong>alfabeto</strong> de 64 caracteres, que casi siempre aparece como un string en <code>.rdata</code>:</p>
+<pre><code class="lenguaje-text">ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/</code></pre>
+<p>Más el <code>=</code> de relleno. Si ves ese alfabeto (o una variante con <code>-_</code> en vez de <code>+/</code>, que es base64 "url-safe"), hay base64. Procesa de a <strong>4 caracteres → 3 bytes</strong>. Un alfabeto reordenado es base64 "custom": misma mecánica, otra tabla.</p>
+<h2 id="algoritmos-conocidos-las-constantes-los-delatan">Algoritmos conocidos: las constantes los delatan</h2>
+<p>Casi todos los algoritmos famosos tienen <strong>constantes o tablas fijas</strong>. Encontrarlas es identificar el algoritmo sin leer una sola instrucción de la rutina:</p>
+<div class="tabla"><table>
+<thead><tr>
+<th>Algoritmo</th>
+<th>Qué buscar</th>
+</tr></thead><tbody>
+<tr><td><strong>AES (Rijndael)</strong></td><td>La S-box, que empieza <code>63 7C 77 7B F2 6B 6F C5 30 01 67 2B …</code>; o las T-tables</td></tr>
+<tr><td><strong>MD5</strong></td><td>Init <code>67452301 EFCDAB89 98BADCFE 10325476</code>; tabla de senos <code>D76AA478 …</code></td></tr>
+<tr><td><strong>SHA-1</strong></td><td>Init <code>67452301 EFCDAB89 98BADCFE 10325476 C3D2E1F0</code></td></tr>
+<tr><td><strong>SHA-256</strong></td><td>Init <code>6A09E667 BB67AE85 3C6EF372 …</code>; constantes <code>428A2F98 71374491 …</code></td></tr>
+<tr><td><strong>RC4</strong></td><td>Un arreglo de <strong>256 bytes</strong> inicializado <code>0,1,2,…,255</code> y un bucle de <em>swaps</em> (KSA/PRGA)</td></tr>
+<tr><td><strong>TEA / XTEA</strong></td><td>La constante <em>delta</em> <code>0x9E3779B9</code> (número áureo)</td></tr>
+<tr><td><strong>CRC32</strong></td><td>El polinomio <code>0xEDB88320</code> o una tabla de 256 entradas de 32 bits</td></tr>
+<tr><td><strong>DES</strong></td><td>Tablas de permutación fijas (IP, S-boxes)</td></tr>
+</tbody></table></div>
+<p>Un bucle que recorre un arreglo de 256 bytes haciendo intercambios casi seguro es <strong>RC4</strong>. Cuatro valores <code>67452301…</code> juntos casi seguro son <strong>MD5 o SHA-1</strong>. No hace falta entender el algoritmo: alcanza con nombrarlo y buscar su especificación.</p>
+<h2 id="herramientas-que-automatizan-el-reconocimiento">Herramientas que automatizan el reconocimiento</h2>
+<ul><li><strong>FindCrypt / findcrypt-yara</strong> (plugin de IDA/Ghidra): busca estas constantes y te dice qué algoritmo hay.</li><li><strong>signsrch</strong>: firmas de cientos de algoritmos.</li><li><strong>CAPA</strong> (Mandiant): identifica capacidades, incluida criptografía, por patrones.</li><li><strong>YARA</strong> con reglas de cripto: para clasificar muestras.</li><li><strong>Detect It Easy / entropía</strong>: una sección con entropía muy alta (cercana a 8 bits/byte) suele estar <strong>cifrada o comprimida/empaquetada</strong>; es una señal, no una prueba.</li></ul>
+<aside class="callout nota"><p class="callout-titulo">En Windows, muchas veces no hay que reconocer nada</p><p>Antes de pelear con una rutina de cripto, mirá los <strong>imports</strong>: si el programa usa la criptografía del sistema (CryptoAPI en <code>advapi32.dll</code> —<code>CryptEncrypt</code>, <code>CryptHashData</code>— o CNG en <code>bcrypt.dll</code> —<code>BCryptEncrypt</code>—), el algoritmo y la clave pasan por esas APIs. Un breakpoint en esas funciones te muestra los datos en claro sin reimplementar nada. El trabajo de reconocer constantes queda para cuando el programa trae su <strong>propia</strong> implementación embebida.</p></aside>
+<h2 id="un-método-de-reconocimiento">Un método de reconocimiento</h2>
+<ol><li>Corré <code>strings</code> y FindCrypt/CAPA primero: muchas veces resuelven la identificación en segundos.</li><li>Si hay strings que "faltan", buscá un bucle con <code>xor</code> y poné un breakpoint después para leerlas en claro.</li><li>Si hay un alfabeto de 64 caracteres, es base64; mirá si es estándar o custom.</li><li>Si hay constantes de la tabla de arriba, nombrá el algoritmo y buscá su especificación.</li><li>Documentá <strong>qué</strong> algoritmo es y <strong>con qué parámetros</strong> (clave embebida, IV, tabla custom). No necesitás reimplementarlo para el informe.</li></ol>
+<aside class="callout peligro"><p class="callout-titulo">Marco de uso</p><p>Identificar criptografía para entender un programa, detectar malware o resolver un CTF es análisis legítimo. Usar esto para romper el cifrado de software o datos ajenos, o para producir malware, no entra en esta guía. El objetivo es <strong>reconocer y documentar</strong>, no vulnerar.</p></aside>
+<aside class="callout practica"><p class="callout-titulo">Práctica</p><ol><li>Escribí un programa propio que guarde una string XOR-eada con una clave de 1 byte y la desXOR-ee al arrancar. Analizalo: encontrá el bucle <code>xor</code> y leé la string en memoria después.</li><li>Meté el alfabeto base64 en un programa y comprobá que aparece como string en <code>.rdata</code>.</li><li>Bajá una implementación de referencia de MD5 (de código abierto), compilala y buscá las constantes <code>67452301…</code> en el binario con tu desensamblador.</li><li>Corré FindCrypt o CAPA sobre esos binarios propios y compará con lo que encontraste a mano.</li></ol></aside>
+<h2 id="preguntas-de-repaso">Preguntas de repaso</h2>
+<details class="qa"><summary>¿Cuál es la diferencia entre encoding y cifrado?</summary><div class="respuesta"><p>El encoding (base64, hex) no tiene clave y cualquiera lo revierte; el cifrado usa una clave y sin ella no se recupera el texto. El hashing, además, es de una sola vía.</p></div></details>
+<details class="qa"><summary>¿Cómo reconocés base64 en un binario?</summary><div class="respuesta"><p>Por su alfabeto de 64 caracteres (<code>A–Z a–z 0–9 + /</code>) en <code>.rdata</code> y el <code>=</code> de relleno; procesa de a 4 caracteres → 3 bytes.</p></div></details>
+<details class="qa"><summary>Encontrás un arreglo de 256 bytes inicializado <code>0,1,2,…</code> y un bucle de intercambios. ¿Qué algoritmo es probable?</summary><div class="respuesta"><p>RC4 (su fase de inicialización, KSA).</p></div></details>
+<details class="qa"><summary>Ves las constantes <code>67452301 EFCDAB89 98BADCFE 10325476</code>. ¿Qué sugieren?</summary><div class="respuesta"><p>MD5 o SHA-1 (comparten ese estado inicial). Hay que mirar el resto para distinguirlos.</p></div></details>
+<h2 id="antes-de-avanzar">Antes de avanzar</h2>
+<p>Tenés que poder:</p>
+<ul><li>Distinguir encoding, cifrado y hashing.</li><li>Reconocer un XOR y un base64 en un listado.</li><li>Identificar un algoritmo conocido por sus constantes/tablas.</li><li>Usar FindCrypt/CAPA y la entropía como ayuda.</li></ul>
+<aside class="callout nota"><p class="callout-titulo">Puerta de salida</p><p>Si podés mirar un binario, decir "acá hay base64 y acá un XOR con clave de 1 byte, y esta tabla es la S-box de AES" y documentarlo, cumpliste el objetivo.</p></aside>
+<h2 id="fuentes-de-esta-lección">Fuentes de esta lección</h2>
+<ul><li><em>Practical Malware Analysis</em> (Sikorski &amp; Honig), capítulo de criptografía: XOR, base64 y reconocimiento de algoritmos.</li><li>Proyectos <strong>FindCrypt</strong>, <strong>signsrch</strong> y <strong>CAPA</strong> (Mandiant) como referencia de firmas.</li><li>Especificaciones públicas: FIPS 197 (AES), RFC 1321 (MD5), FIPS 180-4 (SHA), RFC 4648 (base64).</li></ul>
+<aside class="callout nota"><p class="callout-titulo">Capas de esta lección</p><p><strong>Conocimiento externo (agregado por esta edición):</strong> todo el contenido (XOR, base64, constantes de algoritmos, CryptoAPI/CNG, herramientas). No proviene de CLS. <strong>Recomendación editorial:</strong> el método de reconocimiento y el encuadre defensivo.</p></aside>
+
+<aside class="ampliacion-ext">
+<p class="callout-titulo">Ampliación editorial basada en fuentes externas — Reconocimiento de ChaCha20 / Salsa20 (RFC 8439) por sus constantes y operaciones ARX</p>
+<p>En binarios modernos de Windows, el cifrado de flujo <strong>ChaCha20</strong> (<a href="https://www.rfc-editor.org/rfc/rfc8439" rel="noopener" target="_blank">IETF RFC 8439</a>) es sumamente frecuente y no utiliza tablas S-box <em>(Hecho confirmado)</em>:</p>
+<ul>
+<li><strong>Constante mágica de 16 bytes (clave de 256 bits):</strong> La cadena ASCII <strong><code>"expand 32-byte k"</code></strong> o los cuatro <code>DWORD</code> little-endian <strong><code>0x61707865</code>, <code>0x3320646e</code>, <code>0x79622d32</code>, <code>0x6b206574</code></strong> en las palabras <code>0..3</code> de un estado de 16 palabras (64 bytes). (Para clave de 128 bits: <code>"expand 16-byte k"</code>).</li>
+<li><strong>Firma en el código (Quarter-Round ARX):</strong> Un bucle de 20 rondas (10 iteraciones dobles) compuesto exclusivamente por sumas de 32 bits (<code>add</code>), <code>xor</code> y rotaciones (<code>rol</code>) con conteos de <strong>16, 12, 8 y 7 bits</strong> (o 7, 9, 13 y 18 en Salsa20).</li>
+</ul>
+</aside>
+</main>
+<footer class="pie">
+  <p>Material educativo y defensivo. Las prácticas se limitan a programas propios, software abierto o crackmes diseñados para aprender. No se enseña a eludir licencias, DRM ni controles de acceso.</p>
+  <p><a href="../00_EMPEZAR_AQUI.html">Inicio</a> · <a href="../guia/etapa-0.html">Etapas</a> · <a href="../fuentes_y_limites.html">Fuentes y límites</a> · <a href="../registro_de_cobertura.csv">Registro de cobertura</a></p>
+</footer>
+</body>
+</html>

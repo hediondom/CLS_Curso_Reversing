@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Extensión optativa · Hyper-V y virtualización</title>
+<meta name="description" content="Introducción conceptual a la arquitectura Hyper-V, VMBus y particiones; diferenciación frente a VMCS/EPT, sin técnicas de evasión.">
+<link rel="stylesheet" href="guia/estilo.css">
+</head>
+<body>
+<a class="salto" href="#contenido">Saltar al contenido</a>
+<header class="cabecera">
+  <div class="marca"><a href="00_EMPEZAR_AQUI.html">CLS · Curso de reversing</a> <span class="edicion">edición 5 · 27/10/2026</span></div>
+  <nav class="principal" aria-label="Navegación principal">
+    <a href="00_EMPEZAR_AQUI.html">Inicio</a>
+    <a href="guia/index.html">Curso</a>
+    <a href="materiales.html">Materiales</a>
+    <a href="fichas/index.html">Fichas</a>
+    <a href="glosario.html">Glosario</a>
+    <a href="preguntas_y_respuestas.html">Repaso</a>
+    <a href="buscar.html">Buscar</a>
+  </nav>
+</header>
+<main id="contenido">
+<h1 id="extensión-optativa-hyper-v-y-virtualización">Extensión optativa · Hyper-V y virtualización</h1>
+<aside class="callout aviso"><p class="callout-titulo">Extensión separada</p><p>No integra el núcleo de 2D, no es prerrequisito de la Etapa 6 ni forma parte de la aprobación del curso. El objetivo es comprender la arquitectura y los límites de observación; no implementar evasión anti-VM.</p></aside>
+<h2 id="conceptos">Conceptos</h2>
+<p>Hyper-V usa un hypervisor y particiones. La <strong>root partition</strong> administra recursos y aloja componentes de administración; las <strong>child partitions</strong> ejecutan sistemas invitados. VMBus ofrece comunicación entre particiones. Los <strong>VSP</strong> del lado root proveen servicios sintéticos y los <strong>VSC</strong> del guest los consumen. Esta arquitectura no es lo mismo que una CPU virtual aislada ni describe todos los detalles internos de un hypervisor.</p>
+<p><strong>VMCS</strong> (Intel) y <strong>EPT</strong> (Intel) / <strong>NPT</strong> (AMD) son estructuras/mecanismos de virtualización dependientes del procesador. Se mencionan como conceptos de lectura avanzada: no son componentes de VMBus ni hacen falta para analizar el curso.</p>
+<p>Una aplicación puede observar características del entorno virtual por motivos legítimos —compatibilidad, diagnóstico, soporte—. El ejercicio consiste en describir esas señales y sus falsos positivos, no en modificar o esconderlas.</p>
+<h2 id="ejemplo-trabajado">Ejemplo trabajado</h2>
+<p><em>(Diagrama conceptual, no salida de un equipo.)</em></p>
+<pre><code class="lenguaje-text">Guest / child partition: app -&gt; VSC
+                          ⇅ VMBus
+Root partition:          VSP -&gt; recursos del host
+Hypervisor:              aislamiento y planificación de particiones
+CPU:                     soporte de virtualización (VT-x/AMD-V)</code></pre>
+<p>Si un binario detecta un adaptador sintético o servicios de integración, eso sugiere un entorno virtual pero no revela por sí solo su configuración de seguridad ni prueba evasión.</p>
+<h2 id="práctica-conceptual">Práctica conceptual</h2>
+<p>En un host o VM donde Hyper-V ya esté habilitado y tengas autorización, abrí la documentación y la vista de propiedades/configuración disponible. Dibuja root/child, VSC/VSP y VMBus; registra dos señales de virtualización de una aplicación didáctica y explica una alternativa legítima para cada una. No alteres el hypervisor, Secure Boot, VM settings ni el comportamiento de la aplicación.</p>
+<h2 id="entregable-y-repaso">Entregable y repaso</h2>
+<p>Entregá el diagrama y una tabla señal–evidencia–explicación alternativa–límite.</p>
+<details class="qa"><summary>¿VMBus es lo mismo que VMCS?</summary><div class="respuesta"><p>No. VMBus conecta servicios sintéticos entre particiones Hyper-V; VMCS es una estructura de virtualización asociada a Intel VT-x.</p></div></details>
+<details class="qa"><summary>¿Una señal de VM prueba que el programa evade análisis?</summary><div class="respuesta"><p>No. Puede servir a diagnóstico o compatibilidad; hace falta observar la decisión y el contexto.</p></div></details>
+<aside class="callout nota"><p class="callout-titulo">Puerta optativa</p><p>Podés describir root/child, VSP/VSC/VMBus y diferenciarlo de VMCS/EPT/NPT, con límites de lo que una señal permite inferir.</p></aside>
+<h2 id="fuentes">Fuentes</h2>
+<ul><li>Microsoft Learn: <a href="https://learn.microsoft.com/en-us/virtualization/hyper-v-on-windows/reference/hyper-v-architecture" rel="noopener" target="_blank">Hyper-V Architecture</a>, <a href="https://learn.microsoft.com/en-us/virtualization/hyper-v-on-windows/" rel="noopener" target="_blank">Hyper-V on Windows</a>.</li><li>Intel: <a href="https://www.intel.com/content/www/us/en/developer/articles/technical/intel-sdm.html" rel="noopener" target="_blank">Intel 64 and IA-32 Software Developer Manuals</a>. AMD: <a href="https://www.amd.com/en/search/documentation/hub.html" rel="noopener" target="_blank">AMD64 Architecture Programmer's Manual</a>.</li></ul>
+<aside class="callout nota"><p class="callout-titulo">Etiquetas</p><p><strong>Observado en CLS:</strong> conceptos de detección de VM en 2B son solo contexto. <strong>Conocimiento externo:</strong> arquitectura Hyper-V y extensiones CPU. <strong>Ejemplo ilustrativo:</strong> diagrama. <strong>Laboratorio verificado:</strong> no; lectura conceptual.</p></aside>
+</main>
+<footer class="pie">
+  <p>Material educativo y defensivo. Las prácticas se limitan a programas propios, software abierto o crackmes diseñados para aprender. No se enseña a eludir licencias, DRM ni controles de acceso.</p>
+  <p><a href="00_EMPEZAR_AQUI.html">Inicio</a> · <a href="guia/etapa-0.html">Etapas</a> · <a href="fuentes_y_limites.html">Fuentes y límites</a> · <a href="registro_de_cobertura.csv">Registro de cobertura</a></p>
+</footer>
+</body>
+</html>

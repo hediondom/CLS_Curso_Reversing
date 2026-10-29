@@ -1,0 +1,348 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tute 44 · WinDbg dentro de IDA (heap) — Curso IDA</title>
+<meta name="description" content="Tutorial ilustrado del tute 44 del Curso IDA desde cero: WinDbg dentro de IDA (heap).">
+<link rel="stylesheet" href="../guia/estilo.css">
+</head>
+<body>
+<a class="salto" href="#contenido">Saltar al contenido</a>
+<header class="cabecera">
+  <div class="marca"><a href="../00_EMPEZAR_AQUI.html">CLS · Curso de reversing</a> <span class="edicion">edición 5 · 27/10/2026</span></div>
+  <nav class="principal" aria-label="Navegación principal">
+    <a href="../00_EMPEZAR_AQUI.html">Inicio</a>
+    <a href="../guia/index.html">Curso</a>
+    <a href="../fichas/index.html">Fichas</a>
+    <a href="../glosario.html">Glosario</a>
+    <a href="../preguntas_y_respuestas.html">Repaso</a>
+  </nav>
+</header>
+<main id="contenido">
+<p class="migas"><a href="../ida-tutes.html">← Índice de los 69 tutes de IDA</a></p>
+<h1>Tute 44 · WinDbg dentro de IDA (heap)</h1>
+<p class="meta-tute"><strong>⏱ 14 min de lectura</strong> · 2.432 palabras · 32 capturas · grupo: Vulnerabilidades y exploiting en user-mode (VLC/CVE, DEP, Mona, canary/SEH, shellcode, heap)</p>
+<aside class="callout nota"><p class="callout-titulo">Qué enseña</p><p>Información de heap que se obtiene con WinDbg embebido.</p></aside>
+<p><em>se conecta con:</em> <a href="../guia/05-vulnerabilidades.html">Vulnerabilidades (defensivo)</a></p>
+<aside class="callout aviso"><p class="callout-titulo">Material observado, no reescrito</p><p>Es el texto y las capturas del <code>.docx</code> original del curso, solo presentados como tutorial. Puede tener erratas de origen. El autor del curso es Ricardo Narvaja.</p></aside>
+<hr>
+<p>INTRODUCCIÓN AL REVERSING CON IDA PRO DESDE CERO PARTE 44.</p>
+<p>MAS WINDBG DENTRO DE IDA VIENDO HEAP.</p>
+<p>Por supuesto tenemos el ejercicio para resolver PRACTICA_44, pero lo haremos en la partes siguientes ahora veremos alguna info mas que podemos obtener usando Windbg dentro de IDA. Usaremos el caso anterior del PRACTICA 41 b que como sabemos era un heap overflow.</p>
+<p>Cambiamos el debugger de IDA a Windbg y nos fijamos que en las  DEBUGGER OPTIONS este en modo USER.</p>
+<figure><img loading="lazy" src="img/44/1.png" alt="Captura 1 del tute 44"></figure>
+<p>Cambiamos el gflags para que el proceso tenga el PAGE HEAP enabled en modo full.</p>
+<figure><img loading="lazy" src="img/44/2.png" alt="Captura 2 del tute 44"></figure>
+<p>Y lanzo el script2</p>
+<figure><img loading="lazy" src="img/44/3.png" alt="Captura 3 del tute 44"></figure>
+<p>Pero esta vez cuando se detiene atacheo el IDA con al análisis del PRACTICA41b cargado en el LOADER y por supuesto en modo debugger Windbg user.</p>
+<p>Lógicamente crasheara al igual que antes, cuando intenta escribir fuera del bloque allocado y desborda.</p>
+<figure><img loading="lazy" src="img/44/4.png" alt="Captura 4 del tute 44"></figure>
+<p>Por supuesto para esto tienen que tener bien configurado el Windbg dentro de IDA de cualquier manera si alguien tuvo problemas para instalar el Windbg y que ida se lo reconozca, lo pude hacer atacheando el WINDBG fuera de IDA y tipeando los comandos en el mismo, no tendrán la interfase del IDA pero les dará la misma información.</p>
+<figure><img loading="lazy" src="img/44/5.png" alt="Captura 5 del tute 44"></figure>
+<p>Bueno tiene muchos comandos de heap útiles el Windbg, creo que para trabajar con heaps es el más completo.</p>
+<figure><img loading="lazy" src="img/44/6.png" alt="Captura 6 del tute 44"></figure>
+<p>Ese comando es muy útil solo funciona por completo con las page heap full enabled, y vemos que me dice el size del bloque allocado, que el mismo esta usado o busy (no libre) y me informa la historia de los lugares por donde paso cuando ese bloque se allocó.</p>
+<p>Si hubiéramos lanzado el mismo comando en un bloque que fue liberado o free, nos daría la historia de los lugares donde se liberó.</p>
+<p>Vemos que la allocacion proviene de</p>
+<pre class='asm'>002411ac PRACTICA41b+0x000011ac</pre>
+<figure><img loading="lazy" src="img/44/7.png" alt="Captura 7 del tute 44"></figure>
+<p>Y hacia arriba en la lista de la historia, se ve como llama a malloc luego internamente a RtlAllocateHeap etc.</p>
+<p>Hacia abajo en la lista de la historia tenemos</p>
+<pre class='asm'>0024109d PRACTICA41b+0x0000109d</pre>
+<figure><img loading="lazy" src="img/44/8.png" alt="Captura 8 del tute 44"></figure>
+<p>Vemos que nos marca los return address de los calls donde entro al allocar.</p>
+<figure><img loading="lazy" src="img/44/9.png" alt="Captura 9 del tute 44"></figure>
+<p>Vemos que nos muestra el user address que es el inicio del bloque para el usuario, donde se puede escribir, antes está el header del bloque.</p>
+<figure><img loading="lazy" src="img/44/10.png" alt="Captura 10 del tute 44"></figure>
+<p>En la página de Microsoft vemos la información del header en este caso para heap en modo full page, vemos que comienza con ABCDBBBB y termina con DCABBBBB, veamos si lo vemos justo antes del inicio de donde escribimos.</p>
+<figure><img loading="lazy" src="img/44/11.png" alt="Captura 11 del tute 44"></figure>
+<p>Con el comando dt del Windbg seguido de _DPH_BLOCK_INFORMATION nos dará la información de los campos del header.</p>
+<p>Si vamos a la dirección que apunta el stack trace</p>
+<figure><img loading="lazy" src="img/44/12.png" alt="Captura 12 del tute 44"></figure>
+<figure><img loading="lazy" src="img/44/13.png" alt="Captura 13 del tute 44"></figure>
+<p>Vemos que un poco más abajo, guarda la historia de la allocacion, coincide con los que nos dio el comando</p>
+<p>HISTORIA DE LA ALLOCACION.</p>
+<p>¡heap –p –a xxx</p>
+<p>Ahora probaremos que info nos da en el caso de usarlo con heap normal, obviamente no será tan específica ni tendrá historia de cada bloque, pero bueno.</p>
+<p>Deshabilito el page guard full.</p>
+<figure><img loading="lazy" src="img/44/14.png" alt="Captura 14 del tute 44"></figure>
+<p>Lanzo el script de nuevo y cuando para atacheo de nuevo el ida con el análisis y el debugger Windbg local como antes.</p>
+<p>Lógicamente no tenemos la misma info y el programa crasheo cuando salta a ejecutar miremos el heap a ver que vemos.</p>
+<figure><img loading="lazy" src="img/44/15.png" alt="Captura 15 del tute 44"></figure>
+<p>Las estadísticas del heap</p>
+<p>Si vamos a la zona donde salto mirando el stack, sabemos que viene de allí.</p>
+<figure><img loading="lazy" src="img/44/16.png" alt="Captura 16 del tute 44"></figure>
+<p>Y vemos que EBP no cambio y como conocemos el programa haremos trampita mirando el valor del buffer que le pasamos a gets_s que es el inicio del bloque allocado pues copia allí, se le pasa como argumento (obviamente esto lo podemos hacer porque es un programita sencillo y para aprender, sino hay que habilitar el page guard y hacer lo que vimos antes)</p>
+<figure><img loading="lazy" src="img/44/17.png" alt="Captura 17 del tute 44"></figure>
+<p>La variable Buf sigue apuntando al inicio del bloque del heap, asi que podemos ir allí.</p>
+<figure><img loading="lazy" src="img/44/18.png" alt="Captura 18 del tute 44"></figure>
+<figure><img loading="lazy" src="img/44/19.png" alt="Captura 19 del tute 44"></figure>
+<p>Esta corrupta eso sabemos.</p>
+<p>Obviamente como esta todo roto, trataremos de atachearlo antes de que se rompa el heap para ver la info de un bloque bueno, no puedo arrancarlo directo en IDA porque eso lo arranca en modo debug al heap, así que le pondré un EB FE en el inicio para que quede loopeando y cuando lo arranque lo atacheare.</p>
+<figure><img loading="lazy" src="img/44/20.png" alt="Captura 20 del tute 44"></figure>
+<p>Le cambiare el 74 18 del salto condicional por un EB FE, una vez cambiados EDIT-PATCH PROGRAM- APPLY PATCH TO INPUT FILE.</p>
+<p>Ahora arranco el script una vez que queda loopeando paro ahí, pero como ya paso por el malloc ya puedo mirar el heap.</p>
+<figure><img loading="lazy" src="img/44/21.png" alt="Captura 21 del tute 44"></figure>
+<p>Después de allocar EAX queda con la dirección del bloque.</p>
+<figure><img loading="lazy" src="img/44/22.png" alt="Captura 22 del tute 44"></figure>
+<p>Veamos que dice.</p>
+<figure><img loading="lazy" src="img/44/23.png" alt="Captura 23 del tute 44"></figure>
+<p>User como siempre es la parte donde se puede escribir, y Entry es donde comienza el header, veamos.</p>
+<figure><img loading="lazy" src="img/44/24.png" alt="Captura 24 del tute 44"></figure>
+<p>Nos muestra un solo heap y allí esta veamos su contenido.</p>
+<p>WINDBG&gt;!heap -a 007a0000</p>
+<p>Index Address Name Debugging options enabled</p>
+<p>1: 007a0000</p>
+<p>Segment at 007a0000 to 008a0000 (0004b000 bytes committed)</p>
+<p>Flags: 00000002</p>
+<p>ForceFlags: 00000000</p>
+<p>Granularity: 8 bytes</p>
+<p>Segment Reserve: 00100000</p>
+<p>Segment Commit: 00002000</p>
+<p>DeCommit Block Thres: 00000800</p>
+<p>DeCommit Total Thres: 00002000</p>
+<p>Total Free Size: 0000031b</p>
+<p>Max. Allocation Size: 7ffdefff</p>
+<p>Lock Variable at: 007a0138</p>
+<p>Next TagIndex: 0000</p>
+<p>Maximum TagIndex: 0000</p>
+<p>Tag Entries: 00000000</p>
+<p>PsuedoTag Entries: 00000000</p>
+<p>Virtual Alloc List: 007a00a0</p>
+<p>Uncommitted ranges: 007a0090</p>
+<pre class='asm'>007eb000: 000b5000 (741376 bytes)</pre>
+<p>FreeList[ 00 ] at 007a00c4: 007e8ec0 . 007e4e90</p>
+<pre class='asm'>007e4e88: 00028 . 00010 [100] - free
+007a6750: 00028 . 00010 [100] - free
+007a6158: 00050 . 00010 [100] - free
+007e2d30: 00028 . 00018 [100] - free
+007e2c58: 00210 . 00018 [100] - free
+007e8eb8: 00078 . 01878 [100] - free</pre>
+<p>Segment00 at 007a0000:</p>
+<p>Flags: 00000000</p>
+<p>Base: 007a0000</p>
+<p>First Entry: 007a0588</p>
+<p>Last Entry: 008a0000</p>
+<p>Total Pages: 00000100</p>
+<p>Total UnCommit: 000000b5</p>
+<p>Largest UnCommit:00000000</p>
+<p>UnCommitted Ranges: (1)</p>
+<p>Heap entries for Segment00 in Heap 007a0000</p>
+<p>address: psize . size flags state (requested size)</p>
+<pre class='asm'>007a0000: 00000 . 00588 [101] - busy (587)
+007a0588: 00588 . 00240 [101] - busy (23f)
+007a07c8: 00240 . 00020 [101] - busy (18)
+007a07e8: 00020 . 01dd8 [101] - busy (1dce)
+007a25c0: 01dd8 . 02d00 [101] - busy (2cf8)
+007a52c0: 02d00 . 00048 [101] - busy (3c)
+007a5308: 00048 . 00038 [101] - busy (30)
+007a5340: 00038 . 00080 [101] - busy (78)
+007a53c0: 00080 . 00080 [101] - busy (78)
+007a5440: 00080 . 00048 [101] - busy (3c)
+007a5488: 00048 . 00228 [101] - busy (220)
+007a56b0: 00228 . 00050 [101] - busy (42)
+007a5700: 00050 . 00080 [101] - busy (78)
+007a5780: 00080 . 00018 [101] - busy (10)
+007a5798: 00018 . 00050 [101] - busy (46)
+007a57e8: 00050 . 00080 [101] - busy (78)
+007a5868: 00080 . 00018 [101] - busy (10)
+007a5880: 00018 . 00018 [101] - busy (10)
+007a5898: 00018 . 00020 [101] - busy (14)
+007a58b8: 00020 . 00070 [101] - busy (64)
+007a5928: 00070 . 00208 [101] - busy (200)
+007a5b30: 00208 . 00208 [101] - busy (200)
+007a5d38: 00208 . 00030 [101] - busy (24)
+007a5d68: 00030 . 00030 [101] - busy (24)
+007a5d98: 00030 . 00038 [101] - busy (30)
+007a5dd0: 00038 . 00028 [101] - busy (20)
+007a5df8: 00028 . 00028 [101] - busy (20)
+007a5e20: 00028 . 00028 [101] - busy (20)
+007a5e48: 00028 . 00028 [101] - busy (20)
+007a5e70: 00028 . 00018 [101] - busy (10)
+007a5e88: 00018 . 00080 [101] - busy (78)
+007a5f08: 00080 . 00080 [101] - busy (78)
+007a5f88: 00080 . 00018 [101] - busy (10)
+007a5fa0: 00018 . 00020 [101] - busy (14)
+007a5fc0: 00020 . 00020 [101] - busy (10)
+007a5fe0: 00020 . 00078 [101] - busy (6c)
+007a6058: 00078 . 00080 [101] - busy (78)
+007a60d8: 00080 . 00018 [101] - busy (10)
+007a60f0: 00018 . 00018 [101] - busy (10)
+007a6108: 00018 . 00050 [101] - busy (42)
+007a6158: 00050 . 00010 [100]
+007a6168: 00010 . 00058 [101] - busy (4a)
+007a61c0: 00058 . 00080 [101] - busy (78)
+007a6240: 00080 . 00020 [101] - busy (10)
+007a6260: 00020 . 00018 [101] - busy (10)
+007a6278: 00018 . 00080 [101] - busy (78)
+007a62f8: 00080 . 00020 [101] - busy (10)
+007a6318: 00020 . 00018 [101] - busy (10)
+007a6330: 00018 . 00018 [101] - busy (10)
+007a6348: 00018 . 00070 [101] - busy (68)
+007a63b8: 00070 . 00080 [101] - busy (78)
+007a6438: 00080 . 00018 [101] - busy (10)
+007a6450: 00018 . 00070 [101] - busy (68)
+007a64c0: 00070 . 00078 [101] - busy (70)
+007a6538: 00078 . 00080 [101] - busy (78)
+007a65b8: 00080 . 00020 [101] - busy (10)
+007a65d8: 00020 . 00018 [101] - busy (10)
+007a65f0: 00018 . 00020 [101] - busy (10)
+007a6610: 00020 . 00078 [101] - busy (6a)
+007a6688: 00078 . 00088 [101] - busy (7c)
+007a6710: 00088 . 00018 [101] - busy (10)
+007a6728: 00018 . 00028 [101] - busy (20)
+007a6750: 00028 . 00010 [100]
+007a6760: 00010 . 00080 [101] - busy (78)
+007a67e0: 00080 . 00080 [101] - busy (78)
+007a6860: 00080 . 03d20 [101] - busy (3d1f)
+007aa580: 03d20 . 378b0 [101] - busy (378a8) Internal
+007e1e30: 378b0 . 00080 [101] - busy (78)
+007e1eb0: 00080 . 00020 [101] - busy (17)
+007e1ed0: 00020 . 00400 [101] - busy (3f8) Internal
+007e22d0: 00400 . 00400 [101] - busy (3f8) Internal
+007e26d0: 00400 . 00080 [101] - busy (78)
+007e2750: 00080 . 00080 [101] - busy (78)
+007e27d0: 00080 . 00028 [101] - busy (20)
+007e27f8: 00028 . 00028 [101] - busy (20)
+007e2820: 00028 . 00070 [101] - busy (66)
+007e2890: 00070 . 00080 [101] - busy (78)
+007e2910: 00080 . 00028 [101] - busy (20)
+007e2938: 00028 . 00028 [101] - busy (20)
+007e2960: 00028 . 00070 [101] - busy (68)
+007e29d0: 00070 . 00078 [101] - busy (6a)
+007e2a48: 00078 . 00210 [101] - busy (208)
+007e2c58: 00210 . 00018 [100]
+007e2c70: 00018 . 00070 [101] - busy (66)
+007e2ce0: 00070 . 00028 [101] - busy (20)
+007e2d08: 00028 . 00028 [101] - busy (20)
+007e2d30: 00028 . 00018 [100]
+007e2d48: 00018 . 00078 [101] - busy (6c)
+007e2dc0: 00078 . 02000 [101] - busy (1ff8) Internal
+007e4dc0: 02000 . 00028 [101] - busy (20)
+007e4de8: 00028 . 00028 [101] - busy (20)
+007e4e10: 00028 . 00028 [101] - busy (20)
+007e4e38: 00028 . 00028 [101] - busy (20)
+007e4e60: 00028 . 00028 [101] - busy (20)
+007e4e88: 00028 . 00010 [100]
+007e4e98: 00010 . 00078 [101] - busy (6a)
+007e4f10: 00078 . 00408 [101] - busy (400)
+007e5318: 00408 . 00028 [101] - busy (20)
+007e5340: 00028 . 00800 [101] - busy (7f8) Internal
+007e5b40: 00800 . 006d0 [101] - busy (6c8)
+007e6210: 006d0 . 00c08 [101] - busy (c00)
+007e6e18: 00c08 . 00800 [101] - busy (7f8) Internal
+007e7618: 00800 . 00228 [101] - busy (220)
+007e7840: 00228 . 00228 [101] - busy (220)
+007e7a68: 00228 . 00490 [101] - busy (483)
+007e7ef8: 00490 . 00218 [101] - busy (209)
+007e8110: 00218 . 00058 [101] - busy (4a)
+007e8168: 00058 . 00808 [101] - busy (800)
+007e8970: 00808 . 00088 [101] - busy (80)
+007e89f8: 00088 . 00448 [101] - busy (440)
+007e8e40: 00448 . 00078 [101] - busy (6c)
+007e8eb8: 00078 . 01878 [100]
+007ea730: 01878 . 00100 [101] - busy (f4)
+007ea830: 00100 . 00038 [101] - busy (2e)
+007ea868: 00038 . 00030 [101] - busy (28)
+007ea898: 00030 . 00040 [101] - busy (37)
+007ea8d8: 00040 . 00048 [101] - busy (3c)
+007ea920: 00048 . 00040 [101] - busy (31)
+007ea960: 00040 . 00030 [101] - busy (24)
+007ea990: 00030 . 00040 [101] - busy (32)
+007ea9d0: 00040 . 00038 [101] - busy (2e)
+007eaa08: 00038 . 00038 [101] - busy (2c)
+007eaa40: 00038 . 00030 [101] - busy (28)
+007eaa70: 00030 . 00030 [101] - busy (21)
+007eaaa0: 00030 . 00020 [101] - busy (15)
+007eaac0: 00020 . 00038 [101] - busy (2b)
+007eaaf8: 00038 . 00030 [101] - busy (22)
+007eab28: 00030 . 00038 [101] - busy (2e)
+007eab60: 00038 . 00048 [101] - busy (39)
+007eaba8: 00048 . 00020 [101] - busy (17)
+007eabc8: 00020 . 00040 [101] - busy (36)
+007eac08: 00040 . 00050 [101] - busy (47)
+007eac58: 00050 . 00050 [101] - busy (48)
+007eaca8: 00050 . 00020 [101] - busy (12)
+007eacc8: 00020 . 00020 [101] - busy (18)
+007eace8: 00020 . 00030 [101] - busy (24)
+007ead18: 00030 . 00038 [101] - busy (29)
+007ead50: 00038 . 00098 [101] - busy (8b)
+007eade8: 00098 . 00020 [101] - busy (17)
+007eae08: 00020 . 00020 [101] - busy (11)
+007eae28: 00020 . 00020 [101] - busy (18)
+007eae48: 00020 . 00020 [101] - busy (17)
+007eae68: 00020 . 00030 [101] - busy (21)
+007eae98: 00030 . 00020 [101] - busy (13)
+007eaeb8: 00020 . 00020 [101] - busy (14)
+007eaed8: 00020 . 00020 [101] - busy (16)
+007eaef8: 00020 . 00030 [101] - busy (28)
+007eaf28: 00030 . 00030 [101] - busy (27)
+007eaf58: 00030 . 00060 [101] - busy (52)
+007eafb8: 00060 . 00028 [101] - busy (12)
+007eafe0: 00028 . 00020 [111] - busy (1d)
+007eb000: 000b5000 - uncommitted bytes.</pre>
+<p>Si vemos en la lista, está el bloque si lo buscamos por la dirección del header  y nos dice el size</p>
+<figure><img loading="lazy" src="img/44/25.png" alt="Captura 25 del tute 44"></figure>
+<figure><img loading="lazy" src="img/44/26.png" alt="Captura 26 del tute 44"></figure>
+<p>Vemos que ya no nos muestra la historia aunque si el size, el size general es 0xf porque para hallar el total se multiplica por 8 lo que da</p>
+<p>hex(0xf *0x8)</p>
+<p>'0x78'</p>
+<p>Que es el size completo con el header y la finalización etc.</p>
+<p>En el caso del heap normal para ver los valores hay que usar</p>
+<figure><img loading="lazy" src="img/44/27.png" alt="Captura 27 del tute 44"></figure>
+<p>El tema es que están encodeados (xoreados) con una constante, donde podemos hallar la constante para desexorearlos.</p>
+<figure><img loading="lazy" src="img/44/28.png" alt="Captura 28 del tute 44"></figure>
+<p>Vemos que el offset 0x50 de la estructura del heap se llama encoding</p>
+<p>WINDBG&gt;dd 007a0000+ 0x50 L2</p>
+<pre class='asm'>007a0050 4ede14ce 000068d6</pre>
+<p>Son esos DWORDS los que xorearon la info.</p>
+<figure><img loading="lazy" src="img/44/29.png" alt="Captura 29 del tute 44"></figure>
+<p>Si hacemos lo mismo en el header dividiéndolo en dos DWORDS</p>
+<p>dd 007E8E40 L2</p>
+<p>Tengo los dos dwords que debo xorear con los dos de la entrada.</p>
+<p>WINDBG&gt;dd 007a0000+ 0x50 L2</p>
+<pre class='asm'>007a0050 4ede14ce 000068d6</pre>
+<p>WINDBG&gt;dd 007E8E40 L2</p>
+<pre class='asm'>007e8e40 40df14c1 0c00685f</pre>
+<p>Xoreo</p>
+<p>WINDBG&gt;? 4ede14ce ^ 40df14c1</p>
+<p>Evaluate expression: 234946575 = 0e01000f</p>
+<p>WINDBG&gt;? 68d6 ^ 0c00685f</p>
+<p>Evaluate expression: 201326729 = 0c000089</p>
+<p>Podemos armar la tablita, obviamente romperemos el programa y no podrá correr más pero para ver.</p>
+<figure><img loading="lazy" src="img/44/30.png" alt="Captura 30 del tute 44"></figure>
+<p>Remplazo los valores por los xoreados.</p>
+<figure><img loading="lazy" src="img/44/31.png" alt="Captura 31 del tute 44"></figure>
+<figure><img loading="lazy" src="img/44/32.png" alt="Captura 32 del tute 44"></figure>
+<p>Como en este caso el size es 0xf, hay que multiplicarlo por ocho para hallar el size total y me da 0x78 que es el mismo que me daba al inicio lo que incluye el header y la finalización.</p>
+<p>Bueno vamos poco a poco mirando y familiarizándonos con los bloques del heap, la próxima veremos que nos tiene que decir mona sobre esto, si ayuda o no jeje.</p>
+<p>Hasta la parte 45</p>
+<p>Ricardo Narvaja</p>
+</main>
+<footer class="pie">
+  <p>Material educativo y defensivo. Las prácticas se limitan a programas propios, software abierto o crackmes diseñados para aprender. No se enseña a eludir licencias, DRM ni controles de acceso.</p>
+  <p><a href="../00_EMPEZAR_AQUI.html">Inicio</a> · <a href="../guia/etapa-0.html">Etapas</a> · <a href="../fuentes_y_limites.html">Fuentes y límites</a> · <a href="../registro_de_cobertura.csv">Registro de cobertura</a></p>
+</footer>
+<script>
+(function(){
+  function abrir(src){
+    var o=document.createElement('div'); o.className='lightbox-ov';
+    var i=document.createElement('img'); i.src=src; o.appendChild(i);
+    function cerrar(){o.remove(); document.removeEventListener('keydown', onkey);}
+    function onkey(e){ if(e.key==='Escape') cerrar(); }
+    o.addEventListener('click', cerrar);
+    document.addEventListener('keydown', onkey);
+    document.body.appendChild(o);
+  }
+  document.addEventListener('DOMContentLoaded', function(){
+    document.querySelectorAll('figure img, main img').forEach(function(img){
+      img.style.cursor='zoom-in';
+      img.addEventListener('click', function(){ abrir(img.currentSrc||img.src); });
+    });
+  });
+})();
+</script>
+</body>
+</html>

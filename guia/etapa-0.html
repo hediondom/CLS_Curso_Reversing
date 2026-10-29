@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Etapa 0 · Laboratorio y método seguro</title>
+<meta name="description" content="Armar un entorno aislado, tomar snapshots, verificar hashes y registrar cada práctica con su alcance.">
+<link rel="stylesheet" href="../guia/estilo.css">
+</head>
+<body>
+<a class="salto" href="#contenido">Saltar al contenido</a>
+<header class="cabecera">
+  <div class="marca"><a href="../00_EMPEZAR_AQUI.html">CLS · Curso de reversing</a> <span class="edicion">edición 5 · 27/10/2026</span></div>
+  <nav class="principal" aria-label="Navegación principal">
+    <a href="../00_EMPEZAR_AQUI.html">Inicio</a>
+    <a href="../guia/index.html">Curso</a>
+    <a href="../materiales.html">Materiales</a>
+    <a href="../fichas/index.html">Fichas</a>
+    <a href="../glosario.html">Glosario</a>
+    <a href="../preguntas_y_respuestas.html">Repaso</a>
+    <a href="../buscar.html">Buscar</a>
+  </nav>
+</header>
+<main id="contenido">
+<nav class="migas" aria-label="Ubicación"><a href="../00_EMPEZAR_AQUI.html">Inicio</a><span aria-hidden="true">›</span><a href="../guia/index.html">Curso</a><span aria-hidden="true">›</span><span>Etapa 0 · Laboratorio y método seguro</span></nav><h1 id="etapa-0-laboratorio-y-método-seguro">Etapa 0 · Laboratorio y método seguro</h1>
+<aside class="callout nota"><p class="callout-titulo">Objetivo medible</p><p>Armar un entorno aislado, tomar snapshots, verificar hashes y registrar cada práctica con su alcance.</p></aside>
+<p><strong>Prerrequisitos:</strong> Ninguno. <strong>Duración estimada:</strong> 4 a 6 horas. Es una estimación de esta guía, derivada de la suma de las lecciones; no es una duración declarada por CLS.</p>
+<h2 id="lecciones">Lecciones</h2>
+<div class="tabla"><table>
+<thead><tr>
+<th>#</th>
+<th>Lección</th>
+<th>Qué aprendés</th>
+</tr></thead><tbody>
+<tr><td>0.1</td><td><a href="00-laboratorio.html">Un laboratorio que podés romper sin miedo</a></td><td>VM, snapshots, red aislada, transferencia por ISO y hashes.</td></tr>
+</tbody></table></div>
+<h2 id="recursos-de-cls-para-esta-etapa">Recursos de CLS para esta etapa</h2>
+<ul><li><a href="../fichas/inventario-limpio.html">Inventario limpio de CLS</a></li><li><a href="../fichas/transcripciones-telegram.html">Transcripciones de Telegram</a></li></ul>
+<h2 id="evaluación-de-salida">Evaluación de salida</h2>
+<ul><li>Mostrar una VM con snapshot limpia y red aislada.</li><li>Transferir un archivo sin carpeta compartida y verificar su SHA-256 en host y guest.</li><li>Escribir una bitácora con snapshot, programa, hash y observaciones.</li><li>Explicar qué harías si el programa deja el sistema en un estado raro.</li></ul>
+<aside class="callout practica"><p class="callout-titulo">Entregable de la etapa</p><p>Un archivo en tu bitácora con: lecciones completadas, ejercicios resueltos, dudas abiertas y evidencia (capturas, valores, hashes). Sin evidencia no se considera aprobada.</p></aside>
+<h2 id="errores-frecuentes">Errores frecuentes</h2>
+<ul><li>Usar carpeta compartida "solo para pasar el archivo".</li><li>Tomar la snapshot después de copiar la muestra.</li><li>Confundir una snapshot con un backup de los archivos del host.</li></ul>
+<h2 id="qué-no-entra-en-esta-etapa">Qué no entra en esta etapa</h2>
+<p>Los temas que no tienen material revisado o que exceden el marco se listan en <a href="05-fuera-de-alcance.html">Kernel y otros territorios</a>. No los uses como atajo: cada rama tiene prerrequisitos.</p>
+<aside class="callout nota"><p class="callout-titulo">Volver</p><p><a href="index.html">Mapa del curso</a> · <a href="../00_EMPEZAR_AQUI.html">Inicio</a></p></aside>
+</main>
+<footer class="pie">
+  <p>Material educativo y defensivo. Las prácticas se limitan a programas propios, software abierto o crackmes diseñados para aprender. No se enseña a eludir licencias, DRM ni controles de acceso.</p>
+  <p><a href="../00_EMPEZAR_AQUI.html">Inicio</a> · <a href="../guia/etapa-0.html">Etapas</a> · <a href="../fuentes_y_limites.html">Fuentes y límites</a> · <a href="../registro_de_cobertura.csv">Registro de cobertura</a></p>
+</footer>
+</body>
+</html>

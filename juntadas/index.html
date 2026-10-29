@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Juntadas ilustradas (CLS)</title>
+<meta name="description" content="Sesiones de práctica de reversing de Telegram con fotogramas + transcripción.">
+<link rel="stylesheet" href="../guia/estilo.css">
+</head>
+<body>
+<a class="salto" href="#contenido">Saltar al contenido</a>
+<header class="cabecera">
+  <div class="marca"><a href="../00_EMPEZAR_AQUI.html">CLS · Curso de reversing</a> <span class="edicion">edición 5 · 27/10/2026</span></div>
+  <nav class="principal" aria-label="Navegación principal">
+    <a href="../00_EMPEZAR_AQUI.html">Inicio</a>
+    <a href="../guia/index.html">Curso</a>
+    <a href="../fichas/index.html">Fichas</a>
+    <a href="../glosario.html">Glosario</a>
+    <a href="../preguntas_y_respuestas.html">Repaso</a>
+  </nav>
+</header>
+<main id="contenido">
+<h1>Juntadas ilustradas</h1>
+<aside class="callout aviso"><p class="callout-titulo">Material automático, no verificado</p><p>Sesiones de práctica EN VIVO de los grupos, con transcripción automática y fotogramas del video. No son tutoriales redactados. Se eligieron las más largas marcadas como reversing/técnico en el <a href="../telegram.html">tamizado de Telegram</a>.</p></aside>
+<ul>
+<li><a href="ejercicio-compartido.html"><strong>Ejercicio Compartido</strong></a> — 4:00:29. 80 fotogramas. 37.113 palabras</li>
+<li><a href="juntada-extraoficial-10.html"><strong>Juntada ExtraOficial 10</strong></a> — 2:38:18. 64 fotogramas. 23.638 palabras</li>
+<li><a href="2021-02-13-15-19-41.html"><strong>2021-02-13 15-19-41</strong></a> — 2:37:48. 64 fotogramas. 20.208 palabras</li>
+<li><a href="juntada-de-practica-00-29-08-2020.html"><strong>juntada de practica 00_29 08 2020-</strong></a> — 2:07:46. 52 fotogramas. 19.714 palabras</li>
+<li><a href="reverse-engineering-con-ricardo-narvaja-hackorgame.html"><strong>Reverse engineering con Ricardo Narvaja hackorgame</strong></a> — 1:39:26. 40 fotogramas. 18.942 palabras</li>
+</ul>
+</main>
+<footer class="pie">
+  <p>Material educativo y defensivo. Las prácticas se limitan a programas propios, software abierto o crackmes diseñados para aprender. No se enseña a eludir licencias, DRM ni controles de acceso.</p>
+  <p><a href="../00_EMPEZAR_AQUI.html">Inicio</a> · <a href="../guia/etapa-0.html">Etapas</a> · <a href="../fuentes_y_limites.html">Fuentes y límites</a> · <a href="../registro_de_cobertura.csv">Registro de cobertura</a></p>
+</footer>
+<script>
+(function(){
+  function abrir(src){
+    var o=document.createElement('div'); o.className='lightbox-ov';
+    var i=document.createElement('img'); i.src=src; o.appendChild(i);
+    function cerrar(){o.remove(); document.removeEventListener('keydown', onkey);}
+    function onkey(e){ if(e.key==='Escape') cerrar(); }
+    o.addEventListener('click', cerrar);
+    document.addEventListener('keydown', onkey);
+    document.body.appendChild(o);
+  }
+  document.addEventListener('DOMContentLoaded', function(){
+    document.querySelectorAll('figure img, main img').forEach(function(img){
+      img.style.cursor='zoom-in';
+      img.addEventListener('click', function(){ abrir(img.currentSrc||img.src); });
+    });
+  });
+})();
+</script>
+</body>
+</html>

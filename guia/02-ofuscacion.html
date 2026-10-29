@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>2.10 · Ofuscación nativa: leer lo que no quiere ser leído</title>
+<meta name="description" content="Reconocer código ofuscado nativo —secciones invertidas, basura, saltos al medio, cadenas cifradas, flujo aplanado— y encontrar el bloque real sin parchear a ciegas.">
+<link rel="stylesheet" href="../guia/estilo.css">
+</head>
+<body>
+<a class="salto" href="#contenido">Saltar al contenido</a>
+<header class="cabecera">
+  <div class="marca"><a href="../00_EMPEZAR_AQUI.html">CLS · Curso de reversing</a> <span class="edicion">edición 5 · 27/10/2026</span></div>
+  <nav class="principal" aria-label="Navegación principal">
+    <a href="../00_EMPEZAR_AQUI.html">Inicio</a>
+    <a href="../guia/index.html">Curso</a>
+    <a href="../materiales.html">Materiales</a>
+    <a href="../fichas/index.html">Fichas</a>
+    <a href="../glosario.html">Glosario</a>
+    <a href="../preguntas_y_respuestas.html">Repaso</a>
+    <a href="../buscar.html">Buscar</a>
+  </nav>
+</header>
+<main id="contenido">
+<nav class="migas" aria-label="Ubicación"><a href="../00_EMPEZAR_AQUI.html">Inicio</a><span aria-hidden="true">›</span><a href="../guia/index.html">Curso</a><span aria-hidden="true">›</span><span>Etapa 2 · Windows intermedio</span></nav><h1 id="ofuscación-nativa-leer-lo-que-no-quiere-ser-leído">Ofuscación nativa: leer lo que no quiere ser leído</h1>
+<aside class="callout nota"><p class="callout-titulo">Objetivo de la lección</p><p>Reconocer las señales de que un binario nativo está <strong>ofuscado</strong> y tener un método para llegar al código real, sin romperlo. <strong>Prerrequisitos:</strong> PE y secciones (1.4), assembly y flujo (2.3–2.4), IDA y debugger (2.6–2.7).</p></aside>
+<p>Esto es <strong>reconocimiento defensivo</strong>: entender cómo se ve el código ofuscado para poder analizarlo. No se enseña a ofuscar ni a desempaquetar protectores comerciales.</p>
+<h2 id="qué-es-la-ofuscación-nativa">Qué es la ofuscación nativa</h2>
+<p>Ofuscar es hacer que el programa <strong>siga funcionando igual</strong> pero sea difícil de leer para una persona y confuso para el desensamblador. A diferencia de un packer, el código puede estar a la vista: lo que cambia es la <em>forma</em>. Las técnicas típicas (<strong>conocimiento externo</strong>):</p>
+<ul><li><strong>Secciones reordenadas o con nombres falsos</strong>, y el <em>entry point</em> lejos de lo esperado.</li><li><strong>Basura entre bloques</strong>: bytes que no se ejecutan pero que el desensamblador intenta interpretar como instrucciones.</li><li><strong>Saltos al medio de una instrucción</strong>: un <code>jmp</code>/<code>jnz</code> cae a un byte que no es el inicio real, así el listado lineal muestra una instrucción que <em>no es</em> la que se ejecuta.</li><li><strong>Código muerto y opaco</strong>: <code>test ebp, ebp</code> seguido de <code>jnz</code> cuando <code>ebp</code> nunca es cero — un salto que <em>siempre</em> se toma, disfrazado de condicional.</li><li><strong>Strings ocultas</strong>: con un <code>00</code> adelante, armadas en el stack byte a byte, o cifradas y descifradas en runtime.</li></ul>
+<h2 id="cómo-se-ve-en-cls">Cómo se ve en CLS</h2>
+<p>El capítulo 26 analiza el ejercicio «choteado» y muestra el síntoma clásico: al abrirlo, <strong>IDA lo muestra "todo roto"</strong> y al forzarlo a función queda "todo feo"; en x64dbg tampoco se ve claro. Al mirar el <em>memory map</em> aparece la causa: <strong>las secciones están cambiadas</strong> —la primera sección está vacía y el código ejecutable recién está en la segunda—, y eso <strong>engaña al desensamblador</strong>. Con los símbolos cargados se empieza a navegar; sin ellos, la dificultad es la misma pero hay que apoyarse en la traza (<a class="fuente" href="../../CLS_resultados_intermedios/transcripciones/extraidos/Reversing%20desde%20cero%20%28Ricardo%20y%20Solid%29/Ricardo%20Narvaja%20y%20Solid%20-%20Reversing%20desde%20cero_26%20Ofuscaci%C3%B3n%201_26%20Ofuscaci%C3%B3n%201.txt">Reversing desde cero, cap. 26</a>).</p>
+<p>El capítulo 30 resuelve la segunda parte y agrega un paso de preparación muy útil para analizar: cargar <strong>todas las secciones</strong> en IDA y, para trabajar con direcciones estables, <strong>poner a cero el <code>DLL characteristics</code></strong> (el bit de <code>DYNAMICBASE</code>/ASLR) con <em>Patch Program → Change byte</em> y <em>Apply patches to input file</em>, de modo que el módulo cargue siempre en su base (aquí <code>0x400000</code>) (<a class="fuente" href="../../CLS_resultados_intermedios/transcripciones/extraidos/Reversing%20desde%20cero%20%28Ricardo%20y%20Solid%29/Ricardo%20Narvaja%20y%20Solid%20-%20Reversing%20desde%20cero_30%20Ofuscaci%C3%B3n%202_30%20Ofuscaci%C3%B3n%202.txt">Reversing desde cero, cap. 30</a>). Es un parche <strong>sobre el crackme didáctico</strong> del ejercicio (hecho para practicar), para poder estudiarlo con direcciones estables; no sobre software ajeno.</p>
+<h2 id="el-método-encontrar-el-bloque-real">El método: encontrar el bloque real</h2>
+<ol><li><strong>Sospechá temprano.</strong> Si IDA no arma funciones, si hay flechas que cruzan todo o si el <em>memory map</em> no coincide con lo que esperás, asumí ofuscación.</li><li><strong>Mirá las secciones primero</strong> (memory map / segments): dónde está de verdad el código ejecutable y cuál es la base.</li><li><strong>Dejá las direcciones quietas</strong>: en tu laboratorio, desactivá ASLR del ejecutable propio para que las direcciones no cambien entre corridas.</li><li><strong>Seguí la ejecución, no el listado.</strong> Ante un salto sospechoso, poné un breakpoint y mirá a dónde salta <em>de verdad</em>; el desensamblado lineal puede estar mostrando bytes que no se ejecutan.</li><li><strong>No NOPees a ciegas.</strong> Reemplazar bytes sin entender rompe el programa y borra la pista. Comentá y renombrá; parchá solo cuando sabés qué hace el byte.</li></ol>
+<h2 id="ejemplo-paso-a-paso-un-salto-al-medio-de-una-instrucción">Ejemplo paso a paso: un salto al medio de una instrucción</h2>
+<p><em>(Ejemplo <strong>ilustrativo</strong>: bytes construidos para mostrar la técnica, no un volcado de un binario puntual.)</em></p>
+<p>Supongamos estos bytes a partir de <code>0x401000</code>:</p>
+<pre><code class="lenguaje-text">401000:  B8 EB FE 90 90        ; así lo decodifica el desensamblador LINEAL
+         mov eax, 0x9090FEEB
+
+pero el código que viene antes hace:  jmp 0x401001  (salta UN byte adelante)
+
+401001:  EB FE                 ; reinterpretado desde 0x401001
+         jmp short 0x401001    ; EB = jmp corto, FE = -2  → salta a sí mismo</code></pre>
+<p>Qué pasó: el byte <code>B8</code> (opcode de <code>mov eax, imm32</code>) hizo que IDA se "comiera" los 4 bytes siguientes como el inmediato. Pero el flujo real nunca ejecuta el <code>B8</code>: entra en <code>0x401001</code>, donde <code>EB FE</code> es un <code>jmp</code> a sí mismo (lo que viste en <a href="02-flujo.html">2.4</a>: desplazamiento <code>FE</code> = −2 sobre el final de la instrucción). El listado lineal mostraba una instrucción que <strong>no se ejecuta</strong>; la real aparece solo si decodificás desde el offset correcto. Por eso se sigue la <strong>ejecución</strong> (poné un breakpoint en <code>0x401001</code>) y no el listado.</p>
+<h2 id="cadenas-ocultas-cómo-reconocer-la-rutina-que-las-descifra">Cadenas ocultas: cómo reconocer la rutina que las descifra</h2>
+<p>En <a href="02-ida.html">2.7</a> viste por qué una cadena puede no aparecer en la ventana de strings. Cuando la causa es que está <strong>cifrada</strong>, el patrón en el código suele ser reconocible aunque el algoritmo cambie (<strong>conocimiento externo</strong>):</p>
+<ul><li>un <strong>bucle corto</strong> que recorre un buffer con un índice o puntero que avanza de a uno (o de a dos, si es UTF-16);</li><li>una <strong>operación reversible</strong> por byte: <code>xor</code> con una constante o con un byte de una clave que se repite (<code>índice mod largo</code>), o <code>add</code>/<code>sub</code>/<code>rol</code>;</li><li>un <strong>destino</strong> que después se pasa a una API que espera texto (<code>CreateFileW</code>, <code>RegOpenKeyExW</code>, <code>MessageBoxW</code>, <code>LoadLibraryW</code>).</li></ul>
+<p><em>(Ejemplo <strong>ilustrativo</strong>: descifrado con <code>xor</code> y clave de un byte, x64.)</em></p>
+<pre><code class="lenguaje-asm">lea   rsi, [rip+datos_cifrados]   ; fuente en .rdata (bytes ilegibles)
+lea   rdi, [rsp+40h]              ; destino en el stack
+xor   ecx, ecx
+bucle:
+movzx eax, byte ptr [rsi+rcx]
+xor   al, 5Ah                     ; clave de un byte
+mov   [rdi+rcx], al
+inc   rcx
+cmp   rcx, 0Ch                    ; largo fijo: 12 bytes
+jb    bucle
+mov   byte ptr [rdi+rcx], 0       ; terminador
+lea   rcx, [rsp+40h]
+call  cs:LoadLibraryA             ; el texto descifrado es un nombre de DLL</code></pre>
+<p>Cómo se lee: el <code>xor al, 5Ah</code> dentro del bucle es la transformación; <code>0Ch</code> es el largo; el destino termina como argumento de <code>LoadLibraryA</code>, así que el texto es un nombre de módulo. Para recuperarlo hay dos caminos, y conviene hacer los dos: <strong>dinámico</strong>, con un breakpoint en la llamada a <code>LoadLibraryA</code> y leyendo <code>RCX</code>; <strong>estático</strong>, aplicando la misma operación a los 12 bytes con un script (en IDA, IDAPython; en Ghidra, un script de <a href="02-ghidra.html">2.16</a>). Si coinciden, anotás la cadena en un comentario junto al bucle y renombrás el buffer.</p>
+<p>Lo que <strong>no</strong> conviene: ejecutar el programa entero para "ver qué cadenas aparecen" si no sabés qué hace, ni copiar la rutina sin entender de dónde sale la clave (puede depender de un dato del entorno y dar otro resultado en otra máquina).</p>
+<h2 id="aplanamiento-del-flujo-de-control">Aplanamiento del flujo de control</h2>
+<p>Otra técnica frecuente en ofuscadores de código nativo es el <strong>aplanamiento del flujo de control</strong> (<em>control-flow flattening</em>): los bloques básicos de una función se sacan de su orden natural y se ponen <strong>todos al mismo nivel</strong>, dentro de un bucle infinito con un <code>switch</code> que elige qué bloque ejecutar según una <strong>variable de estado</strong>. Cada bloque, al terminar, escribe en esa variable el número del bloque siguiente (<strong>conocimiento externo</strong>; el ofuscador de investigación Obfuscator-LLVM lo describe así).</p>
+<p>Cómo se ve en el grafo de IDA o Ghidra:</p>
+<ul><li>un <strong>despachador</strong> central (comparaciones o una tabla de saltos sobre la misma variable) al que vuelven todos los bloques;</li><li>muchos bloques "hermanos" sin relación aparente entre sí, todos con una flecha de vuelta al despachador;</li><li>cada bloque termina con un <code>mov [var_estado], constante</code> (o con un cálculo que da una constante) antes de volver.</li></ul>
+<p>El método para leerlo no es mirar el grafo, que ya no dice nada, sino <strong>reconstruir la secuencia</strong>: para cada bloque, anotá qué valor de estado lo selecciona y qué valor deja al salir. Con esa tabla (estado → bloque → estado siguiente) se recupera el orden real. Los saltos condicionales originales aparecen como bloques que dejan <strong>uno de dos valores</strong> según una comparación. Hacerlo a mano sirve para funciones chicas; para funciones grandes existen complementos que lo automatizan, fuera del alcance de esta lección.</p>
+<div class="tabla"><table>
+<thead><tr>
+<th>Señal</th>
+<th>Qué sospechar</th>
+<th>Cómo confirmarlo</th>
+</tr></thead><tbody>
+<tr><td>Todos los bloques vuelven a un mismo punto</td><td>Aplanamiento</td><td>Ubicar la variable que compara el despachador</td></tr>
+<tr><td><code>jnz</code> tras <code>test</code> con registro siempre no nulo</td><td>Predicado opaco</td><td>Seguir el valor del registro en el debugger</td></tr>
+<tr><td>Bucle corto con <code>xor</code> sobre un buffer que va a una API</td><td>Cadena cifrada</td><td>Breakpoint en la API y leer el argumento</td></tr>
+<tr><td>Ráfaga de <code>mov</code> con constantes imprimibles</td><td>Cadena armada en el stack</td><td>Leer las constantes como bytes en little-endian</td></tr>
+<tr><td>El listado no arma funciones</td><td>Basura o saltos al medio</td><td>Seguir la ejecución, no el listado</td></tr>
+</tbody></table></div>
+<h2 id="práctica">Práctica</h2>
+<p>En tu VM, sobre un <strong>ejercicio propio o un crackme didáctico</strong> (hay varios en el <a href="../practicas.html">Banco de prácticas</a>):</p>
+<ol><li>Abrilo en IDA y en x64dbg y anotá tres señales de que algo no se lee normal.</li><li>Mirá el <em>memory map</em>: ¿la sección de código es la primera? ¿La base es la esperada?</li><li>Encontrá un salto condicional que en realidad sea incondicional (p. ej. <code>test reg,reg</code> + <code>jnz</code> con el registro siempre distinto de cero) y explicá por qué.</li><li>Llegá al primer bloque "real" de lógica siguiendo la ejecución, no el listado.</li><li>En un programa <strong>propio</strong>, guardá un nombre de DLL cifrado con <code>xor</code> de un byte y descifralo antes de usarlo. Recuperalo de las dos formas (breakpoint en la API y script sobre los bytes) y compará.</li><li>Escribí a mano, en C, una función chica con un <code>if</code> y un bucle, y una segunda versión "aplanada" con <code>while (1) { switch (estado) { ... } }</code>. Compilá ambas y compará los grafos; armá la tabla estado → bloque → estado siguiente de la versión aplanada.</li></ol>
+<h2 id="preguntas-de-repaso">Preguntas de repaso</h2>
+<details class="qa"><summary>¿Por qué un listado lineal puede mostrar una instrucción que no es la que se ejecuta?</summary><div class="respuesta"><p>Porque un salto puede caer <strong>al medio</strong> de lo que el desensamblador tomó como una instrucción; a partir de ese offset los bytes se decodifican distinto. Lo que se ejecuta es la secuencia que sigue el flujo real, no la que el desensamblador alineó de arriba a abajo.</p></div></details>
+<details class="qa"><summary>Viste <code>test ebp, ebp</code> seguido de <code>jnz</code>. ¿Por qué puede ser ofuscación?</summary><div class="respuesta"><p>Si en ese punto <code>ebp</code> nunca vale cero, <code>ZF</code> nunca se activa y el <code>jnz</code> <strong>se toma siempre</strong>: es un salto incondicional disfrazado de condicional, para que parezca que hay dos caminos cuando hay uno.</p></div></details>
+<details class="qa"><summary>En el «choteado», ¿qué pista da el <em>memory map</em>?</summary><div class="respuesta"><p>Que las secciones están <strong>reordenadas</strong>: la primera está vacía y el código ejecutable está en la segunda. Eso explica por qué el desensamblador no arma bien las funciones.</p></div></details>
+<details class="qa"><summary>¿Por qué el capítulo 30 pone a cero el <code>DLL characteristics</code>?</summary><div class="respuesta"><p>Para <strong>desactivar ASLR</strong> del ejecutable y que cargue siempre en la misma base (<code>0x400000</code>), así las direcciones son estables mientras se lo analiza. Es un parche sobre un binario propio de práctica.</p></div></details>
+<details class="qa"><summary>¿Por qué "no NOPear a ciegas"?</summary><div class="respuesta"><p>Porque reemplazar bytes sin entenderlos rompe la lógica y borra la evidencia de qué hacía el código. Primero se entiende (comentando, trazando); recién después, si hace falta y es un binario propio, se parchea.</p></div></details>
+<details class="qa"><summary>¿Qué tres elementos delatan una rutina que descifra una cadena?</summary><div class="respuesta"><p>Un bucle corto sobre un buffer, una operación reversible por byte (<code>xor</code>, <code>add</code>, <code>rol</code>) y un destino que después se pasa a una API que espera texto.</p></div></details>
+<details class="qa"><summary>¿Por qué conviene recuperar una cadena cifrada de forma estática y dinámica?</summary><div class="respuesta"><p>Porque se controlan entre sí: si el script sobre los bytes y el argumento leído en el breakpoint coinciden, la lectura de la rutina es correcta; si no, la clave puede depender del entorno o la rutina tiene un paso que no viste.</p></div></details>
+<details class="qa"><summary>En un grafo aplanado, ¿qué tabla reconstruís para recuperar el orden?</summary><div class="respuesta"><p>Estado → bloque → estado siguiente: qué valor de la variable selecciona cada bloque y qué valor deja al salir. Los bloques que dejan uno de dos valores según una comparación son los condicionales originales.</p></div></details>
+<aside class="callout nota"><p class="callout-titulo">Puerta de salida</p><p>Podés: (1) nombrar tres señales de ofuscación en un binario; (2) explicar un salto al medio de una instrucción y un salto condicional que siempre se toma; (3) usar el <em>memory map</em> para ubicar el código real; (4) llegar al primer bloque de lógica siguiendo la ejecución; (5) reconocer una rutina de descifrado de cadenas y recuperar el texto de dos formas; (6) reconocer un despachador de flujo aplanado y reconstruir el orden de una función chica.</p></aside>
+<aside class="callout nota"><p class="callout-titulo">Lo que queda fuera</p><p>La ofuscación por <strong>máquina virtual</strong> (el código se traduce a un bytecode propio que interpreta un "procesador" embebido), las expresiones mixtas booleano-aritméticas y la desofuscación automática por ejecución simbólica. Se mencionan para reconocerlas por nombre; analizarlas exige herramientas y tiempo que exceden esta etapa, y en protectores comerciales entran en el límite del curso (no desempacar protectores comerciales).</p></aside>
+<h2 id="fuentes-de-esta-lección">Fuentes de esta lección</h2>
+<ul><li><a class="fuente" href="../../CLS_resultados_intermedios/transcripciones/extraidos/Reversing%20desde%20cero%20%28Ricardo%20y%20Solid%29/Ricardo%20Narvaja%20y%20Solid%20-%20Reversing%20desde%20cero_26%20Ofuscaci%C3%B3n%201_26%20Ofuscaci%C3%B3n%201.txt">Reversing desde cero, cap. 26</a> — el «choteado» con símbolos: IDA/x64dbg confundidos, secciones invertidas en el memory map.</li><li><a class="fuente" href="../../CLS_resultados_intermedios/transcripciones/extraidos/Reversing%20desde%20cero%20%28Ricardo%20y%20Solid%29/Ricardo%20Narvaja%20y%20Solid%20-%20Reversing%20desde%20cero_30%20Ofuscaci%C3%B3n%202_30%20Ofuscaci%C3%B3n%202.txt">Reversing desde cero, cap. 30</a> — cargar todas las secciones y poner a cero <code>DLL characteristics</code> (ASLR) para direcciones estables.</li><li><a href="../ida_tutes/14.html">Curso IDA · tutes 14–18</a> — contexto de binarios que "no se leen de una".</li><li>Conocimiento externo: <a href="https://github.com/obfuscator-llvm/obfuscator/wiki/Control-Flow-Flattening" rel="noopener" target="_blank">Obfuscator-LLVM, Control Flow Flattening</a> — descripción del aplanamiento con variable de estado y <code>switch</code>; <a href="https://github.com/mandiant/flare-floss" rel="noopener" target="_blank">FLOSS</a> — tipos de cadenas que extrae (estáticas, armadas en el stack, decodificadas).</li></ul>
+<aside class="callout nota"><p class="callout-titulo">Capas de esta lección</p><p><strong>Contenido observado en CLS:</strong> el «choteado» de los capítulos 26 y 30, las secciones invertidas y el parche de <code>DLL characteristics</code>. <strong>Conocimiento externo:</strong> la taxonomía de técnicas (basura, saltos al medio, código opaco, strings ocultas), el patrón de las rutinas de descifrado y el aplanamiento del flujo de control. <strong>Ejemplo ilustrativo:</strong> los bytes del salto al medio y el bucle de descifrado con <code>xor</code>. <strong>Recomendación editorial:</strong> el método de cinco pasos, la regla de no NOPear a ciegas, la tabla de señales y la recuperación doble (estática y dinámica).</p></aside>
+
+<aside class="ampliacion-ext">
+<p class="callout-titulo">Ampliación editorial basada en fuentes externas — Criterio de triage estático: Aplanamiento de Flujo (CFF) vs. Máquina Virtual de bytecode (VM)</p>
+<p>Aunque desofuscar una máquina virtual queda fuera del alcance del curso, en el inventario estático (Etapa 4) tanto CFF (<a href="https://github.com/obfuscator-llvm/obfuscator/wiki/Control-Flow-Flattening" rel="noopener" target="_blank">Obfuscator-LLVM</a>) como un intérprete de VM (<a href="https://www.usenix.org/legacy/events/woot09/tech/full_papers/rolles.pdf" rel="noopener" target="_blank">Rolles, USENIX WOOT '09</a>) producen un grafo con un gran bucle y un <code>switch</code> central <em>(Hecho confirmado)</em>. Esta tabla permite distinguirlos en pocos minutos:</p>
+<div class="tabla"><table>
+<thead><tr><th>Criterio observable</th><th>Aplanamiento del Flujo de Control (CFF)</th><th>Ofuscación por Máquina Virtual (VM de bytecode)</th></tr></thead>
+<tbody>
+<tr><td><strong>Contenido de los bloques del switch</strong></td><td>Operaciones reales de la función original (llamadas a APIs, acceso a variables locales y comparaciones del negocio).</td><td>Micro-operaciones genéricas (<em>handlers</em> del CPU virtual: <code>vADD</code>, <code>vPUSH</code>, <code>vMOV</code>, <code>vNOR</code>) sin lógica de negocio directa.</td></tr>
+<tr><td><strong>Selección del siguiente bloque</strong></td><td>Cada bloque asigna una constante fija a una variable local de estado (<code>mov [rbp-8], 0x3A1F...</code>) y vuelve al encabezado del <code>switch</code>.</td><td>Un registro físico actúa como puntero de bytecode (<code>VIP</code>/<code>VPC</code>), lee el siguiente opcode de una tabla de datos (<code>lodsb</code> / <code>movzx eax, byte ptr [rsi] ; inc rsi</code>) y salta vía tabla de handlers (<code>jmp [rbx+rax*8]</code>).</td></tr>
+<tr><td><strong>Reutilización entre funciones</strong></td><td>Cada función aplanada tiene su propio bucle y sus propios bloques básicos.</td><td>Varias funciones protegidas empujan un offset de bytecode distinto y saltan al mismo intérprete (<code>VM_Entry</code>).</td></tr>
+</tbody></table></div>
+</aside>
+</main>
+<footer class="pie">
+  <p>Material educativo y defensivo. Las prácticas se limitan a programas propios, software abierto o crackmes diseñados para aprender. No se enseña a eludir licencias, DRM ni controles de acceso.</p>
+  <p><a href="../00_EMPEZAR_AQUI.html">Inicio</a> · <a href="../guia/etapa-0.html">Etapas</a> · <a href="../fuentes_y_limites.html">Fuentes y límites</a> · <a href="../registro_de_cobertura.csv">Registro de cobertura</a></p>
+</footer>
+</body>
+</html>

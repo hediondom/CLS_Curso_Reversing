@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tute 16 · Unpacking ASPack 2.2 — Curso IDA</title>
+<meta name="description" content="Tutorial ilustrado del tute 16 del Curso IDA desde cero: Unpacking ASPack 2.2.">
+<link rel="stylesheet" href="../guia/estilo.css">
+</head>
+<body>
+<a class="salto" href="#contenido">Saltar al contenido</a>
+<header class="cabecera">
+  <div class="marca"><a href="../00_EMPEZAR_AQUI.html">CLS · Curso de reversing</a> <span class="edicion">edición 5 · 27/10/2026</span></div>
+  <nav class="principal" aria-label="Navegación principal">
+    <a href="../00_EMPEZAR_AQUI.html">Inicio</a>
+    <a href="../guia/index.html">Curso</a>
+    <a href="../fichas/index.html">Fichas</a>
+    <a href="../glosario.html">Glosario</a>
+    <a href="../preguntas_y_respuestas.html">Repaso</a>
+  </nav>
+</header>
+<main id="contenido">
+<p class="migas"><a href="../ida-tutes.html">← Índice de los 69 tutes de IDA</a></p>
+<h1>Tute 16 · Unpacking ASPack 2.2</h1>
+<p class="meta-tute"><strong>⏱ 7 min de lectura</strong> · 1.232 palabras · 32 capturas · grupo: Unpacking didáctico (UPX, ASPack), dump e IAT</p>
+<aside class="callout nota"><p class="callout-titulo">Qué enseña</p><p>Desempacar UnPackMe_ASPack 2.2 (packer didáctico, categoría sencilla).</p></aside>
+<p><em>▶ video afín (mismo autor, en x64dbg):</em> <a href="../videos.html">«13 Unpacking 2 - OEP»</a></p>
+<aside class="callout aviso"><p class="callout-titulo">Material observado, no reescrito</p><p>Es el texto y las capturas del <code>.docx</code> original del curso, solo presentados como tutorial. Puede tener erratas de origen. El autor del curso es Ricardo Narvaja.</p></aside>
+<hr>
+<p>INTRODUCCIÓN AL REVERSING CON IDA PRO DESDE CERO PARTE 16.</p>
+<p>DESEMPACANDO UnPackMe_ASPack 2.2.</p>
+<p>Antes de seguir con mas reversing haremos un ejercicio más de unpacking con otro target, en este caso UnPackMe_ASPack 2.2.</p>
+<p>El mismo se encuentra en la categoría de los sencillos, más adelante en el curso luego de abordar otros temas volveremos con unpacking avanzado.</p>
+<figure><img loading="lazy" src="img/16/1.png" alt="Captura 1 del tute 16"></figure>
+<p>Allí vemos el Entry Point del archivo empacado, comienza con la instrucción PUSHAD, que no habíamos visto entre las principales pero lo que hace es hacer un PUSH de cada registro al stack, o sea</p>
+<p>PUSHAD es igual a PUSHEAR o sea guardar en el stack los registros en el siguiente orden</p>
+<figure><img loading="lazy" src="img/16/2.png" alt="Captura 2 del tute 16"></figure>
+<p>Inversamente POPAD es la operación inversa hace POP del contenido del stack guardándolo en los registros en el siguiente orden (salvo ESP ese no se toca al hacer POPAD).</p>
+<figure><img loading="lazy" src="img/16/3.png" alt="Captura 3 del tute 16"></figure>
+<p>En los packers sencillos, la mayoría al iniciarse hacían PUSHAD para guardar el estado original de los registros al arrancar y hacían POPAD para restaurarlos antes de saltar al OEP a ejecutar el programa ya desempacado en memoria.</p>
+<p>Gracias a esto se podía hallar fácilmente el OEP utilizando el método del PUSHAD-POPAD, obviamente en packers más modernos se han dado cuenta de esto y evitan usar esas instrucciones.</p>
+<p>Como es el método del PUSHAD-POPAD, veamos.</p>
+<p>Primero que nada, tenemos que elegir el debugger y arrancarlo, ya sabemos hacer eso en DEBUGGER- SELECT DEBUGGER y elegimos LOCAL WIN32 DEBUGGER.</p>
+<p>Eso ya lo sabemos, pero ahora para practicar lo arrancaremos desde Python, pueden tipear las instrucciones una a una en la barra de Python o usar el plugin que instalamos IpyIDA que es más cómodo yo lo hare así.</p>
+<figure><img loading="lazy" src="img/16/4.png" alt="Captura 4 del tute 16"></figure>
+<p>Vemos que al escribir idc.Load y apretar TAB me dice que existe idc.LoadDebugger, veamos.</p>
+<figure><img loading="lazy" src="img/16/5.png" alt="Captura 5 del tute 16"></figure>
+<p>Vemos que en el caso nuestro debemos elegir win32 y 0 para local (se usa 1 para debugger remoto).</p>
+<p>Probemos.</p>
+<figure><img loading="lazy" src="img/16/6.png" alt="Captura 6 del tute 16"></figure>
+<p>Parece que le gusto contesto TRUE.</p>
+<figure><img loading="lazy" src="img/16/7.png" alt="Captura 7 del tute 16"></figure>
+<p>Vemos que ya está elegido si vuelvo a repetir el mismo comando me contesta FALSE porque ya estaba arrancado.</p>
+<p>El método del PUSHAD se basa en ejecutar el PUSHAD y en la siguiente instrucción, buscar los registros que guardo en el stack y a continuación poner un breakpoint para que cuando lo trate de recuperar con el POPAD justo antes de saltar al OEP, luego de desempacar el código original, se detenga el debugger.</p>
+<p>O sea que poniendo con F2 un breakpoint después del PUSHAD ya pararíamos después de ejecutarlo. (PUSHA es similar a PUSHAD).</p>
+<figure><img loading="lazy" src="img/16/8.png" alt="Captura 8 del tute 16"></figure>
+<p>El que lo quiere hacer desde Python  puede tipear.</p>
+<p>idaapi.add_bpt(0x46b002, 0, BPT_SOFT)</p>
+<p>Con eso se agrega el breakpoint desde Python el primer argumento es la dirección, el segundo el largo del breakpoint y el tercero es el tipo en este caso el breakpoint normal por software BPT_SOFT o 0.</p>
+<p>Ya seleccionamos el DEBUGGER, pusimos el primer breakpoint ahora hay que arrancar el debugger para que pare en el breakpoint eso es sencillo con F9 sino desde Python.</p>
+<p>StartDebugger("","","");</p>
+<p>Con ese comando arrancara el debugger que elegimos si todo es correcto, y en este caso parara en el BREAKPOINT que pusimos en 0x46B002.</p>
+<figure><img loading="lazy" src="img/16/9.png" alt="Captura 9 del tute 16"></figure>
+<p>Ahora aquí debemos mirar el stack y poner un breakpoint en la primera línea, ya que es allí donde están los valores de los registros guardados por PUSHAD que más adelante los recuperara con POPAD, para que se detenga allí, al recuperarlos.</p>
+<figure><img loading="lazy" src="img/16/10.png" alt="Captura 10 del tute 16"></figure>
+<p>Allí vemos que debemos poner el BP en 0x19FF64 en mi caso, en el de ustedes en su primera dirección del stack, apuntada por ESP.</p>
+<p>Ahora pongo el cursor en la ventana del listado y apretó le flechita que está al lado de ESP.</p>
+<figure><img loading="lazy" src="img/16/11.png" alt="Captura 11 del tute 16"></figure>
+<p>Apretando la flechita al lado de un registro se tratará de mostrar esa dirección si existe, en la ventana donde esta el cursor, así que podemos poner el BREAKPOINT allí, a mano con F2, pero tendremos que configurarlo ya que en este caso debe ser de LECTURA Y ESCRITURA no de ejecución ya que aquí parara cuando recupere o lea el valor no ejecutara código allí.</p>
+<p>Al apretar F2 se da cuenta y abre la ventana de configuración del BP.</p>
+<figure><img loading="lazy" src="img/16/12.png" alt="Captura 12 del tute 16"></figure>
+<p>Si no aparece deberíamos ir a DEBUGGER-BREAKPOINTS-BREAKPOINT LIST</p>
+<figure><img loading="lazy" src="img/16/13.png" alt="Captura 13 del tute 16"></figure>
+<p>Y haciendo click derecho EDIT podemos cambiar la configuración del que queremos.</p>
+<p>Se puede poner este breakpoint desde Python?.</p>
+<figure><img loading="lazy" src="img/16/14.png" alt="Captura 14 del tute 16"></figure>
+<p>idaapi.add_bpt(0x019FF64, 1, 3)</p>
+<p>El argumento 1 es el largo del breakpoint y 3 el tipo de breakpoint en este caso READ-WRITE ACCESS como vemos en la tablita si lo tipeo aparece el mismo breakpoint que pusimos a mano.</p>
+<p>Deshabilitamos los BP anteriores a mano en la lista de BREAKPOINTS con click derecho DISABLE o desde Python.</p>
+<p>EnableBpt(0x46b002, 0)</p>
+<p>Con el segundo argumento igual a 1 lo habilitas, con 0 lo deshabilitas.</p>
+<figure><img loading="lazy" src="img/16/15.png" alt="Captura 15 del tute 16"></figure>
+<p>Allí quedo en verde o sea deshabilitado y por supuesto en rojo el del stack.</p>
+<figure><img loading="lazy" src="img/16/16.png" alt="Captura 16 del tute 16"></figure>
+<p>Ahora debemos continuar con F9 o tipear en Python.</p>
+<p>idaapi.continue_process()</p>
+<figure><img loading="lazy" src="img/16/17.png" alt="Captura 17 del tute 16"></figure>
+<p>Allí paro justo después del POPAD cuando recupera los registros y vemos que desde el STUB va a saltar al OEP en 0x4271b0 ya que un PUSH XXX - RET es similar a un JMP XXX, así que traceamos un poco hasta llegar al OEP.</p>
+<figure><img loading="lazy" src="img/16/18.png" alt="Captura 18 del tute 16"></figure>
+<p>Ahora debemos reanalizar el ejecutable, como hicimos en el caso anterior y creamos la función, si quisiéramos solo hacer un snapshot de la memoria a una database para estudiar, este sería el momento, no lo repetiremos en este caso.</p>
+<figure><img loading="lazy" src="img/16/19.png" alt="Captura 19 del tute 16"></figure>
+<p>Lo siguiente es dumpear para ello debemos hallar la ImageBase y la dirección final en el último segmento del ejecutable.</p>
+<p>En SEGMENTS vemos que la ImageBase es 0x400000 y termina en 0x46e000.</p>
+<figure><img loading="lazy" src="img/16/20.png" alt="Captura 20 del tute 16"></figure>
+<p>En vez de usar el script que utilizamos en la parte 15 usaremos la versión del mismo de Python.</p>
+<figure><img loading="lazy" src="img/16/21.png" alt="Captura 21 del tute 16"></figure>
+<p>Como esta tiene varias líneas lo armo en un editor de texto y lo guardo como archivo ipython_dump.py lo adjunto al tutorial también.</p>
+<p>Ahora desde el menú FILE-SCRIPT FILE lo abro se ejecuta y crea el archivo aspack.bin no tiene icono para ello usamos el PEEDITOR.</p>
+<p>PEEDITOR.</p>
+<figure><img loading="lazy" src="img/16/22.png" alt="Captura 22 del tute 16"></figure>
+<figure><img loading="lazy" src="img/16/23.png" alt="Captura 23 del tute 16"></figure>
+<p>Click derecho DUMP FIXER.</p>
+<figure><img loading="lazy" src="img/16/24.png" alt="Captura 24 del tute 16"></figure>
+<p>Y al renombrarlo a EXE ya sale el icono.</p>
+<p>Ahora abrimos el Scylla 0.98 en esta parte adjunte una versión más nueva, y por supuesto igual que antes buscare el proceso que está detenido aun en el OEP.</p>
+<figure><img loading="lazy" src="img/16/25.png" alt="Captura 25 del tute 16"></figure>
+<p>Ahora le ponemos el OEP que es 004271B0 y IAT AUTOSEARCH y GET IMPORTS.</p>
+<p>Si apretamos SHOW INVALIDS y elegimos MODO ADVANCED vemos que hay unas cuantas malas, veamos si lo arregla automático.</p>
+<p>Vemos que no lo puede arreglar así que miraremos a mano.</p>
+<figure><img loading="lazy" src="img/16/26.png" alt="Captura 26 del tute 16"></figure>
+<p>Ahí vemos la primera entrada en 0x460818, esa es válida y coincide, más arriba empiezan las invalidas, veamos que hay en la primera invalida más arriba en 0x4600ec.</p>
+<p>Si las acomodo un poco con D y luego las agrupo.</p>
+<figure><img loading="lazy" src="img/16/27.png" alt="Captura 27 del tute 16"></figure>
+<p>Se ven que el contenido no apunta a ninguna dirección valida y también si apretó CTRL mas X no hay referencias.</p>
+<figure><img loading="lazy" src="img/16/28.png" alt="Captura 28 del tute 16"></figure>
+<p>Mientras que en una entrada real habrá referencias cuando se use la api, por ejemplo.</p>
+<figure><img loading="lazy" src="img/16/29.png" alt="Captura 29 del tute 16"></figure>
+<p>Así que esas no son entradas de la IAT, las quitaremos.</p>
+<p>Vemos que si limpio con CLEAR y le doy IAT AUTOSEARCH de nuevo, pero le digo que no use las avanzadas las halla todas bien.</p>
+<figure><img loading="lazy" src="img/16/30.png" alt="Captura 30 del tute 16"></figure>
+<p>Vemos que la IAT ahora comienza en 0x460810 limpiando las que el MODO ADVANCED había agregado mal.</p>
+<p>Así que ahora puedo buscar el dumpeado y apretar FIX DUMP en el.</p>
+<figure><img loading="lazy" src="img/16/31.png" alt="Captura 31 del tute 16"></figure>
+<p>Y al reparado lo ejecuto sin problemas.</p>
+<figure><img loading="lazy" src="img/16/32.png" alt="Captura 32 del tute 16"></figure>
+<p>Y escribimos este tutorial ya que lo pide jeje.</p>
+<p>Hasta la parte 17.</p>
+<p>Ricardo Narvaja</p>
+</main>
+<footer class="pie">
+  <p>Material educativo y defensivo. Las prácticas se limitan a programas propios, software abierto o crackmes diseñados para aprender. No se enseña a eludir licencias, DRM ni controles de acceso.</p>
+  <p><a href="../00_EMPEZAR_AQUI.html">Inicio</a> · <a href="../guia/etapa-0.html">Etapas</a> · <a href="../fuentes_y_limites.html">Fuentes y límites</a> · <a href="../registro_de_cobertura.csv">Registro de cobertura</a></p>
+</footer>
+<script>
+(function(){
+  function abrir(src){
+    var o=document.createElement('div'); o.className='lightbox-ov';
+    var i=document.createElement('img'); i.src=src; o.appendChild(i);
+    function cerrar(){o.remove(); document.removeEventListener('keydown', onkey);}
+    function onkey(e){ if(e.key==='Escape') cerrar(); }
+    o.addEventListener('click', cerrar);
+    document.addEventListener('keydown', onkey);
+    document.body.appendChild(o);
+  }
+  document.addEventListener('DOMContentLoaded', function(){
+    document.querySelectorAll('figure img, main img').forEach(function(img){
+      img.style.cursor='zoom-in';
+      img.addEventListener('click', function(){ abrir(img.currentSrc||img.src); });
+    });
+  });
+})();
+</script>
+</body>
+</html>

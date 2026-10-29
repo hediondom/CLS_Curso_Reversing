@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Etapa 3 · .NET: runtime, ensamblados y metadatos</title>
+<meta name="description" content="Por qué .NET es una buena primera victoria: código administrado, IL, metadatos y decompiladores.">
+<link rel="stylesheet" href="../guia/estilo.css">
+</head>
+<body>
+<a class="salto" href="#contenido">Saltar al contenido</a>
+<header class="cabecera">
+  <div class="marca"><a href="../00_EMPEZAR_AQUI.html">CLS · Curso de reversing</a> <span class="edicion">edición 5 · 27/10/2026</span></div>
+  <nav class="principal" aria-label="Navegación principal">
+    <a href="../00_EMPEZAR_AQUI.html">Inicio</a>
+    <a href="../guia/index.html">Curso</a>
+    <a href="../materiales.html">Materiales</a>
+    <a href="../fichas/index.html">Fichas</a>
+    <a href="../glosario.html">Glosario</a>
+    <a href="../preguntas_y_respuestas.html">Repaso</a>
+    <a href="../buscar.html">Buscar</a>
+  </nav>
+</header>
+<main id="contenido">
+<nav class="migas" aria-label="Ubicación"><a href="../00_EMPEZAR_AQUI.html">Inicio</a><span aria-hidden="true">›</span><a href="../guia/index.html">Curso</a><span aria-hidden="true">›</span><span>Etapa 3 · .NET como primera victoria</span></nav><h1 id="net-runtime-ensamblados-y-metadatos">.NET: runtime, ensamblados y metadatos</h1>
+<aside class="callout nota"><p class="callout-titulo">Objetivo de la lección</p><p>Al terminar vas a poder explicar qué es el CLR, qué contiene un ensamblado .NET, en qué se diferencia el código administrado del nativo y por qué un decompilador puede reconstruir casi el código fuente, y reconocer los límites de Native AOT y C++/CLI mixto.</p></aside>
+<p><strong>Prerrequisitos:</strong> Etapa 2 completa. <strong>Duración sugerida:</strong> 3 horas. Estimación aproximada.</p>
+<h2 id="una-advertencia-sobre-las-fuentes">Una advertencia sobre las fuentes</h2>
+<p>En CLS <strong>no hay un curso de .NET leído</strong>. Lo que existe es:</p>
+<ul><li>El video 38 de «Videos y material adicional», que explica el código intermedio (MSIL) y por qué OllyDbg no alcanza para analizarlo (<a class="fuente" href="../../CLS_resultados_intermedios/transcripciones/extraidos/Videos%20y%20material%20adicional%20Ingenieria%20Inversa/Videos_Video38_Video38.txt">Videos y material adicional, Video 38</a>, 00:00:16).</li><li>El video 40, que usa .NET Reflector para decompilar un binario VB.NET y ver un formulario, un botón y una caja de texto (<a class="fuente" href="../../CLS_resultados_intermedios/transcripciones/extraidos/Videos%20y%20material%20adicional%20Ingenieria%20Inversa/Videos_Video40_Video40.txt">Videos y material adicional, Video 40</a>, 00:03:20).</li><li>Títulos de la colección <code>Teorias_Numeradas</code> que mencionan .NET/dnSpy, <strong>sin contenido leído</strong>: son contenedores <code>.zip</code> que no se abrieron.</li></ul>
+<p>Por eso esta etapa combina <strong>contenido observado</strong> (los dos videos) con <strong>conocimiento externo</strong> y <strong>recomendación editorial</strong>. No hay una ficha de un tutorial .NET de CLS porque no se encontró uno legible.</p>
+<h2 id="qué-es-net">Qué es .NET</h2>
+<p>.NET es una plataforma de ejecución. Un programa escrito en C#, VB.NET o F# no se compila directamente a código máquina: se compila a un lenguaje intermedio llamado <strong>IL</strong> (o <strong>MSIL</strong>, <em>Microsoft Intermediate Language</em>), y se guarda en un <strong>ensamblado</strong> (un <code>.exe</code> o <code>.dll</code>) junto con <strong>metadatos</strong>.</p>
+<p>Cuando ejecutás el programa, el <strong>CLR</strong> (<em>Common Language Runtime</em>) toma el IL, lo compila a código nativo con el <strong>JIT</strong> (<em>just-in-time compiler</em>) y lo ejecuta. El resultado es código máquina, pero generado en tiempo de ejecución.</p>
+<pre><code class="lenguaje-text">C#  --compilador--&gt;  IL + metadatos  --CLR/JIT--&gt;  código nativo  --&gt; CPU</code></pre>
+<p>El video 38 lo explica así: los lenguajes .NET no traducen a código nativo sino a un código intermedio, y por eso un debugger nativo como OllyDbg no alcanza para analizarlos (00:00:16–00:01:30).</p>
+<h2 id="el-ensamblado-por-dentro">El ensamblado por dentro</h2>
+<p>Un ensamblado .NET es un archivo PE, pero con una diferencia clave: incluye una <strong>cabecera CLR</strong> y una región de metadatos. En .NET Framework, el punto de entrada del PE es un <em>stub</em> que llama al runtime (<code>_CorExeMain</code> en <code>mscoree.dll</code>); en .NET moderno, un host nativo (<code>apphost</code>) carga el runtime y lo arranca. En los dos casos, el código que ves en el ensamblado es IL, no el <code>Main</code> compilado a máquina.</p>
+<p>Contenido típico:</p>
+<div class="tabla"><table>
+<thead><tr>
+<th>Parte</th>
+<th>Qué guarda</th>
+</tr></thead><tbody>
+<tr><td><strong>Manifest</strong></td><td>Nombre del ensamblado, versión, cultura, referencias a otros ensamblados</td></tr>
+<tr><td><strong>Metadatos</strong></td><td>Tipos, métodos, campos, propiedades, parámetros, atributos</td></tr>
+<tr><td><strong>IL</strong></td><td>El código de cada método</td></tr>
+<tr><td><strong>Recursos</strong></td><td>Iconos, cadenas, imágenes</td></tr>
+<tr><td><strong>Relocaciones / PE</strong></td><td>Lo mínimo para que Windows lo cargue</td></tr>
+</tbody></table></div>
+<p>Los metadatos son la razón por la que .NET es una "primera victoria": incluyen <strong>nombres</strong>. Un método se llama <code>CheckPassword</code>, no <code>sub_401000</code>. Un campo se llama <code>intentos</code>, no <code>[ebp-8]</code>. Salvo que el binario esté ofuscado, el decompilador puede reconstruir una versión muy parecida al código original.</p>
+<h2 id="código-administrado-vs-nativo">Código administrado vs nativo</h2>
+<div class="tabla"><table>
+<thead><tr>
+<th>Aspecto</th>
+<th>Nativo (C/C++)</th>
+<th>.NET (C#/VB)</th>
+</tr></thead><tbody>
+<tr><td>Unidad de ejecución</td><td>Código máquina</td><td>IL, compilado por JIT</td></tr>
+<tr><td>Nombres</td><td>Se pierden al compilar (salvo PDB)</td><td>Quedan en los metadatos</td></tr>
+<tr><td>Decompilación</td><td>Assembly difícil de leer</td><td>Casi código fuente</td></tr>
+<tr><td>Memoria</td><td>Manual (malloc/free)</td><td>Recolector de basura</td></tr>
+<tr><td>Portabilidad</td><td>Depende de la CPU</td><td>El mismo IL corre en varias</td></tr>
+<tr><td>Herramienta típica</td><td>IDA, x64dbg</td><td>ILSpy, dnSpy, dotPeek</td></tr>
+</tbody></table></div>
+<h3 id="excepciones-al-modelo-il-jit-native-aot-y-c-cli">Excepciones al modelo IL/JIT: Native AOT y C++/CLI</h3>
+<p>El recorrido IL → JIT describe el caso común, no todos los ejecutables relacionados con .NET. <strong>Native AOT</strong> compila IL a código nativo durante la publicación y no usa JIT al arrancar; el resultado es específico de una plataforma y puede ser más difícil de decompilar como IL. En reversing, primero identificá si hay cabecera CLR y metadatos suficientes; no asumas que todo binario hecho con .NET conserva el mismo contenido administrado.</p>
+<p>En Native AOT, la reflexión no desaparece por completo, pero debe ser compatible con análisis estático y trimming. Miembros a los que solo se llega mediante nombres construidos en ejecución pueden requerir anotaciones o preservación explícita; de otro modo, el linker puede quitarlos. Native AOT no admite carga dinámica de ensamblados (por ejemplo, Assembly.LoadFile) ni generación de código en runtime (System.Reflection.Emit). Para reversing, ILSpy puede no tener IL recuperable como en un ensamblado JIT; busca código nativo, metadatos/símbolos conservados y llamadas al runtime como evidencias complementarias.</p>
+<p><strong>C++/CLI</strong> puede producir ensamblados de modo mixto, con código nativo y administrado; C++/CLI no es una opción de publicación compatible con Native AOT. Esto introduce dos mecanismos de carga e inicialización y hace relevante el <em>loader lock</em>: el código administrado no debe ejecutarse desde <code>DllMain</code>. Para el analista, la consecuencia es práctica: un PE puede combinar metadatos CLR con secciones y código nativo; usá herramientas administradas y nativas y documentá qué parte estás observando.</p>
+<p>Eso no significa que .NET sea "inseguro" ni que "cualquiera puede ver el código". Significa que la <strong>ofuscación</strong> es la protección habitual: renombrar símbolos, cifrar strings, introducir flujo falso. Analizar un binario ofuscado es más difícil, pero el modelo de ejecución sigue siendo el mismo.</p>
+<h2 id="herramientas">Herramientas</h2>
+<div class="tabla"><table>
+<thead><tr>
+<th>Herramienta</th>
+<th>Estado</th>
+<th>Para qué</th>
+</tr></thead><tbody>
+<tr><td><strong>ILSpy</strong></td><td>Activa, open source</td><td>Decompilador de referencia; también <code>ilspycmd</code></td></tr>
+<tr><td><strong>dnSpy</strong></td><td>Sin mantenimiento desde hace años</td><td>Debugger + decompilador; existen forks como <strong>dnSpyEx</strong></td></tr>
+<tr><td><strong>dotPeek</strong></td><td>Gratis (JetBrains)</td><td>Decompilador cómodo</td></tr>
+<tr><td><strong>.NET Reflector</strong></td><td>De pago</td><td>El histórico que usa el video 40</td></tr>
+<tr><td><strong>ildasm</strong></td><td>Incluido en el SDK de Windows</td><td>Volcar IL y metadatos</td></tr>
+<tr><td><strong>Visual Studio</strong></td><td>Community gratis</td><td>Compilar y depurar tus propios programas</td></tr>
+</tbody></table></div>
+<p>Para empezar, <strong>ILSpy</strong> alcanza. Si necesitás depurar IL paso a paso, dnSpyEx o el debugger de Visual Studio sobre tu propio código son mejores opciones que un debugger nativo.</p>
+<aside class="callout aviso"><p class="callout-titulo">Sobre dnSpy</p><p>dnSpy fue durante años la herramienta más usada para analizar .NET. Su desarrollo se detuvo y quedó como proyecto archivado. Existen bifurcaciones mantenidas (por ejemplo dnSpyEx). Si un tutorial viejo te manda a descargar "dnSpy", verificá de dónde lo bajás y qué versión es. Para leer código, ILSpy es más simple y está activo.</p></aside>
+<h2 id="ejemplo-paso-a-paso-tu-primer-ensamblado">Ejemplo paso a paso: tu primer ensamblado</h2>
+<p>Si tenés el SDK de .NET instalado, creá un proyecto de consola:</p>
+<pre><code class="lenguaje-bash">dotnet new console -n HolaNet
+cd HolaNet
+dotnet build</code></pre>
+<p>El código generado es:</p>
+<pre><code class="lenguaje-csharp">Console.WriteLine("Hello, World!");</code></pre>
+<p>Abrí <code>bin/Debug/net8.0/HolaNet.dll</code> en ILSpy. Vas a ver:</p>
+<ul><li>El ensamblado <code>HolaNet</code>, con versión y referencias.</li><li>La clase <code>Program</code>.</li><li>El método <code>Main</code>, con su IL.</li><li>La cadena <code>"Hello, World!"</code> en el manifiesto de recursos.</li></ul>
+<p><strong>Qué mirar:</strong></p>
+<ol><li>El <strong>árbol de tipos</strong> a la izquierda: namespace, clase, métodos.</li><li>El <strong>panel de IL</strong> (si tu versión lo muestra): las instrucciones del método.</li><li>El <strong>panel de metadatos</strong>: tokens, firmas, referencias.</li></ol>
+<p>Ese recorrido es el equivalente .NET de abrir un <code>.exe</code> en IDA: primero la estructura, después el código.</p>
+<h2 id="práctica">Práctica</h2>
+<ol><li>Instalá el SDK de .NET y creá un proyecto de consola con una clase y dos métodos.</li><li>Compilalo en Debug y en Release. Abrí las dos versiones en ILSpy y compará el <code>Main</code>.</li><li>Anotá tres diferencias entre Debug y Release (por ejemplo, variables locales, saltos, llamadas).</li><li>Buscá una cadena que hayas escrito en el código. ¿Aparece en el ensamblado? ¿En qué forma?</li><li>Escribí en tu bitácora qué es el CLR, qué es el IL y por qué los metadatos facilitan el análisis.</li></ol>
+<h2 id="preguntas-de-repaso">Preguntas de repaso</h2>
+<p><strong>1. ¿Qué es el CLR?</strong> El runtime de .NET: carga el ensamblado, compila el IL a código nativo con el JIT y administra memoria, excepciones y seguridad.</p>
+<p><strong>2. ¿Qué diferencia hay entre IL y código máquina?</strong> El IL es un lenguaje intermedio independiente de la CPU; el código máquina es específico del procesador. El JIT traduce IL a máquina en tiempo de ejecución.</p>
+<p><strong>3. ¿Por qué un decompilador .NET produce código casi fuente?</strong> Porque los metadatos conservan nombres, tipos, firmas y estructura, y el IL es una representación de alto nivel del programa.</p>
+<p><strong>4. ¿Un binario .NET ofuscado sigue siendo .NET?</strong> Sí. La ofuscación cambia nombres y estructura, pero el modelo de ejecución (IL + metadatos + CLR) es el mismo.</p>
+<p><strong>5. ¿Qué herramienta usarías para ver el IL de un método?</strong> ILSpy, ildasm o el panel de IL de un decompilador. Para depurar, dnSpyEx o Visual Studio.</p>
+<h2 id="antes-de-avanzar">Antes de avanzar</h2>
+<p>Tenés que poder:</p>
+<ul><li>Explicar el recorrido C# → IL → JIT → CPU.</li><li>Nombrar las partes de un ensamblado.</li><li>Decir por qué los metadatos hacen más fácil el análisis.</li><li>Abrir un <code>.dll</code> propio en ILSpy y encontrar un método.</li></ul>
+<aside class="callout nota"><p class="callout-titulo">Puerta de salida</p><p>Si podés compilar tu propio programa y encontrarlo en ILSpy con nombres y todo, estás listo para leer IL.</p></aside>
+<h2 id="fuentes-de-esta-lección">Fuentes de esta lección</h2>
+<ul><li>Microsoft Learn: <a href="https://learn.microsoft.com/en-us/dotnet/core/deploying/native-aot/" rel="noopener" target="_blank">Native AOT deployment</a>, <a href="https://learn.microsoft.com/en-us/cpp/dotnet/initialization-of-mixed-assemblies" rel="noopener" target="_blank">Initialization of mixed assemblies (C++/CLI)</a>.</li></ul>
+<ul><li><a class="fuente" href="../../CLS_resultados_intermedios/transcripciones/extraidos/Videos%20y%20material%20adicional%20Ingenieria%20Inversa/Videos_Video38_Video38.txt">Videos y material adicional, Video 38</a> — código intermedio, MSIL, VB/C# y límites de OllyDbg.</li><li><a class="fuente" href="../../CLS_resultados_intermedios/transcripciones/extraidos/Videos%20y%20material%20adicional%20Ingenieria%20Inversa/Videos_Video40_Video40.txt">Videos y material adicional, Video 40</a> — .NET Reflector sobre un binario VB.NET.</li><li><a class="fuente" href="../../CLS_resultados_intermedios/teorias_numeradas_por_etapa.csv">teorias_numeradas_por_etapa.csv</a> — títulos con .NET/dnSpy, <strong>pendientes de revisar</strong> (contenedores no abiertos).</li></ul>
+<aside class="callout nota"><p class="callout-titulo">Capas de esta lección</p><p><strong>Contenido observado en CLS:</strong> la explicación del video 38 y el uso de .NET Reflector en el video 40. <strong>Conocimiento externo:</strong> CLR, JIT, metadatos, herramientas actuales, Native AOT (carga dinámica, reflexión y trimming) y ensamblados mixtos C++/CLI. <strong>Recomendación editorial:</strong> el ejemplo con el SDK y la advertencia sobre dnSpy.</p></aside>
+
+<aside class="ampliacion-ext">
+<p class="callout-titulo">Ampliación editorial basada en fuentes externas — Cómo distinguir Single-File Bundle y ReadyToRun (R2R) frente a Native AOT en .NET 6/8/9+</p>
+<p>En .NET moderno, ver un <code>.exe</code> sin cabecera CLR en PE-bear no implica necesariamente que sea <strong>Native AOT</strong> (<a href="https://learn.microsoft.com/en-us/dotnet/core/deploying/single-file/overview" rel="noopener" target="_blank">Single-file deployment</a> y <a href="https://learn.microsoft.com/en-us/dotnet/core/deploying/ready-to-run" rel="noopener" target="_blank">ReadyToRun deployment</a>) <em>(Hecho confirmado)</em>:</p>
+<div class="tabla"><table>
+<thead><tr><th>Formato de publicación</th><th>Estructura del PE</th><th>¿Conserva IL y metadatos?</th><th>Cómo analizarlo</th></tr></thead>
+<tbody>
+<tr><td><strong>Single-File Deployment</strong> (<code>PublishSingleFile</code>)</td><td><code>apphost.exe</code> nativo que lleva concatenado un <em>Bundle</em> con las <code>.dll</code> administradas (marcador <code>.net bundle</code> / <code>hostfxr</code>).</td><td><strong>Sí</strong>, completos dentro de las DLLs embebidas.</td><td>Abrirlo directamente en <strong>ILSpy 8.x/9.x</strong>, que extrae y decompila las DLLs del bundle.</td></tr>
+<tr><td><strong>ReadyToRun (R2R)</strong> (<code>PublishReadyToRun</code>)</td><td>PE con cabecera CLR cuyo <code>ManagedNativeHeader</code> apunta a <code>READYTORUN_HEADER</code> (firma <code>0x00525452</code> = <code>"RTR "</code>).</td><td><strong>Sí</strong>, conserva el IL original junto al código nativo precompilado.</td><td>Se lee como C#/IL normal en ILSpy o dnSpyEx.</td></tr>
+<tr><td><strong>Native AOT</strong> (<code>PublishAot</code>)</td><td>PE 100 % nativo compilado con <code>ilc</code>, sin JIT ni bundle de IL.</td><td><strong>No hay IL</strong>.</td><td>Se analiza como nativo en IDA o Ghidra.</td></tr>
+</tbody></table></div>
+</aside>
+</main>
+<footer class="pie">
+  <p>Material educativo y defensivo. Las prácticas se limitan a programas propios, software abierto o crackmes diseñados para aprender. No se enseña a eludir licencias, DRM ni controles de acceso.</p>
+  <p><a href="../00_EMPEZAR_AQUI.html">Inicio</a> · <a href="../guia/etapa-0.html">Etapas</a> · <a href="../fuentes_y_limites.html">Fuentes y límites</a> · <a href="../registro_de_cobertura.csv">Registro de cobertura</a></p>
+</footer>
+</body>
+</html>

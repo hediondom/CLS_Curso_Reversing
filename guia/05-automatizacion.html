@@ -1,0 +1,214 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Etapa 5 · Rama automatización: scripts para no repetir trabajo</title>
+<meta name="description" content="IDAPython, Ghidra y Python standalone para renombrar, buscar patrones y extraer datos de un binario.">
+<link rel="stylesheet" href="../guia/estilo.css">
+</head>
+<body>
+<a class="salto" href="#contenido">Saltar al contenido</a>
+<header class="cabecera">
+  <div class="marca"><a href="../00_EMPEZAR_AQUI.html">CLS · Curso de reversing</a> <span class="edicion">edición 5 · 27/10/2026</span></div>
+  <nav class="principal" aria-label="Navegación principal">
+    <a href="../00_EMPEZAR_AQUI.html">Inicio</a>
+    <a href="../guia/index.html">Curso</a>
+    <a href="../materiales.html">Materiales</a>
+    <a href="../fichas/index.html">Fichas</a>
+    <a href="../glosario.html">Glosario</a>
+    <a href="../preguntas_y_respuestas.html">Repaso</a>
+    <a href="../buscar.html">Buscar</a>
+  </nav>
+</header>
+<main id="contenido">
+<nav class="migas" aria-label="Ubicación"><a href="../00_EMPEZAR_AQUI.html">Inicio</a><span aria-hidden="true">›</span><a href="../guia/index.html">Curso</a><span aria-hidden="true">›</span><span>Etapa 5 · Ramas opcionales</span></nav><h1 id="rama-automatización-scripts-para-no-repetir-trabajo">Rama automatización: scripts para no repetir trabajo</h1>
+<aside class="callout nota"><p class="callout-titulo">Objetivo de la lección</p><p>Al terminar vas a poder escribir un script corto que recorra funciones, busque una constante o liste imports, y decidir cuándo conviene automatizar y cuándo no.</p></aside>
+<p><strong>Prerrequisitos:</strong> etapas 0 a 4, IDA o Ghidra, Python básico. <strong>Duración sugerida:</strong> 4 horas. Estimación aproximada.</p>
+<h2 id="qué-hay-en-cls">Qué hay en CLS</h2>
+<p>El curso tiene cuatro capítulos de IDAPython, <strong>leídos e integrados en esta edición</strong>: 22b ("Empezando con IDAPython"), 25 ("Empezando con IDAPython" + guía del entorno), 27b ("Jugando con IDAPython") y 32 ("Un proyecto con IDAPython"). Más abajo, en «Lo que muestra el curso», están los ejemplos observados con su cita. Los ejemplos de esta sección inicial son editoriales (código propio) y los del curso los complementan con la API real.</p>
+<aside class="callout aviso"><p class="callout-titulo">Sobre las versiones y la legalidad</p><p>Los capítulos usan IDA 7.5 con Python 3. Varios demuestran las técnicas sobre crackmes (incluido parcheo): esta guía toma la <strong>mecánica de IDAPython</strong> (recorrer, buscar, pintar, parchear, revertir) y la practica con <strong>programas propios</strong>, nunca para saltar protecciones de software ajeno.</p></aside>
+<h2 id="cuándo-automatizar">Cuándo automatizar</h2>
+<p>Automatizá cuando:</p>
+<ul><li>La tarea se repite muchas veces (renombrar 200 funciones, buscar una constante en todo el binario).</li><li>La tarea es mecánica y propensa a errores (extraer imports, comparar listas).</li><li>Querés que el análisis sea reproducible (un script se puede volver a correr).</li></ul>
+<p>No automaticés cuando:</p>
+<ul><li>Todavía no entendés el problema. Primero hacelo a mano una vez.</li><li>La tarea requiere juicio caso por caso. Un script que renombra "lo que parece" puede empeorar el análisis.</li><li>El script va a modificar el binario sin backup.</li></ul>
+<h2 id="idapython-el-modelo-mental">IDAPython: el modelo mental</h2>
+<p>IDA expone tres módulos principales:</p>
+<div class="tabla"><table>
+<thead><tr>
+<th>Módulo</th>
+<th>Para qué</th>
+</tr></thead><tbody>
+<tr><td><code>idc</code></td><td>Funciones clásicas: nombres, comentarios, bytes, instrucciones</td></tr>
+<tr><td><code>idautils</code></td><td>Iteradores: funciones, segmentos, referencias, heads</td></tr>
+<tr><td><code>idaapi</code></td><td>API de más bajo nivel: eventos, UI, tipos</td></tr>
+<tr><td><code>ida_bytes</code></td><td>Acceso a bytes y flags</td></tr>
+<tr><td><code>ida_funcs</code></td><td>Funciones y sus límites</td></tr>
+</tbody></table></div>
+<p>Un script típico recorre algo y hace una acción por elemento.</p>
+<h3 id="ejemplo-1-renombrar-funciones-sin-nombre">Ejemplo 1: renombrar funciones sin nombre</h3>
+<pre><code class="lenguaje-python">import idautils
+import idc
+
+for ea in idautils.Functions():
+    nombre = idc.get_func_name(ea)
+    if nombre.startswith("sub_"):
+        idc.set_name(ea, f"func_{ea:X}", idc.SN_NOWARN)</code></pre>
+<p><strong>Qué hace:</strong> recorre todas las funciones detectadas; si el nombre automático empieza con <code>sub_</code>, lo reemplaza por <code>func_&lt;dirección&gt;</code>. Es útil para tener nombres estables antes de renombrar a mano las funciones importantes.</p>
+<h3 id="ejemplo-2-buscar-una-constante-en-el-código">Ejemplo 2: buscar una constante en el código</h3>
+<pre><code class="lenguaje-python">import idautils
+import idc
+
+OBJETIVO = 0x1E0
+
+for seg in idautils.Segments():
+    if idc.get_segm_name(seg) != ".text":
+        continue
+    for ea in idautils.Heads(idc.get_segm_start(seg), idc.get_segm_end(seg)):
+        if idc.print_insn_mnem(ea) in ("cmp", "sub", "add"):
+            for i in range(3):
+                if idc.get_operand_value(ea, i) == OBJETIVO:
+                    print(f"{ea:#x}: {idc.generate_disasm_line(ea, 0)}")</code></pre>
+<p><strong>Qué hace:</strong> recorre las instrucciones de <code>.text</code>; si alguna usa la constante <code>0x1E0</code> como operando, imprime la dirección y el texto. En el programa del capítulo 15, esa constante es la que compara el resultado con 480.</p>
+<aside class="callout aviso"><p class="callout-titulo">La API cambia entre versiones</p><p><code>idc.get_operand_value</code>, <code>idc.print_insn_mnem</code> y <code>idautils.Heads</code> existen en IDA 7 y 8, pero algunos nombres cambiaron respecto de IDA 6. Si el script falla, revisá la versión y la documentación de IDAPython. La lógica —recorrer y comparar— se mantiene.</p></aside>
+<h3 id="ejemplo-3-listar-imports">Ejemplo 3: listar imports</h3>
+<pre><code class="lenguaje-python">import idautils
+import idc
+
+for i in range(idc.get_import_module_qty()):
+    modulo = idc.get_import_module_name(i)
+    print(f"[{modulo}]")
+    def callback(ea, nombre, ordinal):
+        print(f"  {ea:#x}  {nombre or ordinal}")
+        return True
+    idc.enum_import_names(i, callback)</code></pre>
+<p><strong>Qué hace:</strong> recorre los módulos importados y, por cada uno, enumera sus funciones. Es el equivalente scripteado de la pestaña Imports.</p>
+<h2 id="lo-que-muestra-el-curso">Lo que muestra el curso</h2>
+<p>Esta sección resume lo que hacen los cuatro capítulos de IDAPython, con la API real que usan.</p>
+<h3 id="montar-el-entorno-y-probar-que-anda">Montar el entorno y probar que anda</h3>
+<p>El cap. 22b instala <strong>IPyIDA</strong>, una consola de IPython dentro de IDA (se abre con <code>Shift</code>+<code>.</code>). Tiene autocompletado con <code>Tab</code>, historial (<code>%hist</code>) y reuso de resultados por número de línea (<code>_6</code>). Dos molestias que el propio video admite: hay que <strong>importar las librerías a mano</strong> la primera vez (<code>from idc import *</code>, <code>from idautils import *</code>, <code>from idaapi import *</code>) y la consola se cierra al depurar (se reabre con <code>Shift</code>+<code>.</code>).</p>
+<p>El cap. 25 arma un entorno más cómodo: un archivo <code>exint.py</code> en <code>.ipython/profile_default/startup/</code> que carga las librerías solas (y agrega <code>exon</code>/<code>exof</code> para mostrar enteros en hexadecimal), y <strong>Spyder conectado al kernel de IDA</strong> (<em>Consoles → Connect to an existing kernel</em>, eligiendo el <code>kernel-NNNN.json</code> más nuevo). Así podés escribir scripts con autocompletado, ver la documentación con <code>Ctrl+I</code>, ejecutar una selección (<em>Run selection or current line</em>) y hacer doble clic en una dirección de la salida para saltar a ella en IDA.</p>
+<p>Una prueba rápida de que las librerías están cargadas: <code>here()</code> devuelve la dirección donde está el cursor. Si da error, las librerías no se importaron (cap. 25).</p>
+<aside class="callout aviso"><p class="callout-titulo">La API cambió de nombre entre versiones</p><p>La mayoría de los scripts viejos de internet fallan no porque estén mal, sino porque los nombres cambiaron (<code>PatchByte</code> → <code>patch_byte</code>, etc.). El cap. 25 recomienda la página oficial <em>"Porting from IDA 6.x to 7.4"</em>, que lista el nombre viejo y el nuevo de cada función. Si un script tira error por todos lados, es casi seguro esto.</p></aside>
+<h3 id="correr-un-script">Correr un script</h3>
+<p>Hay tres formas (caps. 22b y 25): cargar un <code>.py</code> con <em>File → Script file</em>; pegar código de IDAPython <strong>dentro de un breakpoint</strong> (en <em>Edit breakpoint</em>, cambiando el tipo a IDAPython) —ahí los registros se leen como <code>cpu.edx</code>, y si el código hace <code>return True</code> el programa para, lo que da un breakpoint condicional scripteado—; o, con Spyder conectado, ejecutar una selección del script.</p>
+<h3 id="recorrer-las-funciones">Recorrer las funciones</h3>
+<p>El cap. 25 recorre todas las funciones del binario:</p>
+<pre><code class="lenguaje-python">import idautils, idc
+
+inicio = idc.get_inf_attr(idc.INF_MIN_EA)   # dirección mínima cargada
+fin    = idc.get_inf_attr(idc.INF_MAX_EA)   # dirección máxima
+
+for ea in idautils.Functions(inicio, fin):
+    nombre = idc.get_func_name(ea)
+    fin_f  = idc.find_func_end(ea)
+    print(f"{ea:#x}  {fin_f:#x}  {nombre}")</code></pre>
+<p><code>Functions()</code> devuelve un <strong>generador</strong> (para verlo entero, <code>list(idautils.Functions())</code>); <code>get_func_name(ea)</code> da el nombre de la función a la que pertenece una dirección (no hace falta la dirección exacta de inicio); <code>find_func_end(ea)</code> da el final (un byte más allá de la última instrucción).</p>
+<h3 id="recorrer-el-grafo-de-control-y-pintar-bloques">Recorrer el grafo de control y pintar bloques</h3>
+<p>El cap. 27b toma una función y recorre sus <strong>bloques básicos</strong>:</p>
+<pre><code class="lenguaje-python">import idaapi, idc
+
+f = idaapi.get_func(idc.here())     # func_t de la función bajo el cursor
+fc = idaapi.FlowChart(f)
+for bloque in fc:
+    print(f"{bloque.start_ea:#x} - {bloque.end_ea:#x}")</code></pre>
+<p>Cada bloque tiene <code>start_ea</code>, <code>end_ea</code>, <code>preds()</code> (bloques que llegan a él) y <code>succs()</code> (a los que salta). Para <strong>pintar</strong> el bloque donde está una dirección y sus predecesores de otro color:</p>
+<pre><code class="lenguaje-python">import idaapi, idautils, idc
+
+addr = idc.here()
+f = idaapi.get_func(addr)
+for bloque in idaapi.FlowChart(f):
+    if bloque.start_ea &lt;= addr &lt; bloque.end_ea:        # bloque que contiene addr
+        for ea in idautils.Heads(bloque.start_ea, bloque.end_ea):
+            idc.set_color(ea, idc.CIC_ITEM, 0x80FF80)  # verde (0xBBGGRR)
+        for pred in bloque.preds():                    # puede haber varios
+            for ea in idautils.Heads(pred.start_ea, pred.end_ea):
+                idc.set_color(ea, idc.CIC_ITEM, 0x80FFFF)</code></pre>
+<p>Es una forma visual de ver de dónde viene el flujo. El color va en formato <code>0xBBGGRR</code>.</p>
+<h3 id="parchear-con-un-script-solo-programas-propios">Parchear con un script (solo programas propios)</h3>
+<p>El cap. 25 automatiza un parcheo sobre un crackme. Tomamos la <strong>mecánica</strong> (no el objetivo) para aplicarla a un programa propio en tu laboratorio:</p>
+<pre><code class="lenguaje-python">import idc
+
+addr = idc.find_binary(idc.get_inf_attr(idc.INF_MIN_EA), idc.SEARCH_DOWN, "74 07")
+if addr != idc.BADADDR:
+    print("originales:", idc.get_bytes(addr, 2).hex(), "/ byte previo:", hex(idc.get_original_byte(addr)))
+    idc.patch_bytes(addr, b"\x90\x90")   # en la base de datos
+    # idc.revert_byte(addr)              # para deshacer</code></pre>
+<p><code>patch_bytes</code> cambia bytes en la base de datos; <code>get_original_byte</code> devuelve el byte anterior al parche (lo mismo que <em>Patch program → original bytes</em> en el menú); <code>revert_byte</code> lo deshace. Para escribir los cambios al <code>.exe</code>, el cap. 25 usa <code>save_file</code>/<em>apply patches to input file</em>, calculando el <strong>file offset</strong> = dirección − base del código + <code>0x400</code> (header), como en la lección de números. <strong>Antes de cualquier script que modifique la base de datos, tomá un snapshot</strong> (<em>Database snapshot manager</em>).</p>
+<h3 id="buscar-secuencias-de-instrucciones-por-patrón">Buscar secuencias de instrucciones por patrón</h3>
+<p>El cap. 32 arma un buscador de instrucciones con <code>ida_search.find_text</code> + expresiones regulares. El truco es una función <code>replace()</code> que convierte una instrucción fácil de tipear en un patrón regex:</p>
+<ul><li>el espacio simple → <code> *</code> (cualquier cantidad de espacios, porque IDA alinea con varios);</li><li><code>R32</code> → <code>(e.x|e.i)</code> para cualquier registro de 32 bits;</li><li><code>const</code> → <code>[0-9a-fA-F]{2,8}h</code> para una constante hexadecimal;</li><li>y <strong>escapar</strong> los caracteres especiales de regex que aparezcan en la instrucción (<code>[</code>, <code>]</code>, <code>+</code>, <code>*</code>, <code>-</code>) con <code>\</code>.</li></ul>
+<p>Dos límites que el capítulo señala: la búsqueda de texto de IDA es <strong>de una sola línea</strong> (no matchea una secuencia multilínea en una sola llamada; hay que buscar instrucción por instrucción, encadenando desde la dirección anterior), y <code>find_text</code> devuelve <code>BADADDR</code> (<code>0xFFFFFFFF</code>) cuando no encuentra. Para buscar una secuencia de tres instrucciones "cercanas", se busca la primera, y desde cada hallazgo se busca la siguiente verificando que la <strong>distancia</strong> no supere un límite. <code>idc.jumpto(ea)</code> mueve el cursor para mostrar el resultado en IDA.</p>
+<h3 id="traducir-números-a-nombres-con-enumeraciones">Traducir números a nombres con enumeraciones</h3>
+<p>El cap. 22b, para imprimir los mensajes de Windows por nombre en vez de por número, agrega una enumeración en <em>Local Types</em> y la consulta desde el script con <code>get_enum("nombre")</code> (devuelve el id de la enumeración) y la función que, dado ese id y un valor como <code>cpu.edx</code>, devuelve el nombre (<code>WM_COMMAND</code>, etc.). Es la forma scripteada de lo que la tecla <code>M</code> hace a mano en el listado.</p>
+<h2 id="ghidra-y-python-standalone">Ghidra y Python standalone</h2>
+<p>Si usás Ghidra, tenés scripting en Python (Jython) y Java. El modelo es parecido: recorrer funciones, leer instrucciones, renombrar.</p>
+<p>Si no tenés IDA Pro, también podés automatizar <strong>sin</strong> desensamblador:</p>
+<pre><code class="lenguaje-python">import pefile
+
+pe = pefile.PE("check.exe")
+print("Entry point:", hex(pe.OPTIONAL_HEADER.AddressOfEntryPoint))
+for entry in pe.DIRECTORY_ENTRY_IMPORT:
+    print(entry.dll.decode())
+    for imp in entry.imports:
+        print("  ", imp.name)</code></pre>
+<p><code>pefile</code> es una librería de Python para leer PE. No desensambla, pero sirve para inventarios, detección y reportes.</p>
+<p>Para desensamblar desde Python, <code>capstone</code> permite decodificar bytes:</p>
+<pre><code class="lenguaje-python">from capstone import Cs, CS_ARCH_X86, CS_MODE_32
+
+md = Cs(CS_ARCH_X86, CS_MODE_32)
+codigo = bytes.fromhex("83F81E7410")
+for ins in md.disasm(codigo, 0x401000):
+    print(f"{ins.address:#x}: {ins.mnemonic} {ins.op_str}")</code></pre>
+<p>Salida esperada:</p>
+<pre><code class="lenguaje-text">0x401000: cmp eax, 0x1e
+0x401003: je 0x401015</code></pre>
+<h2 id="el-flujo-de-trabajo-con-scripts">El flujo de trabajo con scripts</h2>
+<pre><code class="lenguaje-text">1. Hacer la tarea a mano una vez.
+2. Detectar qué se repite.
+3. Escribir el script mínimo.
+4. Probarlo sobre una copia.
+5. Revisar el resultado (no confiar ciegamente).
+6. Guardar el script con el informe.</code></pre>
+<p>El paso 5 es el más importante. Un script que renombra mal contamina la base de datos y hace que el análisis sea peor que antes.</p>
+<h2 id="práctica">Práctica</h2>
+<ol><li>Compilá tu <code>check.exe</code> y abrilo en IDA.</li><li>Corré el script de renombrado y verificá que las funciones <code>sub_</code> cambiaron de nombre.</li><li>Corré el script de búsqueda de <code>0x1E0</code> y comprobá que encuentra la comparación.</li><li>Modificá la constante del programa a <code>0x1B8</code>, recompilá y volvé a correr el script.</li><li>Escribí un script que imprima todas las funciones cuyo nombre contenga "check" o "main".</li><li>Guardá los scripts en tu bitácora y anotá la versión de IDA.</li></ol>
+<h2 id="preguntas-de-repaso">Preguntas de repaso</h2>
+<p><strong>1. ¿Cuándo conviene automatizar?</strong> Cuando la tarea es repetitiva, mecánica y verificable. Primero se hace a mano para entenderla.</p>
+<p><strong>2. ¿Qué diferencia hay entre <code>idc</code>, <code>idautils</code> e <code>idaapi</code>?</strong> <code>idc</code> tiene funciones clásicas; <code>idautils</code> ofrece iteradores; <code>idaapi</code> es la API de bajo nivel y la interfaz.</p>
+<p><strong>3. ¿IDAPython funciona en IDA Free?</strong> Depende de la versión. Históricamente IDA Free no incluía Python; las versiones recientes agregaron capacidades. Si no está, usá Ghidra o automatizá con <code>pefile</code>/<code>capstone</code>.</p>
+<p><strong>4. ¿Por qué hay que revisar el resultado de un script?</strong> Porque un script no entiende el contexto: puede renombrar mal, buscar coincidencias falsas o modificar datos que no correspondían.</p>
+<p><strong>5. ¿Qué hace <code>capstone</code>?</strong> Desensambla bytes a instrucciones desde Python, sin necesidad de IDA.</p>
+<h2 id="antes-de-avanzar">Antes de avanzar</h2>
+<p>Tenés que poder:</p>
+<ul><li>Escribir un script que recorra funciones y renombre.</li><li>Buscar una constante en <code>.text</code>.</li><li>Listar imports con IDAPython o <code>pefile</code>.</li><li>Explicar por qué el resultado se revisa a mano.</li></ul>
+<aside class="callout nota"><p class="callout-titulo">Puerta de salida</p><p>Si el script te ahorra tiempo y el resultado es correcto, la rama está aprobada. Si el script produce nombres dudosos y no los revisás, no.</p></aside>
+<h2 id="fuentes-de-esta-lección">Fuentes de esta lección</h2>
+<ul><li><a class="fuente" href="../../CLS_resultados_intermedios/transcripciones/extraidos/Reversing%20desde%20cero%20%28Ricardo%20y%20Solid%29/Ricardo%20Narvaja%20y%20Solid%20-%20Reversing%20desde%20cero_22b%20Ap%C3%A9ndice%20te%C3%B3rico%203%20-%20Empezando%20con%20IDAPython_22b%20Ap%C3%A9ndice%20te%C3%B3rico%203%20-%20Empezando%20con%20IDAPython.txt">Reversing desde cero, cap. 22b</a> — IPyIDA, imports, correr código en un breakpoint (<code>cpu.edx</code>, <code>return True</code>) y enumeraciones (transcripción .txt, sin marcas).</li><li><a class="fuente" href="../../CLS_resultados_intermedios/transcripciones/extraidos/Reversing%20desde%20cero%20%28Ricardo%20y%20Solid%29/Ricardo%20Narvaja%20y%20Solid%20-%20Reversing%20desde%20cero_25%20Empezando%20con%20IDAPython_25%20Empezando%20con%20IDAPython.txt">Reversing desde cero, cap. 25</a> — entorno (exint.py, Spyder+kernel), <code>here()</code>, porting de nombres, recorrer <code>Functions()</code> y parchear/revertir/guardar (transcripción .txt, sin marcas).</li><li><a class="fuente" href="../../CLS_resultados_intermedios/transcripciones/extraidos/Reversing%20desde%20cero%20%28Ricardo%20y%20Solid%29/Ricardo%20Narvaja%20y%20Solid%20-%20Reversing%20desde%20cero_27b%20Jugando%20con%20IDAPython_27b%20Jugando%20con%20IDAPython.txt">Reversing desde cero, cap. 27b</a> — <code>get_func</code>, <code>FlowChart</code>, bloques básicos (<code>start_ea</code>/<code>end_ea</code>/<code>preds</code>) y pintar con <code>set_color</code> (transcripción .txt, sin marcas).</li><li><a class="fuente" href="../../CLS_resultados_intermedios/transcripciones/extraidos/Reversing%20desde%20cero%20%28Ricardo%20y%20Solid%29/Ricardo%20Narvaja%20y%20Solid%20-%20Reversing%20desde%20cero_32%20Un%20proyecto%20con%20IDAPython_32%20Un%20proyecto%20con%20IDAPython.txt">Reversing desde cero, cap. 32</a> — búsqueda de instrucciones con <code>find_text</code> + regex, límite de una línea y búsqueda por distancia (transcripción .txt, sin marcas).</li><li><a class="fuente" href="../../CLS_resultados_intermedios/transcripciones/extraidos/Reversing%20desde%20cero%20%28Ricardo%20y%20Solid%29/Ricardo%20Narvaja%20y%20Solid%20-%20Reversing%20desde%20cero_15%20Ejercicio%202%20-%20An%C3%A1lisis%20est%C3%A1tico_15%20Ejercicio%202%20-%20An%C3%A1lisis%20est%C3%A1tico.txt">Reversing desde cero, cap. 15</a> — constante <code>0x1E0</code> usada en el ejemplo de búsqueda editorial.</li></ul>
+<aside class="callout nota"><p class="callout-titulo">Capas de esta lección</p><p><strong>Contenido observado en CLS:</strong> el entorno IPyIDA/Spyder, <code>here()</code>, el recorrido de funciones y del grafo, el parcheo scripteado, la búsqueda por regex y las enumeraciones (caps. 22b, 25, 27b, 32). <strong>Conocimiento externo:</strong> API de IDAPython moderna, Ghidra, <code>pefile</code> y <code>capstone</code>. <strong>Recomendación editorial:</strong> los tres primeros scripts de ejemplo, el flujo de trabajo y el encuadre de parchear solo programas propios.</p></aside>
+
+<aside class="ampliacion-ext">
+<p class="callout-titulo">Ampliación editorial basada en fuentes externas — Compatibilidad con IDA 9.0+: reemplazo de ida_struct e ida_enum por ida_typeinf</p>
+<p>En <strong>IDA 9.0+</strong> (<a href="https://docs.hex-rays.com/user-guide/idapython/idapython-porting-guide-ida-9" rel="noopener" target="_blank">IDAPython Porting Guide to IDA 9.0</a>), Hex-Rays eliminó por completo los módulos <code>ida_struct</code> e <code>ida_enum</code> (y wrappers como <code>idc.get_enum</code> citado en el ejemplo del cap. 22b), unificándolos en <strong><code>ida_typeinf</code> (<code>tinfo_t</code>)</strong> <em>(Hecho confirmado)</em>. Para consultar el nombre simbólico de un valor en una enumeración de <em>Local Types</em> en IDA 9.0+:</p>
+<pre><code>import ida_typeinf
+
+def nombre_miembro_enum(nombre_enum: str, valor: int) -&gt; str | None:
+    tif = ida_typeinf.tinfo_t()
+    if not tif.get_named_type(None, nombre_enum) or not tif.is_enum():
+        return None
+    ed = ida_typeinf.enum_type_data_t()
+    if not tif.get_enum_details(ed):
+        return None
+    for m in ed:
+        if m.value == valor:
+            return m.name
+    return None</code></pre>
+</aside>
+</main>
+<footer class="pie">
+  <p>Material educativo y defensivo. Las prácticas se limitan a programas propios, software abierto o crackmes diseñados para aprender. No se enseña a eludir licencias, DRM ni controles de acceso.</p>
+  <p><a href="../00_EMPEZAR_AQUI.html">Inicio</a> · <a href="../guia/etapa-0.html">Etapas</a> · <a href="../fuentes_y_limites.html">Fuentes y límites</a> · <a href="../registro_de_cobertura.csv">Registro de cobertura</a></p>
+</footer>
+</body>
+</html>

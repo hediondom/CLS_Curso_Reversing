@@ -1,0 +1,390 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tute 64 · Desafío SCADA · CVE-2013-0657 — Curso IDA</title>
+<meta name="description" content="Tutorial ilustrado del tute 64 del Curso IDA desde cero: Desafío SCADA · CVE-2013-0657.">
+<link rel="stylesheet" href="../guia/estilo.css">
+</head>
+<body>
+<a class="salto" href="#contenido">Saltar al contenido</a>
+<header class="cabecera">
+  <div class="marca"><a href="../00_EMPEZAR_AQUI.html">CLS · Curso de reversing</a> <span class="edicion">edición 5 · 27/10/2026</span></div>
+  <nav class="principal" aria-label="Navegación principal">
+    <a href="../00_EMPEZAR_AQUI.html">Inicio</a>
+    <a href="../guia/index.html">Curso</a>
+    <a href="../fichas/index.html">Fichas</a>
+    <a href="../glosario.html">Glosario</a>
+    <a href="../preguntas_y_respuestas.html">Repaso</a>
+  </nav>
+</header>
+<main id="contenido">
+<p class="migas"><a href="../ida-tutes.html">← Índice de los 69 tutes de IDA</a></p>
+<h1>Tute 64 · Desafío SCADA · CVE-2013-0657</h1>
+<p class="meta-tute"><strong>⏱ 20 min de lectura</strong> · 3.630 palabras · 148 capturas · grupo: Kernel de Windows y temas avanzados (drivers, HackSys/HEVD, SSDT/syscalls, VA→física)</p>
+<aside class="callout nota"><p class="callout-titulo">Qué enseña</p><p>Reversear un CVE real propuesto en los grupos.</p></aside>
+<p><em>se conecta con:</em> <a href="../guia/05-fuera-de-alcance.html">Fuera de alcance</a></p>
+<aside class="callout aviso"><p class="callout-titulo">Material observado, no reescrito</p><p>Es el texto y las capturas del <code>.docx</code> original del curso, solo presentados como tutorial. Puede tener erratas de origen. El autor del curso es Ricardo Narvaja.</p></aside>
+<hr>
+<p>INTRODUCCIÓN AL REVERSING CON IDA PRO DESDE CERO PARTE 64.</p>
+<p>Reversing para el desafío de Scada</p>
+<p>En los grupos de telegram hemos puesto un desafío, que se refería a reversear el CVE siguiente, para practicar con un software real.</p>
+<p>CVE-2013-0657</p>
+<p>https://ics-cert.us-cert.gov/advisories/ICSA-13-018-01</p>
+<p>Allí está el link, todas las versiones 9 y 10 son vulnerables salvo a las que se le ha aplicado el parche.</p>
+<figure><img loading="lazy" src="img/64/1.png" alt="Captura 1 del tute 64"></figure>
+<p>La versión 9 vulnerable se puede bajar de acá</p>
+<p>https://drive.google.com/file/d/1uVdJjo7PZz5JvOO8f-6_2ZlmpkrtxwgI/view?usp=sharing</p>
+<p>Y el parche de acá</p>
+<p>http://igss.schneider-electric.com/igss/igssupdates/v90/progupdatesv90.zip</p>
+<p>Allí dice que el vulnerable, es el ejecutable que escucha en el puerto TCP-12397, si lo instalamos veremos cuál es el ejecutable que escucha en ese puerto.</p>
+<p>Cuando lo instalo, elijo la opción primero DEMO y luego FREE FOR 50 con eso lo pude instalar bien, y cuando le doy a start arranca, si no llega a arrancarles pueden borrar y crear un nuevo proyecto con menos elementos ya que es free hasta 50 elementos, pero aquí arranco.</p>
+<figure><img loading="lazy" src="img/64/2.png" alt="Captura 2 del tute 64"></figure>
+<p>Veamos que el proceso es en mi maquina el 3116.</p>
+<figure><img loading="lazy" src="img/64/3.png" alt="Captura 3 del tute 64"></figure>
+<p>Para que quede bien funcional hay que ir a DESIGN AND SETUP quitar el proyecto viejo y crear uno nuevo con 50 elementos o menos y ponerlo a correr, con eso, estará perfecto.</p>
+<figure><img loading="lazy" src="img/64/4.png" alt="Captura 4 del tute 64"></figure>
+<p>Ya tenemos por donde pueden venir los tiros, hagamos un diff entre los dos dc.exe el original en mi caso es la versión</p>
+<figure><img loading="lazy" src="img/64/5.png" alt="Captura 5 del tute 64"></figure>
+<p>Y el que está dentro del parche</p>
+<figure><img loading="lazy" src="img/64/6.png" alt="Captura 6 del tute 64"></figure>
+<p>Hay muchas funciones cambiadas en el dc.exe con paciencia buscando, no voy a analizar una por una, pero aquí hay un stack overflow, con la flecha se señala el parche.</p>
+<figure><img loading="lazy" src="img/64/7.png" alt="Captura 7 del tute 64"></figure>
+<p>Buscando entre las funciones importadas recv, vemos que está allí y que es llamada de un solo lugar</p>
+<figure><img loading="lazy" src="img/64/8.png" alt="Captura 8 del tute 64"></figure>
+<figure><img loading="lazy" src="img/64/9.png" alt="Captura 9 del tute 64"></figure>
+<p>Busco el servidor remoto de IDA de 32 bits y lo copio a la maquina donde instale el programa y lo ejecuto como administrador.</p>
+<figure><img loading="lazy" src="img/64/10.png" alt="Captura 10 del tute 64"></figure>
+<p>En el IDA cambio el debugger a Remote Windows debugger.</p>
+<figure><img loading="lazy" src="img/64/11.png" alt="Captura 11 del tute 64"></figure>
+<p>Y configuro las opciones del proceso (PROCESS OPTIONS) con la ip del target y el puerto del mismo.</p>
+<figure><img loading="lazy" src="img/64/12.png" alt="Captura 12 del tute 64"></figure>
+<figure><img loading="lazy" src="img/64/13.png" alt="Captura 13 del tute 64"></figure>
+<p>Cuando vamos a Attach Process, nos sale la lista de procesos de la maquina target, si la conexión entre ambas es posible (no hay firewalls o bloqueos etc)</p>
+<figure><img loading="lazy" src="img/64/14.png" alt="Captura 14 del tute 64"></figure>
+<p>Ahí está dc.exe, lo elegimos y lo atacheamos.</p>
+<p>Para chequear que ese recv es el que usa, le puse un breakpoint en el mismo</p>
+<figure><img loading="lazy" src="img/64/15.png" alt="Captura 15 del tute 64"></figure>
+<p>Creo un scriptcito de Python que le envie datos al puerto 12397, que es el puerto donde está escuchando el dc.exe, le mando 300 Aes solo para probar si para allí.</p>
+<figure><img loading="lazy" src="img/64/16.png" alt="Captura 16 del tute 64"></figure>
+<p>Vemos que para</p>
+<figure><img loading="lazy" src="img/64/17.png" alt="Captura 17 del tute 64"></figure>
+<p>Vemos que la primera vez que para, solo recibe ocho bytes así que es obvio que habrá más veces que parara en el recv, no será la única.</p>
+<p>Si le doy RUN sin reversear mucho veo que llega solito con ese paquete a la función vulnerable.</p>
+<figure><img loading="lazy" src="img/64/18.png" alt="Captura 18 del tute 64"></figure>
+<p>Igual con eso solo no pasa por el camino vulnerable, constantemente esta parando en la función vulnerable cada tanto, es necesario analizarlo bien.</p>
+<p>No tenemos símbolos, no tenemos nada, veremos hasta donde podemos llegar</p>
+<figure><img loading="lazy" src="img/64/19.png" alt="Captura 19 del tute 64"></figure>
+<p>Vemos que hay el puntero a una estructura en esa variable que llame p_struct, cada vez que se lee el valor luego siempre se accede a un campo de la estructura sumándole a esa dirección un offset.</p>
+<p>Vemos que tiene offset grandes por ahí vemos 0x64, 0x3a4, 0x37c, así que crearemos una estructura de 0x500 bytes de largo si necesitamos más la agrandaremos, si es más chica no habrá problema.</p>
+<p>Cree una estructura con un solo dword y la expandí a 0x500</p>
+<figure><img loading="lazy" src="img/64/20.png" alt="Captura 20 del tute 64"></figure>
+<p>Ahí está, como ya había 4 bytes más 0x500 da en total 0x504 no hay problema.</p>
+<figure><img loading="lazy" src="img/64/21.png" alt="Captura 21 del tute 64"></figure>
+<p>Renombro para que quede del mismo nombre</p>
+<figure><img loading="lazy" src="img/64/22.png" alt="Captura 22 del tute 64"></figure>
+<p>Vemos que la var_4 es un flag que puede valer 0 o 1, hay un lugar donde se mueve el valor 1 allí.</p>
+<figure><img loading="lazy" src="img/64/23.png" alt="Captura 23 del tute 64"></figure>
+<p>Según sea 0 o 1 antes de llamar al recv va por el bloque de la derecha o el de la izquierda.</p>
+<figure><img loading="lazy" src="img/64/24.png" alt="Captura 24 del tute 64"></figure>
+<p>Vemos que compara con 0 si es cero va y lo cambia a 1, y la próxima vez que pase ira por el camino 1, así que suponemos que el estado inicial del flag es 0 y pasa por allí y se pone en 1.</p>
+<p>Así que en el primer paquete pasará por acá, antes del recv, mueve a ECX el 8 que era el len, antes le resta el valor del campo 0x3a4 de la estructura que al inicio será 0, ya que vimos que el len del primer paquete, debía ser 8.</p>
+<figure><img loading="lazy" src="img/64/25.png" alt="Captura 25 del tute 64"></figure>
+<figure><img loading="lazy" src="img/64/26.png" alt="Captura 26 del tute 64"></figure>
+<p>Si busco la constante 0x3a4 veo que allí guarda la sumatoria de los bytes leídos, así que renombro.</p>
+<p>Voy en estructuras hasta el offset 0x3a4 de la que cree y apreto d hasta que sea un dword y renombro.</p>
+<figure><img loading="lazy" src="img/64/27.png" alt="Captura 27 del tute 64"></figure>
+<p>puedo buscar el offset</p>
+<figure><img loading="lazy" src="img/64/28.png" alt="Captura 28 del tute 64"></figure>
+<p>Y luego con CTRL+I ir buscando todas las veces que usa el mismo y renombrándolas a todas con el mismo nombre.</p>
+<figure><img loading="lazy" src="img/64/29.png" alt="Captura 29 del tute 64"></figure>
+<p>Pedo recomenzar desde el inicio de la función</p>
+<figure><img loading="lazy" src="img/64/30.png" alt="Captura 30 del tute 64"></figure>
+<p>Ahora va quedando más lindo, al menos en la zona de la función que estoy trabajando</p>
+<figure><img loading="lazy" src="img/64/31.png" alt="Captura 31 del tute 64"></figure>
+<p>También vemos que la segunda vez que pase por el primer bloque de la anterior imagen al haber leído ya 8 bytes directamente ira por el camino de la derecha.</p>
+<p>Vemos también que en el campo 0x64 hay un puntero a una segunda estructura que tiene el buffer dentro en su offset 0x7008 y que pivotea con edx que vale cero por ahora pues es la sumatoria de bytes leídos, al inicio es cero.</p>
+<figure><img loading="lazy" src="img/64/32.png" alt="Captura 32 del tute 64"></figure>
+<p>Creare la segunda estructura al menos de 0x10000 bytes no importa que me pase.</p>
+<figure><img loading="lazy" src="img/64/33.png" alt="Captura 33 del tute 64"></figure>
+<p>En el 0x64 de MI_STRUCT está el puntero a STRUCT_2, así que voy allí, apreto d hasta que se cree un dword y luego offset a una struct.</p>
+<figure><img loading="lazy" src="img/64/34.png" alt="Captura 34 del tute 64"></figure>
+<p>Elijo que sea STRUCT_2 y ya queda</p>
+<figure><img loading="lazy" src="img/64/35.png" alt="Captura 35 del tute 64"></figure>
+<figure><img loading="lazy" src="img/64/36.png" alt="Captura 36 del tute 64"></figure>
+<p>En el offset 0x7008 empezara el buffer donde guardara los datos del recv, como es un LEA no es un puntero a un buffer, sino que el mismo está dentro de la misma STRUCT_2.</p>
+<p>En estructuras voy al 0x7008 de la STRUCT_2 y creo un buffer.</p>
+<p>Le pongo tentativamente 0x1000 de largo para corregir hay tiempo.</p>
+<figure><img loading="lazy" src="img/64/37.png" alt="Captura 37 del tute 64"></figure>
+<figure><img loading="lazy" src="img/64/38.png" alt="Captura 38 del tute 64"></figure>
+<figure><img loading="lazy" src="img/64/39.png" alt="Captura 39 del tute 64"></figure>
+<p>Ahora quedo mejor.</p>
+<p>Si buscamos search for inmediate value el valor 0x7008 en todo el programa.</p>
+<figure><img loading="lazy" src="img/64/40.png" alt="Captura 40 del tute 64"></figure>
+<p>Vemos que hay dos lugares más donde lo usa, veámoslos.</p>
+<figure><img loading="lazy" src="img/64/41.png" alt="Captura 41 del tute 64"></figure>
+<p>Uno es al inicio de la misma función que lee, al puntero a la STRUCT_2 le suma 0x7008 y eso le da un puntero al buffer donde guarda los bytes, así que renombro la variable donde guarda como p_buffer.</p>
+<figure><img loading="lazy" src="img/64/42.png" alt="Captura 42 del tute 64"></figure>
+<p>Allí vemos como busca el contenido de p_buffer o sea el primer dword del mismo y ese valor debe ser menor que 0x7000, podemos chequear esto poniendo un Breakpoint en la comparación.</p>
+<figure><img loading="lazy" src="img/64/43.png" alt="Captura 43 del tute 64"></figure>
+<p>Cambio el paquete que envío para que los primeros 4 bytes sean diferentes. En este caso 0x41424344.</p>
+<p>Así que de los 8 bytes que lee, testea si los primeros 4 son menores que 0x7000</p>
+<figure><img loading="lazy" src="img/64/44.png" alt="Captura 44 del tute 64"></figure>
+<p>Lo cambiare al valor a 0x2000</p>
+<figure><img loading="lazy" src="img/64/45.png" alt="Captura 45 del tute 64"></figure>
+<figure><img loading="lazy" src="img/64/46.png" alt="Captura 46 del tute 64"></figure>
+<p>Ahora si</p>
+<p>Así que seguimos por acá</p>
+<figure><img loading="lazy" src="img/64/47.png" alt="Captura 47 del tute 64"></figure>
+<p>El contenido del p_buffer es el size 0x2000</p>
+<figure><img loading="lazy" src="img/64/48.png" alt="Captura 48 del tute 64"></figure>
+<p>En el printf nos ayuda ver que hay tres valores que imprimirá Lenght, Socket y TcpRecvMsg, así que podemos ver si podemos renombrar algo con ellos.</p>
+<figure><img loading="lazy" src="img/64/49.png" alt="Captura 49 del tute 64"></figure>
+<p>Recordamos que en el campo de MI_STRUCT 0x37c estaba el socket, lo renombramos.</p>
+<figure><img loading="lazy" src="img/64/50.png" alt="Captura 50 del tute 64"></figure>
+<figure><img loading="lazy" src="img/64/51.png" alt="Captura 51 del tute 64"></figure>
+<figure><img loading="lazy" src="img/64/52.png" alt="Captura 52 del tute 64"></figure>
+<p>Y allí donde estaba reverseando</p>
+<figure><img loading="lazy" src="img/64/53.png" alt="Captura 53 del tute 64"></figure>
+<p>Al otro campo le puse TcpRecvMsg como decía el printf, aun no se bien para que se usa, pero lo identifico.</p>
+<figure><img loading="lazy" src="img/64/54.png" alt="Captura 54 del tute 64"></figure>
+<p>Lo último que hace en ese bloque es leer el size y guardarlo en una variable, así que le pongo size.</p>
+<figure><img loading="lazy" src="img/64/55.png" alt="Captura 55 del tute 64"></figure>
+<p>Y pone a cero la sumatoria de bytes leídos y repite el loop volviendo arriba ahora con el size 0x2000.</p>
+<figure><img loading="lazy" src="img/64/56.png" alt="Captura 56 del tute 64"></figure>
+<p>Al final lee el size 0x2000 y no le resta nada pues la sumatoria estaba cero, así que guarda 0x2000 en el len y llama de nuevo a recv.</p>
+<figure><img loading="lazy" src="img/64/57.png" alt="Captura 57 del tute 64"></figure>
+<p>Llega a la comparación del flag que ahora vale 1.</p>
+<figure><img loading="lazy" src="img/64/58.png" alt="Captura 58 del tute 64"></figure>
+<p>Si pudo leer los 0x2000 bytes que le envie ya que el paquete ahora es</p>
+<figure><img loading="lazy" src="img/64/59.png" alt="Captura 59 del tute 64"></figure>
+<p>Para que pueda leer 0x2000 tranquilamente en el segundo recv.</p>
+<p>Si puedo leer bien sale de la función LEYENDO poniendo a cero EAX, si todo está bien.</p>
+<figure><img loading="lazy" src="img/64/60.png" alt="Captura 60 del tute 64"></figure>
+<figure><img loading="lazy" src="img/64/61.png" alt="Captura 61 del tute 64"></figure>
+<figure><img loading="lazy" src="img/64/62.png" alt="Captura 62 del tute 64"></figure>
+<p>La otra función donde leía el buffer la renombro a COPY veo que la llama justo debajo de donde estoy.</p>
+<figure><img loading="lazy" src="img/64/63.png" alt="Captura 63 del tute 64"></figure>
+<figure><img loading="lazy" src="img/64/64.png" alt="Captura 64 del tute 64"></figure>
+<p>Veo que el destination del memcpy dentro de COPY es ese buffer que renombro como _Destination ahí se copiara mi data.</p>
+<figure><img loading="lazy" src="img/64/65.png" alt="Captura 65 del tute 64"></figure>
+<p>También vemos que allí es un p_size que pasa al memcpy.</p>
+<figure><img loading="lazy" src="img/64/66.png" alt="Captura 66 del tute 64"></figure>
+<p>Y que el buffer _Destination es de 0x7004 bytes de largo, así que allí no va a haber overflow porque comparaba si el size era menor que 0x7000 y si era mayor iba por otro camino donde solo leía 0x7000 como máximo.</p>
+<p>También vemos que hay un puntero a _Destination que lo guarda en otra variable renombro.</p>
+<figure><img loading="lazy" src="img/64/67.png" alt="Captura 67 del tute 64"></figure>
+<figure><img loading="lazy" src="img/64/68.png" alt="Captura 68 del tute 64"></figure>
+<p>Aquí compara uno de los 0x2000 bytes que le envie con 0x9c pero parece ser el camino de la izquierda algo relacionado con una descompresión lo dice la string, el otro no te tira fuera aparentemente, así que, podría pensar que si el byte es 0x9c, es un flag de comprimido, por ahora evitemos entrar y vayamos por la derecha.</p>
+<figure><img loading="lazy" src="img/64/69.png" alt="Captura 69 del tute 64"></figure>
+<p>Allí vuelve a comparar con 0x7000 no hay problema con el signo a pesar de ser un  JLE porque eso viene de la cantidad de bytes leídos y no puede leer tanto para que se haga negativo, así que por ahí nada.</p>
+<p>Vemos que copia de mi buffer _Destination a otro que llama Dst que también es de largo 0x7004</p>
+<figure><img loading="lazy" src="img/64/70.png" alt="Captura 70 del tute 64"></figure>
+<p>Vemos que lo que llama Src es en realidad un puntero al Dst que es el lugar donde copio mi fruta</p>
+<figure><img loading="lazy" src="img/64/71.png" alt="Captura 71 del tute 64"></figure>
+<p>También hay una estructura acá</p>
+<figure><img loading="lazy" src="img/64/72.png" alt="Captura 72 del tute 64"></figure>
+<p>El campo 0x2a8 de la misma parece ser el número de sesión, así que creare una tercera y en ese campo le pondré sesión_number</p>
+<figure><img loading="lazy" src="img/64/73.png" alt="Captura 73 del tute 64"></figure>
+<p>Antes de seguir vamos a aclarar una cosa, este desafío es difícil no solo por no tener símbolos, sino también porque no hay un camino directo entre el punto recv donde ingresa nuestra información y la función vulnerable.</p>
+<p>Si pongo un breakpoint en la función vulnerable, veo que constantemente cada pocos segundos para en ella, aparentemente como si fuera un thread diferente al del recv, y necesitamos ver cómo se puede llegar a la misma a pesar de eso, así que sin símbolos y con esa dificultad habrá que exprimir todas las posibilidades de reversing estático y de ultima de dinámico también, para ayudarnos que en la guerra y el reversing todo vale, veremos cómo hacer.</p>
+<p>Así que nosotros llegamos hasta el SWITCH, luego allí dentro hay varios caminos, para ver cual nos llevara a la función vulnerable analicemos un poco la misma, para tratar de ver de dónde sale ese valor y si podemos afectarlo.</p>
+<figure><img loading="lazy" src="img/64/74.png" alt="Captura 74 del tute 64"></figure>
+<p>Vemos que hay un buffer yo le puse p_Dst, su primer word es el valor que filtra, habíamos visto que en el parche si ese valor es menor que 20 te tira fuera.</p>
+<figure><img loading="lazy" src="img/64/75.png" alt="Captura 75 del tute 64"></figure>
+<p>Así que se valor si es menor que 0x800 por ejemplo 0x10, va por la derecha y luego lo vuelve a leer y le resta 0x20 guardando el resultado y usándolo ese size negativo como size de un memcpy al stack, lo cual lo desbordara.</p>
+<p>Para evitar eso, en el parche chequean antes de la resta, que el valor ese sea mayor que 0x20 antes de ir al sub.</p>
+<figure><img loading="lazy" src="img/64/76.png" alt="Captura 76 del tute 64"></figure>
+<p>Ahí en la función parcheada, si no es más bajo JNB va a la zona de la resta con 0x20 para que no de negativo.</p>
+<figure><img loading="lazy" src="img/64/77.png" alt="Captura 77 del tute 64"></figure>
+<p>El problema aquí, es que en el primer memcpy la función Destination es el p_Dest de dónde saca el valor posiblemente nuestro, con el size 0x20, pero no está claro aquí cual es el source del memcpy, parece que lo calcula dentro de la misma función, así que va a haber que analizarla un poco para ver de dónde sale el src y por supuesto nuestro valor que estará en el primer word de ese buffer, tanto del src como del destino ya que copia uno al otro los primeros 0x20 bytes.</p>
+<p>Yo ya la reversee, por eso verán unos nombres que ya están puestos, pero iré explicando un poco, dentro de la función a_memcpy hay otra que va finalmente al memcpy.</p>
+<figure><img loading="lazy" src="img/64/78.png" alt="Captura 78 del tute 64"></figure>
+<p>Allí ese call es el que copia.</p>
+<figure><img loading="lazy" src="img/64/79.png" alt="Captura 79 del tute 64"></figure>
+<p>Dentro de la misma</p>
+<figure><img loading="lazy" src="img/64/80.png" alt="Captura 80 del tute 64"></figure>
+<p>Estaría el supuesto lugar donde crasheara, si llegamos a pasar un valor menor de 0x20 que se reste contra 0x20 y de un size negativo.</p>
+<p>Renombre Dst como p_Dst ya que es un puntero que apunta a un buffer del stack, eso no se ve aquí, pero si uno sigue hacia atrás las referencias para ver de dónde sale.</p>
+<p>Vemos que es un argumento de esta función, si miro en la referencia.</p>
+<figure><img loading="lazy" src="img/64/81.png" alt="Captura 81 del tute 64"></figure>
+<figure><img loading="lazy" src="img/64/82.png" alt="Captura 82 del tute 64"></figure>
+<p>También es un argumento del tipo puntero</p>
+<figure><img loading="lazy" src="img/64/83.png" alt="Captura 83 del tute 64"></figure>
+<p>Y en la referencia que es la función vulnerable también es un argumento del tipo puntero</p>
+<figure><img loading="lazy" src="img/64/84.png" alt="Captura 84 del tute 64"></figure>
+<p>Y en la referencia de esta, es una variable del tipo puntero también que se llama Src, veamos de donde sale.</p>
+<figure><img loading="lazy" src="img/64/85.png" alt="Captura 85 del tute 64"></figure>
+<p>Vemos que es un buffer en el stack del cual saca la dirección y la guarda en la variable puntero Src.</p>
+<figure><img loading="lazy" src="img/64/86.png" alt="Captura 86 del tute 64"></figure>
+<p>Veamos el largo del buffer.</p>
+<figure><img loading="lazy" src="img/64/87.png" alt="Captura 87 del tute 64"></figure>
+<p>Es 2052 o sea 0x804</p>
+<p>Python&gt;hex(2052)</p>
+<p>0x804</p>
+<p>Así que si podemos copiar más que 0x804 habrá overflow, ya vimos que es posible crear mediante una resta un size negativo allí, así que podemos pisar todo el stack inclusive el seh si tiene cookie.</p>
+<p>Vemos que antes del return de esa función que tiene el buffer hay un chequeo de cookie</p>
+<figure><img loading="lazy" src="img/64/88.png" alt="Captura 88 del tute 64"></figure>
+<p>Igualmente podemos evitarla pisando el SEH, así que sigamos.</p>
+<figure><img loading="lazy" src="img/64/89.png" alt="Captura 89 del tute 64"></figure>
+<p>En el memcpy final para ver desde donde sale la data que va a copiar acá, vemos que hay un LEA cuyo resultado es el puntero al Src, hay un EDX*2 dentro del lea por lo cual puse que EDX será un OFFSET ya que un puntero no se multiplica y si un offset, y EAX sería el puntero base del buffer src, por eso le puse p_source, posiblemente EDX valga 0 al inicio y termine copiando desde el inicio del buffer apuntado por p_source.</p>
+<p>Bueno p_source es una variable del tipo puntero sigamos hacia atrás a ver de dónde sale.</p>
+<figure><img loading="lazy" src="img/64/90.png" alt="Captura 90 del tute 64"></figure>
+<p>Vemos que allí lo guarda y que sale del campo 0xc de una estructura que como no tengo idea, le puse STRUCT_SIZES ya verán porque más adelante, igual cualquier nombre funcionara.</p>
+<p>Así que cree una estructura chica de 4 dwords y la llame</p>
+<figure><img loading="lazy" src="img/64/91.png" alt="Captura 91 del tute 64"></figure>
+<figure><img loading="lazy" src="img/64/92.png" alt="Captura 92 del tute 64"></figure>
+<p>Vemos por encima porque no tiene mucha importancia por ahora que el size_memcpy es comparado contra la resta de los dos primeros DWORDS de la estructura que yo llame size1 y size2, y si size_memcpy es menor que la resta de ambos usara este sino el otro.</p>
+<figure><img loading="lazy" src="img/64/93.png" alt="Captura 93 del tute 64"></figure>
+<figure><img loading="lazy" src="img/64/94.png" alt="Captura 94 del tute 64"></figure>
+<p>Vemos también que el p_source de la estructura STRUCT_SIZES viene de antes y que no se guarda en esta función, ya que mirando todos los lugares que usa p_struct_sizes no hay ninguno que guarde en ese campo un puntero.</p>
+<figure><img loading="lazy" src="img/64/95.png" alt="Captura 95 del tute 64"></figure>
+<p>Solo lee allí, veamos en la referencia.</p>
+<p>Vemos que el puntero a la estructura se genera y se guarda allí, así que la creación del puntero de p_source debe ser posterior a esto.</p>
+<figure><img loading="lazy" src="img/64/96.png" alt="Captura 96 del tute 64"></figure>
+<p>Analicemos un poco la forma en que calcula aquí el puntero a la estructura p_struct_sizes.</p>
+<p>Vemos que hay una variable global que yo le puse como nombre BASE_DE_SOURCE cuyo contenido es un puntero, eso es la base de todo.</p>
+<figure><img loading="lazy" src="img/64/97.png" alt="Captura 97 del tute 64"></figure>
+<p>ECX yo le puse Número de elementos, es posiblemente un offset y luego le suma 4 o sea que desde una variable global fija, yo puedo hallando su contenido, sumándole 4 obtener el puntero a la estructura la cual en el cuarto dword tendrá el puntero al source.</p>
+<p>Es importante ver que el src proviene de una variable global porque como la información se pasa entre threads, es muy posible que use dicha variable para guardar en el thread del recv y luego levantarla en este otro.</p>
+<p>Si arrancamos el debugger veamos que en la variable global BASE_DE_SOURCE hay un puntero, en mi caso 0x1ebebbb8</p>
+<figure><img loading="lazy" src="img/64/98.png" alt="Captura 98 del tute 64"></figure>
+<p>Como recordamos que a ese valor le suma 4 y halla el contenido que es el puntero a p_struct_sizes.</p>
+<figure><img loading="lazy" src="img/64/99.png" alt="Captura 99 del tute 64"></figure>
+<p>Al contenido de BASE_DE_SOURCE le sumo 4 y su contenido es el p_struct_sizes en mi caso 0x2ab0038 si voy allí y apreto la T</p>
+<figure><img loading="lazy" src="img/64/100.png" alt="Captura 100 del tute 64"></figure>
+<p>El 4 campo (el 0xc) es el puntero a source, lo más fácil seria ir allí que esta vacío y ponerle un BREAKPOINT MEMORY a ver si copia allí mi fruta y donde lo hace.</p>
+<figure><img loading="lazy" src="img/64/101.png" alt="Captura 101 del tute 64"></figure>
+<figure><img loading="lazy" src="img/64/102.png" alt="Captura 102 del tute 64"></figure>
+<p>Vemos que paro allí</p>
+<figure><img loading="lazy" src="img/64/103.png" alt="Captura 103 del tute 64"></figure>
+<p>Y vemos que está copiando mi fruta</p>
+<figure><img loading="lazy" src="img/64/104.png" alt="Captura 104 del tute 64"></figure>
+<p>Si miramos el call stack</p>
+<figure><img loading="lazy" src="img/64/105.png" alt="Captura 105 del tute 64"></figure>
+<p>Vemos que hay un camino desde leyendo que pasa por switch y que escribe allí y que podemos seguir hasta donde copia.</p>
+<p>Vemos que la segunda vez que para copia el famoso 0x3e que muchos encontraron en el loop en vez del valor nuestro, así que ya sabemos adónde hay que llegar y un posible camino, ahora que ya tenemos claro eso debemos seguir mirando el switch.</p>
+<p>Igual si miramos un poco las formas de llegar a ese copy desde el SWITCH.</p>
+<figure><img loading="lazy" src="img/64/106.png" alt="Captura 106 del tute 64"></figure>
+<p>Vemos que hay un montón de formas de llegar y que nosotros estamos llegando por un lugar incorrecto ya que hay muchos opcodes validos que llegan al copy y nosotros estamos tirando cualquier cosa, sin fijarnos de que sea un opcodes valido.</p>
+<figure><img loading="lazy" src="img/64/107.png" alt="Captura 107 del tute 64"></figure>
+<figure><img loading="lazy" src="img/64/108.png" alt="Captura 108 del tute 64"></figure>
+<p>Creare una string random y la imprimiré para ver qué posición llega al OPCODE para poder arreglarlo.</p>
+<figure><img loading="lazy" src="img/64/109.png" alt="Captura 109 del tute 64"></figure>
+<figure><img loading="lazy" src="img/64/110.png" alt="Captura 110 del tute 64"></figure>
+<p>Vamos arreglando el paquete a enviar.</p>
+<figure><img loading="lazy" src="img/64/111.png" alt="Captura 111 del tute 64"></figure>
+<p>Le pongo 0x10 al size ese a ver si luego poniéndole un opcodes correcto lo hago llegar a la función vulnerable.</p>
+<figure><img loading="lazy" src="img/64/112.png" alt="Captura 112 del tute 64"></figure>
+<p>Veo que mandándole el 0x19 siempre y cuando haga un recv al final después del send y respete el largo del paquete 0x6014 que son los primeros dos bytes del size me crashea en el memcpy sin problemas.</p>
+<figure><img loading="lazy" src="img/64/113.png" alt="Captura 113 del tute 64"></figure>
+<p>Ahí crashea copiando todo el stack</p>
+<figure><img loading="lazy" src="img/64/114.png" alt="Captura 114 del tute 64"></figure>
+<p>Si uno no pone el recv final el programa copia un 0x3e en la el buffer, o sea 0x3e es el largo de ese paquete que arma cuando la conexión termina si vemos ese paquete tiene dentro de los 0x3e de largo la string.</p>
+<p>"SESSION TERMINATED"</p>
+<p>Si la buscamos es aquí</p>
+<figure><img loading="lazy" src="img/64/115.png" alt="Captura 115 del tute 64"></figure>
+<p>El puntero a esa string se pasa como segundo argumento</p>
+<figure><img loading="lazy" src="img/64/116.png" alt="Captura 116 del tute 64"></figure>
+<p>Vemos que luego va a un strcpy donde copia la string en la posición 0x24 de un buffer cuyo puntero está en var_8</p>
+<figure><img loading="lazy" src="img/64/117.png" alt="Captura 117 del tute 64"></figure>
+<p>Si a var_8 le ponemos p_Desti veamos de donde sale.</p>
+<p>Vemos que es un buffer en el stack cuya dirección la guarda en la variable puntero p_Desti.</p>
+<figure><img loading="lazy" src="img/64/118.png" alt="Captura 118 del tute 64"></figure>
+<p>Y al inicio del mismo buffer debe guardar el 0x3e, el mismo sale de acá. Hay un argumento que le puse de nombre constante</p>
+<figure><img loading="lazy" src="img/64/119.png" alt="Captura 119 del tute 64"></figure>
+<p>En la referencia vemos que es un 1.</p>
+<figure><img loading="lazy" src="img/64/120.png" alt="Captura 120 del tute 64"></figure>
+<p>Vemos que la compara con 0x13</p>
+<figure><img loading="lazy" src="img/64/121.png" alt="Captura 121 del tute 64"></figure>
+<p>Si es menor o igual, todo bien y es 1 así que nada sigue.</p>
+<p>Vemos que le suma 1 y guarda el 0x2 en EDX+0x22</p>
+<figure><img loading="lazy" src="img/64/122.png" alt="Captura 122 del tute 64"></figure>
+<p>También hay otra constante que sale del largo de la string SESSION TERMINATED</p>
+<figure><img loading="lazy" src="img/64/123.png" alt="Captura 123 del tute 64"></figure>
+<p>A ese largo (0x12) le suma 3 y le hace SHR, 1 que era</p>
+<p>shr eax, 1   ;Signed division by 2</p>
+<p>O sea</p>
+<figure><img loading="lazy" src="img/64/124.png" alt="Captura 124 del tute 64"></figure>
+<p>Que guarda 0xa</p>
+<figure><img loading="lazy" src="img/64/125.png" alt="Captura 125 del tute 64"></figure>
+<p>Entonces en la posición 0x22 hay un 2 y en la posición 0x20 hay un 0xa.</p>
+<p>Suma los dos numeros aqui</p>
+<figure><img loading="lazy" src="img/64/126.png" alt="Captura 126 del tute 64"></figure>
+<p>Y luego el resultado lo suma a si mismo y le suma 6 seria.</p>
+<figure><img loading="lazy" src="img/64/127.png" alt="Captura 127 del tute 64"></figure>
+<p>Luego</p>
+<figure><img loading="lazy" src="img/64/128.png" alt="Captura 128 del tute 64"></figure>
+<p>Le suma 0x20 convirtiéndolo en el 0x3e que nos llega al finalizar la sesión y que lo guarda en el primer lugar de ese buffer que luego copia.</p>
+<figure><img loading="lazy" src="img/64/129.png" alt="Captura 129 del tute 64"></figure>
+<p>Allí adentro sabemos que copiaba en nuestro buffer del que luego sale el valor que pasa por la función vulnerable.</p>
+<p>Ahora porque si no ponemos el recv, pasa por aquí y arruina todo?, se podría hacer una comparación con y sin el recv, al quitarlo pasa por aquí, si lo tiene no pasa, y como la string dice session terminated, podemos suponer que el recv mantiene la sesión abierta y mientras crashea, el que tenga ganas puede probarlo si es así, usando wireshark mirando si la conexión muere va aquí a copiar el 0x3e y si sigue viva crashea.</p>
+<p>Para que vean que no miento</p>
+<figure><img loading="lazy" src="img/64/130.png" alt="Captura 130 del tute 64"></figure>
+<p>Si le quito el recv y lo tiro</p>
+<figure><img loading="lazy" src="img/64/131.png" alt="Captura 131 del tute 64"></figure>
+<p>Vemos que ahí guarda el 0x3e.</p>
+<figure><img loading="lazy" src="img/64/132.png" alt="Captura 132 del tute 64"></figure>
+<p>Vemos que ahí traceando llega al memcpy</p>
+<figure><img loading="lazy" src="img/64/133.png" alt="Captura 133 del tute 64"></figure>
+<p>Vemos el 0x3e con la string sesión terminated.</p>
+<p>Vemos que el Destination que tiene nuestra fruta va a ser pisado y el 0x10 se pisara con el 0x3e</p>
+<figure><img loading="lazy" src="img/64/134.png" alt="Captura 134 del tute 64"></figure>
+<figure><img loading="lazy" src="img/64/135.png" alt="Captura 135 del tute 64"></figure>
+<p>Si le pongo un Breakpoint on Access y pongo un breakpoint en la función vulnerable, leerá este valor</p>
+<figure><img loading="lazy" src="img/64/136.png" alt="Captura 136 del tute 64"></figure>
+<p>Le doy RUN.</p>
+<figure><img loading="lazy" src="img/64/137.png" alt="Captura 137 del tute 64"></figure>
+<p>Y allí pasa, así que con esto terminamos el ejemplo.</p>
+<p>Como ultimo me preguntaron si hay alguna forma de ver con IDA estáticamente si hay algún camino a la variable global para sacar donde copia y si hay un camino hasta allí estáticamente.</p>
+<p>Vamos a la función donde copiaba.</p>
+<figure><img loading="lazy" src="img/64/138.png" alt="Captura 138 del tute 64"></figure>
+<p>Hago doble click en la variable global.</p>
+<figure><img loading="lazy" src="img/64/139.png" alt="Captura 139 del tute 64"></figure>
+<p>Apreto la tecla menos.</p>
+<figure><img loading="lazy" src="img/64/140.png" alt="Captura 140 del tute 64"></figure>
+<p>Luego hago click en una parte vacía -ADD NODE BY NAME</p>
+<figure><img loading="lazy" src="img/64/141.png" alt="Captura 141 del tute 64"></figure>
+<p>Agrego SWITCH.</p>
+<p>Vemos que quedo ahí suelta</p>
+<figure><img loading="lazy" src="img/64/142.png" alt="Captura 142 del tute 64"></figure>
+<p>Veamos si hay caminos entre ambas, seguro habrá muchos.</p>
+<p>Si hacemos click en switch y elegimos FIND PATH como BASE DE SOURCE no es una función no aparece en la lista de destinos, pero si hacemos al revés y hacemos FIND PATH en BASE DE SOURCE.</p>
+<figure><img loading="lazy" src="img/64/143.png" alt="Captura 143 del tute 64"></figure>
+<figure><img loading="lazy" src="img/64/144.png" alt="Captura 144 del tute 64"></figure>
+<p>Lo podemos colorear si hacemos click en SWITCH-PATHS..</p>
+<figure><img loading="lazy" src="img/64/145.png" alt="Captura 145 del tute 64"></figure>
+<p>Ahora se ve mejor</p>
+<figure><img loading="lazy" src="img/64/146.png" alt="Captura 146 del tute 64"></figure>
+<p>Queremos la lista</p>
+<figure><img loading="lazy" src="img/64/147.png" alt="Captura 147 del tute 64"></figure>
+<figure><img loading="lazy" src="img/64/148.png" alt="Captura 148 del tute 64"></figure>
+<p>Ahí esta el camino, desde SWITCH cualquier opcodes que te lleva a la función a_copia_3_0 te llevara a un acceso a la variable global que necesitamos ver.</p>
+<p>Bueno eso es todo ha sido un durísimo rival, pero como es un software real, tiene sus cosas, pero para vencerlo hay que practicar mucho para tener mas skill en reversing estático, este solo tirándole fruta no se lo puede sacar, y solo debuggeando tampoco.</p>
+<p>Ricardo Narvaja</p>
+</main>
+<footer class="pie">
+  <p>Material educativo y defensivo. Las prácticas se limitan a programas propios, software abierto o crackmes diseñados para aprender. No se enseña a eludir licencias, DRM ni controles de acceso.</p>
+  <p><a href="../00_EMPEZAR_AQUI.html">Inicio</a> · <a href="../guia/etapa-0.html">Etapas</a> · <a href="../fuentes_y_limites.html">Fuentes y límites</a> · <a href="../registro_de_cobertura.csv">Registro de cobertura</a></p>
+</footer>
+<script>
+(function(){
+  function abrir(src){
+    var o=document.createElement('div'); o.className='lightbox-ov';
+    var i=document.createElement('img'); i.src=src; o.appendChild(i);
+    function cerrar(){o.remove(); document.removeEventListener('keydown', onkey);}
+    function onkey(e){ if(e.key==='Escape') cerrar(); }
+    o.addEventListener('click', cerrar);
+    document.addEventListener('keydown', onkey);
+    document.body.appendChild(o);
+  }
+  document.addEventListener('DOMContentLoaded', function(){
+    document.querySelectorAll('figure img, main img').forEach(function(img){
+      img.style.cursor='zoom-in';
+      img.addEventListener('click', function(){ abrir(img.currentSrc||img.src); });
+    });
+  });
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Etapa 2 · Flujo: comparar, saltar y repetir</title>
+<meta name="description" content="Cómo se convierte un if, un while y un switch en comparaciones, saltos condicionales y tablas de salto.">
+<link rel="stylesheet" href="../guia/estilo.css">
+</head>
+<body>
+<a class="salto" href="#contenido">Saltar al contenido</a>
+<header class="cabecera">
+  <div class="marca"><a href="../00_EMPEZAR_AQUI.html">CLS · Curso de reversing</a> <span class="edicion">edición 5 · 27/10/2026</span></div>
+  <nav class="principal" aria-label="Navegación principal">
+    <a href="../00_EMPEZAR_AQUI.html">Inicio</a>
+    <a href="../guia/index.html">Curso</a>
+    <a href="../materiales.html">Materiales</a>
+    <a href="../fichas/index.html">Fichas</a>
+    <a href="../glosario.html">Glosario</a>
+    <a href="../preguntas_y_respuestas.html">Repaso</a>
+    <a href="../buscar.html">Buscar</a>
+  </nav>
+</header>
+<main id="contenido">
+<nav class="migas" aria-label="Ubicación"><a href="../00_EMPEZAR_AQUI.html">Inicio</a><span aria-hidden="true">›</span><a href="../guia/index.html">Curso</a><span aria-hidden="true">›</span><span>Etapa 2 · Introducción al reversing</span></nav><h1 id="flujo-comparar-saltar-y-repetir">Flujo: comparar, saltar y repetir</h1>
+<aside class="callout nota"><p class="callout-titulo">Objetivo de la lección</p><p>Al terminar vas a poder reconstruir un <code>if/else</code>, un bucle y un <code>switch</code> a partir de un listado de assembly, eligiendo el salto correcto según el dato sea con signo o sin signo.</p></aside>
+<p><strong>Prerrequisitos:</strong> instrucciones y flags. <strong>Duración sugerida:</strong> 4 horas. Estimación aproximada.</p>
+<h2 id="la-idea-central">La idea central</h2>
+<p>El procesador no tiene <code>if</code>. Tiene instrucciones que comparan y actualizan flags, y saltos que se toman o no según esos flags. Un <code>if</code> en C se convierte en:</p>
+<pre><code class="lenguaje-asm">cmp  eax, 4
+jne  else_1      ; si no es igual, salta al else
+; bloque del if
+jmp  fin
+else_1:
+; bloque del else
+fin:</code></pre>
+<p>Leer flujo es reconstruir ese patrón: <strong>comparación → salto condicional → bloques → salto incondicional al final</strong>.</p>
+<h2 id="cmp-y-test-en-detalle"><code>CMP</code> y <code>TEST</code> en detalle</h2>
+<p><code>CMP a, b</code> calcula <code>a - b</code> y descarta el resultado. Los flags quedan como si hubieras restado:</p>
+<div class="tabla"><table>
+<thead><tr>
+<th>Caso</th>
+<th><code>ZF</code></th>
+<th><code>CF</code></th>
+<th><code>SF</code></th>
+<th><code>OF</code></th>
+</tr></thead><tbody>
+<tr><td><code>a == b</code></td><td>1</td><td>0</td><td>según resultado 0</td><td>0</td></tr>
+<tr><td><code>a &gt; b</code> (sin signo)</td><td>0</td><td>0</td><td>—</td><td>—</td></tr>
+<tr><td><code>a &lt; b</code> (sin signo)</td><td>0</td><td>1</td><td>—</td><td>—</td></tr>
+<tr><td><code>a &gt; b</code> (con signo)</td><td>0</td><td>—</td><td>0</td><td>0</td></tr>
+<tr><td><code>a &lt; b</code> (con signo)</td><td>0</td><td>—</td><td>1</td><td>0</td></tr>
+</tbody></table></div>
+<p><code>TEST a, b</code> hace <code>a AND b</code> y descarta el resultado. <code>TEST EAX, EAX</code> activa <code>ZF</code> si <code>EAX</code> es cero; es la forma estándar de preguntar "¿es nulo?".</p>
+<p>El capítulo 09 lo muestra con <code>CMP EAX=4, EBX=4</code> (activa <code>ZF</code> y deja los registros intactos) y con <code>TEST EAX, EAX</code> seguido de <code>JZ</code> (<a class="fuente" href="../../CLS_resultados_intermedios/transcripciones/extraidos/Reversing%20desde%20cero%20%28Ricardo%20y%20Solid%29/Ricardo%20Narvaja%20y%20Solid%20-%20Reversing%20desde%20cero_09%20Instrucciones%205_09%20Instrucciones%205.txt">Reversing desde cero, cap. 09</a>, 00:01:05–00:06:00 y 00:31:32–00:33:00).</p>
+<h2 id="la-tabla-de-saltos-condicionales">La tabla de saltos condicionales</h2>
+<div class="tabla"><table>
+<thead><tr>
+<th>Instrucción</th>
+<th>Salta si...</th>
+<th>Uso típico</th>
+</tr></thead><tbody>
+<tr><td><code>JE</code> / <code>JZ</code></td><td><code>ZF = 1</code></td><td>igual / cero</td></tr>
+<tr><td><code>JNE</code> / <code>JNZ</code></td><td><code>ZF = 0</code></td><td>distinto / no cero</td></tr>
+<tr><td><code>JA</code> / <code>JNBE</code></td><td><code>CF = 0</code> y <code>ZF = 0</code></td><td>mayor, <strong>sin signo</strong></td></tr>
+<tr><td><code>JAE</code> / <code>JNB</code> / <code>JNC</code></td><td><code>CF = 0</code></td><td>mayor o igual, sin signo</td></tr>
+<tr><td><code>JB</code> / <code>JNAE</code> / <code>JC</code></td><td><code>CF = 1</code></td><td>menor, sin signo</td></tr>
+<tr><td><code>JBE</code> / <code>JNA</code></td><td><code>CF = 1</code> o <code>ZF = 1</code></td><td>menor o igual, sin signo</td></tr>
+<tr><td><code>JG</code> / <code>JNLE</code></td><td><code>ZF = 0</code> y <code>SF = OF</code></td><td>mayor, <strong>con signo</strong></td></tr>
+<tr><td><code>JGE</code> / <code>JNL</code></td><td><code>SF = OF</code></td><td>mayor o igual, con signo</td></tr>
+<tr><td><code>JL</code> / <code>JNGE</code></td><td><code>SF ≠ OF</code></td><td>menor, con signo</td></tr>
+<tr><td><code>JLE</code> / <code>JNG</code></td><td><code>ZF = 1</code> o <code>SF ≠ OF</code></td><td>menor o igual, con signo</td></tr>
+<tr><td><code>JS</code> / <code>JNS</code></td><td><code>SF = 1</code> / <code>SF = 0</code></td><td>signo</td></tr>
+<tr><td><code>JO</code> / <code>JNO</code></td><td><code>OF = 1</code> / <code>OF = 0</code></td><td>desborde con signo</td></tr>
+</tbody></table></div>
+<p>No hace falta memorizarla: alcanza con saber que <strong><code>J</code> + letra</strong> indica la condición (<code>E</code> igual, <code>N</code> no, <code>A</code> arriba, <code>B</code> abajo, <code>G</code> mayor, <code>L</code> menor) y que las variantes <code>A/B</code> son sin signo y <code>G/L</code> con signo.</p>
+<h2 id="cómo-se-codifica-un-salto-y-hasta-dónde-llega">Cómo se codifica un salto (y hasta dónde llega)</h2>
+<p>Hasta acá vimos <em>qué</em> hace cada salto; falta <em>cómo se escribe en bytes</em>, porque al parchear —o al leer un salto en el editor hexadecimal— trabajás con esos bytes. El <strong>Curso IDA</strong> lo muestra byte a byte sobre un <code>CRACKME</code> propio (<a href="../ida_tutes/7.html">Curso IDA · tute 7, Control de flujo</a>):</p>
+<ul><li><strong>Salto corto (<code>JMP SHORT</code>)</strong> → opcode <code>EB</code> + <strong>1 byte</strong> de desplazamiento. El destino se calcula como <strong>inicio de la instrucción + 2 + desplazamiento</strong> (el 2 es el largo del salto corto). El alcance es chico: <code>0x7F</code> es el <strong>máximo hacia adelante</strong> y <code>0x80</code> el <strong>máximo hacia atrás</strong>.</li><li>Un desplazamiento <code>FE</code> (−2) hace que el salto caiga <strong>sobre sí mismo</strong>: es el <strong>loop infinito</strong> clásico (<code>EB FE</code>).</li><li><strong>Salto largo (<code>JMP</code>/<code>Jcc</code> near)</strong> → opcode <code>E9</code> + un <strong>dword</strong> de desplazamiento, para alcanzar direcciones lejanas. La distancia se calcula como <strong>destino − inicio − 5</strong> (5 = largo del salto largo).</li></ul>
+<aside class="callout nota"><p class="callout-titulo">Probarlo sin romper la base de datos</p><p>El tute edita esos bytes con <strong>Patch Byte</strong> y <strong>KeyPatch</strong> dentro de IDA, y antes hace un <strong>snapshot de la IDB</strong> (<em>View → Database snapshot manager</em>) para volver atrás con <em>Restore</em> si el cambio rompe una función. Hacé lo mismo antes de experimentar: cambiás un <code>0x05</code> por <code>0x7F</code> o <code>0x80</code>, ves el efecto y, si algo se rompe, restaurás.</p></aside>
+<h2 id="ejemplo-paso-a-paso-el-mismo-dato-dos-interpretaciones">Ejemplo paso a paso: el mismo dato, dos interpretaciones</h2>
+<pre><code class="lenguaje-asm">mov eax, 0xFFFFFFFF
+cmp eax, 2
+jg  mayor_firmado
+ja  mayor_sin_signo</code></pre>
+<ul><li><code>CMP</code> calcula <code>0xFFFFFFFF - 2</code>. Como número <strong>sin signo</strong>, <code>0xFFFFFFFF</code> es 4.294.967.295, mucho mayor que 2: <code>CF = 0</code>, <code>ZF = 0</code>, así que <code>JA</code> <strong>salta</strong>.</li><li>Como número <strong>con signo</strong>, <code>0xFFFFFFFF</code> es −1, menor que 2: <code>SF = 1</code>, <code>OF = 0</code>, <code>SF ≠ OF</code>, así que <code>JG</code> <strong>no salta</strong>; el que saltaría es <code>JL</code>.</li></ul>
+<p>Es el ejemplo que usa el capítulo 09 (00:24:30–00:25:30). La lección: <strong>el mismo <code>cmp</code> puede producir saltos opuestos según la instrucción que lo sigue</strong>. Si el código usa <code>JA/JB</code>, el autor pensó el dato como sin signo; si usa <code>JG/JL</code>, como con signo. Ese detalle cambia por completo la reconstrucción de una comparación de contraseñas o de un índice.</p>
+<h2 id="bucles">Bucles</h2>
+<h3 id="while-for"><code>while</code> / <code>for</code></h3>
+<pre><code class="lenguaje-c">while (i &lt; 10) { ...; i++; }</code></pre>
+<p>Se compila a:</p>
+<pre><code class="lenguaje-asm">mov ecx, 0
+loop_start:
+cmp ecx, 10
+jge loop_end      ; si ecx &gt;= 10, salir
+; cuerpo
+inc ecx
+jmp loop_start
+loop_end:</code></pre>
+<p>El salto de salida es la <strong>negación</strong> de la condición: el cuerpo se ejecuta mientras se cumple, así que se sale cuando deja de cumplirse.</p>
+<h3 id="do-while"><code>do/while</code></h3>
+<p>La condición va al final, después del cuerpo. Se ejecuta al menos una vez.</p>
+<h3 id="loop"><code>LOOP</code></h3>
+<p><code>LOOP etiqueta</code> decrementa <code>ECX</code> y salta si <code>ECX ≠ 0</code>. Es una instrucción compacta pero más lenta que <code>dec ecx; jnz</code>. En el capítulo 12 se ve <code>LOOP</code> con <code>ECX</code> como contador (00:24:06).</p>
+<h3 id="bucles-con-cadenas">Bucles con cadenas</h3>
+<p><code>REP MOVSB</code>, <code>REPE CMPSB</code> y <code>REPNE SCASB</code> repiten una operación mientras se cumple una condición y <code>ECX</code> no llegue a cero. Son bucles "de hardware" que el procesador ejecuta sin un <code>jmp</code> explícito.</p>
+<h2 id="switch-la-tabla-de-saltos"><code>switch</code>: la tabla de saltos</h2>
+<p>Un <code>switch</code> con casos consecutivos se compila a una <strong>tabla de direcciones</strong>:</p>
+<pre><code class="lenguaje-asm">cmp eax, 3
+ja  default
+jmp [tabla + eax*4]</code></pre>
+<p>La tabla contiene las direcciones de cada <code>case</code>; <code>jmp [tabla + eax*4]</code> salta a la que corresponde al índice. En el desensamblador se ve como un <code>jmp</code> con un operando indexado, seguido de una zona de datos con direcciones (a veces en <code>.rdata</code>).</p>
+<p>Para reconstruirlo: identificá la comparación de rango (<code>cmp</code> + <code>ja default</code>), la tabla y el orden de las entradas. Si los casos no son consecutivos, el compilador puede usar una cadena de comparaciones en lugar de una tabla.</p>
+<h2 id="decisiones-sin-salto-cmovcc">Decisiones sin salto: <code>CMOVcc</code></h2>
+<p>No toda decisión produce un salto. La familia <code>CMOVcc</code> (<em>conditional move</em>) <strong>mueve un valor solo si se cumple una condición</strong>, mirando los mismos flags que los <code>Jcc</code>. Por ejemplo, <code>CMOVZ eax, ebx</code> copia <code>EBX</code> en <code>EAX</code> únicamente si <code>ZF = 1</code>; si no, <code>EAX</code> queda como estaba.</p>
+<pre><code class="lenguaje-asm">cmp  byte ptr [esi], 0x41   ; ¿el primer carácter es 'A'?
+mov  ecx, 0x31
+cmovz esi_byte, ecx         ; si era 'A' (ZF=1), lo reemplaza por 0x31; si no, lo deja</code></pre>
+<p>La consecuencia para el reversing es importante: con <code>CMOVcc</code> <strong>no hay dos bloques</strong> (uno para el camino bueno y otro para el malo) ni un salto visible. La comparación y la elección ocurren en el mismo bloque, así que no hay un "salto para parchear" evidente. El capítulo 16 usa justamente esto para que un crackme no tenga bloques separados de "chico bueno" y "chico malo": decide con un <code>CMOVZ</code> y no con un <code>Jcc</code> (<a class="fuente" href="../../CLS_resultados_intermedios/transcripciones/extraidos/Reversing%20desde%20cero%20%28Ricardo%20y%20Solid%29/Ricardo%20Narvaja%20y%20Solid%20-%20Reversing%20desde%20cero_16%20Ejercicio%203%20-%20An%C3%A1lisis%20Din%C3%A1mico%20y%20Est%C3%A1tico_16%20Ejercicio.txt">Reversing desde cero, cap. 16</a>; transcripción .txt, sin marcas de tiempo).</p>
+<p>Cuando no encuentres el salto que decide, buscá un <code>CMOVcc</code>, un <code>SETcc</code> (que deja 0 o 1 en un byte según la condición) o una operación aritmética que use el flag: la decisión puede estar ahí, sin bifurcación.</p>
+<h2 id="ejemplo-integrador-el-if-del-capítulo-15">Ejemplo integrador: el <code>if</code> del capítulo 15</h2>
+<p>El programa de práctica del capítulo 15 pide dos números y aplica:</p>
+<pre><code class="lenguaje-c">if (a &gt; 50 || b &lt; 50) { error; }
+if ((a + b) * 4 == 480) { correcto; } else { incorrecto; }</code></pre>
+<p>En assembly, la primera condición se parte en dos comparaciones con saltos:</p>
+<pre><code class="lenguaje-asm">cmp eax, 50
+jg  error          ; a &gt; 50 -&gt; error
+cmp ebx, 50
+jl  error          ; b &lt; 50 -&gt; error</code></pre>
+<p>La segunda usa una suma, un desplazamiento y una comparación:</p>
+<pre><code class="lenguaje-asm">add eax, ebx
+shl eax, 2         ; (a+b) * 4
+cmp eax, 480
+jne incorrecto</code></pre>
+<p>El capítulo lo reconstruye leyendo los saltos y los comentarios que va agregando en IDA, y luego lo confirma en el debugger con <code>40</code> y <code>80</code> (<a class="fuente" href="../../CLS_resultados_intermedios/transcripciones/extraidos/Reversing%20desde%20cero%20%28Ricardo%20y%20Solid%29/Ricardo%20Narvaja%20y%20Solid%20-%20Reversing%20desde%20cero_15%20Ejercicio%202%20-%20An%C3%A1lisis%20est%C3%A1tico_15%20Ejercicio%202%20-%20An%C3%A1lisis%20est%C3%A1tico.txt">Reversing desde cero, cap. 15</a>, 00:10:00–00:19:00).</p>
+<aside class="callout aviso"><p class="callout-titulo">El error de leer el salto al revés</p><p>Un salto "hacia el bloque malo" no significa que la condición sea verdadera: puede ser la negación. Antes de escribir el <code>if</code>, preguntate <strong>qué camino toma el programa cuando el salto se produce</strong> y <strong>qué camino cuando no</strong>. El capítulo 09 insiste en esto al explicar cada <code>Jcc</code> por su condición (00:07:00–00:12:00).</p></aside>
+<h2 id="práctica">Práctica</h2>
+<ol><li>Traducí a C:</li></ol>
+<pre><code class="lenguaje-asm">cmp eax, 10
+jl  menor
+mov ebx, 1
+jmp fin
+menor:
+mov ebx, 0
+fin:</code></pre>
+<ol><li>Escribí en C un <code>for</code> que sume los números del 1 al 10 y compilalo con <code>-O0</code>. Identificá el contador, la comparación y el salto de salida.</li><li>¿Qué diferencia hay entre <code>JA</code> y <code>JG</code>? Dame un ejemplo con <code>0xFFFFFFFF</code>.</li><li>Reconstruí un <code>switch</code> de tres casos a partir de una tabla de saltos inventada por vos. Dibujá la tabla y el <code>jmp</code> indexado.</li><li>En el programa del capítulo 15, cambiá <code>40 80</code> por <code>50 70</code>. ¿Sigue dando 480? ¿Qué condición falla?</li></ol>
+<h2 id="preguntas-de-repaso">Preguntas de repaso</h2>
+<p><strong>1. ¿<code>CMP</code> modifica los operandos?</strong> No. Solo actualiza flags. Es una resta "de prueba".</p>
+<p><strong>2. ¿Cómo se sale de un <code>while</code>?</strong> Con un salto condicional que se toma cuando la condición deja de cumplirse, o con un <code>jmp</code> al final si el cuerpo tiene un <code>break</code>.</p>
+<p><strong>3. ¿Qué indica <code>JA</code> que no indica <code>JG</code>?</strong> <code>JA</code> compara sin signo; <code>JG</code>, con signo. Con <code>0xFFFFFFFF</code> y <code>2</code>, <code>JA</code> salta y <code>JG</code> no.</p>
+<p><strong>4. ¿Cómo se reconoce una tabla de salto?</strong> Por un <code>jmp</code> con operando indexado (<code>[tabla + registro*4]</code>) y una zona de datos con direcciones consecutivas, generalmente precedida por una comparación de rango.</p>
+<p><strong>5. ¿<code>LOOP</code> usa qué registro?</strong> <code>ECX</code>. Decrementa y salta si no llegó a cero.</p>
+<h2 id="antes-de-avanzar">Antes de avanzar</h2>
+<p>Tenés que poder:</p>
+<ul><li>Reconstruir un <code>if/else</code> a partir de <code>cmp</code> + <code>jcc</code> + <code>jmp</code>.</li><li>Elegir <code>JA/JB</code> o <code>JG/JL</code> según el tipo del dato.</li><li>Reconocer un bucle <code>while</code>, un <code>do/while</code> y un <code>for</code>.</li><li>Explicar una tabla de saltos.</li></ul>
+<aside class="callout nota"><p class="callout-titulo">Puerta de salida</p><p>Si podés mirar un bloque con dos saltos y decir qué camino toma con un valor concreto, estás listo para las llamadas a funciones.</p></aside>
+<h2 id="fuentes-de-esta-lección">Fuentes de esta lección</h2>
+<ul><li><a class="fuente" href="../../CLS_resultados_intermedios/transcripciones/extraidos/Reversing%20desde%20cero%20%28Ricardo%20y%20Solid%29/Ricardo%20Narvaja%20y%20Solid%20-%20Reversing%20desde%20cero_09%20Instrucciones%205_09%20Instrucciones%205.txt">Reversing desde cero, cap. 09</a> — <code>CMP</code>, <code>TEST</code>, <code>JE/JNE/JA/JB/JG/JL</code>, <code>LEAVE</code>.</li><li><a class="fuente" href="../../CLS_resultados_intermedios/transcripciones/extraidos/Reversing%20desde%20cero%20%28Ricardo%20y%20Solid%29/Ricardo%20Narvaja%20y%20Solid%20-%20Reversing%20desde%20cero_16%20Ejercicio%203%20-%20An%C3%A1lisis%20Din%C3%A1mico%20y%20Est%C3%A1tico_16%20Ejercicio.txt">Reversing desde cero, cap. 16</a> — <code>CMOVcc</code>: decidir sin salto, un crackme sin bloques separados de bueno/malo.</li><li><a class="fuente" href="../../CLS_resultados_intermedios/transcripciones/extraidos/Reversing%20desde%20cero%20%28Ricardo%20y%20Solid%29/Ricardo%20Narvaja%20y%20Solid%20-%20Reversing%20desde%20cero_12%20Practica%20de%20Instrucciones_12%20Practica%20de%20Instrucciones.txt">Reversing desde cero, cap. 12</a> — <code>LOOP</code> y comparaciones en un binario real.</li><li><a class="fuente" href="../../CLS_resultados_intermedios/transcripciones/extraidos/Reversing%20desde%20cero%20%28Ricardo%20y%20Solid%29/Ricardo%20Narvaja%20y%20Solid%20-%20Reversing%20desde%20cero_15%20Ejercicio%202%20-%20An%C3%A1lisis%20est%C3%A1tico_15%20Ejercicio%202%20-%20An%C3%A1lisis%20est%C3%A1tico.txt">Reversing desde cero, cap. 15</a> — reconstrucción de condiciones.</li><li><a href="../ida_tutes/7.html">Curso IDA · tute 7, Control de flujo</a> — codificación de los saltos (<code>EB</code>/<code>E9</code>), alcance ±<code>0x7F</code>/<code>0x80</code>, <code>EB FE</code> = loop infinito, y cómo parchearlos en IDA con snapshot de la IDB.</li><li><a class="fuente" href="../../CLS_resultados_intermedios/transcripciones/extraidos/Videos%20y%20material%20adicional%20Ingenieria%20Inversa/Videos_Video29_Video29.txt">Videos y material adicional, Video 29</a> — <code>IF/ELSE</code> compilado a <code>CMP</code> + saltos.</li><li><a class="fuente" href="../../CLS_resultados_intermedios/transcripciones/extraidos/Videos%20y%20material%20adicional%20Ingenieria%20Inversa/Videos_Video30_Video30.txt">Videos y material adicional, Video 30</a> — bucles y pila.</li></ul>
+<aside class="callout nota"><p class="callout-titulo">Capas de esta lección</p><p><strong>Contenido observado en CLS:</strong> la tabla de saltos del capítulo 09, el ejemplo <code>0xFFFFFFFF</code> contra <code>2</code>, el <code>LOOP</code> del capítulo 12 y el <code>if</code> del capítulo 15. <strong>Conocimiento externo:</strong> la tabla completa de <code>Jcc</code> y el patrón de tabla de saltos. <strong>Recomendación editorial:</strong> los ejercicios y el ejemplo integrador.</p></aside>
+</main>
+<footer class="pie">
+  <p>Material educativo y defensivo. Las prácticas se limitan a programas propios, software abierto o crackmes diseñados para aprender. No se enseña a eludir licencias, DRM ni controles de acceso.</p>
+  <p><a href="../00_EMPEZAR_AQUI.html">Inicio</a> · <a href="../guia/etapa-0.html">Etapas</a> · <a href="../fuentes_y_limites.html">Fuentes y límites</a> · <a href="../registro_de_cobertura.csv">Registro de cobertura</a></p>
+</footer>
+</body>
+</html>

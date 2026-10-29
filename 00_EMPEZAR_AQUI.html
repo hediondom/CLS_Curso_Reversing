@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CLS · Curso de reversing</title>
+<meta name="description" content="Portada del curso: cómo estudiar, qué se revisó, qué falta y por dónde empezar.">
+<link rel="stylesheet" href="guia/estilo.css">
+</head>
+<body>
+<a class="salto" href="#contenido">Saltar al contenido</a>
+<header class="cabecera">
+  <div class="marca"><a href="00_EMPEZAR_AQUI.html">CLS · Curso de reversing</a> <span class="edicion">edición 5 · 27/10/2026</span></div>
+  <nav class="principal" aria-label="Navegación principal">
+    <a href="00_EMPEZAR_AQUI.html">Inicio</a>
+    <a href="guia/index.html">Curso</a>
+    <a href="materiales.html">Materiales</a>
+    <a href="fichas/index.html">Fichas</a>
+    <a href="glosario.html">Glosario</a>
+    <a href="preguntas_y_respuestas.html">Repaso</a>
+    <a href="buscar.html">Buscar</a>
+  </nav>
+</header>
+<main id="contenido">
+<h1 id="de-miles-de-mensajes-a-un-curso-que-se-puede-estudiar">De miles de mensajes a un curso que se puede estudiar</h1>
+<p>Este paquete convierte el material útil del proyecto <strong>CLS</strong> en un curso de reversing en español, progresivo y verificable. No es un índice ni una lista de enlaces: cada lección explica un concepto, lo conecta con lo anterior, muestra un ejemplo paso a paso, propone una práctica y te permite comprobar si aprendiste.</p>
+<p>Está pensado para alguien que empieza, con un marco <strong>educativo, defensivo y autorizado</strong>. Las prácticas usan programas propios, software abierto o crackmes diseñados para aprender.</p>
+<aside class="callout nota"><p class="callout-titulo">Empezá por acá</p><ol><li>Leé esta portada completa (10 minutos).</li><li>Abrí el <a href="guia/index.html">Mapa del curso</a> y elegí la Etapa 0.</li><li>Armá el laboratorio de la <a href="guia/00-laboratorio.html">lección 0.1</a>.</li><li>Estudiá una lección por vez y hacé la práctica antes de avanzar.</li><li>Anotá tu avance en <a href="seguimiento.csv">seguimiento.csv</a>.</li></ol></aside>
+<h2 id="qué-vas-a-poder-hacer">Qué vas a poder hacer</h2>
+<p>Al terminar el recorrido base vas a poder:</p>
+<ul><li>Explicar cómo se representa un programa en memoria y en disco.</li><li>Leer assembly x86/x64 y reconstruir condiciones, bucles y llamadas.</li><li>Usar x64dbg e IDA (o Ghidra) con un método, no a los botones.</li><li>Analizar un programa .NET propio y comparar fuente, IL y decompilación.</li><li>Escribir un informe reproducible con evidencia, límites y hashes.</li><li>Decidir cuándo un programa se ejecuta y cuándo no.</li><li>Reconocer código ofuscado, TLS callbacks, binarios MFC, la huella del compilador y técnicas anti-análisis, y leer el mismo binario en Ghidra (bloque <strong>2B · Windows intermedio</strong>).</li></ul>
+<h2 id="el-curso-siete-etapas-numeradas-y-una-rama-2d">El curso: siete etapas numeradas y una rama 2D</h2>
+<p>Las <strong>Etapas 0–4</strong> forman el recorrido obligatorio. La <strong>Etapa 5</strong>, la <strong>Etapa 6</strong> y la rama optativa <strong>2D · Windows internals</strong> (asociada a la Etapa 2, después de 2C) no agregan requisitos para completar el curso base.</p>
+<div class="tabla"><table>
+<thead><tr>
+<th>Etapa</th>
+<th>Foco</th>
+<th>Horas estimadas</th>
+<th>Puerta de salida</th>
+</tr></thead><tbody>
+<tr><td><strong>0</strong></td><td><a href="guia/etapa-0.html">Laboratorio y método seguro</a></td><td>4–6 h</td><td>VM aislada, snapshot, hash y bitácora</td></tr>
+<tr><td><strong>1</strong></td><td><a href="guia/etapa-1.html">Fundamentos</a></td><td>21–25 h</td><td>Números, memoria, PE y un programa propio en C</td></tr>
+<tr><td><strong>2</strong></td><td><a href="guia/etapa-2.html">Introducción al reversing</a></td><td>32–40 h (2A) + ~25 h (2B) + ~30–40 h (2C)</td><td>Assembly, debugger e IDA; bloques <strong>2B intermedio</strong> y <strong>2C avanzado</strong> (+ 3 rutas optativas)</td></tr>
+<tr><td><strong>3</strong></td><td><a href="guia/etapa-3.html">.NET como primera victoria</a></td><td>7–10 h</td><td>Leer IL y comparar tres vistas</td></tr>
+<tr><td><strong>4</strong></td><td><a href="guia/etapa-4.html">Práctica guiada</a></td><td>19–25 h</td><td>Método, formatos/protocolos, cripto, informe y dinámico seguro (5 lecciones)</td></tr>
+<tr><td><strong>5</strong></td><td><a href="guia/etapa-5.html">Ramas opcionales</a></td><td>variable</td><td>Una rama con práctica propia y límites claros</td></tr>
+<tr><td><strong>6</strong></td><td><a href="guia/etapa-6.html">Kernel y drivers (rama optativa)</a></td><td>45–65 h estimadas</td><td>Revisar un driver propio y sus controles en VM aislada</td></tr>
+</tbody></table></div>
+<p>La profundización <strong>Etapa 2 · Rama optativa 2D — Windows internals</strong> tiene 13 lecciones (estimación editorial 55–70 h). Se muestra junto a la Etapa 2, pero queda fuera de sus requisitos obligatorios. La extensión Hyper-V también es optativa y separada.</p>
+<p>Las horas son <strong>estimaciones editoriales</strong>, no mediciones de alumnos ni duraciones declaradas por CLS. Las de 2B/2C se estiman por bloque; 2D/Etapa 6 pueden requerir más tiempo según las prácticas y experiencia previa.</p>
+<aside class="callout nota"><p class="callout-titulo">Cómo se cuentan las lecciones y en qué orden cursar 2.22–2.24</p><p>La <strong>Etapa 2</strong> reúne 2A (2.1–2.9), 2B (2.10–2.16) y 2C (2.17–2.21), además de 3 rutas optativas (<a href="guia/02-opt-malware-dinamico.html">2.22</a>, <a href="guia/02-opt-shellcode-c2.html">2.23</a> y <a href="guia/02-opt-fuzzing.html">2.24</a>) que no son obligatorias. Como esas tres optativas declaran como prerrequisitos las lecciones <code>4.1</code>, <code>4.2</code>, <code>4.4</code> y <code>5.1</code>, se recomienda cursarlas <strong>después de completar la Etapa 4 y la lección 5.1</strong>, manteniendo intacta la numeración del curso. La Etapa 4 comprende <strong>5 lecciones</strong> (<code>4.1</code>, <code>4.5</code>, <code>4.2</code>, <code>4.3</code> y <code>4.4</code>; 19–25 h). La rama optativa 2D aporta 13 lecciones fuera de las horas obligatorias y la Etapa 6 suma 6 lecciones optativas. El apartado 5.4 «Fuera de alcance» es una página de límites, no una lección a cursar.</p></aside>
+<h2 id="cómo-estudiar">Cómo estudiar</h2>
+<p>Cada lección tiene la misma estructura:</p>
+<ol><li><strong>Objetivo</strong> y prerrequisitos.</li><li><strong>Explicación</strong> con lenguaje sencillo y conexión con lo anterior.</li><li><strong>Ejemplo paso a paso</strong>, con valores y direcciones cuando el material los aporta.</li><li><strong>Práctica</strong> en el laboratorio.</li><li><strong>Preguntas de repaso</strong> con respuestas razonadas.</li><li><strong>Puerta de salida</strong>: qué tenés que poder hacer antes de avanzar.</li><li><strong>Fuentes</strong>: rutas locales, capítulos y timestamps.</li></ol>
+<p>La regla es simple: <strong>no avances si no podés hacer la práctica</strong>. Leer sin ejecutar deja la sensación de entender y no la comprensión.</p>
+<h2 id="qué-se-revisó-de-verdad-y-qué-no">Qué se revisó de verdad (y qué no)</h2>
+<p>Esta edición no leyó "todo CLS". Sería falso decirlo: el corpus tiene más de 8.000 archivos y 144,9 horas de transcripciones. Lo que se hizo:</p>
+<div class="tabla"><table>
+<thead><tr>
+<th>Lote</th>
+<th>Qué contiene</th>
+<th>Qué se hizo</th>
+</tr></thead><tbody>
+<tr><td><strong>Reversing desde cero</strong></td><td>47 capítulos, 28,6 h</td><td>42 con citas (38 en 2A + ofuscación 26/30, TLS 38 y MFC 39 en 2B); 5 excluidos por criterio (13, 17, 27, 29, 31)</td></tr>
+<tr><td><strong>Videos y material adicional</strong></td><td>40 videos, 22,5 h (MASM32 + OllyDbg)</td><td>Encabezados y pasajes de los 40; varios completos</td></tr>
+<tr><td><strong>Curso IDA desde cero</strong></td><td>69 .docx + 47 PDF</td><td>69 páginas-tutorial ilustradas (texto + 3.278 capturas); tutes 1–28 integrados en las lecciones</td></tr>
+<tr><td><strong>Python ISO video tutes</strong></td><td>55 transcripciones, 12,7 h</td><td>20 completas + 2 parciales; <strong>no enseña Python</strong></td></tr>
+<tr><td><strong>Introducción al reversing con IDA Pro</strong></td><td>1 .docx de 2016</td><td>Texto extraído y leído</td></tr>
+<tr><td><strong>Teorias_Numeradas</strong></td><td>2.023 contenedores (2.017 con título legible)</td><td>Clasificados por título: 426 educativos / 1.591 cracking comercial</td></tr>
+<tr><td><strong>Transcripciones de Telegram</strong></td><td>179 videos (76,5 h) + 357 audios (2,7 h)</td><td>Tamizadas por tema (heurística); 5 juntadas ilustradas + 99 audios en hilos con reproductor</td></tr>
+<tr><td><strong>Chat unido</strong></td><td>100.791 mensajes</td><td>Metadatos y muestras; <strong>no mensaje por mensaje</strong></td></tr>
+<tr><td><strong>Comprimidos</strong></td><td>2.299</td><td>Listado generado; no se extrajeron</td></tr>
+<tr><td><strong>Imágenes y documentos</strong></td><td>3.235 imágenes, 567 documentos</td><td>Sin OCR; documentos leídos: los 69 <code>.docx</code> del Curso IDA (texto + capturas) y 2 <code>.docx</code> sueltos</td></tr>
+<tr><td><strong>Inventario limpio</strong></td><td>8.154 archivos</td><td>LEEME, resumen y consultas agregadas</td></tr>
+</tbody></table></div>
+<p>El detalle fila por fila está en <a href="registro_de_cobertura.csv">registro_de_cobertura.csv</a> y <a href="mapa_de_cobertura.csv">mapa_de_cobertura.csv</a>. Los criterios y las exclusiones están en <a href="fuentes_y_limites.html">Fuentes y límites</a>.</p>
+<aside class="callout aviso"><p class="callout-titulo">Lo que no se puede afirmar</p><ul><li>No se ejecutó ningún binario del corpus.</li><li>No se extrajo ningún comprimido.</li><li>No se abrió ningún adjunto del chat.</li><li>No se leyeron <strong>de punta a punta</strong> los 47 capítulos del curso principal (sí 38, con cita) ni las 795 transcripciones completas (se tamizaron por tema y se procesaron las técnicas).</li><li>El tamizado de Telegram y la clasificación de Teorias_Numeradas son <strong>por título/palabras clave</strong>, no lectura completa de cada archivo.</li><li>Un título, un nombre de archivo o una mención <strong>no</strong> demuestran lo que enseña un recurso.</li></ul></aside>
+<h2 id="cómo-se-leen-las-fuentes">Cómo se leen las fuentes</h2>
+<p>En todo el curso vas a encontrar cuatro tipos de afirmación:</p>
+<div class="tabla"><table>
+<thead><tr>
+<th>Etiqueta</th>
+<th>Significado</th>
+</tr></thead><tbody>
+<tr><td><strong>Contenido observado en CLS</strong></td><td>Figura en un archivo leído; se cita ruta, capítulo y timestamp cuando existe</td></tr>
+<tr><td><strong>Síntesis del material CLS</strong></td><td>Resumen con palabras propias de varios fragmentos observados</td></tr>
+<tr><td><strong>Conocimiento externo</strong></td><td>Teoría general que no depende de un archivo de CLS</td></tr>
+<tr><td><strong>Recomendación editorial</strong></td><td>Sugerencia de método o seguridad agregada por esta guía</td></tr>
+</tbody></table></div>
+<p>Cuando el audio y la teoría discrepan, se citan ambos y se explica la diferencia. Ejemplos: la explicación de little-endian del capítulo 01 invierte la palabra "significativo"; el capítulo 07 dice "cuatro breakpoints por proceso" cuando son por hilo; el capítulo 03 se enreda con los rangos de WORD. Las lecciones lo marcan.</p>
+<h2 id="qué-hay-en-el-paquete">Qué hay en el paquete</h2>
+<div class="tabla"><table>
+<thead><tr>
+<th>Archivo o carpeta</th>
+<th>Para qué</th>
+</tr></thead><tbody>
+<tr><td><a href="guia/index.html">guia/</a></td><td>Las lecciones HTML, etapa por etapa</td></tr>
+<tr><td><a href="materiales.html">Materiales</a></td><td>Hub: un solo lugar con enlaces a todo</td></tr>
+<tr><td><a href="buscar.html">Buscar</a></td><td>Buscador offline por palabra en todo el curso</td></tr>
+<tr><td><a href="practicas.html">Banco de prácticas</a></td><td>Crackmes del corpus para practicar en VM, con hash y mapeo al curso</td></tr>
+<tr><td><a href="videos.html">Índice de videotutoriales</a></td><td>Dónde está en Windows cada video mencionado, con enlace y ruta</td></tr>
+<tr><td><a href="ida-tutes.html">Curso IDA · índice por tema</a></td><td>Los 69 tutes de IDA, con tema y cantidad de palabras</td></tr>
+<tr><td><a href="teorias.html">Teorias_Numeradas · educativo vs. cracking</a></td><td>Los 2.023 contenedores (2.017 con título legible) clasificados por título</td></tr>
+<tr><td><a href="telegram.html">Telegram por tema</a></td><td>523 transcripciones tamizadas; dónde están las sesiones de práctica</td></tr>
+<tr><td><a href="fichas/index.html">fichas/</a></td><td>Qué es cada recurso, qué se revisó y qué falta</td></tr>
+<tr><td><a href="hilo-conductor-y-plantillas.html">hilo-conductor-y-plantillas.html</a></td><td>Evolución de un mismo binario en los 3 niveles (<code>check.c</code> &rarr; <code>BlocLab</code>) y kit de 5 plantillas C/C++ en <code>plantillas_codigo/</code></td></tr>
+<tr><td><a href="hojas-referencia-rapida.html">hojas-referencia-rapida.html</a></td><td>Hojas de referencia rápida (<em>Cheat Sheets</em>) para Principiante, Intermedio y Avanzado</td></tr>
+<tr><td><a href="glosario.html">glosario.html</a></td><td>Términos en lenguaje de principiante</td></tr>
+<tr><td><a href="preguntas_y_respuestas.html">preguntas_y_respuestas.html</a></td><td>Repaso por etapa, con respuestas</td></tr>
+<tr><td><a href="mapa_de_cobertura.csv">mapa_de_cobertura.csv</a></td><td>Tema ↔ recurso ↔ archivo/capítulo ↔ estado</td></tr>
+<tr><td><a href="registro_de_cobertura.csv">registro_de_cobertura.csv</a></td><td>Lotes, archivos, revisados, pendientes y motivo</td></tr>
+<tr><td><a href="seguimiento.csv">seguimiento.csv</a></td><td>Tu planilla de avance</td></tr>
+<tr><td><a href="fuentes_y_limites.html">Fuentes y límites</a></td><td>Criterios, alcance y limitaciones</td></tr>
+<tr><td><a href="CLS_Curso_Reversing.pdf">CLS_Curso_Reversing.pdf</a></td><td>Edición de estudio (solo teoría) para leer sin pantalla; las prácticas y los materiales están acá en el HTML</td></tr>
+<tr><td><a href="plantilla_informe.md">plantilla_informe.md</a></td><td>Base para tus informes</td></tr>
+</tbody></table></div>
+<p>Todo funciona <strong>offline</strong>. Las fuentes locales se enlazan con rutas relativas; los enlaces a transcripciones, videos y documentos abren el archivo original. El paquete trae HTML, CSV, el PDF y las <strong>imágenes de los tutes ilustrados y los fotogramas de las juntadas</strong> (~130 MB). Los <strong>videos y audios</strong> (decenas de GB) <strong>se vinculan, no se copian</strong>: para que abran, mantené las carpetas del proyecto una al lado de la otra (o usá los ZIP de compartir).</p>
+<aside class="callout nota"><p class="callout-titulo">Compartir el curso</p><p>Los enlaces locales son <strong>relativos</strong> y funcionan si se conserva la estructura del paquete. Para compartir, prepará una copia curada con los archivos que tengas derecho a redistribuir; no compartas la carpeta de proyecto completa ni exportaciones de chats, corpus sin revisar o medios de terceros. La edición pública de presentación contiene el PDF de teoría; el paquete local conserva el HTML y los tutoriales de apoyo. Más detalle en el <a href="videos.html">Índice de videotutoriales</a>.</p></aside>
+<h2 id="requisitos">Requisitos</h2>
+<ul><li>Una computadora con <strong>Windows</strong>. Esta edición cubre <strong>solo reversing de Windows</strong> (binarios PE, x86/x64); Linux, macOS, Android y ARM quedan fuera, aunque los fundamentos se trasladen.</li><li>VirtualBox, VMware o Hyper-V para el laboratorio.</li><li>x64dbg, un editor hexadecimal y un visor de PE (gratuitos).</li><li>IDA Free o Ghidra. <strong>No</strong> hace falta IDA Pro.</li><li>Ganas de escribir programas propios: son el mejor material de práctica.</li></ul>
+<h2 id="seguridad-y-legalidad">Seguridad y legalidad</h2>
+<aside class="callout peligro"><p class="callout-titulo">Leé esto antes de ejecutar cualquier cosa</p><ul><li>No ejecutes adjuntos del chat, cracks, keygens, instaladores desconocidos ni archivos en cuarentena.</li><li>No analices malware en tu máquina personal. La rama de malware de esta guía es <strong>estática y defensiva</strong>.</li><li>No uses las técnicas para eludir licencias, DRM, autenticación o controles de acceso.</li><li>No analices software ajeno sin permiso. Los ejercicios de vulnerabilidades se hacen en programas propios o laboratorios diseñados para eso.</li><li>Si encontrás una vulnerabilidad, reportala en privado y no publiques el exploit.</li></ul></aside>
+<h2 id="qué-falta-en-esta-edición-y-por-qué">Qué falta en esta edición (y por qué)</h2>
+<p>Esta edición es, a propósito, una <strong>cobertura parcial y honesta</strong>: lee y cita un núcleo representativo del material y documenta el resto como pendiente, en lugar de aparentar que revisó todo. Lo que queda afuera cae en dos grupos.</p>
+<p><strong>Excluido por criterio (ética y alcance), no por falta de tiempo:</strong></p>
+<ul><li>Cinco capítulos de «Reversing desde cero» (13, 17, 27, 29, 31): desempaquetado de protectores comerciales (AcProtect). Enseñarlos cruzaría a vulnerar software comercial, fuera del marco educativo y defensivo de esta guía. (La <strong>ofuscación</strong> de los caps. 26 y 30 ya <strong>no</strong> está excluida: es la lección <a href="guia/02-ofuscacion.html">2.10</a>; TLS y MFC son 2.11 y 2.12.)</li><li>La mayor parte de <code>Teorias_Numeradas</code>: muchos títulos apuntan a cracking de software comercial, y además son contenedores sin abrir (varios con contraseña).</li><li>Android, Linux/ELF y macOS: esta edición cubre <strong>solo Windows</strong>.</li></ul>
+<p><strong>Ya procesado en esta tanda (índices nuevos, antes pendientes):</strong></p>
+<ul><li>Los 69 documentos del «Curso IDA desde cero»: se extrajo <strong>texto + 3.278 capturas</strong> y se armaron <strong>69 páginas-tutorial ilustradas</strong> (índice en <a href="ida-tutes.html">Curso IDA · índice por tema</a>). Además, los <strong>tutes 1–28 quedaron integrados en las lecciones</strong> (Números, Instrucciones, IDA, Herramientas, Debugger, Llamadas, Flujo y Vulnerabilidades), citados uno por uno.</li><li>Los 2.023 contenedores de <code>Teorias_Numeradas</code>: se clasificaron por título en educativos vs. práctica sobre software comercial (426 / 1.591 de 2.017 legibles). Ver <a href="teorias.html">Teorias_Numeradas · qué es educativo y qué no</a>. Siguen sin abrir (varios con contraseña); la clasificación es por título, no por contenido.</li><li>Las transcripciones de Telegram: se tamizaron 523 por palabras clave y, con lo técnico, se armaron <strong>5 <a href="juntadas/index.html">juntadas ilustradas</a></strong> (fotogramas + transcripción + reproducir) y los <strong>99 <a href="audios/index.html">audios técnicos en hilos por sesión</a></strong> con reproductor. Índice general en <a href="telegram.html">Transcripciones de Telegram por tema</a>.</li></ul>
+<p><strong>Pendiente por volumen o formato (se podría sumar en una próxima tanda):</strong></p>
+<ul><li>Leer de verdad (no por título/heurística) las transcripciones y tutes de IDA ya indexados: el índice dice dónde mirar, pero citar con precisión exige abrir cada uno.</li><li>Los contenedores de <strong>exploiting de Windows</strong>: material avanzado de la Etapa 5, sin extraer; la guía cubre el defecto y las mitigaciones de forma conceptual y defensiva, no la construcción de exploits.</li></ul>
+<p>El detalle fila por fila está en <a href="registro_de_cobertura.csv">registro_de_cobertura.csv</a>. Regla de fondo: una mención o un título <strong>no</strong> demuestran lo que enseña un recurso, así que nada de esto se presenta como leído: los tres índices nuevos clasifican <strong>títulos y texto extraído</strong>, no una lectura completa.</p>
+<h2 id="atribución">Atribución</h2>
+<p>Este curso es una obra derivada del proyecto CLS. El material didáctico principal es de <strong>Ricardo Narvaja y Solid</strong> («Reversing desde cero»), <strong>Cayetano de Juan Úbeda</strong> (MASM32 y OllyDbg) y <strong>Daniel Bermúdez</strong> (lógica de programación). Las fichas indican autoría, ruta y límites de cada recurso. Esta guía no está afiliada a CLS ni a los autores; los errores de interpretación son de esta edición.</p>
+<aside class="callout nota"><p class="callout-titulo">Empezá ahora</p><p><a href="guia/etapa-0.html">Etapa 0 · Laboratorio</a> · <a href="guia/index.html">Mapa del curso</a> · <a href="fichas/index.html">Fichas</a> · <a href="glosario.html">Glosario</a></p></aside>
+</main>
+<footer class="pie">
+  <p>Material educativo y defensivo. Las prácticas se limitan a programas propios, software abierto o crackmes diseñados para aprender. No se enseña a eludir licencias, DRM ni controles de acceso.</p>
+  <p><a href="00_EMPEZAR_AQUI.html">Inicio</a> · <a href="guia/etapa-0.html">Etapas</a> · <a href="fuentes_y_limites.html">Fuentes y límites</a> · <a href="registro_de_cobertura.csv">Registro de cobertura</a></p>
+</footer>
+</body>
+</html>

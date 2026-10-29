@@ -1,0 +1,233 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tute 30 · VLC · CVE-2008-4654 — Curso IDA</title>
+<meta name="description" content="Tutorial ilustrado del tute 30 del Curso IDA desde cero: VLC · CVE-2008-4654.">
+<link rel="stylesheet" href="../guia/estilo.css">
+</head>
+<body>
+<a class="salto" href="#contenido">Saltar al contenido</a>
+<header class="cabecera">
+  <div class="marca"><a href="../00_EMPEZAR_AQUI.html">CLS · Curso de reversing</a> <span class="edicion">edición 5 · 27/10/2026</span></div>
+  <nav class="principal" aria-label="Navegación principal">
+    <a href="../00_EMPEZAR_AQUI.html">Inicio</a>
+    <a href="../guia/index.html">Curso</a>
+    <a href="../fichas/index.html">Fichas</a>
+    <a href="../glosario.html">Glosario</a>
+    <a href="../preguntas_y_respuestas.html">Repaso</a>
+  </nav>
+</header>
+<main id="contenido">
+<p class="migas"><a href="../ida-tutes.html">← Índice de los 69 tutes de IDA</a></p>
+<h1>Tute 30 · VLC · CVE-2008-4654</h1>
+<p class="meta-tute"><strong>⏱ 13 min de lectura</strong> · 2.353 palabras · 68 capturas · grupo: Vulnerabilidades y exploiting en user-mode (VLC/CVE, DEP, Mona, canary/SEH, shellcode, heap)</p>
+<aside class="callout nota"><p class="callout-titulo">Qué enseña</p><p>Diff de dos versiones de VLC guiado por el CVE.</p></aside>
+<p><em>se conecta con:</em> <a href="../guia/05-vulnerabilidades.html">Vulnerabilidades (defensivo)</a></p>
+<aside class="callout aviso"><p class="callout-titulo">Material observado, no reescrito</p><p>Es el texto y las capturas del <code>.docx</code> original del curso, solo presentados como tutorial. Puede tener erratas de origen. El autor del curso es Ricardo Narvaja.</p></aside>
+<hr>
+<p>INTRODUCCIÓN AL REVERSING CON IDA PRO DESDE CERO PARTE 30.</p>
+<p>VLC ( CVE-2008-4654)</p>
+<p>Comenzaremos a tratar de solucionar el ejercicio propuesto en la parte 29, es un diff de dos versiones consecutivas de VLC y se da el CVE para tratar de ayudarse con la información que contiene el mismo, que es lo que en la realidad casi siempre tenemos.</p>
+<p>Luego de instalar en una máquina virtual la versión vulnerable y a versión parchada, miraré  la información del CVE a ver si me da una pista para poder ayudarme a no diffear tanto.</p>
+<figure><img loading="lazy" src="img/30/1.png" alt="Captura 1 del tute 30"></figure>
+<p>Si miro la carpeta donde está instalado el VLC, veo que el mismo se organiza para manejar diferentes extensiones con una carpeta llamada plugins.</p>
+<figure><img loading="lazy" src="img/30/2.png" alt="Captura 2 del tute 30"></figure>
+<p>Veamos si por el nombre hay alguno que indique que trabaja con el formato TIVO o TY.</p>
+<figure><img loading="lazy" src="img/30/3.png" alt="Captura 3 del tute 30"></figure>
+<p>Bueno hay un libty_plugin.dll que parece ser bastante sospechoso, hagamos el diff en el mismo.</p>
+<p>USANDO BINDIFF.</p>
+<figure><img loading="lazy" src="img/30/4.png" alt="Captura 4 del tute 30"></figure>
+<p>Vemos que hay cuatro funciones cambiadas, lo que normalmente hacemos es mirarlas primero a vuelo de pájaro, marcando las más sospechosas para luego si ponernos a reversear esas solamente más profundamente.</p>
+<p>Buscamos un parche que impida un stack overflow, vemos por ejemplo esta función cambiada.</p>
+<figure><img loading="lazy" src="img/30/5.png" alt="Captura 5 del tute 30"></figure>
+<p>No se ve que eso impida nada solo una dirección a ESI, no puede haber problema con eso.</p>
+<figure><img loading="lazy" src="img/30/6.png" alt="Captura 6 del tute 30"></figure>
+<p>Vemos que es solo un cambio en el orden que no afecta en la vulnerable movía esa dirección a ESI la cual guardaba en la var_1b4 y en la parcheada lo mueve la dirección a ECX y lo guarda igual en var_1b4, nada por aquí.</p>
+<p>En la siguiente lo mismo muchos cambios pero a veces usa otro registro para el mismo efecto, pero es lo mismo, cambios de orden, esto de abajo no afecta.</p>
+<figure><img loading="lazy" src="img/30/7.png" alt="Captura 7 del tute 30"></figure>
+<p>Vemos algunos cambios en la forma que calcula var_70 pero no veo que la lea o utilice en ningún lugar dentro de la función y es una variable local, tampoco se pasa como argumento ni se compara, lo tendremos en cuenta muy mínimamente, por ahora no es prioridad.</p>
+<figure><img loading="lazy" src="img/30/8.png" alt="Captura 8 del tute 30"></figure>
+<p>Esa función no tiene nada más, no se ve como candidata, sigamos mirando a vuelo de pájaro.</p>
+<p>La siguiente está muy desordenada, veremos si podemos acomodarla un poco.</p>
+<p>Haciendo click derecho - delete matches en los bloques que no coinciden, y luego marcando los que deben coincidir y haciendo add basic block match.</p>
+<p>Hay bloques que se veían muy diferentes al estar mal matcheados pero al emparejarlos bien</p>
+<figure><img loading="lazy" src="img/30/9.png" alt="Captura 9 del tute 30"></figure>
+<p>Si los miro se ven iguales ahora salvo que quedan un poco mal dibujados.</p>
+<p>USANDO TURBODIFF.</p>
+<p>A veces funciones que quedan muy desarmadas conviene ayudarse con el turbodiff también que al menos no se desarman tanto allí.</p>
+<figure><img loading="lazy" src="img/30/10.png" alt="Captura 10 del tute 30"></figure>
+<p>Por los id de bloque vamos mirando.</p>
+<figure><img loading="lazy" src="img/30/11.png" alt="Captura 11 del tute 30"></figure>
+<p>Vemos que las variables están corridas pero las comparaciones son similares (68-6c y en la nueva 60-64)</p>
+<p>Tampoco hay cambio de signo en la comparación (JB por JL o algo así, se mantiene)</p>
+<p>La inversión de comparación JA por JB, si se invierten los destinos es lo mismo, no cambia nada.</p>
+<p>Sigamos mirando.</p>
+<figure><img loading="lazy" src="img/30/12.png" alt="Captura 12 del tute 30"></figure>
+<p>A vuelo de pájaro acá se ve bastante similar no hay cambio de signo en la comparación, cambios menores.</p>
+<figure><img loading="lazy" src="img/30/13.png" alt="Captura 13 del tute 30"></figure>
+<p>Allí vemos un par de filtros que el viejo no tiene, igual EDI es pisado apenas más adelante, así que pueden ser casos agregados, los dejamos marcados pero no se ve como sospechoso de overflow.</p>
+<figure><img loading="lazy" src="img/30/14.png" alt="Captura 14 del tute 30"></figure>
+<p>Vemos allí el JB en la vieja esta un poco más abajo, hay cambios aquí para estudiar más adelante si no hallamos nada más.</p>
+<figure><img loading="lazy" src="img/30/15.png" alt="Captura 15 del tute 30"></figure>
+<p>Recordemos que no estamos reverseando a fondo solo buscando algo que nos llame la atención como muy probable.</p>
+<figure><img loading="lazy" src="img/30/16.png" alt="Captura 16 del tute 30"></figure>
+<p>Aquí si se ve algo muy posible que afecte, un campo de la estructura que se compara, y en uno toma una decisión con JLE y en el otro con JBE eso es un cambio de signo y lo apuntamos como muy posible.</p>
+<p>Es una muy función muy compleja la analizaremos luego ya vimos algo muy posible, lo anotamos y miremos un poco la última.</p>
+<p>En esta función, el mismo campo de la estructura afecta y es más fácil de ver</p>
+<figure><img loading="lazy" src="img/30/17.png" alt="Captura 17 del tute 30"></figure>
+<p>Es un loop y el valor que decide la salida es un contador que está en var_48 y se va incrementando y se compara con el máximo.</p>
+<figure><img loading="lazy" src="img/30/18.png" alt="Captura 18 del tute 30"></figure>
+<p>Antes de entrar en el LOOP se inicializa a cero el contador, creo que esta es más fácil para empezar a reversear que la anterior, aunque ambas pueden ser la culpable, empezamos siempre por la mas facil, jeje, esta última.</p>
+<figure><img loading="lazy" src="img/30/19.png" alt="Captura 19 del tute 30"></figure>
+<p>Empecemos con paciencia pues se ve complejo, renombramos a var_48 como contador.</p>
+<figure><img loading="lazy" src="img/30/20.png" alt="Captura 20 del tute 30"></figure>
+<p>Obviamente EBP no es la base de la función, en este caso es la dirección de la estructura, si vemos en casi toda la función se mantiene igual manejándose a partir de EBP + XXXX los campos de la misma.</p>
+<p>EBP toma el valor desde aquí.</p>
+<figure><img loading="lazy" src="img/30/21.png" alt="Captura 21 del tute 30"></figure>
+<p>A partir de allí EBP es la dirección de la estructura y cambia aquí.</p>
+<figure><img loading="lazy" src="img/30/22.png" alt="Captura 22 del tute 30"></figure>
+<p>Allí cambia de valor EBP, o sea que entre ambas direcciones EBP se mantiene constante y es la dirección de la estructura.</p>
+<p>Vemos que es una estructura muy grande  hay campos 0xbexx lo cual es una estructura gigante, hagámosla, creo que la mayor parte de los campos son 0xbexx así que podemos hacer una estructura de largo 0xbf00 que abarque los que vemos para agrandar o achicar hay tiempo.</p>
+<p>Voy a la pestaña estructuras y apreto INSERTAR para agregar una.</p>
+<figure><img loading="lazy" src="img/30/23.png" alt="Captura 23 del tute 30"></figure>
+<figure><img loading="lazy" src="img/30/24.png" alt="Captura 24 del tute 30"></figure>
+<p>Me pongo en ends y apreto D para agregar un campo de un byte.</p>
+<figure><img loading="lazy" src="img/30/25.png" alt="Captura 25 del tute 30"></figure>
+<p>Hago click derecho - EXPAND STRUCT TYPE.</p>
+<p>Le agrego 0xBF00 por un byte más no se muere nadie jeje.</p>
+<figure><img loading="lazy" src="img/30/26.png" alt="Captura 26 del tute 30"></figure>
+<figure><img loading="lazy" src="img/30/27.png" alt="Captura 27 del tute 30"></figure>
+<p>Bueno ahi esta.</p>
+<figure><img loading="lazy" src="img/30/28.png" alt="Captura 28 del tute 30"></figure>
+<p>Obviamente si fuera posible que el campo 0x0bec8 sea negativo por ejemplo 0xFFFFFFFF, será menor que los valores positivos (1, 2, etc) que vaya tomando el contador ya que se considera el signo y el loop se repetirá bastante más de lo pensado.</p>
+<p>Puedo renombrar el campo como MÁXIMO ya que se supone que es el valor máximo que debería repetirse el ciclo antes de salir.</p>
+<p>Apreto T</p>
+<figure><img loading="lazy" src="img/30/29.png" alt="Captura 29 del tute 30"></figure>
+<p>Y debo ir a la estructura a 0xbec8 y crear un campo DWORD ya que es lo que es.</p>
+<figure><img loading="lazy" src="img/30/30.png" alt="Captura 30 del tute 30"></figure>
+<p>Apreto D  varias veces hasta que quede DD.</p>
+<figure><img loading="lazy" src="img/30/31.png" alt="Captura 31 del tute 30"></figure>
+<p>Lo renombro a máximo.</p>
+<figure><img loading="lazy" src="img/30/32.png" alt="Captura 32 del tute 30"></figure>
+<p>Puedo apretar la Y y cambiarle el tipo ya que sé que es SIGNED INT, por el JLE que lo compara.</p>
+<figure><img loading="lazy" src="img/30/33.png" alt="Captura 33 del tute 30"></figure>
+<p>Ahí quedo mas lindo, el signed int lo pongo aunque no afectara mucho, salvo que use el decompiler hex rays lo cual no haré por ahora, pero me gusta acomodar bien las cosas.</p>
+<figure><img loading="lazy" src="img/30/34.png" alt="Captura 34 del tute 30"></figure>
+<p>Seguiré estudiando.</p>
+<figure><img loading="lazy" src="img/30/35.png" alt="Captura 35 del tute 30"></figure>
+<p>Vemos que hay un malloc, la misma es la función usada para reservar un buffer dinámicamente, no en el stack, sino en la memoria.</p>
+<figure><img loading="lazy" src="img/30/36.png" alt="Captura 36 del tute 30"></figure>
+<p>Se le pasa un único argumento que es el tamaño a reservar o size.</p>
+<p>Aquí el programa  usa el método que ya vimos de guardar en el stack en vez de pushear, ya sabemos que si hacemos click derecho, podemos arreglar la instrucción.</p>
+<figure><img loading="lazy" src="img/30/37.png" alt="Captura 37 del tute 30"></figure>
+<p>Allí vemos que el argumento size está en EAX y proviene de hacer varias cuentas.</p>
+<figure><img loading="lazy" src="img/30/38.png" alt="Captura 38 del tute 30"></figure>
+<p>Vemos cuatro variables del tipo byte a partir de las cuales se realizan las operaciones que arman el size el cual se le hace al final SHL EAX, 4 antes de pasarlo a malloc.</p>
+<figure><img loading="lazy" src="img/30/39.png" alt="Captura 39 del tute 30"></figure>
+<p>El shift de bytes SHL EAX, 4 es equivalente a EAX por 16, pero antes de multiplicar lo guarda en la variable MAXIMO si apreto T veo que es la misma.</p>
+<figure><img loading="lazy" src="img/30/40.png" alt="Captura 40 del tute 30"></figure>
+<p>Vemos que los valores negativos de máximo son filtrados aquí.</p>
+<figure><img loading="lazy" src="img/30/41.png" alt="Captura 41 del tute 30"></figure>
+<p>Así que el tema no es un valor negativo de máximo pues el mismo es filtrado</p>
+<p>En la función parcheada vemos que no hace el SHL o sea no multiplica por 16, directamente el valor de la cuenta lo usa como size del calloc.</p>
+<figure><img loading="lazy" src="img/30/42.png" alt="Captura 42 del tute 30"></figure>
+<p>Vemos que en vez de multiplicar por 16 lo que hace es pasarle a calloc que tiene un argumento más, el tamaño de cada elemento que es 0x10, con lo cual la multiplicación la realiza la api, de size por tamaño de cada elemento.</p>
+<figure><img loading="lazy" src="img/30/43.png" alt="Captura 43 del tute 30"></figure>
+<p>MALLOC o CALLOC se usa para reservar memoria, las direcciones que devuelve son variables no siempre nos dará una zona con la misma dirección de memoria, más adelante estudiaremos el heap o la forma de reservar memoria, pero por ahora, nos dará una zona de memoria para trabajar del tamaño que le pidamos.</p>
+<p>En el vulnerable antes de calcular el size multiplica MÁXIMO por 16 y luego lo pasa a malloc en el parcheado no lo hace y pasa directamente el MÁXIMO a calloc y está calcula internamente la multiplicación por 16 que es el size de cada elemento.</p>
+<p>El problema es que sí MÁXIMO es por ejemplo 0x20 bytes y lo multiplica por 16 será igual a</p>
+<p>.</p>
+<figure><img loading="lazy" src="img/30/44.png" alt="Captura 44 del tute 30"></figure>
+<p>Reservara 512 bytes y luego copiará 0x20 pues compara dentro del loop y sale cuando el contador es mayor que máximo.</p>
+<p>Ahora que pasa si el valor de MÁXIMO  es positivo pero al multiplicarlo por 16 da más chico que el valor inicial.</p>
+<p>Si MÁXIMO es 0x10000001 al multiplicarlo por 16 nos da 0x10 con lo cual se reservaran solo 0x10 bytes y cuando se copie en el loop ira escribiendo de a 1 hasta que el contador llegue a 0x10000001 lo cual desborda el buffer copiando más de lo reservado o del size del buffer, lo cual es la definición de overflow, aunque en este caso no es un stack overflow sino un heap overflow.</p>
+<p>Mientras que en el parcheado el calloc no permite y evita que la multiplicación interna pueda darse vuelta y ser el resultado menor que el máximo, por lo cual se repara una posible vulnerabilidad.</p>
+<figure><img loading="lazy" src="img/30/45.png" alt="Captura 45 del tute 30"></figure>
+<figure><img loading="lazy" src="img/30/46.png" alt="Captura 46 del tute 30"></figure>
+<p>Allí probare que pasándole los mismos valores que a malloc, devuelve cero o sea no alloca y no devuelve ninguna dirección de memoria reservada, mientras que haciéndolo con malloc, allocaba 0x10 lo cual si funcionaba y escribía dentro de un loop de maximo 0x10000001 provocando BUFFER OVERFLOW,</p>
+<figure><img loading="lazy" src="img/30/47.png" alt="Captura 47 del tute 30"></figure>
+<p>Allí se ve a la salida del calloc EAX vale cero, mientras que en la vulnerable usa malloc y alloca igual.</p>
+<p>Sigamos analizando a ver qué más hay.</p>
+<figure><img loading="lazy" src="img/30/48.png" alt="Captura 48 del tute 30"></figure>
+<p>Allí guarda la dirección del buffer reservado en el heap, puedo renombrarlo, para eso iré a estructuras y apreto D hasta que sea un DWORD.</p>
+<figure><img loading="lazy" src="img/30/49.png" alt="Captura 49 del tute 30"></figure>
+<p>Lo renombro.</p>
+<figure><img loading="lazy" src="img/30/50.png" alt="Captura 50 del tute 30"></figure>
+<p>Bueno le pongo con Y que es una variable puntero, que guarda la dirección del buffer que reservo en el heap, como no sé que hay allí, le puse que es un array de caracteres , o sea un buffer de bytes pero puedo cambiarlo si veo que es otra cosa.</p>
+<figure><img loading="lazy" src="img/30/51.png" alt="Captura 51 del tute 30"></figure>
+<p>En el lenguaje IDA es un OFFSET o sea una dirección que apunta a algo.</p>
+<figure><img loading="lazy" src="img/30/52.png" alt="Captura 52 del tute 30"></figure>
+<p>Bueno como vimos malloc reserva el espacio de memoria del size que le pido y me devuelve la dirección de dicho buffer la cual guardo como toda dirección en una variable del tipo puntero.</p>
+<figure><img loading="lazy" src="img/30/53.png" alt="Captura 53 del tute 30"></figure>
+<p>Allí vemos dentro del loop que toma la dirección y escribe, le suma EDI que es el mismo contador por 16.</p>
+<figure><img loading="lazy" src="img/30/54.png" alt="Captura 54 del tute 30"></figure>
+<p>También hay acá dentro del LOOP escribe también en este otro EBX que cambio viene de ese EDI, tendríamos que ver dónde está escribiendo aquí.</p>
+<figure><img loading="lazy" src="img/30/55.png" alt="Captura 55 del tute 30"></figure>
+<p>Vemos que esa dirección de destino viene de acá</p>
+<figure><img loading="lazy" src="img/30/56.png" alt="Captura 56 del tute 30"></figure>
+<p>ECX + 0c es igual a EDI, así que buscaremos de donde viene ECX.</p>
+<pre class='asm'>ECX sale de acá</pre>
+<figure><img loading="lazy" src="img/30/57.png" alt="Captura 57 del tute 30"></figure>
+<p>Mueve a ECX el valor de EDI y le suma ESI.</p>
+<p>Si apreto T.</p>
+<figure><img loading="lazy" src="img/30/58.png" alt="Captura 58 del tute 30"></figure>
+<p>Veo que ESI es la dirección del buffer en el HEAP y le suma ECX que viene de EDI que es el contador, así que en esta función hay heap overflows ya que como vimos máximo puede ser un valor más grande que el size que se allocó y desborda.</p>
+<p>Hay otra modificación que pasa un poco desapercibida.</p>
+<figure><img loading="lazy" src="img/30/59.png" alt="Captura 59 del tute 30"></figure>
+<p>Veo que hay llamadas a una función stream_Read, podría leer a un buffer temporal una parte del archivo.</p>
+<p>Vemos que allí hay un LEA, así que será un buffer en el stack.</p>
+<p>Y las variables que van a continuación son parte del buffer pues no se guarda valor nunca en ellas, solo se lee, así que es seguro que llenará las variables a continuación cuando llena el buffer.</p>
+<figure><img loading="lazy" src="img/30/60.png" alt="Captura 60 del tute 30"></figure>
+<p>Así que el buffer continua hasta aquí.</p>
+<figure><img loading="lazy" src="img/30/61.png" alt="Captura 61 del tute 30"></figure>
+<p>Ya que var_30 ya tiene referencia como otro buffer, así que marcare para ver el size del buffer.</p>
+<figure><img loading="lazy" src="img/30/62.png" alt="Captura 62 del tute 30"></figure>
+<p>Ahora hago click derecho ARRAY y acepto.</p>
+<figure><img loading="lazy" src="img/30/63.png" alt="Captura 63 del tute 30"></figure>
+<p>Veo que el size es 12.</p>
+<figure><img loading="lazy" src="img/30/64.png" alt="Captura 64 del tute 30"></figure>
+<p>OOPs veo que el buffer siguiente no lo llena sino que lee bytes de allí, así que es parte del mismo buffer de arriba porque no puede leer bytes del mismo si no tiene ninguna referencia donde se llena.</p>
+<p>Así que veamos bien si seguimos mirando vemos que el buffer continua hacia abajo hasta aquí, todas las otras variables intermedias solo tienen acceso de lectura, así que se inicializan en el mismo buffer.</p>
+<figure><img loading="lazy" src="img/30/65.png" alt="Captura 65 del tute 30"></figure>
+<p>Ahora si incluso la var_1c es otro buffer que se usa para llenar en otra llamada a stream_Control.</p>
+<p>La cuestión es que es un buffer chico, solo 32 bytes, si se le puede pasar un valor grande desbordara.</p>
+<p>Acá vemos el parche en la nueva sobre ese valor chequea que si es más grande que 8 no va a stream_Read.</p>
+<figure><img loading="lazy" src="img/30/66.png" alt="Captura 66 del tute 30"></figure>
+<figure><img loading="lazy" src="img/30/67.png" alt="Captura 67 del tute 30"></figure>
+<p>Allí está seguramente dentro de stream_Read habrá algún memcpy que copie DWORDS por eso compara si es mayor que 8, pues si copia más que 8 dwords, será 8 *4 mayor que 32 que es el largo del buffer, así que poniendo ahí un valor más grande que 8 tendremos un stack overflow.</p>
+<p>Busquemos un archivo .ty para probar.</p>
+<p>https://samples.libav.org/TiVo/test-dtivo-junkskip.ty%2B</p>
+<p>Ese sample con un poco de ganas lo convertí en un POC que produce el stack overflow, cambiando el valor que se filtra y ajustando algunos más que hay alrededor para que llegue al punto del stream_Read.</p>
+<figure><img loading="lazy" src="img/30/68.png" alt="Captura 68 del tute 30"></figure>
+<p>Allí lo probé en un OLLYDBG en un XP que tengo de pruebas, pero funciona salta a ejecutar la dirección 0x44434241 que coloque en el archivo.</p>
+<p>El siguiente ejercicio es tomar el archivo original y modificarlo armando  un POC como el que hice yo para que produzca el stack overflow, es sencillo, ya está todo analizado con DEBUGGEAR un poco lo lograran.</p>
+<p>Hasta la parte 31</p>
+<p>Ricardo Narvaja</p>
+</main>
+<footer class="pie">
+  <p>Material educativo y defensivo. Las prácticas se limitan a programas propios, software abierto o crackmes diseñados para aprender. No se enseña a eludir licencias, DRM ni controles de acceso.</p>
+  <p><a href="../00_EMPEZAR_AQUI.html">Inicio</a> · <a href="../guia/etapa-0.html">Etapas</a> · <a href="../fuentes_y_limites.html">Fuentes y límites</a> · <a href="../registro_de_cobertura.csv">Registro de cobertura</a></p>
+</footer>
+<script>
+(function(){
+  function abrir(src){
+    var o=document.createElement('div'); o.className='lightbox-ov';
+    var i=document.createElement('img'); i.src=src; o.appendChild(i);
+    function cerrar(){o.remove(); document.removeEventListener('keydown', onkey);}
+    function onkey(e){ if(e.key==='Escape') cerrar(); }
+    o.addEventListener('click', cerrar);
+    document.addEventListener('keydown', onkey);
+    document.body.appendChild(o);
+  }
+  document.addEventListener('DOMContentLoaded', function(){
+    document.querySelectorAll('figure img, main img').forEach(function(img){
+      img.style.cursor='zoom-in';
+      img.addEventListener('click', function(){ abrir(img.currentSrc||img.src); });
+    });
+  });
+})();
+</script>
+</body>
+</html>

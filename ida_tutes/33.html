@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tute 33 · Plugins de WinDbg + Mona — Curso IDA</title>
+<meta name="description" content="Tutorial ilustrado del tute 33 del Curso IDA desde cero: Plugins de WinDbg + Mona.">
+<link rel="stylesheet" href="../guia/estilo.css">
+</head>
+<body>
+<a class="salto" href="#contenido">Saltar al contenido</a>
+<header class="cabecera">
+  <div class="marca"><a href="../00_EMPEZAR_AQUI.html">CLS · Curso de reversing</a> <span class="edicion">edición 5 · 27/10/2026</span></div>
+  <nav class="principal" aria-label="Navegación principal">
+    <a href="../00_EMPEZAR_AQUI.html">Inicio</a>
+    <a href="../guia/index.html">Curso</a>
+    <a href="../fichas/index.html">Fichas</a>
+    <a href="../glosario.html">Glosario</a>
+    <a href="../preguntas_y_respuestas.html">Repaso</a>
+  </nav>
+</header>
+<main id="contenido">
+<p class="migas"><a href="../ida-tutes.html">← Índice de los 69 tutes de IDA</a></p>
+<h1>Tute 33 · Plugins de WinDbg + Mona</h1>
+<p class="meta-tute"><strong>⏱ 3 min de lectura</strong> · 570 palabras · 21 capturas · grupo: Vulnerabilidades y exploiting en user-mode (VLC/CVE, DEP, Mona, canary/SEH, shellcode, heap)</p>
+<aside class="callout nota"><p class="callout-titulo">Qué enseña</p><p>Instalar Mona y plugins de WinDbg standalone.</p></aside>
+<p><em>se conecta con:</em> <a href="../guia/05-vulnerabilidades.html">Vulnerabilidades (defensivo)</a></p>
+<aside class="callout aviso"><p class="callout-titulo">Material observado, no reescrito</p><p>Es el texto y las capturas del <code>.docx</code> original del curso, solo presentados como tutorial. Puede tener erratas de origen. El autor del curso es Ricardo Narvaja.</p></aside>
+<hr>
+<p>INTRODUCCIÓN AL REVERSING CON IDA PRO DESDE CERO PARTE 33.</p>
+<p>PLUGINS PARA WINDBG STANDALONE.</p>
+<p>Vamos a instalar un par de plugins para el Windbg que nos ayudarán más adelante cuando trabajemos.</p>
+<p>Lamentablemente estos plugins solo corren en Windbg, pero si los corres en el Windbg incluido en el IDA lo hacen crashear a este último, posiblemente porque se conflictúa con el Python incluido en IDA, pero bueno los usaremos en el Windbg separado cuando los necesitemos.</p>
+<p>PYKD y MONA.</p>
+<p>Copiaremos los archivos que adjunte en la carpeta winext, que se encuentra dentro de la carpeta donde está instalado el windbg y instalo el runtime vcredist_x86.exe.</p>
+<figure><img loading="lazy" src="img/33/1.png" alt="Captura 1 del tute 33"></figure>
+<p>Luego debo configurar las variables de entorno del sistema.</p>
+<figure><img loading="lazy" src="img/33/2.png" alt="Captura 2 del tute 33"></figure>
+<p>Agregue una variable PYTHONPATH,  a la cual le pongo el directorio de Python, luego punto y coma y luego el directorio de winext en mi caso queda.</p>
+<p>C:\Python27;C:\Program Files (x86)\Windows Kits\10\Debuggers\x86\winext</p>
+<figure><img loading="lazy" src="img/33/3.png" alt="Captura 3 del tute 33"></figure>
+<p>y a la variable Path que ya existía le agrego al final un punto y coma y C:\Python27\</p>
+<figure><img loading="lazy" src="img/33/4.png" alt="Captura 4 del tute 33"></figure>
+<p>Me fijo que tenga la barra al final, lo agrego en variables de sistema también a path.</p>
+<figure><img loading="lazy" src="img/33/5.png" alt="Captura 5 del tute 33"></figure>
+<p>Bueno luego de reiniciar la máquina o matar el explorador de Windows, ya deberíamos en cualquier consola poder tipear Python y que lo acepte.</p>
+<figure><img loading="lazy" src="img/33/6.png" alt="Captura 6 del tute 33"></figure>
+<p>Y lo último bajarse las últimas versiones de</p>
+<p>windbglib.py  https://github.com/corelan/windbglib/raw/master/windbglib.py</p>
+<p>mona.py from https://github.com/corelan/mona/raw/master/mona.py</p>
+<p>y copiarlas a la misma carpeta donde esta el windbg.exe</p>
+<figure><img loading="lazy" src="img/33/7.png" alt="Captura 7 del tute 33"></figure>
+<p>Con eso ya debería funcionar probemos arranquemos windbg suelto, sin IDA, si les llega a fallar seguramente les faltara algún runtime, si no debería funcionar correctamente.</p>
+<p>Con CTRL + E abrimos algún ejecutable.</p>
+<p>Cuando se detiene tipeamos.</p>
+<p>!load pykd.pyd</p>
+<p>No pasara nada pero no debe dar error.</p>
+<figure><img loading="lazy" src="img/33/8.png" alt="Captura 8 del tute 33"></figure>
+<p>Con !py puedo ejecutar scripts, si pongo el path del mismo a continuación, pero al menos por ahora abri una consola de Python.</p>
+<p>Allí puedo ejecutar también comandos de Python.</p>
+<figure><img loading="lazy" src="img/33/9.png" alt="Captura 9 del tute 33"></figure>
+<p>Ahora probare mona, salgo de la consola con exit() y tipeo</p>
+<p>!Load pykd.pyd</p>
+<p>!py mona</p>
+<figure><img loading="lazy" src="img/33/10.png" alt="Captura 10 del tute 33"></figure>
+<p>probemos algunos comandos</p>
+<p>!py mona modules</p>
+<figure><img loading="lazy" src="img/33/11.png" alt="Captura 11 del tute 33"></figure>
+<p>Vemos las protecciones de los módulos que están corriendo, ya las estudiaremos más adelante, ahora estamos preparando para poder tener todo listo para ir a fondo.</p>
+<p>!py mona rop</p>
+<p>Eso tardara muchísimo, intentará ver si hay algún modulo donde pueda generar un ROP (más adelante veremos lo que es) y tratara de construirlo.</p>
+<figure><img loading="lazy" src="img/33/12.png" alt="Captura 12 del tute 33"></figure>
+<p>A veces podrá crearlo a veces no, pero al menos vemos que está funcionando.</p>
+<figure><img loading="lazy" src="img/33/13.png" alt="Captura 13 del tute 33"></figure>
+<p>Vemos que devolvió lo que pudo y como no arranque el windbg como administrador no pudo escribir el archivo con la salida, pero igual la imprime.</p>
+<figure><img loading="lazy" src="img/33/14.png" alt="Captura 14 del tute 33"></figure>
+<p>Podemos chequear si hay un update de mona.</p>
+<figure><img loading="lazy" src="img/33/15.png" alt="Captura 15 del tute 33"></figure>
+<figure><img loading="lazy" src="img/33/16.png" alt="Captura 16 del tute 33"></figure>
+<p>Atacheando a un proceso que está corriendo, en este caso el notepad++</p>
+<figure><img loading="lazy" src="img/33/17.png" alt="Captura 17 del tute 33"></figure>
+<p>Puedo ver el estado del heap.</p>
+<p>Ya profundizaremos sobre esto, de cualquier manera, el windbg también tiene comandos de heap sin usar mona, que podemos usar dentro de IDA.</p>
+<figure><img loading="lazy" src="img/33/18.png" alt="Captura 18 del tute 33"></figure>
+<p>Así que estamos bien, al menos si necesitamos tenemos varias opciones, dentro y fuera de IDA y lo tenemos todo instalado para ir adelante.</p>
+<p>Más comandos para divertirse (tiene miles jeje)</p>
+<p>!py mona assemble -s "jmp esp"</p>
+<figure><img loading="lazy" src="img/33/19.png" alt="Captura 19 del tute 33"></figure>
+<p>!py mona getiat</p>
+<p>La verdad tiene muchos comandos útiles este para ver las funciones importadas.(aunque tarda mucho)</p>
+<figure><img loading="lazy" src="img/33/20.png" alt="Captura 20 del tute 33"></figure>
+<p>Conviene ejecutarlo como administrador para que guarde tanta información en un archivo podemos obtener también info de una dirección, por ejemplo.</p>
+<p>!py mona info -a dirección.</p>
+<figure><img loading="lazy" src="img/33/21.png" alt="Captura 21 del tute 33"></figure>
+<p>Bueno nos divertimos un rato, y de paso ya lo tenemos instalado para seguir adelante, nos vemos en la parte 34.</p>
+<p>Ricardo Narvaja</p>
+</main>
+<footer class="pie">
+  <p>Material educativo y defensivo. Las prácticas se limitan a programas propios, software abierto o crackmes diseñados para aprender. No se enseña a eludir licencias, DRM ni controles de acceso.</p>
+  <p><a href="../00_EMPEZAR_AQUI.html">Inicio</a> · <a href="../guia/etapa-0.html">Etapas</a> · <a href="../fuentes_y_limites.html">Fuentes y límites</a> · <a href="../registro_de_cobertura.csv">Registro de cobertura</a></p>
+</footer>
+<script>
+(function(){
+  function abrir(src){
+    var o=document.createElement('div'); o.className='lightbox-ov';
+    var i=document.createElement('img'); i.src=src; o.appendChild(i);
+    function cerrar(){o.remove(); document.removeEventListener('keydown', onkey);}
+    function onkey(e){ if(e.key==='Escape') cerrar(); }
+    o.addEventListener('click', cerrar);
+    document.addEventListener('keydown', onkey);
+    document.body.appendChild(o);
+  }
+  document.addEventListener('DOMContentLoaded', function(){
+    document.querySelectorAll('figure img, main img').forEach(function(img){
+      img.style.cursor='zoom-in';
+      img.addEventListener('click', function(){ abrir(img.currentSrc||img.src); });
+    });
+  });
+})();
+</script>
+</body>
+</html>

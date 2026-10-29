@@ -1,0 +1,254 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Glosario de reversing</title>
+<meta name="description" content="Términos del curso explicados en lenguaje de principiante, con enlaces a las lecciones.">
+<link rel="stylesheet" href="guia/estilo.css">
+</head>
+<body>
+<a class="salto" href="#contenido">Saltar al contenido</a>
+<header class="cabecera">
+  <div class="marca"><a href="00_EMPEZAR_AQUI.html">CLS · Curso de reversing</a> <span class="edicion">edición 5 · 27/10/2026</span></div>
+  <nav class="principal" aria-label="Navegación principal">
+    <a href="00_EMPEZAR_AQUI.html">Inicio</a>
+    <a href="guia/index.html">Curso</a>
+    <a href="materiales.html">Materiales</a>
+    <a href="fichas/index.html">Fichas</a>
+    <a href="glosario.html">Glosario</a>
+    <a href="preguntas_y_respuestas.html">Repaso</a>
+    <a href="buscar.html">Buscar</a>
+  </nav>
+</header>
+<main id="contenido">
+<h1 id="glosario">Glosario</h1>
+<p>Términos que aparecen en el curso, explicados en lenguaje sencillo. Donde el concepto se desarrolla en una lección, hay un enlace. No es una enciclopedia: es el vocabulario mínimo para leer las lecciones sin frenarte.</p>
+<h2 id="a-c">A–C</h2>
+<div class="tabla"><table>
+<thead><tr>
+<th>Término</th>
+<th>Explicación</th>
+</tr></thead><tbody>
+<tr><td><strong>ABI Itanium (C++)</strong></td><td>Especificación de cómo GCC, Clang y MinGW organizan vtables, RTTI, nombres (<code>_ZTV…</code>) y excepciones; cada plataforma la adapta. Distinta del modelo de MSVC. Ver <a href="guia/02-cpp-profundo.html">C++ profundo</a>.</td></tr>
+<tr><td><strong>Address (dirección)</strong></td><td>Número que identifica una posición de memoria. En un debugger se escribe en hexadecimal.</td></tr>
+<tr><td><strong>Adjustor thunk</strong></td><td>Fragmento de código en una vtable que corrige <code>this</code> (por ejemplo, <code>sub rcx, 10h</code> y un salto) antes de llegar al método real; aparece con herencia múltiple. Ver <a href="guia/02-cpp-profundo.html">C++ profundo</a>.</td></tr>
+<tr><td><strong>AL / AH / AX</strong></td><td>Partes de <code>EAX</code>: <code>AL</code> es el byte bajo, <code>AH</code> el byte alto y <code>AX</code> los dos bytes bajos. Ver <a href="guia/02-registros.html">registros</a>.</td></tr>
+<tr><td><strong>Anti-debug</strong></td><td>Conjunto de técnicas con las que un programa detecta que está siendo depurado. Se estudia para reconocerlo, no para evadirlo. Ver <a href="guia/02-debugger.html">debugger</a>.</td></tr>
+<tr><td><strong>API</strong></td><td>Función que ofrece un sistema operativo o una biblioteca para que otro programa la use (<code>MessageBoxA</code>, <code>CreateFileW</code>).</td></tr>
+<tr><td><strong>API hashing</strong></td><td>Técnica que localiza funciones comparando un hash de cada nombre exportado contra una constante, para no dejar el nombre de la API como cadena. Ver <a href="guia/02-pe-fino.html">PE fino</a>.</td></tr>
+<tr><td><strong>Aplanamiento del flujo de control</strong></td><td>Ofuscación que pone todos los bloques de una función dentro de un bucle con un <code>switch</code> sobre una variable de estado. Ver <a href="guia/02-ofuscacion.html">Ofuscación</a>.</td></tr>
+<tr><td><strong>Argumento</strong></td><td>Valor que se pasa a una función. En 32 bits suele ir en el stack; en x64, los primeros cuatro en registros.</td></tr>
+<tr><td><strong>ASLR</strong></td><td><em>Address Space Layout Randomization</em>: técnica que carga las imágenes en direcciones distintas en cada ejecución. Ver <a href="guia/01-pe.html">PE</a>.</td></tr>
+<tr><td><strong>Assembly</strong></td><td>Representación legible de las instrucciones de la CPU. Cada línea suele ser una operación con sus operandos.</td></tr>
+<tr><td><strong>Big-endian</strong></td><td>Orden en que el byte más significativo se guarda primero. x86/x64 usa little-endian.</td></tr>
+<tr><td><strong>Binario</strong></td><td>Sistema de numeración en base 2, con 0 y 1. Un byte son 8 bits. Ver <a href="guia/01-numeros.html">números</a>.</td></tr>
+<tr><td><strong>BinDiff / BinExport</strong></td><td>Differ de binarios de código abierto; trabaja sobre exportaciones en formato BinExport generadas desde IDA, Binary Ninja o Ghidra. Ver <a href="guia/02-patch-diffing.html">Patch diffing</a>.</td></tr>
+<tr><td><strong>Bit</strong></td><td>Unidad mínima de información: 0 o 1.</td></tr>
+<tr><td><strong>Breakpoint</strong></td><td>Pausa que se pone en el programa para observar su estado. Puede ser por software, hardware o memoria. Ver <a href="guia/02-debugger.html">debugger</a>.</td></tr>
+<tr><td><strong>Byte</strong></td><td>8 bits. Unidad básica de almacenamiento.</td></tr>
+<tr><td><strong>C</strong></td><td>Lenguaje compilado de bajo nivel, muy usado para programas que se analizan con debuggers.</td></tr>
+<tr><td><strong>C#</strong></td><td>Lenguaje de .NET que se compila a IL. Ver <a href="guia/03-dotnet-runtime.html">.NET</a>.</td></tr>
+<tr><td><strong>Cadena armada en el stack</strong></td><td>Texto que el programa escribe de a pedazos con <code>mov</code> de constantes en vez de guardarlo en <code>.rdata</code>; no aparece en la ventana de strings. Ver <a href="guia/02-ida.html">IDA</a>.</td></tr>
+<tr><td><strong>CALL</strong></td><td>Instrucción que llama a una función: empuja la dirección de retorno y salta. Ver <a href="guia/02-llamadas.html">llamadas</a>.</td></tr>
+<tr><td><strong>Canary (stack canary)</strong></td><td>Valor aleatorio que el compilador coloca antes del return address para detectar desbordes. Ver <a href="guia/05-vulnerabilidades.html">vulnerabilidades</a>.</td></tr>
+<tr><td><strong>CF (carry flag)</strong></td><td>Flag que indica acarreo o desborde en una operación sin signo.</td></tr>
+<tr><td><strong>CMP</strong></td><td>Instrucción que resta dos valores, actualiza flags y descarta el resultado. Se usa antes de un salto condicional.</td></tr>
+<tr><td><strong>Código administrado</strong></td><td>Código que corre bajo un runtime (como el CLR de .NET) que administra memoria y ejecución.</td></tr>
+<tr><td><strong>Código nativo</strong></td><td>Código máquina específico de la CPU, generado por un compilador como C/C++.</td></tr>
+<tr><td><strong>Complete Object Locator (COL)</strong></td><td>Estructura de RTTI de MSVC a la que apunta <code>vtable[-1]</code>; lleva al nombre de la clase. En x64 usa RVA. Ver <a href="guia/02-cpp-profundo.html">C++ profundo</a>.</td></tr>
+<tr><td><strong>Complemento a dos</strong></td><td>Convención para representar negativos: se invierten los bits y se suma 1. <code>0xFB</code> = −5 en 8 bits. Ver <a href="guia/01-numeros.html">números</a>.</td></tr>
+<tr><td><strong>Constante</strong></td><td>Valor fijo que no cambia durante la ejecución. En assembly aparece como inmediato (<code>mov eax, 50</code>).</td></tr>
+<tr><td><strong>CPU</strong></td><td>Unidad central de proceso. Ejecuta instrucciones y tiene registros.</td></tr>
+<tr><td><strong>Crackme</strong></td><td>Programa pequeño diseñado para practicar reversing, generalmente con un objetivo didáctico.</td></tr>
+<tr><td><strong>CS / DS / SS</strong></td><td>Registros de segmento de 16 bits. En 32/64 bits casi no se usan, salvo <code>FS</code>/<code>GS</code> para estructuras del sistema.</td></tr>
+</tbody></table></div>
+<h2 id="d-h">D–H</h2>
+<div class="tabla"><table>
+<thead><tr>
+<th>Término</th>
+<th>Explicación</th>
+</tr></thead><tbody>
+<tr><td><strong>DWORD</strong></td><td>Doble WORD: 4 bytes (32 bits).</td></tr>
+<tr><td><strong>Debugger</strong></td><td>Programa que ejecuta otro paso a paso, con pausas y vista de registros y memoria. En el curso se usa x64dbg.</td></tr>
+<tr><td><strong>Decompilador</strong></td><td>Herramienta que reconstruye una vista legible aproximada a partir de un binario o del IL. No recupera el código original exacto.</td></tr>
+<tr><td><strong>Desplazamiento (displacement)</strong></td><td>Distancia que se suma a una dirección para calcular un destino o un campo. En un <code>call</code>/<code>jmp</code> relativo, se mide desde la instrucción siguiente.</td></tr>
+<tr><td><strong>DLL</strong></td><td>Biblioteca de código que otros programas cargan en tiempo de ejecución (<code>.dll</code> en Windows).</td></tr>
+<tr><td><strong>DR0–DR3</strong></td><td>Registros de depuración del procesador que sostienen breakpoints de hardware. Hay cuatro por hilo.</td></tr>
+<tr><td><strong>EAX / RAX</strong></td><td>Registro acumulador; suele guardar el resultado de una función.</td></tr>
+<tr><td><strong>EBP / RBP</strong></td><td>Base pointer: referencia estable del marco de pila en funciones de 32 bits.</td></tr>
+<tr><td><strong>EBX / RBX</strong></td><td>Registro de propósito general; a veces apunta a datos.</td></tr>
+<tr><td><strong>ECX / RCX</strong></td><td>Registro contador; se usa en bucles, shifts variables y <code>rep</code>. En x64 es el primer argumento.</td></tr>
+<tr><td><strong>EDI / RDI</strong></td><td>Destination index: registro de destino en copias de memoria (<code>movs</code>, <code>stos</code>).</td></tr>
+<tr><td><strong>EDX / RDX</strong></td><td>Registro de datos; parte alta en multiplicaciones/divisiones. En x64 es el segundo argumento.</td></tr>
+<tr><td><strong>EIP / RIP</strong></td><td>Instruction pointer: dirección de la próxima instrucción a ejecutar.</td></tr>
+<tr><td><strong>Entropía</strong></td><td>Medida de cuán aleatorios son unos bytes (0 a 8 bits por byte); cerca de 8 sugiere datos comprimidos o cifrados. Ver <a href="guia/02-packers.html">Packers</a>.</td></tr>
+<tr><td><strong>Entry point</strong></td><td>Primera instrucción del código de un programa; no es necesariamente <code>main</code>.</td></tr>
+<tr><td><strong>ESI / RSI</strong></td><td>Source index: origen en copias de memoria.</td></tr>
+<tr><td><strong>ESP / RSP</strong></td><td>Stack pointer: apunta a la cima del stack.</td></tr>
+<tr><td><strong>Excepción de primera / segunda oportunidad</strong></td><td>Avisos del depurador antes de buscar handlers (primera) y cuando nadie la manejó (segunda). Solo la segunda indica un fallo no manejado. Ver <a href="guia/2d-11-excepciones.html">2D.11</a>.</td></tr>
+<tr><td><strong>Export</strong></td><td>Función o símbolo que una DLL ofrece a otros programas.</td></tr>
+<tr><td><strong>FIFO</strong></td><td><em>First in, first out</em>: lo primero que entra es lo primero que sale (una cola).</td></tr>
+<tr><td><strong>Flag</strong></td><td>Bit de estado que resume el resultado de una operación (<code>ZF</code>, <code>SF</code>, <code>CF</code>, <code>OF</code>). Ver <a href="guia/02-registros.html">registros</a>.</td></tr>
+<tr><td><strong>Frida</strong></td><td>Herramienta de instrumentación dinámica que inyecta JavaScript en un proceso para enganchar funciones (<code>Interceptor.attach</code>). Ver <a href="guia/02-scripting-debugger.html">Scripting de debugger</a>.</td></tr>
+<tr><td><strong>Función</strong></td><td>Bloque de código con un nombre, parámetros y un valor de retorno.</td></tr>
+<tr><td><strong>Handle</strong></td><td>Identificador opaco que el sistema da para referenciar un recurso (archivo, ventana, hilo).</td></tr>
+<tr><td><strong>Heap</strong></td><td>Zona de memoria dinámica, administrada por <code>malloc</code>/<code>new</code> o por el runtime.</td></tr>
+<tr><td><strong>Hexadecimal</strong></td><td>Base 16, con dígitos 0–9 y A–F. Cada dígito representa 4 bits.</td></tr>
+<tr><td><strong>Hipervisor</strong></td><td>Programa que crea y administra máquinas virtuales (VirtualBox, VMware, Hyper-V).</td></tr>
+</tbody></table></div>
+<h2 id="i-o">I–O</h2>
+<div class="tabla"><table>
+<thead><tr>
+<th>Término</th>
+<th>Explicación</th>
+</tr></thead><tbody>
+<tr><td><strong>IAT</strong></td><td><em>Import Address Table</em>: tabla de punteros que el cargador completa con las direcciones de las funciones importadas. Ver <a href="guia/01-pe.html">PE</a>.</td></tr>
+<tr><td><strong>IDA</strong></td><td>Desensamblador y debugger interactivo. IDA Free es la versión gratuita. Ver <a href="guia/02-ida.html">IDA</a>.</td></tr>
+<tr><td><strong>IL / MSIL</strong></td><td>Lenguaje intermedio de .NET, compilado a máquina por el JIT. Ver <a href="guia/03-dotnet-runtime.html">.NET</a>.</td></tr>
+<tr><td><strong>Image base</strong></td><td>Dirección preferida en la que se carga una imagen. ASLR puede cambiarla.</td></tr>
+<tr><td><strong>Import</strong></td><td>Función o símbolo que un programa toma de una DLL.</td></tr>
+<tr><td><strong>Instrucción</strong></td><td>Operación elemental que ejecuta la CPU (<code>mov</code>, <code>add</code>, <code>jmp</code>).</td></tr>
+<tr><td><strong>JIT</strong></td><td><em>Just-in-time compiler</em>: compila IL a código nativo en tiempo de ejecución.</td></tr>
+<tr><td><strong>JMP</strong></td><td>Salto incondicional.</td></tr>
+<tr><td><strong>Kernel</strong></td><td>Núcleo del sistema operativo, con el máximo privilegio. Fuera del alcance de esta edición. Ver <a href="guia/05-fuera-de-alcance.html">fuera de alcance</a>.</td></tr>
+<tr><td><strong>LEA</strong></td><td><em>Load effective address</em>: calcula una dirección sin leer memoria.</td></tr>
+<tr><td><strong>LIFO</strong></td><td><em>Last in, first out</em>: lo último que entra es lo primero que sale (una pila).</td></tr>
+<tr><td><strong>Little-endian</strong></td><td>Orden en que el byte menos significativo se guarda primero. Es el de x86/x64. Ver <a href="guia/01-numeros.html">números</a>.</td></tr>
+<tr><td><strong>Malware</strong></td><td>Software diseñado para dañar, espiar o tomar control. Se estudia de forma defensiva. Ver <a href="guia/05-malware.html">malware</a>.</td></tr>
+<tr><td><strong>Marco de pila (stack frame)</strong></td><td>Región del stack de una función: argumentos, return address, <code>EBP</code> guardado y variables locales.</td></tr>
+<tr><td><strong>Memoria virtual</strong></td><td>Espacio de direcciones que el sistema presenta a cada proceso, independiente de la memoria física.</td></tr>
+<tr><td><strong>Memoria W+X</strong></td><td>Región o sección escribible y ejecutable a la vez; típica del stub de un packer que escribe código y después lo ejecuta. Ver <a href="guia/02-packers.html">Packers</a>.</td></tr>
+<tr><td><strong>Metadatos</strong></td><td>Información sobre tipos, métodos y referencias que acompaña al IL en un ensamblado .NET.</td></tr>
+<tr><td><strong>Mnemónico</strong></td><td>Nombre legible de una instrucción (<code>mov</code>, <code>add</code>).</td></tr>
+<tr><td><strong>MOV</strong></td><td>Instrucción de transferencia de datos; no modifica flags.</td></tr>
+<tr><td><strong>NOP</strong></td><td>Instrucción que no hace nada (<code>0x90</code>). Se usa para rellenar o parchear.</td></tr>
+<tr><td><strong>Número mágico</strong></td><td>Bytes fijos al comienzo de un archivo o mensaje que identifican su formato (por ejemplo <code>MZ</code> en un PE). Ver <a href="guia/04-metodo.html">Método de análisis</a>.</td></tr>
+<tr><td><strong>NX / DEP</strong></td><td>Mitigación que impide ejecutar código en páginas de datos (stack/heap).</td></tr>
+<tr><td><strong>OEP</strong></td><td><em>Original Entry Point</em>: punto de entrada del programa original antes de empaquetarlo; ahí se dumpea. Ver <a href="guia/02-packers.html">Packers</a>.</td></tr>
+<tr><td><strong>Offset</strong></td><td>Distancia desde un punto de referencia. En un archivo, posición de un byte; en una estructura, distancia a un campo.</td></tr>
+<tr><td><strong>Opcode</strong></td><td>Byte(s) que codifican una instrucción.</td></tr>
+<tr><td><strong>Overflow (OF)</strong></td><td>Flag que indica desborde en una operación con signo.</td></tr>
+</tbody></table></div>
+<h2 id="p-s">P–S</h2>
+<div class="tabla"><table>
+<thead><tr>
+<th>Término</th>
+<th>Explicación</th>
+</tr></thead><tbody>
+<tr><td><strong>pclntab</strong></td><td>Tabla de los binarios de Go que relaciona direcciones con funciones y líneas; el runtime la necesita, así que los nombres sobreviven sin símbolos. Ver <a href="guia/02-huella-compilador.html">Huella de compilador</a>.</td></tr>
+<tr><td><strong>PE</strong></td><td><em>Portable Executable</em>: formato de ejecutables y DLLs de Windows. Ver <a href="guia/01-pe.html">PE</a>.</td></tr>
+<tr><td><strong>PEB</strong></td><td><em>Process Environment Block</em>: estructura del sistema con información del proceso. <code>PEB+2</code> delata el debugger.</td></tr>
+<tr><td><strong>PIE</strong></td><td><em>Position Independent Executable</em>: código que puede cargarse en cualquier base (ELF).</td></tr>
+<tr><td><strong>Pila (stack)</strong></td><td>Zona LIFO donde se guardan argumentos, direcciones de retorno y variables locales.</td></tr>
+<tr><td><strong>Predicado opaco</strong></td><td>Condición cuyo resultado el ofuscador conoce de antemano (siempre verdadera o siempre falsa), disfrazada de salto condicional. Ver <a href="guia/02-ofuscacion.html">Ofuscación</a>.</td></tr>
+<tr><td><strong>Prólogo / epílogo</strong></td><td>Instrucciones al inicio y al final de una función que arman y desarman el marco de pila (<code>push ebp; mov ebp, esp</code> / <code>mov esp, ebp; pop ebp; ret</code>).</td></tr>
+<tr><td><strong>Proceso</strong></td><td>Programa en ejecución, con su espacio de direcciones, handles e hilos.</td></tr>
+<tr><td><strong>QWORD</strong></td><td>8 bytes (64 bits).</td></tr>
+<tr><td><strong>R8–R15</strong></td><td>Registros adicionales de 64 bits en x86-64.</td></tr>
+<tr><td><strong>Registro</strong></td><td>Memoria pequeña y rápida dentro del procesador. Ver <a href="guia/02-registros.html">registros</a>.</td></tr>
+<tr><td><strong>Relocación</strong></td><td>Ajuste de direcciones absolutas cuando una imagen se carga en una base distinta de la preferida.</td></tr>
+<tr><td><strong>RET</strong></td><td>Instrucción que vuelve de una función: saca el return address del stack y salta.</td></tr>
+<tr><td><strong>ROP</strong></td><td><em>Return-Oriented Programming</em>: encadenar fragmentos de código existente para ejecutar operaciones. Se explica conceptualmente en <a href="guia/05-vulnerabilidades.html">vulnerabilidades</a>.</td></tr>
+<tr><td><strong>RTTI</strong></td><td><em>Run-Time Type Information</em>: datos que el compilador deja para <code>dynamic_cast</code> y <code>typeid</code>; en reversing da nombres de clases. Ver <a href="guia/02-cpp-profundo.html">C++ profundo</a>.</td></tr>
+<tr><td><strong>Sandbox</strong></td><td>Entorno aislado donde se ejecuta código no confiable.</td></tr>
+<tr><td><strong>Sección</strong></td><td>Región de un binario con un propósito (<code>.text</code>, <code>.data</code>, <code>.rdata</code>).</td></tr>
+<tr><td><strong>Segmento</strong></td><td>Región que el cargador mapea con permisos (ELF/PE).</td></tr>
+<tr><td><strong>Shellcode</strong></td><td>Código pequeño pensado para ejecutarse desde memoria; se estudia conceptualmente, no se produce.</td></tr>
+<tr><td><strong>Símbolos públicos</strong></td><td>Archivos de símbolos que Microsoft publica para sus binarios: nombres de funciones y globales, sin código fuente ni tipos privados. Ver <a href="guia/02-patch-diffing.html">Patch diffing</a>.</td></tr>
+<tr><td><strong>Snapshot</strong></td><td>Estado guardado de una VM que permite volver atrás.</td></tr>
+<tr><td><strong>SSO (Small String Optimization)</strong></td><td>Optimización de <code>std::string</code> que guarda cadenas cortas dentro del propio objeto, sin memoria dinámica. Ver <a href="guia/02-cpp-profundo.html">C++ profundo</a>.</td></tr>
+<tr><td><strong>Stack</strong></td><td>Ver <strong>pila</strong>.</td></tr>
+<tr><td><strong>String</strong></td><td>Secuencia de caracteres, generalmente terminada en <code>0x00</code> en C.</td></tr>
+</tbody></table></div>
+<h2 id="t-z">T–Z</h2>
+<div class="tabla"><table>
+<thead><tr>
+<th>Término</th>
+<th>Explicación</th>
+</tr></thead><tbody>
+<tr><td><strong>TEB</strong></td><td><em>Thread Environment Block</em>: estructura por hilo; <code>FS:[0x18]</code> apunta a ella en 32 bits.</td></tr>
+<tr><td><strong>TLS</strong></td><td><em>Thread Local Storage</em>: variables globales con una copia por hilo.</td></tr>
+<tr><td><strong>Traza condicional</strong></td><td>Ejecución paso a paso automática del debugger que evalúa condiciones de corte y de log en cada instrucción. Ver <a href="guia/02-scripting-debugger.html">Scripting de debugger</a>.</td></tr>
+<tr><td><strong>UTF-16 / funciones A y W</strong></td><td>Windows guarda el texto Unicode en UTF-16 (dos bytes por carácter en el caso común); las APIs de texto tienen versión <code>A</code> (página de códigos) y <code>W</code> (Unicode). Ver <a href="guia/02-ida.html">IDA</a>.</td></tr>
+<tr><td><strong>VA (virtual address)</strong></td><td>Dirección en el espacio de memoria del proceso.</td></tr>
+<tr><td><strong>VEH (vectored exception handler)</strong></td><td>Manejador de excepciones de todo el proceso, registrado con <code>AddVectoredExceptionHandler</code>, que se llama antes que los handlers por marco. Ver <a href="guia/2d-11-excepciones.html">2D.11</a>.</td></tr>
+<tr><td><strong>Version Tracking</strong></td><td>Herramienta de Ghidra que empareja funciones entre dos versiones y traslada nombres y comentarios. Ver <a href="guia/02-ghidra.html">Ghidra</a>.</td></tr>
+<tr><td><strong>VTable</strong></td><td>Tabla de punteros a métodos virtuales de un objeto C++.</td></tr>
+<tr><td><strong>WORD</strong></td><td>2 bytes (16 bits).</td></tr>
+<tr><td><strong>XOR</strong></td><td>Operación lógica "o exclusivo": 1 si los bits son distintos. Se usa para cifrar, poner a cero y ofuscar.</td></tr>
+<tr><td><strong>YARA</strong></td><td>Herramienta y lenguaje de reglas para detectar patrones en archivos. Ver <a href="guia/05-malware.html">malware</a>.</td></tr>
+<tr><td><strong>ZF (zero flag)</strong></td><td>Flag que se activa cuando el resultado de una operación es cero.</td></tr>
+</tbody></table></div>
+<h2 id="formatos-y-protocolos">Formatos y protocolos</h2>
+<div class="tabla"><table>
+<thead><tr>
+<th><strong>Campo</strong></th>
+<th>Componente de un archivo o mensaje identificado por offset, tamaño y regla de interpretación. Ver <a href="guia/04-formatos-protocolos.html">4.5</a>.</th>
+</tr></thead><tbody>
+<tr><td><strong>Framing</strong></td><td>Regla que permite decidir dónde empieza y termina cada mensaje. En TCP la aplicación define esos límites. Ver <a href="guia/04-formatos-protocolos.html">4.5</a>.</td></tr>
+<tr><td><strong>TLV</strong></td><td>Esquema Type-Length-Value: cada elemento especifica tipo, longitud y valor. Ver <a href="guia/04-formatos-protocolos.html">4.5</a>.</td></tr>
+<tr><td><strong>Checksum / CRC</strong></td><td>Valor para detectar ciertas corrupciones accidentales; no equivale a MAC ni autentica al emisor. Ver <a href="guia/04-formatos-protocolos.html">4.5</a>.</td></tr>
+<tr><td><strong>Máquina de estados</strong></td><td>Modelo de estados y transiciones que ayuda a interpretar mensajes según el intercambio previo. Ver <a href="guia/04-formatos-protocolos.html">4.5</a>.</td></tr>
+</tbody></table></div>
+<h2 id="windows-internals-y-drivers">Windows internals y drivers</h2>
+<div class="tabla"><table>
+<thead><tr>
+<th>Término</th>
+<th>Explicación</th>
+</tr></thead><tbody>
+<tr><td><strong>Agregación (COM)</strong></td><td>Técnica por la que un objeto externo expone interfaces de uno interno como propias, manteniendo un único <code>IUnknown</code>. Ver <a href="guia/2d-06-com-interfaces.html">2D.6</a>.</td></tr>
+<tr><td><strong>ALPC</strong></td><td>Mecanismo de mensajes locales de bajo nivel que usan componentes de Windows; poco documentado para uso general. Ver <a href="guia/2d-10-ipc.html">2D.10</a>.</td></tr>
+<tr><td><strong>Altitud (minifilter)</strong></td><td>Número que fija la posición de un minifilter en la pila de archivos; Microsoft la asigna por grupo de carga. Ver <a href="guia/6-05-minifilters.html">6.5</a>.</td></tr>
+<tr><td><strong>Apartamento (STA / MTA)</strong></td><td>Grupo de hilos y objetos COM que pueden llamarse directamente; entre apartamentos se usa un proxy. Ver <a href="guia/2d-06-com-interfaces.html">2D.6</a>.</td></tr>
+<tr><td><strong>API set</strong></td><td>Nombre de contrato (<code>api-ms-win-…</code>) que el loader redirige a la DLL que implementa las funciones; puede no existir como archivo. Ver <a href="guia/02-pe-fino.html">PE fino</a>.</td></tr>
+<tr><td><strong>AutoLogger</strong></td><td>Sesión ETW configurada en el registro que arranca al iniciar el sistema. Ver <a href="guia/2d-12-etw.html">2D.12</a>.</td></tr>
+<tr><td><strong>CLSID / IID</strong></td><td>GUID que identifica, respectivamente, una clase COM y un contrato de interfaz. Ver <a href="guia/2d-06-com-interfaces.html">2D.6</a>.</td></tr>
+<tr><td><strong>COM</strong></td><td>Modelo de componentes de Windows basado en interfaces y reglas de vida de objetos. Ver la rama <a href="2d.html">2D</a>.</td></tr>
+<tr><td><strong>DPC</strong></td><td><em>Deferred Procedure Call</em>: trabajo diferido que corre a <code>DISPATCH_LEVEL</code>, por ejemplo después de una interrupción. Ver <a href="guia/6-01-arquitectura-kernel.html">6.1</a>.</td></tr>
+<tr><td><strong>ETW</strong></td><td><em>Event Tracing for Windows</em>: sistema de providers, controllers y consumers para registrar eventos. Ver <a href="guia/2d-12-etw.html">2D.12</a>.</td></tr>
+<tr><td><strong>Free-threaded marshaler (FTM)</strong></td><td>Objeto agregable que hace que un puntero COM pase a otro apartamento del mismo proceso sin proxy; entre procesos no evita el marshaling. Ver <a href="guia/2d-06-com-interfaces.html">2D.6</a>.</td></tr>
+<tr><td><strong>HRESULT</strong></td><td>Código de resultado de APIs COM; se interpreta con reglas de éxito/fallo, no como booleano. Ver <a href="guia/2d-06-com-interfaces.html">2D.6</a>.</td></tr>
+<tr><td><strong>IOCTL</strong></td><td>Código de control que una aplicación envía a un driver con <code>DeviceIoControl</code>; incluye tipo de dispositivo, función, método y acceso. Ver <a href="guia/6-02-kmdf-ioctl.html">6.2</a>.</td></tr>
+<tr><td><strong>IRP</strong></td><td>Paquete que lleva una solicitud de E/S por la pila de drivers de Windows. Ver <a href="guia/6-01-arquitectura-kernel.html">6.1</a>.</td></tr>
+<tr><td><strong>IRQL</strong></td><td>Nivel de prioridad del kernel que limita qué operaciones y memoria pueden usarse. Ver <a href="guia/6-01-arquitectura-kernel.html">6.1</a>.</td></tr>
+<tr><td><strong>KMDF / UMDF</strong></td><td>Marcos de drivers de Windows para kernel mode y user mode. Ver <a href="guia/6-02-kmdf-ioctl.html">6.2</a>.</td></tr>
+<tr><td><strong>LIST_ENTRY</strong></td><td>Estructura de lista doblemente enlazada y circular de Windows (<code>Flink</code>, <code>Blink</code>) embebida en cada elemento; se llega al elemento restando el offset del campo. Ver <a href="guia/02-ida.html">IDA</a>.</td></tr>
+<tr><td><strong>MDL</strong></td><td><em>Memory Descriptor List</em>: descripción de las páginas físicas de un buffer bloqueado; la usa el I/O directo. Ver <a href="guia/6-02-kmdf-ioctl.html">6.2</a>.</td></tr>
+<tr><td><strong>METHOD_NEITHER</strong></td><td>Método de IOCTL en el que el driver recibe direcciones de user mode sin validar; se revisa como patrón de riesgo. Ver <a href="guia/6-04-revision-driver.html">6.4</a>.</td></tr>
+<tr><td><strong>Minifilter</strong></td><td>Driver que se registra ante el Filter Manager para observar o modificar operaciones de archivos. Ver <a href="guia/6-05-minifilters.html">6.5</a>.</td></tr>
+<tr><td><strong>MOF</strong></td><td><em>Managed Object Format</em>: lenguaje que describe clases e instancias de WMI; se compila al repositorio con <code>mofcomp</code>. Ver <a href="guia/2d-09-wmi.html">2D.9</a>.</td></tr>
+<tr><td><strong>Moniker / ROT</strong></td><td>Objeto que nombra a otro objeto COM y sabe obtenerlo; la ROT registra los objetos en ejecución con su moniker. Ver <a href="guia/2d-06-com-interfaces.html">2D.6</a>.</td></tr>
+<tr><td><strong>Named pipe</strong></td><td>Canal de comunicación nombrado entre procesos, local o de red, protegido por un descriptor de seguridad. Ver <a href="guia/2d-10-ipc.html">2D.10</a>.</td></tr>
+<tr><td><strong>ntdll / API nativa</strong></td><td>Capa de funciones <code>Nt</code>/<code>Zw</code> sobre la que se apoyan las APIs documentadas; sus stubs cargan el número de servicio y ejecutan <code>syscall</code>. Ver <a href="guia/02-pe-fino.html">PE fino</a>.</td></tr>
+<tr><td><strong>Pool (paginado / no paginado / NX)</strong></td><td>Memoria del kernel; la no paginada se usa a cualquier IRQL y la NX no permite ejecutar código. Ver <a href="guia/6-01-arquitectura-kernel.html">6.1</a>.</td></tr>
+<tr><td><strong>ProcessDebugPort</strong></td><td>Clase de información de <code>NtQueryInformationProcess</code>; un valor distinto de cero indica un debugger de modo usuario. Ver <a href="guia/02-anti-analisis.html">Anti-análisis</a>.</td></tr>
+<tr><td><strong>Proxy / stub</strong></td><td>Par de objetos que empaqueta (proxy, del lado del llamador) y desempaqueta (stub, del lado del servidor) una llamada COM entre apartamentos o procesos. Ver <a href="guia/2d-06-com-interfaces.html">2D.6</a>.</td></tr>
+<tr><td><strong>SPN</strong></td><td><em>Service Principal Name</em>: identificador de una instancia de servicio que Kerberos asocia a la cuenta del servicio. Ver <a href="guia/2d-08-dcom-rpc.html">2D.8</a>.</td></tr>
+<tr><td><strong>VAD</strong></td><td>Descriptor que representa un rango de direcciones virtuales de un proceso. Ver <a href="guia/2d-02-memoria-loader.html">2D.2</a>.</td></tr>
+<tr><td><strong>VBS / HVCI</strong></td><td>Seguridad basada en virtualización e integridad de código protegida por hypervisor; controles relacionados, no garantías absolutas. Ver <a href="guia/6-06-mitigaciones.html">6.6</a>.</td></tr>
+<tr><td><strong>WMI</strong></td><td>Infraestructura Windows de clases, proveedores y consumidores para consultar datos y eventos. Ver <a href="guia/2d-09-wmi.html">2D.9</a>.</td></tr>
+<tr><td><strong>WQL</strong></td><td>Lenguaje de consultas de WMI, subconjunto de SQL con cláusulas propias para eventos (<code>WITHIN</code>, <code>GROUP WITHIN</code>). Ver <a href="guia/2d-09-wmi.html">2D.9</a>.</td></tr>
+</tbody></table></div>
+<aside class="callout nota"><p class="callout-titulo">¿Falta un término?</p><p>Si una lección usa una palabra que no está acá, anotala en tu bitácora. El glosario se amplía con las dudas reales, no con definiciones que nadie usa.</p></aside>
+
+<aside class="ampliacion-ext">
+<p class="callout-titulo">Ampliación editorial basada en fuentes externas — Términos adicionales (Revisión 5.2)</p>
+<div class="tabla"><table>
+<thead><tr><th>Término</th><th>Explicación</th></tr></thead>
+<tbody>
+<tr><td><strong><code>arg.get(n)</code> (x64dbg)</strong></td><td>Función de expresión de x64dbg que lee el argumento <code>n</code> (basado en 0) según la arquitectura (<code>[esp+4*(n+1)]</code> en x86; <code>RCX</code>, <code>RDX</code>, <code>R8</code>, <code>R9</code> en x64). Ver <a href="guia/02-debugger.html">Debugger</a>.</td></tr>
+<tr><td><strong>ChaCha20</strong></td><td>Cifrado de flujo moderno (RFC 8439) basado en operaciones ARX (<code>ADD</code>, <code>ROTATE</code>, <code>XOR</code>) sobre 16 palabras de 32 bits; se reconoce por la constante ASCII <code>"expand 32-byte k"</code> (<code>0x61707865...</code>). Ver <a href="guia/04-cripto.html">Criptografía</a>.</td></tr>
+<tr><td><strong><code>__CxxFrameHandler4</code> (FH4)</strong></td><td>Manejador de excepciones C++ por defecto en MSVC x64 (VS 2019 16.3+ / 2022) que comprime las tablas de <code>.xdata</code> en <code>FuncInfo4</code> sin la firma fija <code>0x19930520</code>. Ver <a href="guia/02-cpp-profundo.html">C++ profundo</a>.</td></tr>
+<tr><td><strong><code>ida_typeinf</code> (<code>tinfo_t</code>)</strong></td><td>Módulo de IDAPython que en IDA 9.0+ reemplazó a los módulos eliminados <code>ida_struct</code> e <code>ida_enum</code> para manipular estructuras y enumeraciones. Ver <a href="guia/05-automatizacion.html">Automatización</a>.</td></tr>
+<tr><td><strong>ReadyToRun (R2R) / Single-File (.NET)</strong></td><td>Variantes de despliegue en .NET moderno: <em>Single-File</em> concatena las DLLs de IL dentro de un <code>apphost.exe</code> nativo, y <em>R2R</em> agrega código nativo precompilado (<code>READYTORUN_HEADER</code>, <code>"RTR\0"</code>) conservando el IL original. Ver <a href="guia/03-dotnet-runtime.html">.NET runtime</a>.</td></tr>
+<tr><td><strong>Segment Heap</strong></td><td>Administrador de heap moderno de Windows 10/11 (firma <code>0xDDEEDDEE</code>), usado por servicios del sistema y apps con manifiesto <code>segmentHeap</code>, distinto del <em>NT Heap</em> clásico (<code>0xEEFFEEFF</code>). Ver <a href="guia/02-windbg-heap.html">WinDbg y heap</a>.</td></tr>
+</tbody></table></div>
+</aside>
+</main>
+<footer class="pie">
+  <p>Material educativo y defensivo. Las prácticas se limitan a programas propios, software abierto o crackmes diseñados para aprender. No se enseña a eludir licencias, DRM ni controles de acceso.</p>
+  <p><a href="00_EMPEZAR_AQUI.html">Inicio</a> · <a href="guia/etapa-0.html">Etapas</a> · <a href="fuentes_y_limites.html">Fuentes y límites</a> · <a href="registro_de_cobertura.csv">Registro de cobertura</a></p>
+</footer>
+</body>
+</html>

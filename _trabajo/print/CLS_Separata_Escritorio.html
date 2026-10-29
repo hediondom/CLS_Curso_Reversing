@@ -1,0 +1,812 @@
+<!doctype html><html lang="es"><head><meta charset="utf-8"><title>CLS · Separata de Escritorio</title><style>:root {
+  --fondo: #fbfaf7;
+  --papel: #ffffff;
+  --tinta: #1f2428;
+  --tinta-suave: #4a5158;
+  --borde: #d9d5cc;
+  --acento: #0b5f6b;
+  --acento-claro: #e3f1f2;
+  --aviso: #7a4a00;
+  --aviso-fondo: #fdf3dc;
+  --peligro: #8a1c1c;
+  --peligro-fondo: #fbe7e7;
+  --practica: #1d4f2a;
+  --practica-fondo: #e6f3e9;
+  --codigo: #23282d;
+  --codigo-texto: #eef2f5;
+}
+
+* { box-sizing: border-box; }
+
+html { scroll-behavior: smooth; }
+
+body {
+  margin: 0;
+  background: var(--fondo);
+  color: var(--tinta);
+  font-family: "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
+  font-size: 17px;
+  line-height: 1.65;
+}
+
+.salto {
+  position: absolute;
+  left: -9999px;
+  top: 0;
+  background: var(--acento);
+  color: #fff;
+  padding: .6rem 1rem;
+  z-index: 99;
+}
+.salto:focus { left: 1rem; }
+
+.cabecera {
+  background: var(--papel);
+  border-bottom: 1px solid var(--borde);
+  padding: .7rem 1.2rem;
+  position: sticky;
+  top: 0;
+  z-index: 20;
+}
+
+.marca { font-weight: 700; letter-spacing: .2px; }
+.marca a { color: var(--tinta); text-decoration: none; }
+.edicion {
+  font-weight: 400;
+  font-size: .78rem;
+  color: var(--tinta-suave);
+  margin-left: .6rem;
+}
+
+nav.principal {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .35rem 1rem;
+  margin-top: .35rem;
+  font-size: .86rem;
+}
+nav.principal a {
+  color: var(--acento);
+  text-decoration: none;
+  padding: .15rem 0;
+  border-bottom: 2px solid transparent;
+}
+nav.principal a:hover { border-bottom-color: var(--acento); }
+
+main {
+  max-width: 860px;
+  margin: 0 auto;
+  padding: 2rem 1.2rem 4rem;
+}
+
+.migas {
+  font-size: .8rem;
+  color: var(--tinta-suave);
+  margin-bottom: 1.2rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: .35rem;
+}
+.migas a { color: var(--acento); text-decoration: none; }
+
+h1, h2, h3, h4 {
+  line-height: 1.22;
+  color: #12171b;
+  font-weight: 700;
+}
+h1 { font-size: 2.05rem; margin: 0 0 .6rem; letter-spacing: -.3px; }
+h2 {
+  font-size: 1.4rem;
+  margin: 2.6rem 0 .8rem;
+  padding-bottom: .3rem;
+  border-bottom: 1px solid var(--borde);
+}
+h3 { font-size: 1.12rem; margin: 1.8rem 0 .5rem; }
+h4 { font-size: 1rem; margin: 1.2rem 0 .3rem; }
+
+p { margin: .8rem 0; }
+ul, ol { margin: .6rem 0 .9rem; padding-left: 1.35rem; }
+li { margin: .25rem 0; }
+
+a { color: var(--acento); }
+a:hover { text-decoration-thickness: 2px; }
+
+code {
+  font-family: "Cascadia Mono", Consolas, "Liberation Mono", monospace;
+  font-size: .88em;
+  background: #eceae4;
+  padding: .08em .32em;
+  border-radius: 3px;
+}
+
+pre {
+  background: var(--codigo);
+  color: var(--codigo-texto);
+  padding: 1rem 1.1rem;
+  border-radius: 8px;
+  overflow-x: auto;
+  line-height: 1.5;
+  font-size: .84rem;
+  margin: 1rem 0;
+}
+pre code { background: none; color: inherit; padding: 0; font-size: inherit; }
+
+blockquote {
+  margin: 1rem 0;
+  padding: .7rem 1rem;
+  border-left: 4px solid var(--acento);
+  background: var(--acento-claro);
+  color: #14343a;
+  border-radius: 0 6px 6px 0;
+}
+blockquote p { margin: .3rem 0; }
+
+.callout {
+  margin: 1.2rem 0;
+  padding: .8rem 1rem;
+  border-radius: 8px;
+  border-left: 5px solid var(--acento);
+  background: var(--acento-claro);
+}
+.callout > p:first-child { margin-top: .1rem; }
+.callout > p:last-child { margin-bottom: .1rem; }
+.callout-titulo { font-weight: 700; margin-bottom: .2rem !important; }
+.callout.nota { border-color: var(--acento); background: var(--acento-claro); }
+.callout.aviso { border-color: var(--aviso); background: var(--aviso-fondo); }
+.callout.peligro { border-color: var(--peligro); background: var(--peligro-fondo); }
+.callout.practica { border-color: var(--practica); background: var(--practica-fondo); }
+.callout.respuesta { border-color: #5b4b8a; background: #efecf7; }
+
+.tabla { overflow-x: auto; margin: 1rem 0; }
+table {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: .9rem;
+  background: var(--papel);
+}
+th, td {
+  border: 1px solid var(--borde);
+  padding: .45rem .6rem;
+  text-align: left;
+  vertical-align: top;
+}
+th { background: #f0eee8; font-weight: 600; }
+tbody tr:nth-child(even) { background: #faf9f6; }
+
+.fuente {
+  font-family: "Cascadia Mono", Consolas, monospace;
+  font-size: .8em;
+  word-break: break-word;
+}
+
+.pill {
+  display: inline-block;
+  font-size: .7rem;
+  font-weight: 700;
+  letter-spacing: .3px;
+  text-transform: uppercase;
+  padding: .12rem .45rem;
+  border-radius: 999px;
+  vertical-align: middle;
+}
+.pill.ok { background: #d9efe0; color: #14532d; }
+.pill.pend { background: #fdf0d2; color: #6b4500; }
+.pill.no { background: #f6dcdc; color: #7f1d1d; }
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: .9rem;
+  margin: 1.2rem 0;
+}
+.tarjeta {
+  background: var(--papel);
+  border: 1px solid var(--borde);
+  border-radius: 10px;
+  padding: .9rem 1rem;
+}
+.tarjeta h3 { margin: .1rem 0 .35rem; font-size: 1rem; }
+.tarjeta p { margin: .2rem 0; font-size: .9rem; }
+.tarjeta .num {
+  font-size: .72rem;
+  font-weight: 700;
+  color: var(--acento);
+  letter-spacing: .6px;
+  text-transform: uppercase;
+}
+
+.pager {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-top: 3rem;
+  padding-top: 1.2rem;
+  border-top: 1px solid var(--borde);
+  font-size: .9rem;
+}
+.pager a { text-decoration: none; }
+
+.gate {
+  background: var(--papel);
+  border: 2px solid var(--acento);
+  border-radius: 10px;
+  padding: 1rem 1.2rem;
+  margin: 2rem 0 1rem;
+}
+.gate h3 { margin-top: 0; }
+
+.meta {
+  color: var(--tinta-suave);
+  font-size: .85rem;
+}
+
+.pie {
+  border-top: 1px solid var(--borde);
+  background: var(--papel);
+  color: var(--tinta-suave);
+  font-size: .82rem;
+  padding: 1.2rem;
+  text-align: center;
+}
+.pie a { color: var(--acento); }
+
+hr { border: 0; border-top: 1px solid var(--borde); margin: 2rem 0; }
+
+details.qa {
+  background: var(--papel);
+  border: 1px solid var(--borde);
+  border-radius: 8px;
+  padding: .6rem .9rem;
+  margin: .7rem 0;
+}
+details.qa summary {
+  cursor: pointer;
+  font-weight: 600;
+  color: #12171b;
+}
+details.qa summary:hover { color: var(--acento); }
+details.qa[open] summary { margin-bottom: .4rem; }
+details.qa .respuesta { border-left: 3px solid var(--acento); padding-left: .8rem; }
+details.qa .respuesta p { margin: .3rem 0; }
+
+@media (max-width: 600px) {
+  body { font-size: 16px; }
+  h1 { font-size: 1.65rem; }
+  main { padding: 1.2rem .9rem 3rem; }
+  .edicion { display: none; }
+}
+
+/* Páginas-tutorial ilustradas (ida_tutes/) */
+figure { margin: 1.2rem 0; text-align: center; }
+figure img {
+  max-width: 100%;
+  height: auto;
+  border: 1px solid var(--borde, #ccc);
+  border-radius: 6px;
+  box-shadow: 0 1px 4px rgba(0,0,0,.12);
+}
+.meta-tute {
+  font-size: .9rem;
+  color: var(--tenue, #666);
+  border-left: 3px solid var(--acento, #3a6);
+  padding-left: .7rem;
+  margin: .3rem 0 1rem;
+}
+pre.asm { font-size: .88rem; }
+figure img { cursor: zoom-in; }
+.lightbox-ov {
+  position: fixed; inset: 0; z-index: 9999;
+  background: rgba(0,0,0,.88);
+  display: flex; align-items: center; justify-content: center;
+  padding: 2vmin; cursor: zoom-out;
+}
+.lightbox-ov img { max-width: 98%; max-height: 98%; border-radius: 4px; box-shadow: 0 2px 24px rgba(0,0,0,.6); }
+
+@media print {
+  .lightbox-ov { display: none; }
+  .cabecera, .pie, .pager, .salto { display: none; }
+  body { background: #fff; font-size: 11pt; }
+  main { max-width: none; padding: 0; }
+  a { color: #000; text-decoration: none; }
+  pre { white-space: pre-wrap; }
+  .callout, .gate, .tarjeta { break-inside: avoid; }
+  h2 { break-after: avoid; }
+}
+
+/* --- Ampliaciones Editoriales v5.2 --- */
+.ampliacion-ext {
+  margin: 1.2rem 0;
+  padding: .85rem 1.05rem;
+  border-radius: 8px;
+  border-left: 5px solid #1d4f2a;
+  background: #eef7f0;
+}
+.nota-ed {
+  margin: 1.2rem 0;
+  padding: .85rem 1.05rem;
+  border-radius: 8px;
+  border-left: 5px solid #5b4b8a;
+  background: #f3f0fa;
+}
+.ampliacion-ext .callout-titulo, .nota-ed .callout-titulo {
+  font-weight: 700;
+  color: #12171b;
+  margin-top: .1rem !important;
+  margin-bottom: .35rem !important;
+}
+@media print {
+  .tabla { overflow-x: visible !important; }
+  table { width: 100%; table-layout: auto; word-wrap: break-word; overflow-wrap: anywhere; }
+  .ampliacion-ext, .nota-ed { break-inside: avoid; page-break-inside: avoid; }
+}
+
+
+@page {
+  size: A4;
+  margin: 18mm 16mm 20mm 16mm;
+  @bottom-center {
+    content: counter(page);
+    font-family: Helvetica, Arial, sans-serif;
+    font-size: 8pt;
+    color: #666666;
+  }
+}
+html { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+body { background: #fff; font-size: 10.5pt; line-height: 1.5; }
+main { max-width: none; padding: 0; }
+.print-sec { break-before: page; }
+.print-sec:first-of-type { break-before: auto; }
+.print-sec h1 { font-size: 20pt; margin-top: 0; }
+.print-sec h2 { font-size: 13pt; margin-top: 1.4em; }
+.print-sec h3 { font-size: 11.5pt; }
+.print-sec pre { font-size: 8.3pt; white-space: pre-wrap; break-inside: avoid; page-break-inside: avoid; }
+.print-sec pre.arbol-triage { font-size: 6.5pt; line-height: 1.17; padding: 6px 10px; margin: 4px 0; }
+.print-sec table { font-size: 8.6pt; width: 100%; table-layout: auto; word-wrap: break-word; overflow-wrap: break-word; word-break: normal; }
+.print-sec th, .print-sec td { overflow-wrap: break-word; word-break: normal; hyphens: none; }
+.print-sec td:not(:first-child) code, .print-sec th:not(:first-child) code { word-break: break-word; }
+.print-sec .tabla { overflow-x: visible !important; break-inside: avoid; page-break-inside: avoid; }
+.print-sec tr { break-inside: avoid; page-break-inside: avoid; }
+.print-sec .callout, .print-sec .gate, .print-sec details, .print-sec .ampliacion-ext, .print-sec .nota-ed { break-inside: avoid; page-break-inside: avoid; }
+.print-sec h2, .print-sec h3, .print-sec h4 { break-after: avoid; page-break-after: avoid; }
+.print-sec a { color: #000; text-decoration: none; }
+.portada-pdf { text-align: left; padding-top: 26mm; }
+.portada-pdf .kicker { color: #0b5f6b; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; font-size: 9pt; }
+.portada-pdf h1 { font-size: 34pt; line-height: 1.05; margin: .2em 0 .3em; }
+.portada-pdf .sub { font-size: 12.5pt; color: #333; max-width: 155mm; }
+.portada-pdf .aviso { border-left: 4px solid #8a1c1c; background: #fbe7e7; padding: 8pt 10pt; margin: 16pt 0; font-size: 9.5pt; }
+.toc { margin-top: 14pt; columns: 2; column-gap: 12mm; font-size: 9.8pt; }
+.toc h2 { column-span: all; border-bottom: 1px solid #999; }
+.toc ol { margin: 0; padding-left: 16pt; }
+.toc li { display: flex; align-items: baseline; gap: 5pt; margin: 2pt 0; break-inside: avoid; }
+.toc li a { flex: 1; min-width: 0; }
+.toc-pag { white-space: nowrap; font-size: 8pt; color: #444; }
+.toc .etapa { display: flex; justify-content: space-between; gap: 5pt; font-weight: 700; margin-top: 6pt; color: #0b5f6b; break-inside: avoid; }
+.toc .etapa a { color: inherit; text-decoration: none; }
+details.qa { padding: 4pt 6pt; margin: 4pt 0; }
+details.qa summary { font-size: 10pt; }
+</style></head><body><main>
+
+<section class="print-sec" id="portada-separata">
+<p style="color: #0b5f6b; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; font-size: 8.5pt; margin: 0;">Proyecto CLS · Edición 5 · Revisión 5.2 · Cuadernillo de Consulta Rápida</p>
+<h1 style="font-size: 22pt; margin: 2pt 0 6pt;">Separata de Escritorio y Referencia Rápida</h1>
+<p style="margin: 0 0 8pt; font-size: 9.8pt; color: #333;">Cuadernillo diseñado para permanecer abierto junto al teclado (abrochado a caballete o anillado fino) mientras trabajás con IDA, Ghidra, x64dbg, ILSpy o WinDbg y leés el <strong>Tomo I</strong> o el <strong>Tomo II</strong>.</p>
+
+<h2 style="font-size: 11.5pt; margin: 8pt 0 4pt; border-bottom: 1px solid #999;">Contenido de esta Separata de Escritorio</h2>
+<div class="toc" style="columns: 1; margin-top: 4pt; font-size: 9.5pt;">
+<ol style="padding-left: 14pt;">
+<li><a href="#rutas-estudio">1. Tres perfiles o rutas de estudio (Principiante, Intermedio y Avanzado)</a><span class="toc-pag" data-anchor="rutas-estudio">p. 3-4 · 2 págs.</span></li><li><a href="#arbol-triage">2. Árbol de decisión de triage inicial («¿Por dónde empiezo?») y 10 señales</a><span class="toc-pag" data-anchor="arbol-triage">p. 5-6 · 2 págs.</span></li><li><a href="#resumen-hilo">3. Mapa del Hilo Conductor (check_v1 → BlocLab) y comandos del Kit C/C++</a><span class="toc-pag" data-anchor="resumen-hilo">p. 7-8 · 2 págs.</span></li><li><a href="#hoja-1">4. Hoja de Referencia 1 · Nivel Principiante (Registros, saltos, VA/RVA, ABIs)</a><span class="toc-pag" data-anchor="hoja-1">p. 9-10 · 2 págs.</span></li><li><a href="#hoja-2">5. Hoja de Referencia 2 · Nivel Intermedio (Offsets PEB/LDR, cripto, x64dbg, Frida)</a><span class="toc-pag" data-anchor="hoja-2">p. 11-12 · 2 págs.</span></li><li><a href="#hoja-3">6. Hoja de Referencia 3 · Nivel Avanzado (C++ RTTI/SSO, CTL_CODE, IRQL, WinDbg/TTD)</a><span class="toc-pag" data-anchor="hoja-3">p. 13-14 · 2 págs.</span></li>
+</ol>
+</div>
+
+<h2 style="font-size: 11.5pt; margin: 12pt 0 4pt; border-bottom: 1px solid #999;">Índice Maestro Cruzado: Localización rápida en Tomo I, Tomo II y Edición Completa</h2>
+<div class="tabla"><table>
+<thead><tr>
+<th>Bloque / Etapa del curso</th>
+<th>Nivel principal</th>
+<th>Volumen impreso</th>
+<th>Páginas en Tomo I / II</th>
+<th>Páginas en Ed. Completa</th>
+</tr></thead><tbody>
+<tr><td><strong>Apertura y Mapa del curso</strong> (<code>00_EMPEZAR_AQUI</code>, <code>index</code>)</td><td>Todos</td><td><strong>Tomo I</strong></td><td>p. 3–13</td><td>p. 3–13</td></tr>
+<tr><td><strong>Etapa 0 · Laboratorio seguro</strong> (<code>0.1</code>)</td><td>Principiante</td><td><strong>Tomo I</strong></td><td>p. 14–20</td><td>p. 14–20</td></tr>
+<tr><td><strong>Etapa 1 · Fundamentos binarios y PE</strong> (<code>1.1–1.5</code>)</td><td>Principiante</td><td><strong>Tomo I</strong></td><td>p. 21–53</td><td>p. 21–53</td></tr>
+<tr><td><strong>Etapa 2A · Núcleo x86/x64, IDA y x64dbg</strong> (<code>2.1–2.9</code>)</td><td>Principiante</td><td><strong>Tomo I</strong></td><td>p. 54–116</td><td>p. 54–116</td></tr>
+<tr><td><strong>Etapa 2B · Ofuscación, TLS, MFC, PEB, Anti-debug, Ghidra</strong> (<code>2.10–2.16</code>)</td><td>Intermedio</td><td><strong>Tomo I</strong></td><td>p. 117–155</td><td>p. 117–155</td></tr>
+<tr><td><strong>Etapa 2C · Packers, C++ profundo, WinDbg/TTD, Diffing, Frida</strong> (<code>2.17–2.21</code>)</td><td>Interm. / Avanzado</td><td><strong>Tomo I</strong></td><td>p. 156–184</td><td>p. 156–184</td></tr>
+<tr><td><strong>Etapa 2 Optativas · Malware dinámico, Shellcode, Fuzzing</strong> (<code>2.22–2.24</code>)</td><td>Interm. / Avanzado</td><td><strong>Tomo I</strong></td><td>p. 185–194</td><td>p. 185–194</td></tr>
+<tr><td><strong>Etapa 3 · Reversing en .NET e IL</strong> (<code>3.1–3.2</code>)</td><td>Principiante</td><td><strong>Tomo I</strong></td><td>p. 195–208</td><td>p. 195–208</td></tr>
+<tr><td><strong>Etapa 4 · Método de 5 pasos, protocolos, cripto e informe</strong> (<code>4.1–4.5</code>)</td><td>Princ. / Intermedio</td><td><strong>Tomo I</strong></td><td>p. 209–241</td><td>p. 209–241</td></tr>
+<tr><td><strong>Etapa 5 · Malware estático, vulnerabilidades, automatización</strong> (<code>5.1–5.4</code>)</td><td>Interm. / Avanzado</td><td><strong>Tomo I</strong></td><td>p. 242–268</td><td>p. 242–268</td></tr>
+<tr><td><strong>Etapa 6 · Kernel y drivers KMDF/WDM en Windows</strong> (<code>6.1–6.6</code>)</td><td>Avanzado</td><td><strong>Tomo II</strong></td><td>p. 3–38</td><td>p. 269–304</td></tr>
+<tr><td><strong>Rama 2D · Windows internals y Hyper-V</strong> (<code>2D.1–2D.13</code> + Hyper-V)</td><td>Interm. / Avanzado</td><td><strong>Tomo II</strong></td><td>p. 39–119</td><td>p. 305–385</td></tr>
+<tr><td><strong>Hilo conductor multi-nivel y Kit de 5 plantillas C/C++</strong></td><td>Todos</td><td><strong>Tomo I</strong></td><td>p. 269–277</td><td>p. 386–394</td></tr>
+<tr><td><strong>Hojas de referencia rápida (Cheat Sheets 1, 2 y 3)</strong></td><td>Todos</td><td><strong>Separata y Tomo I</strong></td><td>p. 278–283</td><td>p. 395–400</td></tr>
+<tr><td><strong>Glosario, Preguntas frecuentes y Fuentes/límites</strong></td><td>Todos</td><td><strong>Tomo I</strong></td><td>p. 284–313</td><td>p. 401–430</td></tr>
+</tbody></table></div>
+</section>
+
+<section class="print-sec" id="rutas-estudio">
+<h2 id="tres-perfiles-o-rutas-de-estudio-principiante-intermedio-y-avanzado">Tres perfiles o rutas de estudio (Principiante, Intermedio y Avanzado)</h2>
+<p>Aunque el curso completo supera las 400 páginas al sumar el tronco obligatorio (Etapas 0–4), los bloques intermedio y avanzado de la Etapa 2 (2B y 2C), la rama de Windows internals (2D) y la de Kernel y drivers (Etapa 6), <strong>no hace falta leerlo de corrido de principio a fin en una sola sentada</strong>. Podés recorrerlo en tres hitos progresivos claramente delimitados según tu nivel actual y tu objetivo:</p>
+<div class="tabla"><table>
+<thead><tr>
+<th>Perfil y nivel</th>
+<th>Carga estimada</th>
+<th>Secuencia exacta de etapas y lecciones</th>
+<th>Herramientas centrales</th>
+<th>Hito práctico al cerrar el nivel</th>
+</tr></thead><tbody>
+<tr>
+<td><strong>Ruta 1 · Fundamentos Firmes</strong><br><em>(Nivel Principiante)</em></td>
+<td>~65 a 75 h</td>
+<td><span>Etapa 0</span> (0.1) &rarr; <span>Etapa 1</span> (1.1–1.5) &rarr; <span>Etapa 2A</span> (2.1–2.9) &rarr; <span>Etapa 3</span> (3.1–3.2) &rarr; <span>Etapa 4 base</span> (4.1, 4.2, 4.3 y 4.4)</td>
+<td>Visor PE (PE-bear / DIE), editor hex, IDA Free, x64dbg, ILSpy / dnSpyEx, compilador C y Python</td>
+<td>Analizar un binario propio en C y uno en .NET de punta a punta sin ver el fuente, confirmar hipótesis con breakpoints y redactar un informe reproducible.</td>
+</tr>
+<tr>
+<td><strong>Ruta 2 · Analista de Binarios y Malware Defensivo</strong><br><em>(Nivel Intermedio)</em></td>
+<td>+45 a 55 h<br><em>(acumulado ~115–130 h)</em></td>
+<td>Bloque <strong>2B</strong> (<span>2.10</span>–<span>2.16</span>) &rarr; <span>2.17</span> (Packers) &rarr; <span>2.21</span> (Scripting y Frida) &rarr; <span>4.5</span> (Formatos y protocolos) &rarr; <span>5.1</span> (Malware estático) y <span>5.3</span> (Automatización) &rarr; Optativas <span>2.22</span>, <span>2.23</span> y <span>2D.1</span>–<span>2D.5</span></td>
+<td>Ghidra, Scylla, trazas condicionales de x64dbg, Frida, IDAPython (<code>ida_typeinf</code>), <code>pefile</code>, <code>capstone</code>, YARA y Sysinternals / WinDbg básico</td>
+<td>Desempaquetar un binario UPX propio (x86/x64) hasta el OEP, recuperar strings ocultas y APIs por PEB/hash, reconstruir un formato binario propio (<code>CLSF</code>) y escribir reglas YARA e informes de persistencia.</td>
+</tr>
+<tr>
+<td><strong>Ruta 3 · Investigador de Vulnerabilidades, Internals y Kernel</strong><br><em>(Nivel Avanzado)</em></td>
+<td>+80 a 110 h<br><em>(curso completo)</em></td>
+<td>Núcleo duro de <strong>2C</strong> (<span>2.18</span> C++ profundo, <span>2.19</span> WinDbg/TTD/Heap, <span>2.20</span> Patch diffing) &rarr; <span>5.2</span> (Vulnerabilidades) &rarr; <span>2.24</span> (Fuzzing y simbólico) &rarr; <span>2D.6</span>–<span>2D.13</span> (COM/RPC/WMI/IPC/Excepciones/ETW) &rarr; <span>Etapa 6</span> (6.1–6.6, Kernel y drivers)</td>
+<td>WinDbg Preview + Time-Travel Debugging (TTD), GFlags / Page Heap, BinDiff / Diaphora / Version Tracking, OleViewDotNet, WDK / KMDF y Driver Verifier en VM descartable</td>
+<td>Reconstruir clases C++ (vtable, RTTI, SSO, excepciones x64), diagnosticar corrupciones de heap con Page Heap/TTD, aislar un parche de seguridad con diffing, auditar canales IPC/COM y revisar un driver <code>.sys</code> estática y dinámicamente.</td>
+</tr>
+</tbody></table></div>
+
+<aside class="callout nota"><p class="callout-titulo">Consejo para elegir tu punto de entrada</p><p>Si empezás desde cero, completá primero la <strong>Ruta 1</strong> sin desviarte a 2B ni a 2C cuando llegues al final de 2.9: saltar de 2.9 directo a la Etapa 3 (.NET) y a la Etapa 4 base te da una victoria real y consolida el método en la mitad de tiempo. Una vez aprobada la puerta de salida de la Etapa 4, volvé para cursar la <strong>Ruta 2</strong> y luego la <strong>Ruta 3</strong>. En cualquier nivel, acompañate con el <span>Hilo conductor multi-nivel y kit de plantillas C/C++</span> y las <span>Hojas de referencia rápida (Cheat Sheets)</span>.</p></aside>
+</section>
+<section class="print-sec" id="arbol-triage">
+<h2 id="árbol-de-decisión-de-triage-inicial-por-dónde-empiezo">Árbol de decisión de triage inicial («¿Por dónde empiezo?»)</h2>
+<p>Cuando te enfrentás a un binario desconocido (un crackme, un programa propio compilado meses atrás o un componente de laboratorio), los primeros diez minutos del <strong>Paso 2 (Inventario)</strong> definen qué herramientas abrir y a qué lección del curso acudir. Usar IDA sobre un ensamblado .NET puro o buscar strings en un binario empaquetado con UPX hace perder horas. Este árbol de decisión conecta los tres niveles del curso (Principiante, Intermedio y Avanzado) en un flujo único (y se complementa con el <span>Hilo conductor multi-nivel y kit de plantillas C/C++</span>):</p>
+
+<pre class="arbol-triage"><code class="lenguaje-text">┌────────────────────────────────────────────────────────────────────────────┐
+│ FASE 1 · CONTENEDOR, ARQUITECTURA Y RUNTIME (PE-bear / DIE · 2 minutos)    │
+└─────────────────────────────────────┬──────────────────────────────────────┘
+                                      │
+  ├─► ¿NO empieza con "MZ" / "PE\0\0"?
+  │     ├─► ¿Es archivo de datos / captura de mensajes? ──► Lección 4.5 (Formatos y protocolos)
+  │     └─► ¿Es código máquina sin cabecera (posición independiente)? ──► Lección 2.23 (Shellcode)
+  │
+  ├─► ¿Es PE32 (0x10B, 32 bits) o PE32+ (0x20B, 64 bits)? (Lecciones 1.4 y 2.5)
+  │     ├─► 32 bits (x86): argumentos en stack (cdecl/stdcall) o ECX/EDX (fastcall/thiscall);
+  │     │                  en Windows x64 corre bajo WOW64 (ver Lección 2D.2).
+  │     └─► 64 bits (x64): argumentos en RCX, RDX, R8, R9 + shadow space de 32 bytes.
+  │
+  └─► ¿Tiene cabecera CLR (.NET) o marcador ".net bundle" (hostfxr)? (Lección 3.1)
+        ├─► SÍ (IL puro, ReadyToRun "RTR\0" o Single-File Bundle):
+        │     └──► Abrirlo en ILSpy / dnSpyEx (Etapa 3: Lecciones 3.1 y 3.2).
+        └─► NO (Nativo puro o .NET Native AOT):
+              └──► Avanzar a la FASE 2.
+
+┌────────────────────────────────────────────────────────────────────────────┐
+│ FASE 2 · ENTROPÍA, SECCIONES, IMPORTS Y HUELLA DE COMPILADOR (3 minutos)   │
+└─────────────────────────────────────┬──────────────────────────────────────┘
+                                      │
+  ├─► ¿Entropía alta (> 6,8), secciones renombradas (UPX0/UPX1), permisos W+X
+  │   o primera sección con RawSize = 0 e IAT mínima (LoadLibraryA + GetProcAddress)?
+  │     ├─► SÍ: Posible PACKER (Lección 2.17).
+  │     │     ├──► En UPX x86: "ESP trick" (F8 sobre pushad + HW breakpoint en [ESP]).
+  │     │     ├──► En UPX x64: breakpoint de memoria en ejecución sobre la sección vacía.
+  │     │     └──► En el OEP: dumpear y reconstruir IAT con Scylla (si es VM comercial: ver 2.10 / 5.4).
+  │     └─► IAT casi vacía pero entropía normal:
+  │           └──► Resolución dinámica por PEB / API Hashing (Lección 2.14):
+  │                buscar lecturas de fs:[30h] / gs:[60h], recorrido de InMemoryOrderModuleList
+  │                ([rsi+20h] = DllBase en x64) y constantes de hash de 32 bits.
+  │
+  └─► ¿Qué compilador o runtime delata la huella? (Lección 2.13)
+        ├─► MSVC C/C++ (Rich header + vcruntime140.dll / ucrtbase.dll + __security_cookie):
+        │     └──► ¿Hay vtables con RTTI en vtable[-1] o __CxxFrameHandler3/4 en .pdata/.xdata?
+        │          ──► Lección 2.18 (C++ profundo: RTTI, std::string SSO, STL y excepciones).
+        ├─► MFC (mfc140u.dll o estático con CWnd/CDialog):
+        │     └──► Lección 2.12: localizar GetMessageMap() ──► AFX_MSGMAP y AFX_MSGMAP_ENTRY.
+        ├─► MinGW / GCC (msvcrt.dll + __mingw_* + sección .eh_frame, sin Rich header):
+        │     └──► Lección 2.13: ubicar main pasado a __getmainargs.
+        ├─► Delphi (recursos RCDATA con firma "TPF0", TForm/TObject):
+        │     └──► Lección 2.13: ABI register en x86 (EAX=Self, EDX, ECX) y longitud en [ptr-4].
+        ├─► Go (binario grande estático, "Go build ID", tabla pclntab):
+        │     └──► Lección 2.13: ir a main.main; recordar que string = {ptr, len} sin byte 0.
+        └─► Rust (rutas "src/main.rs", mensajes de pánico Option::unwrap, símbolos _ZN / _R):
+              └──► Lección 2.13: separar ramas de pánico del flujo principal; string = {ptr, len}.
+
+┌────────────────────────────────────────────────────────────────────────────┐
+│ FASE 3 · PRE-MAIN, OFUSCACIÓN Y ROL DEL COMPONENTE (5 minutos)             │
+└─────────────────────────────────────┬──────────────────────────────────────┘
+                                      │
+  ├─► ¿El directorio TLS (AddressOfCallBacks) tiene punteros?
+  │     └──► SÍ: Inspeccionar TLS Callbacks antes de main (Lección 2.11); suelen ejecutar
+  │          chequeos anti-debug (IsDebuggerPresent, PEB.NtGlobalFlag, NtQueryInformationProcess, 2.15).
+  │
+  ├─► ¿La ventana de Strings (Shift+F12) no muestra los mensajes esperados?
+  │     └──► Buscar cadenas UTF-16 (funciones W, Lección 2.7), cadenas armadas en el stack (mov byte)
+  │          o bucles de descifrado XOR / RC4 / ChaCha20 / AES previos al uso (Lecciones 2.10 y 4.2).
+  │
+  ├─► ¿El grafo de la función en IDA/Ghidra es un único bucle gigante con switch?
+  │     └──► Distinguir Aplanamiento de Flujo (CFF: bloques con lógica real y variable de estado)
+  │          frente a Máquina Virtual (VM: handlers genéricos leídos por VIP) (Lección 2.10).
+  │
+  └─► ¿Cuál es el rol del binario y tu objetivo de análisis?
+        ├─► Programa de consola/GUI estándar ──► Ciclo de 5 pasos de esta lección (4.1) + 2.6 / 2.7 / 2.16.
+        ├─► Servicio de Windows (StartServiceCtrlDispatcher) ──► Lección 2D.4 (Servicios).
+        ├─► Persistencia en Registro / Tareas / WMI ──► Lecciones 2D.3, 2D.5 y 2D.9.
+        ├─► Servidor o cliente COM / DCOM / RPC / Named Pipe ──► Lecciones 2D.6 a 2D.10 y 4.5.
+        ├─► Diagnóstico de crash, corrupción de heap o comparación con parche ──► Lecciones 2.19, 2.20, 2D.11 y 5.2.
+        └─► Driver de kernel (.sys, importa ntoskrnl.exe / WdfVersionBind) ──► Etapa 6 (6.1 a 6.6).</code></pre>
+
+<div class="tabla"><table>
+<thead><tr>
+<th>Nivel</th>
+<th>Señal observada en los primeros 5 minutos</th>
+<th>Qué significa (hipótesis inicial)</th>
+<th>Acción inmediata y lección de referencia</th>
+</tr></thead><tbody>
+<tr><td><strong>Principiante</strong></td><td>Imports claros (<code>scanf</code>, <code>printf</code>, <code>MessageBoxW</code>) y strings visibles en <code>.rdata</code></td><td>Binario C/C++ sin empaquetar ni ofuscar</td><td>Buscar la string clave con <code>Shift+F12</code>, saltar por xref (<code>X</code>) y aplicar el ciclo de 5 pasos (<span>2.7</span>, <span>4.1</span>).</td></tr>
+<tr><td><strong>Principiante</strong></td><td>Las strings de éxito y error están en el <strong>mismo bloque básico</strong> sin salto condicional entre ellas</td><td>Selección sin salto (<em>branchless</em>) producida por el compilador (<code>-O2</code>)</td><td>Buscar una instrucción <code>CMOVcc</code> (<code>cmovne</code>/<code>cmove</code>) que elige qué puntero de cadena pasar a <code>puts</code>/<code>printf</code> (<span>2.4</span>, <span>2.8</span>, <span>4.1</span>).</td></tr>
+<tr><td><strong>Principiante</strong></td><td>Importa <code>mscoree.dll</code> (<code>_CorExeMain</code>) o contiene metadatos <code>.NET</code> / marcador <code>.net bundle</code></td><td>Aplicación administrada .NET (IL, ReadyToRun o Single-File)</td><td>Abrir en <strong>ILSpy</strong> o <strong>dnSpyEx</strong> para leer C# e IL antes de tocar un desensamblador nativo (<span>3.1</span>, <span>3.2</span>).</td></tr>
+<tr><td><strong>Intermedio</strong></td><td>Secciones <code>UPX0</code> (<code>RawSize = 0</code>) y <code>UPX1</code> (entropía &gt; 7,5, permisos <code>W+X</code>), pocos imports</td><td>Ejecutable empaquetado con UPX</td><td>Llegar al OEP (<em>ESP trick</em> en x86 o breakpoint de memoria en ejecución sobre <code>UPX0</code> en x64), dumpear y reconstruir IAT con Scylla (<span>2.17</span>).</td></tr>
+<tr><td><strong>Intermedio</strong></td><td>Mi breakpoint en <code>main</code> nunca se alcanza, o una variable global ya llega alterada al entrar a <code>main</code></td><td>Código ejecutado antes del entry point principal</td><td>Revisar el directorio <strong>TLS (<code>AddressOfCallBacks</code>)</strong> en PE-bear/IDA y poner breakpoint en cada callback (<span>2.11</span>, <span>2.15</span>).</td></tr>
+<tr><td><strong>Intermedio</strong></td><td>Casi sin imports ni strings, pero lee <code>gs:[60h]</code> &rarr; <code>[rax+18h]</code> &rarr; <code>[rax+20h]</code> y rota enteros (<code>ror edx, 0Dh</code>)</td><td>Resolución dinámica de APIs por recorrido del PEB y <em>API hashing</em></td><td>Poner breakpoint en el <code>call reg</code> del resolvedor o cruzar constantes con listas de hashes de exportaciones (<span>2.14</span>).</td></tr>
+<tr><td><strong>Intermedio</strong></td><td>Constantes <code>0x637c777b</code> (AES), <code>"expand 32-byte k"</code> (ChaCha20) o <code>0x9E3779B9</code> (TEA) en <code>.rdata</code>/código</td><td>Transformación criptográfica estándar o cifrado de configuración/mensajes</td><td>Etiquetar la función criptográfica por su constante mágica e interceptar su entrada/salida en vez de analizar las rondas internas (<span>4.2</span>, <span>2.21</span>).</td></tr>
+<tr><td><strong>Avanzado</strong></td><td>Llamadas indirectas <code>call qword ptr [rax+18h]</code> donde <code>rax</code> proviene de <code>[rcx]</code></td><td>Despacho virtual C++ (<code>vtable</code>) o interfaz COM (<code>IUnknown</code>)</td><td>Ubicar la <code>vtable</code> en <code>.rdata</code>, leer <code>vtable[-1]</code> (<code>Complete Object Locator</code>, RVAs en x64) para recuperar el nombre de la clase (<span>2.18</span>, <span>2D.6</span>).</td></tr>
+<tr><td><strong>Avanzado</strong></td><td>El proceso muere dentro de <code>ntdll!RtlFreeHeap</code> lejos de donde ocurrió el error real</td><td>Corrupción de heap previa (desborde, <em>use-after-free</em> o <em>double free</em>)</td><td>Activar <strong>Full Page Heap</strong> (<code>gflags /p /enable app.exe /full</code>) o grabar traza <strong>TTD</strong> en WinDbg y retroceder con <code>ba w4</code> + <code>g-</code> (<span>2.19</span>).</td></tr>
+<tr><td><strong>Avanzado</strong></td><td>Archivo <code>.sys</code> que importa <code>WdfVersionBind</code> y registra <code>EvtIoDeviceControl</code></td><td>Driver de modo kernel basado en KMDF</td><td>Desglosar cada constante <code>CTL_CODE</code> del <code>switch</code> (DeviceType, Access, Function, Method), revisar <code>SDDL</code> y auditar tamaños mínimos y usos de <code>METHOD_NEITHER</code> (<span>6.2</span>, <span>6.4</span>).</td></tr>
+</tbody></table></div>
+</section>
+
+<section class="print-sec" id="resumen-hilo">
+<h2>Mapa del Hilo Conductor Multi-Nivel (<code>check_v1</code> &rarr; <code>check_v2</code> &rarr; <code>BlocLab</code>)</h2>
+<p>La misma regla de negocio —aceptar dos enteros <code>a &lt;= 50</code> (<code>0x32</code>), <code>b &gt;= 50</code> (<code>0x32</code>) tales que <code>(a + b) * 4 == 480</code> (<code>0x1E0</code>)— recorre los tres niveles del curso. El código fuente completo está en el <strong>Tomo I</strong> (<em>Hilo conductor y plantillas C/C++</em>) y en la carpeta <code>plantillas_codigo/</code>:</p>
+<div class="tabla"><table>
+<thead><tr>
+<th>Estadio y Nivel</th>
+<th>Qué agrega sobre el binario anterior</th>
+<th>Qué ves en IDA / Ghidra / x64dbg / WinDbg</th>
+<th>Lecciones que conecta</th>
+</tr></thead><tbody>
+<tr>
+<td><strong>Estadio 1 · Principiante</strong><br><code>check_v1_O0.exe</code> vs <code>check_v1_O2.exe</code></td>
+<td>Compilación en C puro sin optimizar (<code>/Od</code>) frente a optimizada (<code>/O2</code>).</td>
+<td>En <code>/Od</code>: variables en stack y 2 saltos condicionales. En <code>/O2</code>: argumentos directo en <code>ECX</code>/<code>EDX</code>, <code>lea eax, [rcx+rdx]</code>, <code>cmp eax, 78h</code> (<code>480/4 = 120</code>) y selección sin salto (<code>cmove rcx, rdx</code>).</td>
+<td>1.5, 2.4, 2.5, 2.7, 2.8, 4.1</td>
+</tr>
+<tr>
+<td><strong>Estadio 2 · Intermedio</strong><br><code>check_v2.exe</code> + <code>parser_clsf.exe</code></td>
+<td><strong>TLS Callback</strong> anti-debug antes de <code>main</code>, string cifrada con <code>XOR 0x5A</code>, empaquetado UPX y archivo binario <code>.clsf</code> (12B header + body).</td>
+<td>Con debugger sin ocultar, el TLS callback cambia <code>g_objetivo = 999</code> antes de <code>main</code>. La string <code>"Correcto"</code> no aparece en <code>.rdata</code>; se descifra en el stack antes de <code>puts</code>.</td>
+<td>2.10, 2.11, 2.14, 2.15, 2.17, 2.21, 4.2, 4.5</td>
+</tr>
+<tr>
+<td><strong>Estadio 3 · Avanzado</strong><br><code>cpp_fh4.exe</code> + <code>heap_bug_v1.exe</code> + <code>pipe_server_min.exe</code></td>
+<td>Herencia múltiple C++ (<code>ValidadorBloc</code>), <code>std::string</code> SSO, excepciones x64, bug de heap (20B en bloque de 16B), Named Pipe y despacho IOCTL en KMDF.</td>
+<td>Ajuste de <code>this</code> (<code>add rcx, 10h</code>), umbral SSO (<code>cmp [rcx+18h], 10h</code>), <code>!heap -p -a</code> con Page Heap / <code>g-</code> en TTD, protocolo <code>\\.\pipe\BlocLabPipe</code> y tabla <code>CTL_CODE</code>.</td>
+<td>2.18, 2.19, 2.20, 5.2, 2D.6–2D.10, 6.2, 6.4</td>
+</tr>
+</tbody></table></div>
+
+<h2>Referencia rápida de compilación y prueba del Kit de 5 Plantillas C/C++</h2>
+<div class="tabla"><table>
+<thead><tr>
+<th>Archivo en <code>plantillas_codigo/</code></th>
+<th>Comando de compilación (MSVC / MinGW-w64)</th>
+<th>Objetivo de práctica y comando de verificación</th>
+</tr></thead><tbody>
+<tr>
+<td><strong>1. <code>check_evolucion.c</code></strong><br><em>(Principiante e Intermedio)</em></td>
+<td><code>cl /Zi /Od check_evolucion.c /Fe:check_v1_O0.exe</code><br><code>cl /Zi /O2 check_evolucion.c /Fe:check_v1_O2.exe</code><br><code>cl /Zi /O1 /DMODO_INTERMEDIO check_evolucion.c /Fe:check_v2.exe</code></td>
+<td>Comparar grafo con/sin <code>CMOVcc</code> en IDA (2.8/4.1); inspeccionar directorio TLS en PE-bear y frenar en <code>tls_antidebug</code> antes de <code>main</code> (2.11/2.15). Par válido: <code>40 80</code>.</td>
+</tr>
+<tr>
+<td><strong>2. <code>cpp_rtti_sso.cpp</code></strong><br><em>(Avanzado · C++ x64)</em></td>
+<td><code>cl /EHsc /GR /Zi /O1 cpp_rtti_sso.cpp /Fe:cpp_fh4.exe</code><br><code>cl /EHsc /GR /Zi /O1 /d2FH4- cpp_rtti_sso.cpp /Fe:cpp_fh3.exe</code></td>
+<td>Localizar las 2 vtables de <code>ValidadorBloc</code>, leer <code>vtable[-1]</code> (RTTI), distinguir string SSO (<code>&lt; 16B</code>) de heap (<code>&gt;= 16B</code>) y comparar <code>__CxxFrameHandler4</code> vs <code>FH3</code> en <code>.pdata/.xdata</code> (2.18).</td>
+</tr>
+<tr>
+<td><strong>3. <code>heap_bug.c</code></strong><br><em>(Avanzado · WinDbg y Diffing)</em></td>
+<td><code>cl /Zi /O1 heap_bug.c /Fe:heap_bug_v1.exe</code><br><code>cl /Zi /O1 /DPARCHE_SEGURO heap_bug.c /Fe:heap_bug_v2.exe</code></td>
+<td>Activar Page Heap: <code>gflags /p /enable heap_bug_v1.exe /full</code>, correr con 20 <code>A</code>s en WinDbg y ejecutar <code>!heap -p -a @rcx</code> (2.19). Comparar <code>v1</code> vs <code>v2</code> en Diaphora/BinDiff (2.20).</td>
+</tr>
+<tr>
+<td><strong>4. <code>parser_clsf.c</code></strong><br><em>(Intermedio · Formatos y Fuzzing)</em></td>
+<td><code>cl /Zi /O1 parser_clsf.c /Fe:parser_clsf.exe</code><br>Generar muestra: <code>parser_clsf.exe --gen muestra_A.clsf</code></td>
+<td>Reconstruir la cabecera de 12 bytes (<code>magic "CLSF"</code>, <code>version</code>, <code>flags</code>, <code>hdr_len=12</code>, <code>body_len</code>, <code>seq_id</code>) viendo cómo acota cada campo en el desensamblado (4.5 y 2.24).</td>
+</tr>
+<tr>
+<td><strong>5. <code>pipe_server_min.c</code></strong><br><em>(Intermedio/Avanzado · IPC)</em></td>
+<td><code>cl /Zi /O1 pipe_server_min.c /Fe:pipe_server_min.exe</code></td>
+<td>Inspeccionar flags de <code>CreateNamedPipeW</code> (<code>PIPE_REJECT_REMOTE_CLIENTS</code>) y la máquina de estados en <code>\\.\pipe\BlocLabPipe</code> (4.5 y 2D.10).</td>
+</tr>
+</tbody></table></div>
+</section>
+
+<section class="print-sec" id="hoja-1"><h2 id="hoja-1-nivel-principiante-etapas-0-1-2a-3-y-4-base">Hoja 1 · Nivel Principiante (Etapas 0, 1, 2A, 3 y 4 base)</h2>
+
+<h3 id="1-1-registros-x64-x86-y-regla-de-solapamiento-lección-2-1">1.1 Registros x64 / x86 y regla de solapamiento (Lección 2.1)</h3>
+<div class="tabla"><table>
+<thead><tr>
+<th>64 bits</th>
+<th>32 bits</th>
+<th>16 bits</th>
+<th>8 bits (alto / bajo)</th>
+<th>Uso convencional en Windows x64 / x86</th>
+<th>Preservación (ABI x64)</th>
+</tr></thead><tbody>
+<tr><td><code>RAX</code></td><td><code>EAX</code></td><td><code>AX</code></td><td><code>AH</code> / <code>AL</code></td><td>Valor de retorno entero o puntero; acumulador aritmético</td><td>Volátil (lo pisa la función llamada)</td></tr>
+<tr><td><code>RCX</code></td><td><code>ECX</code></td><td><code>CX</code></td><td><code>CH</code> / <code>CL</code></td><td><strong>1.er argumento en x64</strong>; <code>this</code> en MSVC; contador de turnos/bucles</td><td>Volátil</td></tr>
+<tr><td><code>RDX</code></td><td><code>EDX</code></td><td><code>DX</code></td><td><code>DH</code> / <code>DL</code></td><td><strong>2.º argumento en x64</strong>; parte alta en <code>MUL</code>/<code>DIV</code></td><td>Volátil</td></tr>
+<tr><td><code>RBX</code></td><td><code>EBX</code></td><td><code>BX</code></td><td><code>BH</code> / <code>BL</code></td><td>Registro general preservado (suele guardar punteros o variables de bucle)</td><td><strong>No volátil</strong> (debe restaurarse)</td></tr>
+<tr><td><code>RSP</code></td><td><code>ESP</code></td><td><code>SP</code></td><td><code>SPL</code></td><td>Puntero al tope actual del stack (crece hacia direcciones menores)</td><td><strong>No volátil</strong> (alineado a 16B antes de <code>CALL</code>)</td></tr>
+<tr><td><code>RBP</code></td><td><code>EBP</code></td><td><code>BP</code></td><td><code>BPL</code></td><td>Puntero de marco de función (en x86: argumentos en <code>[ebp+8...]</code>, locales en <code>[ebp-...]</code>)</td><td><strong>No volátil</strong></td></tr>
+<tr><td><code>RSI</code> / <code>RDI</code></td><td><code>ESI</code> / <code>EDI</code></td><td><code>SI</code> / <code>DI</code></td><td><code>SIL</code> / <code>DIL</code></td><td>Origen y destino en operaciones de bloques (<code>rep movsb</code>); variables locales</td><td><strong>No volátiles</strong> en Windows</td></tr>
+<tr><td><code>R8</code>, <code>R9</code></td><td><code>R8D</code>, <code>R9D</code></td><td><code>R8W</code>, <code>R9W</code></td><td><code>R8B</code>, <code>R9B</code></td><td><strong>3.er y 4.º argumento entero/puntero en x64</strong></td><td>Volátiles</td></tr>
+<tr><td><code>R10</code>, <code>R11</code></td><td><code>R10D</code>, <code>R11D</code></td><td><code>R10W</code>, <code>R11W</code></td><td><code>R10B</code>, <code>R11B</code></td><td>Temporales de llamada / <code>syscall</code></td><td>Volátiles</td></tr>
+<tr><td><code>R12</code>–<code>R15</code></td><td><code>R12D</code>–<code>R15D</code></td><td><code>R12W</code>–<code>R15W</code></td><td><code>R12B</code>–<code>R15B</code></td><td>Registros de propósito general de larga vida en la función</td><td><strong>No volátiles</strong></td></tr>
+</tbody></table></div>
+<p><strong>Regla de oro en x64:</strong> Escribir en un subregistro de <strong>32 bits</strong> (p. ej. <code>mov eax, 1</code>) <strong>pone en cero los 32 bits superiores</strong> de <code>RAX</code>. Escribir en <strong>16 u 8 bits</strong> (<code>ax</code>, <code>al</code>) <strong>conserva intactos</strong> los bits restantes.</p>
+
+<h3 id="1-2-flags-y-saltos-condicionales-tras-cmp-op1-op2-lección-2-4">1.2 Flags y saltos condicionales tras <code>CMP op1, op2</code> (Lección 2.4)</h3>
+<div class="tabla"><table>
+<thead><tr>
+<th>Relación lógica (<code>op1</code> vs <code>op2</code>)</th>
+<th>Salto SIN signo (<code>unsigned</code> / direcciones)</th>
+<th>Salto CON signo (<code>int</code> / complemento a 2)</th>
+<th>Condición exacta en los flags (<code>EFLAGS</code>)</th>
+</tr></thead><tbody>
+<tr><td>Igual (<code>op1 == op2</code>) / Cero</td><td><code>JE</code> / <code>JZ</code></td><td><code>JE</code> / <code>JZ</code></td><td><code>ZF = 1</code> (tras <code>test eax, eax</code>: salta si <code>eax == 0</code>)</td></tr>
+<tr><td>Distinto (<code>op1 != op2</code>) / No cero</td><td><code>JNE</code> / <code>JNZ</code></td><td><code>JNE</code> / <code>JNZ</code></td><td><code>ZF = 0</code></td></tr>
+<tr><td>Mayor estricto (<code>op1 &gt; op2</code>)</td><td><code>JA</code> / <code>JNBE</code> (<em>Above</em>)</td><td><code>JG</code> / <code>JNLE</code> (<em>Greater</em>)</td><td>Sin signo: <code>CF = 0 y ZF = 0</code> · Con signo: <code>ZF = 0 y SF == OF</code></td></tr>
+<tr><td>Mayor o igual (<code>op1 &gt;= op2</code>)</td><td><code>JAE</code> / <code>JNB</code> / <code>JNC</code></td><td><code>JGE</code> / <code>JNL</code></td><td>Sin signo: <code>CF = 0</code> · Con signo: <code>SF == OF</code></td></tr>
+<tr><td>Menor estricto (<code>op1 &lt; op2</code>)</td><td><code>JB</code> / <code>JNAE</code> / <code>JC</code> (<em>Below</em>)</td><td><code>JL</code> / <code>JNGE</code> (<em>Less</em>)</td><td>Sin signo: <code>CF = 1</code> · Con signo: <code>SF != OF</code></td></tr>
+<tr><td>Menor o igual (<code>op1 &lt;= op2</code>)</td><td><code>JBE</code> / <code>JNA</code></td><td><code>JLE</code> / <code>JNG</code></td><td>Sin signo: <code>CF = 1 o ZF = 1</code> · Con signo: <code>ZF = 1 o SF != OF</code></td></tr>
+</tbody></table></div>
+
+<h3 id="1-3-conversión-va-rva-file-offset-y-convenciones-de-llamada-lecciones-1-2-1-4-y-2-5">1.3 Conversión VA &harr; RVA &harr; File Offset y convenciones de llamada (Lecciones 1.2, 1.4 y 2.5)</h3>
+<pre><code class="lenguaje-text">RVA         = VA_en_memoria - ImageBase_actual
+File Offset = RVA - VirtualAddress_sección + PointerToRawData_sección
+VA_en_IDA   = Base_en_IDA + (VA_en_x64dbg - Base_en_x64dbg)   [Sincronización rápida con ASLR]</code></pre>
+<div class="tabla"><table>
+<thead><tr>
+<th>Convención</th>
+<th>Arquitectura</th>
+<th>Dónde van los primeros argumentos</th>
+<th>Quién limpia el stack</th>
+<th>Detalle clave en el desensamblado</th>
+</tr></thead><tbody>
+<tr><td><code>cdecl</code></td><td>x86 (32 bits)</td><td>Todos en el stack (de derecha a izquierda; el 1.º en <code>[esp+4]</code> tras <code>call</code>)</td><td>El <strong>llamador</strong> (<code>add esp, N</code> después del <code>call</code>)</td><td>Permite funciones variádicas (<code>printf</code>, <code>scanf</code>).</td></tr>
+<tr><td><code>stdcall</code></td><td>x86 (32 bits)</td><td>Todos en el stack (de derecha a izquierda)</td><td>La <strong>función llamada</strong> (<code>ret N</code>, p. ej. <code>ret 10h</code> = 4 args)</td><td>Estándar de la API Win32 de 32 bits (<code>MessageBoxA</code>, <code>WindowProc</code>).</td></tr>
+<tr><td><code>fastcall</code></td><td>x86 (32 bits)</td><td>1.º en <code>ECX</code>, 2.º en <code>EDX</code>; del 3.º en adelante en el stack</td><td>La función llamada (<code>ret N</code> para los del stack)</td><td>En <strong>Delphi x86 (<code>register</code>)</strong>: 1.º <code>EAX</code>, 2.º <code>EDX</code>, 3.º <code>ECX</code> (2.13).</td></tr>
+<tr><td><code>thiscall</code></td><td>x86 (MSVC)</td><td>Puntero <code>this</code> en <code>ECX</code>; argumentos explícitos en el stack</td><td>La función llamada (<code>ret N</code>)</td><td>En GCC/MinGW x86, <code>this</code> se apila como 1.er argumento oculto en el stack.</td></tr>
+<tr><td><strong>Microsoft x64</strong></td><td>x64 (64 bits)</td><td>1.º <code>RCX</code> (o <code>XMM0</code>), 2.º <code>RDX</code> (<code>XMM1</code>), 3.º <code>R8</code> (<code>XMM2</code>), 4.º <code>R9</code> (<code>XMM3</code>); 5.º+ en <code>[rsp+20h]</code></td><td>El llamador (reserva marco fijo en su prólogo y libera en el epílogo)</td><td>El llamador reserva siempre <strong>32 bytes (<code>0x20</code>) de <em>Shadow Space</em></strong> en <code>[rsp+8..rsp+20h]</code> tras el <code>call</code>.</td></tr>
+</tbody></table></div>
+
+</section>
+<section class="print-sec" id="hoja-2">
+
+<h2 id="hoja-2-nivel-intermedio-etapas-2b-2-17-2-21-4-2-4-5-5-1-5-3-y-2d-1-2d-5">Hoja 2 · Nivel Intermedio (Etapas 2B, 2.17, 2.21, 4.2, 4.5, 5.1, 5.3 y 2D.1–2D.5)</h2>
+
+<h3 id="2-1-offsets-de-peb-peb-ldr-data-y-ldr-data-table-entry-lecciones-2-14-2-15-y-2d-2">2.1 Offsets de <code>PEB</code>, <code>PEB_LDR_DATA</code> y <code>LDR_DATA_TABLE_ENTRY</code> (Lecciones 2.14, 2.15 y 2D.2)</h3>
+<div class="tabla"><table>
+<thead><tr>
+<th>Estructura / Campo</th>
+<th>x86 (32 bits)</th>
+<th>x64 (64 bits)</th>
+<th>Desde <code>InMemoryOrderLinks</code> (x86 / x64)</th>
+<th>Para qué lo usa el binario o el analista</th>
+</tr></thead><tbody>
+<tr><td>Puntero al <code>TEB</code> / al <code>PEB</code></td><td><code>fs:[0x18]</code> / <code>fs:[0x30]</code></td><td><code>gs:[0x30]</code> / <code>gs:[0x60]</code></td><td>—</td><td>Punto de partida de resolución de APIs y chequeos anti-debug</td></tr>
+<tr><td><code>PEB.BeingDebugged</code> (1 byte)</td><td><code>+0x02</code></td><td><code>+0x02</code></td><td>—</td><td>Leído por <code>IsDebuggerPresent()</code> (<code>1</code> si hay debugger user-mode)</td></tr>
+<tr><td><code>PEB.Ldr</code> (<code>PEB_LDR_DATA*</code>)</td><td><code>+0x0C</code></td><td><code>+0x18</code></td><td>—</td><td>Encabezado de las 3 listas circulares de DLLs cargadas</td></tr>
+<tr><td><code>PEB.ProcessParameters</code></td><td><code>+0x10</code></td><td><code>+0x20</code></td><td>—</td><td>Contiene <code>ImagePathName</code> y <code>CommandLine</code></td></tr>
+<tr><td><code>PEB.NtGlobalFlag</code> (<code>DWORD</code>)</td><td><code>+0x68</code></td><td><code>+0xBC</code></td><td>—</td><td>Vale <code>0x70</code> si el proceso fue creado por un debugger sin Page Heap</td></tr>
+<tr><td><code>Ldr.InLoadOrderModuleList</code></td><td><code>+0x0C</code></td><td><code>+0x10</code></td><td>—</td><td>Lista en orden de carga (<code>Flink</code> apunta a <code>+0x00</code> del entry)</td></tr>
+<tr><td><code>Ldr.InMemoryOrderModuleList</code></td><td><code>+0x14</code></td><td><code>+0x20</code></td><td>—</td><td>Lista más usada en shellcode/PEB walk (<code>Flink</code> apunta a <code>+0x08</code>/<code>+0x10</code>)</td></tr>
+<tr><td><strong><code>LDR_DATA_TABLE_ENTRY</code><br><code>.DllBase</code></strong></td><td><strong><code>+0x18</code></strong></td><td><strong><code>+0x30</code></strong></td><td><strong><code>+0x10</code> (x86) / <code>+0x20</code> (x64)</strong></td><td>Base de la DLL en memoria (cabecera <code>MZ</code> para ir a la tabla de Exports)</td></tr>
+<tr><td><code>LDR_DATA_TABLE_ENTRY</code><br><code>.FullDllName</code></td><td><code>+0x24</code></td><td><code>+0x48</code></td><td><code>+0x1C</code> (x86) / <code>+0x38</code> (x64)</td><td><code>UNICODE_STRING</code> con la ruta completa de la DLL</td></tr>
+<tr><td><code>LDR_DATA_TABLE_ENTRY</code><br><code>.BaseDllName</code></td><td><code>+0x2C</code></td><td><code>+0x58</code></td><td><code>+0x24</code> (x86) / <code>+0x48</code> (x64)</td><td><code>UNICODE_STRING</code> con el nombre corto (p. ej. <code>kernel32.dll</code>; buffer en <code>+4</code>/<code>+8</code>)</td></tr>
+</tbody></table></div>
+
+<h3 id="2-2-constantes-mágicas-de-criptografía-hashing-y-encoding-lección-4-2">2.2 Constantes mágicas de criptografía, hashing y encoding (Lección 4.2)</h3>
+<div class="tabla"><table>
+<thead><tr>
+<th>Algoritmo</th>
+<th>Constantes / Bytes característicos en memoria o en instrucciones</th>
+<th>Patrón estructural en el código desensamblado</th>
+</tr></thead><tbody>
+<tr><td><strong>AES (Rijndael)</strong></td><td>S-box: <code>63 7C 77 7B F2 6B 6F C5...</code> · Rcon: <code>01 02 04 08 10 20 40 80 1B 36</code></td><td>Tablas de 256 bytes (o T-tables de 1 KB) o instrucciones nativas <code>aesenc</code> / <code>aesdec</code> / <code>aeskeygenassist</code>.</td></tr>
+<tr><td><strong>ChaCha20 / Salsa20</strong></td><td>ASCII <code>"expand 32-byte k"</code> (<code>0x61707865, 0x3320646e, 0x79622d32, 0x6b206574</code>)</td><td>Sin tablas; estado de 16 <code>DWORD</code>s (64B) y 20 rondas ARX (<code>add</code>, <code>xor</code>, <code>rol</code> de <strong>16, 12, 8 y 7 bits</strong>).</td></tr>
+<tr><td><strong>RC4</strong></td><td>Sin constantes fijas; arreglo <code>S[256]</code> inicializado con <code>0x00..0xFF</code></td><td>Dos bucles de 256 iteraciones (KSA con módulo <code>&amp; 0xFF</code> e intercambio de bytes + PRGA con <code>xor</code> al flujo).</td></tr>
+<tr><td><strong>TEA / XTEA</strong></td><td>Delta áureo: <code>0x9E3779B9</code> (o resta de <code>0x61C88647</code>); suma inicial <code>0xC6EF3720</code> (32 rondas)</td><td>Bucle de 32 o 64 iteraciones que combina <code>(v &lt;&lt; 4) ^ (v &gt;&gt; 5)</code> y suma el delta en cada vuelta.</td></tr>
+<tr><td><strong>MD5 / SHA-1</strong></td><td>IV: <code>0x67452301</code>, <code>0xEFCDAB89</code>, <code>0x98BADCFE</code>, <code>0x10325476</code> (+ <code>0xC3D2E1F0</code> en SHA-1)</td><td>Procesamiento en bloques de 64 bytes (64 pasos en MD5; 80 pasos con rotaciones en SHA-1).</td></tr>
+<tr><td><strong>SHA-256</strong></td><td>IV: <code>0x6A09E667</code>, <code>0xBB67AE85</code>, <code>0x3C6EF372</code>, <code>0xA54FF53A...</code> · <code>K[0] = 0x428A2F98</code></td><td>Tabla <code>K[64]</code> de 64 <code>DWORD</code>s y 64 rondas sobre 8 registros de estado (<code>a..h</code>).</td></tr>
+<tr><td><strong>CRC32</strong></td><td>Polinomio reflejado: <code>0xEDB88320</code> (segunda entrada de tabla: <code>0x77073096</code>), IV <code>0xFFFFFFFF</code></td><td>Bucle por byte con <code>crc = (crc &gt;&gt; 8) ^ tabla[(crc ^ byte) &amp; 0xFF]</code> y <code>not crc</code> al final.</td></tr>
+<tr><td><strong>Base64</strong></td><td>Tabla de 64 caracteres <code>"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"</code> y <code>'='</code></td><td>Toma grupos de 3 bytes (24 bits) y los divide en 4 índices de 6 bits (<code>&gt;&gt; 18</code>, <code>&gt;&gt; 12</code>, <code>&gt;&gt; 6</code>, <code>&amp; 0x3F</code>).</td></tr>
+</tbody></table></div>
+
+<h3 id="2-3-expresiones-de-x64dbg-scripting-y-frida-lecciones-2-6-y-2-21">2.3 Expresiones de x64dbg, scripting y Frida (Lecciones 2.6 y 2.21)</h3>
+<pre><code class="lenguaje-text"># Breakpoint condicional universal (x86/x64) en WindowProc para botón ID 0x13A (WM_COMMAND = 0x111):
+breakif:  arg.get(1) == 0x111 &amp;&amp; (arg.get(2) &amp; 0xFFFF) == 0x13A
+log:      "WM_COMMAND control={arg.get(2)&amp;0xFFFF} notif={arg.get(2)&gt;&gt;16} hwnd={arg.get(0)}"
+
+# Formateadores de log sin detener la ejecución (Break Condition = 0) en x64dbg:
+ASCII: {s:rcx}   |   UTF-16: {utf16@rcx}   |   Bytes hex: {mem;16@rcx}   |   Retorno: {rax}
+
+# Plantilla mínima de Frida (guardar como hook.js y correr: frida -f app.exe -l hook.js):
+const addr = DebugSymbol.fromName("CreateFileW").address; // o base.add(0x1420)
+Interceptor.attach(addr, {
+  onEnter(args) { this.path = args[0].readUtf16String(); },
+  onLeave(retval) { console.log("CreateFileW:", this.path, "-&gt; handle:", retval); }
+});</code></pre>
+
+</section>
+<section class="print-sec" id="hoja-3">
+
+<h2 id="hoja-3-nivel-avanzado-etapas-2-18-2-20-2-24-5-2-2d-6-2d-13-y-etapa-6">Hoja 3 · Nivel Avanzado (Etapas 2.18–2.20, 2.24, 5.2, 2D.6–2D.13 y Etapa 6)</h2>
+
+<h3 id="3-1-layout-en-memoria-de-c-en-msvc-x64-rtti-sso-stl-y-excepciones-lección-2-18">3.1 Layout en memoria de C++ en MSVC x64: RTTI, SSO, STL y excepciones (Lección 2.18)</h3>
+<div class="tabla"><table>
+<thead><tr>
+<th>Estructura C++ (MSVC x64 Release)</th>
+<th>Tamaño total</th>
+<th>Desplazamientos y campos internos</th>
+<th>Cómo reconocerla en el listado</th>
+</tr></thead><tbody>
+<tr><td><strong>Objeto con métodos virtuales + RTTI</strong></td><td><code>8B + campos</code></td><td><code>+0x00</code>: <code>vptr</code> (apunta a <code>vtable[0]</code> en <code>.rdata</code>). En <strong><code>vtable[-1]</code></strong> (<code>[vptr - 8]</code>) hay un puntero a <code>_RTTICompleteObjectLocator</code>: <code>+0x00 signature (1)</code>, <code>+0x04 offset</code>, <code>+0x0C pTypeDescriptor (RVA)</code>, <code>+0x10 pClassDescriptor (RVA)</code>, <code>+0x14 pSelf (RVA)</code>.</td><td>Llamada <code>mov rax, [rcx] ; call qword ptr [rax + 8*i]</code>. Sumar <code>ImageBase</code> a <code>pTypeDescriptor</code> lleva a <code>".?AVNombreClase@@"</code>.</td></tr>
+<tr><td><strong><code>std::string</code> (SSO)</strong></td><td><code>32 bytes</code> (<code>0x20</code>)</td><td><code>+0x00..+0x0F</code>: unión <code>_Bx</code> (16B buffer local <code>_Buf</code> si <code>_Myres &lt; 16</code>, o puntero <code>_Ptr</code> de 8B en <code>+0x00</code> si <code>_Myres &gt;= 16</code>) · <code>+0x10</code>: <code>_Mysize</code> (8B) · <code>+0x18</code>: <code>_Myres</code> (8B, capacidad).</td><td>Comparación <code>cmp qword ptr [rcx+18h], 10h</code> seguida de un <code>cmovae rcx, [rcx]</code> antes de leer los caracteres.</td></tr>
+<tr><td><strong><code>std::wstring</code> (SSO UTF-16)</strong></td><td><code>32 bytes</code> (<code>0x20</code>)</td><td>Igual layout de 32B, pero cada carácter ocupa 2 bytes: el umbral de SSO es <code>_Myres &lt; 8</code> caracteres (<code>cmp [rcx+18h], 8</code>).</td><td><code>cmp qword ptr [rcx+18h], 8</code> antes de elegir entre buffer inline y puntero <code>_Ptr</code>.</td></tr>
+<tr><td><strong><code>std::vector&lt;T&gt;</code></strong></td><td><code>24 bytes</code> (<code>0x18</code>)</td><td><code>+0x00</code>: <code>_Myfirst</code> (inicio) · <code>+0x08</code>: <code>_Mylast</code> (fin de usados) · <code>+0x10</code>: <code>_Myend</code> (fin de reserva).</td><td>Cantidad de elementos = <code>(_Mylast - _Myfirst) / sizeof(T)</code>; bucle que itera desde <code>[rcx]</code> hasta <code>[rcx+8]</code>.</td></tr>
+<tr><td><strong>Excepciones x64 (<code>.pdata</code> / <code>.xdata</code>)</strong></td><td>12B por entrada <code>.pdata</code></td><td><code>RUNTIME_FUNCTION</code>: 3 RVAs de 4B (<code>BeginAddress</code>, <code>EndAddress</code>, <code>UnwindData</code>). En <code>.xdata</code>, el handler apunta a <code>__CxxFrameHandler3</code> (<code>FuncInfo</code> con firma <code>0x19930520</code>) o <code>__CxxFrameHandler4</code> (<code>FuncInfo4</code> comprimido en VS 2019 16.3+/2022).</td><td>No hay cadena <code>FS:[0]</code> en el prólogo x64; las tablas viven fuera del flujo de código en <code>.pdata</code> y <code>.xdata</code>.</td></tr>
+</tbody></table></div>
+
+<h3 id="3-2-desglose-de-ctl-code-32-bits-y-métodos-de-ioctl-en-drivers-kmdf-wdm-lecciones-6-2-y-6-4">3.2 Desglose de <code>CTL_CODE</code> (32 bits) y métodos de IOCTL en drivers KMDF/WDM (Lecciones 6.2 y 6.4)</h3>
+<pre><code class="lenguaje-text"> 31                  16 15    14 13                   2 1      0
+┌──────────────────────┬────────┬──────────────────────┬────────┐
+│   DeviceType (16b)   │ Access │    Function (12b)    │ Method │
+│ 0x8000+ = fabricante │  (2b)  │  0x800+ = fabricante │  (2b)  │
+└──────────────────────┴────────┴──────────────────────┴────────┘
+Fórmula: (DeviceType &lt;&lt; 16) | (Access &lt;&lt; 14) | (Function &lt;&lt; 2) | Method
+  Access: 0 = FILE_ANY_ACCESS | 1 = FILE_READ_DATA | 2 = FILE_WRITE_DATA | 3 = READ | WRITE
+  Method: 0 = METHOD_BUFFERED (SystemBuffer compartido; seguro salvo punteros embebidos)
+          1 = METHOD_IN_DIRECT  (entrada en SystemBuffer; 2.º buffer en Irp-&gt;MdlAddress p/lectura)
+          2 = METHOD_OUT_DIRECT (entrada en SystemBuffer; 2.º buffer en Irp-&gt;MdlAddress p/escritura)
+          3 = METHOD_NEITHER    (Type3InputBuffer y UserBuffer son punteros crudos de user-mode;
+                                 exige EvtIoInCallerContext + ProbeAndLock + captura única)</code></pre>
+
+<h3 id="3-3-niveles-de-irql-y-comandos-esenciales-de-windbg-lecciones-2-19-2d-2-2d-11-6-1-y-6-3">3.3 Niveles de <code>IRQL</code> y comandos esenciales de WinDbg (Lecciones 2.19, 2D.2, 2D.11, 6.1 y 6.3)</h3>
+<div class="tabla"><table>
+<thead><tr>
+<th>IRQL</th>
+<th>Contexto típico de ejecución</th>
+<th>Memoria permitida</th>
+<th>Sincronización y esperas permitidas</th>
+</tr></thead><tbody>
+<tr><td><code>PASSIVE_LEVEL (0)</code></td><td>Hilos de usuario, <code>DriverEntry</code>, <code>EvtDriverDeviceAdd</code>, mayoría de callbacks de archivos/registro</td><td><code>PagedPool</code> y <code>NonPagedPoolNx</code></td><td>Puede esperar (<code>KeWaitForSingleObject</code> con timeout != 0), usar mutexes/eventos y tocar código/datos paginables.</td></tr>
+<tr><td><code>APC_LEVEL (1)</code></td><td>Regiones críticas / Guarded mutexes (<code>Fast Mutex</code>)</td><td><code>PagedPool</code> y <code>NonPagedPoolNx</code></td><td>APCs normales de hilo deshabilitadas; page faults aún permitidos.</td></tr>
+<tr><td><code>DISPATCH_LEVEL (2)</code></td><td>DPCs (<code>EvtInterruptDpc</code>), código bajo <code>KSPIN_LOCK</code> (<code>KeAcquireSpinLock</code>)</td><td><strong>Solo <code>NonPagedPoolNx</code></strong> (tocar memoria paginada = bugcheck <code>0x0A</code> / <code>0xD1</code>)</td><td><strong>Prohibido esperar</strong> con intervalo no nulo (solo timeout = 0 y spinlocks). El despachador de hilos no puede cambiar de hilo en ese procesador.</td></tr>
+<tr><td><code>DIRQL (&gt; 2)</code></td><td>Rutinas de servicio de interrupción de hardware (<code>ISR</code> / <code>EvtInterruptIsr</code>)</td><td><strong>Solo <code>NonPagedPoolNx</code></strong></td><td>Solo spinlocks de interrupción en su propio <code>DIRQL</code>; delegar el trabajo pesado a un DPC (<code>DISPATCH_LEVEL</code>).</td></tr>
+</tbody></table></div>
+
+<pre><code class="lenguaje-text"># 1. Triage de excepción o volcado (User-mode / Kernel-mode — Lecciones 2.19, 2D.11 y 6.3):
+!analyze -v                  ; análisis automático del fallo / bugcheck
+.exr -1                      ; muestra el EXCEPTION_RECORD actual (código y parámetros)
+.ecxr                        ; restaura el contexto de registros en el instante exacto de la excepción
+k   /   kv                   ; stack trace actual   |   ln &lt;addr&gt; : símbolo más cercano a una dirección
+
+# 2. Diagnóstico de Heap, Memoria, PEB y WOW64 (Lecciones 2.19 y 2D.2):
+!heap                        ; lista los heaps del proceso e indica Type (NT Heap vs Segment Heap)
+!heap -p -a &lt;addr&gt;           ; con Full Page Heap activo: muestra el call stack que reservó/liberó el bloque
+!vadump                      ; lista todas las regiones VAD en user-mode (Image / Mapped / Private)
+!peb   /   !teb   /   lm     ; inspecciona PEB, TEB y lista de módulos cargados
+!wow64exts.sw  /  !wow64exts.k ; alterna contexto 32/64 bits y muestra pila combinada en procesos WOW64
+
+# 3. Time-Travel Debugging (TTD) y Kernel/WDF (Lecciones 2.19, 6.2 y 6.3):
+g-   /   p-   /   t-         ; ejecuta hacia atrás / paso atrás sobre una traza TTD (.run)
+ba w4 &lt;addr&gt;  ;  g-          ; frena en la instrucción pasada exacta que sobrescribió esos 4 bytes
+dx @$cursession.TTD.Calls("ntdll!NtCreateFile")  ; consulta todas las llamadas a una API en la traza
+!drvobj &lt;driver&gt; 7           ; muestra el DRIVER_OBJECT y su tabla de rutinas MajorFunction (IRP_MJ_*)
+!wdfkd.wdflogdump &lt;driver&gt;   ; vuelca el In-flight Recorder (IFR) de un driver KMDF</code></pre>
+</section>
+</main></body></html>

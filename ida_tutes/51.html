@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tute 51 · Drivers en kernel — Curso IDA</title>
+<meta name="description" content="Tutorial ilustrado del tute 51 del Curso IDA desde cero: Drivers en kernel.">
+<link rel="stylesheet" href="../guia/estilo.css">
+</head>
+<body>
+<a class="salto" href="#contenido">Saltar al contenido</a>
+<header class="cabecera">
+  <div class="marca"><a href="../00_EMPEZAR_AQUI.html">CLS · Curso de reversing</a> <span class="edicion">edición 5 · 27/10/2026</span></div>
+  <nav class="principal" aria-label="Navegación principal">
+    <a href="../00_EMPEZAR_AQUI.html">Inicio</a>
+    <a href="../guia/index.html">Curso</a>
+    <a href="../fichas/index.html">Fichas</a>
+    <a href="../glosario.html">Glosario</a>
+    <a href="../preguntas_y_respuestas.html">Repaso</a>
+  </nav>
+</header>
+<main id="contenido">
+<p class="migas"><a href="../ida-tutes.html">← Índice de los 69 tutes de IDA</a></p>
+<h1>Tute 51 · Drivers en kernel</h1>
+<p class="meta-tute"><strong>⏱ 7 min de lectura</strong> · 1.203 palabras · 32 capturas · grupo: Kernel de Windows y temas avanzados (drivers, HackSys/HEVD, SSDT/syscalls, VA→física)</p>
+<aside class="callout nota"><p class="callout-titulo">Qué enseña</p><p>Compilar y reversear drivers propios para familiarizarse.</p></aside>
+<p><em>se conecta con:</em> <a href="../guia/05-fuera-de-alcance.html">Fuera de alcance</a></p>
+<aside class="callout aviso"><p class="callout-titulo">Material observado, no reescrito</p><p>Es el texto y las capturas del <code>.docx</code> original del curso, solo presentados como tutorial. Puede tener erratas de origen. El autor del curso es Ricardo Narvaja.</p></aside>
+<hr>
+<p>INTRODUCCION AL REVERSING CON IDA PRO DESDE CERO PARTE 51 KERNEL.</p>
+<p>VIDEOTUTES.</p>
+<p>Vamos antes de comenzar los VIDEOTUTES a compilar y reversear un poco los que hicimos en la parte anterior y algún que otro driver mas, para ir familiarizándonos con la forma en que trabajan.</p>
+<p>MAS DRIVER EN KERNEL</p>
+<p>En el caso del sencillo driver de la parte 50, es un simple hola mundo muy fácil de reversear, ya vimos que cuando lo compilamos con el viejo WDK 7.1 es un par de simples rutinas, y en el nuevo WDK 10 tiene un par de funciones antes de inicialización, pero llega a lo mismo, no hay una funcionalidad diferente.</p>
+<p>Aquí estamos en el que sería el punto de entrada al driver DriverEntry en el viejo driver hecho en WDK 7.1.</p>
+<figure><img loading="lazy" src="img/51/1.png" alt="Captura 1 del tute 51"></figure>
+<p>Vemos por los asteriscos que los dos argumentos son dos punteros o sea de largo 4 bytes, uno a una estructura _DRIVER_OBJECT y el otro a una estructura _UNICODE_STRING, veamos las mismas, ya que IDA las detecta debe tener guardado como esta compuesta cada una.</p>
+<p>EN MSDN.</p>
+<p>DRIVER OBJECT</p>
+<figure><img loading="lazy" src="img/51/2.png" alt="Captura 2 del tute 51"></figure>
+<figure><img loading="lazy" src="img/51/3.png" alt="Captura 3 del tute 51"></figure>
+<p>En la pestaña estructuras no están, pero no olvidemos que en LOCAL TYPES a veces hay mas estructuras, nos fijaremos también allí.</p>
+<figure><img loading="lazy" src="img/51/4.png" alt="Captura 4 del tute 51"></figure>
+<figure><img loading="lazy" src="img/51/5.png" alt="Captura 5 del tute 51"></figure>
+<p>Bueno ahí está, la importaremos haciendo clic derecho -SYNCRONIZE TO IDB.</p>
+<figure><img loading="lazy" src="img/51/6.png" alt="Captura 6 del tute 51"></figure>
+<p>Como carga la dirección de la estructura en EAX, sabemos que en EAX+34h es algún campo de la estructura, apretemos T a ver cuál es.</p>
+<figure><img loading="lazy" src="img/51/7.png" alt="Captura 7 del tute 51"></figure>
+<p>De las estructuras que hay cargadas elijo _DRIVER_OBJECT y es el campo DriverUnload.</p>
+<figure><img loading="lazy" src="img/51/8.png" alt="Captura 8 del tute 51"></figure>
+<figure><img loading="lazy" src="img/51/9.png" alt="Captura 9 del tute 51"></figure>
+<p>Traducido al castellano es una variable tipo puntero en la estructura que guarda la dirección de una función que el sistema llamara al descargar el driver, vemos allí arriba que el tipo de función está definido, su argumento es un puntero a _DRIVER_OBJECT y arriba de todo vemos la definición de PDRIVER_UNLOAD que obviamente es la dirección ya que es un puntero a esa misma función. (vemos el asterisco en la definición).</p>
+<p>Así que ese campo está destinado para guardar la dirección de la función que el sistema llamara cuando se descargue el driver.</p>
+<figure><img loading="lazy" src="img/51/10.png" alt="Captura 10 del tute 51"></figure>
+<p>En nuestro caso IDA nos muestra offset ya que es la dirección de la función _DriverUnload clickeando en DEMANGLE NAMES - NAMES se ve más lindo.</p>
+<figure><img loading="lazy" src="img/51/11.png" alt="Captura 11 del tute 51"></figure>
+<p>Asi que cuando arranca el driver viene por aquí, y imprime “Hello World” cada vez que arranca, mediante la función _DbgPrint y guarda la dirección de la función que ejecutara al descargarse el driver.</p>
+<p>Recordemos que la función que creamos DriverUnload en nuestro código se debe ajustar al tipo definido antes o sea su argumento debe ser un puntero a _DRIVER_OBJECT y asi es nuestro argumento es del tipo PDRIVER_OBJECT como dicen las definiciones de la función en el código fuente.</p>
+<p>#include &lt;ntddk.h&gt;</p>
+<p>void DriverUnload(     PDRIVER_OBJECT pDriverObject) {     DbgPrint("Driver unloading\n"); }</p>
+<figure><img loading="lazy" src="img/51/12.png" alt="Captura 12 del tute 51"></figure>
+<p>Asi que todo coincide, esta sera la rutina cuando el driver se descargue y como vemos imprimirá el mensaje “Driver unloading” usando la función _DbgPrint.</p>
+<figure><img loading="lazy" src="img/51/13.png" alt="Captura 13 del tute 51"></figure>
+<p>Si está siendo debuggeado se verá en el LOG del debugger como vimos en el Windbg y en el IDA el mensaje de “Hola Mundo” y “Driver unloading” al cargar y descargar.</p>
+<p>Esta versión no tiene mucho más, veremos la otra que compilamos con WDK 10, a si la reversamos un poco, evitaremos parte de la inicialización y nos concentraremos en como maneja la estructura y el puntero a DriverUnload.</p>
+<figure><img loading="lazy" src="img/51/14.png" alt="Captura 14 del tute 51"></figure>
+<p>Vemos que la función _DriverEntry@8 tiene los mismos argumentos que son los dos punteros a las estructuras que vimos en la otra versión.</p>
+<figure><img loading="lazy" src="img/51/15.png" alt="Captura 15 del tute 51"></figure>
+<p>Vemos que EDI toma la dirección de la estructura DriverObject y la mantiene en toda la función hasta la salida de la misma cuando hace POP EDI antes del RET.</p>
+<p>Puedo hacer click derecho - RENAME en EDI y en el rango donde se mantiene el mismo valor renombrarlo a p_DriverObject.</p>
+<figure><img loading="lazy" src="img/51/16.png" alt="Captura 16 del tute 51"></figure>
+<p>Allí vemos que se mantiene la etiqueta hasta el final donde el POP EDI machaca el valor.</p>
+<figure><img loading="lazy" src="img/51/17.png" alt="Captura 17 del tute 51"></figure>
+<figure><img loading="lazy" src="img/51/18.png" alt="Captura 18 del tute 51"></figure>
+<p>Bueno es una estructura que tiene un USHORT (word) con el largo de la string ,otro con el máximo largo del buffer y un puntero a un buffer con la string unicode allí o sea que siempre su largo sera 0x8, dos words mas un dword del puntero.</p>
+<p>Length</p>
+<p>Specifies the length, in bytes, of the string pointed to by the Buffer member, not including the terminating NULL character</p>
+<p>MaximumLength</p>
+<p>Specifies the total size, in bytes, of memory allocated for Buffer. Up to MaximumLength bytes may be written into the buffer without trampling memory.</p>
+<p>Buffer</p>
+<p>Pointer to a wide-character string. Note that the strings returned by the various LSA functions might not be null-terminated.</p>
+<figure><img loading="lazy" src="img/51/19.png" alt="Captura 19 del tute 51"></figure>
+<figure><img loading="lazy" src="img/51/20.png" alt="Captura 20 del tute 51"></figure>
+<p>Vemos que esta función tiene como argumento un puntero a la estructura source UNICODE_STRING y como destination un puntero a otro UNICODE_STRING que también tendrá un puntero a un buffer destination.</p>
+<p>Allí vemos los dos argumentos, el source que es RegistryPath que es un puntero a una estructura UNICODE_STRING y ESI tiene el destination del mismo tipo.</p>
+<figure><img loading="lazy" src="img/51/21.png" alt="Captura 21 del tute 51"></figure>
+<p>Vemos que ESI apunta a la sección data, allí esta esa variable del mismo tipo.</p>
+<figure><img loading="lazy" src="img/51/22.png" alt="Captura 22 del tute 51"></figure>
+<p>Como vimos que el largo era 0x8, en la sección data la siguiente dirección que se muestra sera 0x8 mas adelante o sea</p>
+<p>Python&gt;hex(0x40367c+0x8)</p>
+<p>0x403684</p>
+<p>Allí vemos como antes de llamar a copiar inicializa la estructura de destino, le pone un cero al valor lenght ya que esta vacía por ahora, le pone 0x208 como máximo y lo guarda en MaximumLenght y guarda el puntero al buffer allí en offset WdfDriverStubRegistryPath.</p>
+<figure><img loading="lazy" src="img/51/23.png" alt="Captura 23 del tute 51"></figure>
+<p>El buffer en si tiene 0x104 words o sea 0x208 o 520 decimal</p>
+<figure><img loading="lazy" src="img/51/24.png" alt="Captura 24 del tute 51"></figure>
+<p>hex(0x104*2)</p>
+<p>0x208</p>
+<p>Python&gt;(0x104*2)</p>
+<p>520</p>
+<p>Allí mostraba que era un array de 260 del tipo wchar_t (2 bytes) o sea 260 x 2 es igual a 520.</p>
+<p>Asi que esta todo bien el puntero apunta a un buffer de 0x208 y el máximo es 0x208 todo perfecto.</p>
+<p>No olvidemos esto</p>
+<figure><img loading="lazy" src="img/51/25.png" alt="Captura 25 del tute 51"></figure>
+<figure><img loading="lazy" src="img/51/26.png" alt="Captura 26 del tute 51"></figure>
+<p>Vemos que es una variable de 4bytes dd ya que es un puntero a la estructura _DRIVER_OBJECT.</p>
+<p>Luego hay un par de funciones de inicialización no documentadas al menos no las encontré y no tiene tanta importancia es pura inicialización y luego llega al DriverEntry que es equivalente al del driver anterior.</p>
+<figure><img loading="lazy" src="img/51/27.png" alt="Captura 27 del tute 51"></figure>
+<figure><img loading="lazy" src="img/51/28.png" alt="Captura 28 del tute 51"></figure>
+<p>Dentro si hacemos lo mismo dela vez anterior y vamos a LOCAL TYPES y sincronizamos la estructura DRIVER_OBJECT.</p>
+<figure><img loading="lazy" src="img/51/29.png" alt="Captura 29 del tute 51"></figure>
+<p>Vemos que es similar al anterior guardara la dirección de la función que escribimos DriverUnload en la misma posición de la estructura, para llamarla al descargarse.</p>
+<figure><img loading="lazy" src="img/51/30.png" alt="Captura 30 del tute 51"></figure>
+<p>Vemos que como el campo DriverUnload es distinto de cero, saltara a la parte rosada donde guardara nuestro puntero en esa variable de la sección data llamada WdfDriverStubDisplacedDriverUnload.</p>
+<figure><img loading="lazy" src="img/51/31.png" alt="Captura 31 del tute 51"></figure>
+<p>Y ademas pisa el DriverUnload con una función que no es mía llamada FxStubDriverUnload y que si la vemos.</p>
+<figure><img loading="lazy" src="img/51/32.png" alt="Captura 32 del tute 51"></figure>
+<p>Al descargar el driver vendrá entonces a FxStubDriverUnload , pero luego cargara nuestra función DriverUnload de la variable WdfDriverStubDisplacedDriverUnload ya que allí la había guardado y salta en el CALL EAX de la misma forma que en el ejemplo anterior solo que dando un poco mas de vueltas.</p>
+<p>En la próxima parte trataremos de compilar un driver que se llame a un IOCTL desde una aplicación de user, sabiendo que esta es una de las formas en las que se explotan generalmente los drivers (no es la única)</p>
+<p>Hasta la próxima</p>
+<p>Ricardo Narvaja</p>
+</main>
+<footer class="pie">
+  <p>Material educativo y defensivo. Las prácticas se limitan a programas propios, software abierto o crackmes diseñados para aprender. No se enseña a eludir licencias, DRM ni controles de acceso.</p>
+  <p><a href="../00_EMPEZAR_AQUI.html">Inicio</a> · <a href="../guia/etapa-0.html">Etapas</a> · <a href="../fuentes_y_limites.html">Fuentes y límites</a> · <a href="../registro_de_cobertura.csv">Registro de cobertura</a></p>
+</footer>
+<script>
+(function(){
+  function abrir(src){
+    var o=document.createElement('div'); o.className='lightbox-ov';
+    var i=document.createElement('img'); i.src=src; o.appendChild(i);
+    function cerrar(){o.remove(); document.removeEventListener('keydown', onkey);}
+    function onkey(e){ if(e.key==='Escape') cerrar(); }
+    o.addEventListener('click', cerrar);
+    document.addEventListener('keydown', onkey);
+    document.body.appendChild(o);
+  }
+  document.addEventListener('DOMContentLoaded', function(){
+    document.querySelectorAll('figure img, main img').forEach(function(img){
+      img.style.cursor='zoom-in';
+      img.addEventListener('click', function(){ abrir(img.currentSrc||img.src); });
+    });
+  });
+})();
+</script>
+</body>
+</html>

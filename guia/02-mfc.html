@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>2.12 · MFC: llegar al handler cuando todo pasa por clases</title>
+<meta name="description" content="Reconocer un binario MFC y llegar al manejador de un control (botón de un diálogo) a través del message map, cuando el WinProc no está a la vista.">
+<link rel="stylesheet" href="../guia/estilo.css">
+</head>
+<body>
+<a class="salto" href="#contenido">Saltar al contenido</a>
+<header class="cabecera">
+  <div class="marca"><a href="../00_EMPEZAR_AQUI.html">CLS · Curso de reversing</a> <span class="edicion">edición 5 · 27/10/2026</span></div>
+  <nav class="principal" aria-label="Navegación principal">
+    <a href="../00_EMPEZAR_AQUI.html">Inicio</a>
+    <a href="../guia/index.html">Curso</a>
+    <a href="../materiales.html">Materiales</a>
+    <a href="../fichas/index.html">Fichas</a>
+    <a href="../glosario.html">Glosario</a>
+    <a href="../preguntas_y_respuestas.html">Repaso</a>
+    <a href="../buscar.html">Buscar</a>
+  </nav>
+</header>
+<main id="contenido">
+<nav class="migas" aria-label="Ubicación"><a href="../00_EMPEZAR_AQUI.html">Inicio</a><span aria-hidden="true">›</span><a href="../guia/index.html">Curso</a><span aria-hidden="true">›</span><span>Etapa 2 · Windows intermedio</span></nav><h1 id="mfc-llegar-al-handler-cuando-todo-pasa-por-clases">MFC: llegar al handler cuando todo pasa por clases</h1>
+<aside class="callout nota"><p class="callout-titulo">Objetivo de la lección</p><p>Reconocer un ejecutable hecho con <strong>MFC</strong> y llegar al <strong>handler</strong> de un control (el botón de un diálogo) aunque el <code>WinProc</code> clásico no esté a la vista. <strong>Prerrequisitos:</strong> mensajes de Windows y debugger (2.6), estructuras y vtables (2.7).</p></aside>
+<h2 id="por-qué-mfc-complica-la-lectura">Por qué MFC complica la lectura</h2>
+<p>En los ejercicios anteriores la ventana se hacía <strong>con la API de Windows directa</strong>: el programa llamaba a <code>RegisterClassA</code> (que registra la clase y apunta al <code>WinProc</code>) y luego a <code>CreateWindow</code>; desde el <code>WinProc</code> se llegaba fácil a la comparación con los números de mensaje (<code>WM_COMMAND</code>, etc.) y de ahí al código que maneja cada evento. Era sencillo.</p>
+<p><strong>MFC</strong> (Microsoft Foundation Classes) es un conjunto de clases con mucha herencia que envuelve esa misma API. Por debajo sigue pasando lo mismo, pero <strong>por arriba no se ve el <code>WinProc</code></strong>: Visual Studio genera una clase de diálogo (<code>CDialog</code>/<code>CWnd</code>) y el ruteo de mensajes queda escondido en el framework. Por eso, abrir un binario MFC y buscar el <code>WinProc</code> a mano no alcanza (<strong>observado</strong>, capítulo 39: <a class="fuente" href="../../CLS_resultados_intermedios/transcripciones/extraidos/Reversing%20desde%20cero%20%28Ricardo%20y%20Solid%29/Ricardo%20Narvaja%20y%20Solid%20-%20Reversing%20desde%20cero_39%20TIPS%202%20MFC_TIPS%202%20MFC.txt">Reversing desde cero, cap. 39</a>).</p>
+<h2 id="señales-de-que-es-mfc">Señales de que es MFC</h2>
+<ul><li>Importa <code>mfc###u.dll</code> (p. ej. <code>mfc140u.dll</code>) y el runtime de VC — <strong>si MFC está enlazado dinámico</strong>. En <strong>enlace estático</strong> esa DLL no aparece: ahí te guiás por los símbolos (<code>CWnd</code>, <code>AfxWinInit</code>) y las strings.</li><li>Aparecen <code>AfxWinMain</code>/<code>AfxWinInit</code> y nombres de clases MFC (<code>CWnd</code>, <code>CDialog</code>, <code>CWinApp</code>, <code>CString</code>).</li><li>Las APIs de texto que te sirven como ancla siguen estando: <code>GetWindowTextW</code>, <code>SetWindowTextW</code>, <code>MessageBoxW</code>, <code>SendMessageW</code>.</li></ul>
+<h2 id="el-message-map-dónde-está-el-ruteo">El message map: dónde está el ruteo</h2>
+<p>MFC asocia cada mensaje/control a una función con un <strong>message map</strong>, una tabla que el compilador arma a partir de macros del estilo <code>BEGIN_MESSAGE_MAP</code> / <code>ON_BN_CLICKED</code> / <code>END_MESSAGE_MAP</code>. En el binario queda como un arreglo de entradas <strong><code>AFX_MSGMAP_ENTRY</code></strong>, y cada entrada tiene más que "ID y puntero": <code>nMessage</code> (el mensaje, p. ej. <code>WM_COMMAND</code>), <code>nCode</code> (código de notificación), <code>nID</code> y <code>nLastID</code> (rango de IDs de control), <code>nSig</code> (la firma de la función) y <strong><code>pfn</code></strong> (el puntero al handler). El handler de "se hizo clic en el botón 1" suele llamarse <code>OnBnClickedButton1</code> en el fuente.</p>
+<p>Dos caminos para llegar, sin pelearte con la tabla (<strong>recomendación editorial</strong>, apoyada en el método de mensajes del cap. 28):</p>
+<ol><li><strong>Por string/API (el más rápido):</strong> buscá la string de la ventana ("clave", "acceso", el mensaje de éxito) o poné un breakpoint en <code>GetWindowTextW</code>/<code>SendMessageW</code>; al dispararse, el <em>call stack</em> te deja dentro del handler del control.</li><li><strong>Por el message map:</strong> localizá la tabla del diálogo (cerca del constructor de la clase) y seguí el puntero de la entrada cuyo ID coincide con el del botón.</li></ol>
+<h2 id="ejemplo-paso-a-paso-del-botón-al-handler">Ejemplo paso a paso: del botón al handler</h2>
+<p><em>(Ejemplo <strong>ilustrativo</strong>: direcciones y nombres construidos para mostrar la ruta.)</em></p>
+<p>Ponés un breakpoint en <code>GetWindowTextW</code>, tocás <strong>Aceptar</strong> en el diálogo y mirás el <em>call stack</em>:</p>
+<pre><code class="lenguaje-text">USER32!GetWindowTextW
+app!CWnd::GetWindowTextW(...)          ; wrapper de MFC
+app!CMiDialog::OnBnClickedOk+0x3e      ← el handler (acá estás)
+mfc140u!_AfxDispatchCmdMsg+0x52        ; el framework ruteó el mensaje
+mfc140u!CWnd::OnCommand+0x...</code></pre>
+<p>Subís al frame del handler <code>OnBnClickedOk</code> y encontrás la decisión:</p>
+<pre><code class="lenguaje-asm">lea   rdx, [rsp+0x40]        ; buffer donde quedó el texto tipeado
+lea   rcx, [rsi+8]           ; el control (this)
+call  CWnd::GetWindowTextW
+lea   rdx, aS3cr3t           ; "s3cr3t"  (la clave esperada)
+lea   rcx, [rsp+0x40]
+call  wcscmp                 ; la comparación que decide éxito/fracaso
+test  eax, eax
+jnz   mal                    ; != 0 → clave incorrecta</code></pre>
+<p>Sin el call stack habría que desenredar el message map; con el breakpoint en la API de texto caés <strong>directo</strong> en <code>OnBnClickedOk</code>.</p>
+<h2 id="práctica">Práctica</h2>
+<p>En tu VM:</p>
+<ol><li>Si tenés Visual Studio, creá una <strong>app MFC basada en diálogo</strong> con un botón y un <code>OnBnClickedButton1</code> que compare un texto; compilala. Si no, usá un <strong>binario MFC de práctica</strong>.</li><li>Confirmá que importa <code>mfc###u.dll</code> y ubicá <code>AfxWinMain</code>.</li><li>Poné un breakpoint en <code>GetWindowTextW</code> (o en <code>SendMessageW</code>), tocá el botón y, desde el <em>call stack</em>, llegá al handler.</li><li>Identificá en el handler la comparación que decide éxito/fracaso.</li></ol>
+<h2 id="preguntas-de-repaso">Preguntas de repaso</h2>
+<details class="qa"><summary>¿Por qué en un binario MFC no encontrás el <code>WinProc</code> como en los ejercicios con API directa?</summary><div class="respuesta"><p>Porque MFC <strong>envuelve</strong> la API: el ruteo de mensajes lo maneja el framework a través de clases y del message map, en vez de un <code>WinProc</code> propio que el programa registre con <code>RegisterClassA</code>.</p></div></details>
+<details class="qa"><summary>¿Qué es el message map y qué guarda cada entrada?</summary><div class="respuesta"><p>Una tabla que mapea <strong>mensaje/control → función</strong>. Cada entrada tiene el ID del control, el código de notificación y el <strong>puntero al handler</strong>.</p></div></details>
+<details class="qa"><summary>Nombrá dos señales de que un binario es MFC.</summary><div class="respuesta"><p>Importa <code>mfc###u.dll</code> (p. ej. <code>mfc140u.dll</code>) y aparecen <code>AfxWinInit</code>/<code>AfxWinMain</code> y clases como <code>CDialog</code>/<code>CWnd</code>/<code>CString</code>.</p></div></details>
+<details class="qa"><summary>¿Cuál es la forma más rápida de llegar al handler de un botón?</summary><div class="respuesta"><p>Un breakpoint en <code>GetWindowTextW</code>/<code>SendMessageW</code> (o seguir la string del diálogo): al dispararse, el <em>call stack</em> te deja dentro del handler, sin recorrer la tabla a mano.</p></div></details>
+<details class="qa"><summary>Por debajo, ¿MFC cambia lo que hace Windows con los mensajes?</summary><div class="respuesta"><p>No. Sigue siendo el mismo sistema de mensajes de Windows; MFC solo agrega una capa de clases por encima. Las APIs ancla (<code>GetWindowTextW</code>, <code>SendMessageW</code>) siguen ahí.</p></div></details>
+<aside class="callout nota"><p class="callout-titulo">Puerta de salida</p><p>Podés: (1) reconocer un binario MFC por imports y símbolos; (2) explicar qué es el message map; (3) llegar al handler de un botón por breakpoint en una API de texto y el call stack; (4) señalar la comparación que decide el resultado.</p></aside>
+<h2 id="fuentes-de-esta-lección">Fuentes de esta lección</h2>
+<ul><li><a class="fuente" href="../../CLS_resultados_intermedios/transcripciones/extraidos/Reversing%20desde%20cero%20%28Ricardo%20y%20Solid%29/Ricardo%20Narvaja%20y%20Solid%20-%20Reversing%20desde%20cero_39%20TIPS%202%20MFC_TIPS%202%20MFC.txt">Reversing desde cero, cap. 39</a> — el ejercicio MFC «de CITO»: por qué el <code>WinProc</code> no está a la vista y qué cambia respecto de usar la API directa.</li><li><a class="fuente" href="../../CLS_resultados_intermedios/transcripciones/extraidos/Reversing%20desde%20cero%20%28Ricardo%20y%20Solid%29/Ricardo%20Narvaja%20y%20Solid%20-%20Reversing%20desde%20cero_28%20Mensajes%20de%20Windows_28%20Mensajes%20de%20Windows.txt">Reversing desde cero, cap. 28</a> — base: <code>RegisterClassA</code>, <code>WinProc</code>, <code>WM_COMMAND</code> y breakpoint sobre el mensaje.</li></ul>
+<aside class="callout nota"><p class="callout-titulo">Capas de esta lección</p><p><strong>Contenido observado en CLS:</strong> el contraste API-directa vs. MFC del capítulo 39 y el método de mensajes del 28. <strong>Conocimiento externo:</strong> los nombres del message map (<code>BEGIN_MESSAGE_MAP</code>, <code>ON_BN_CLICKED</code>, <code>OnBnClickedButton1</code>), las DLLs <code>mfc###u.dll</code> y <code>AfxWinInit</code>. <strong>Recomendación editorial:</strong> los dos caminos para llegar al handler y la práctica con binario propio.</p></aside>
+
+<aside class="ampliacion-ext">
+<p class="callout-titulo">Ampliación editorial basada en fuentes externas — Definición en C y offsets de AFX_MSGMAP y AFX_MSGMAP_ENTRY para análisis estático</p>
+<p>Cuando un binario MFC está enlazado estáticamente o se analiza sin ejecutarlo en IDA (<em>Local Types</em>) o Ghidra (<em>Parse C Source</em>), las estructuras oficiales de <code>&lt;afxwin.h&gt;</code> (<a href="https://learn.microsoft.com/en-us/cpp/mfc/tn006-message-maps" rel="noopener" target="_blank">Microsoft Learn: TN006 Message Maps</a>) tienen el siguiente layout en memoria <em>(Hecho confirmado)</em>:</p>
+<pre><code>struct AFX_MSGMAP_ENTRY {
+    unsigned int nMessage;   // +0x00 (4B): Mensaje (p. ej. 0x0111 = WM_COMMAND)
+    unsigned int nCode;      // +0x04 (4B): Código de notificación (0 = BN_CLICKED)
+    unsigned int nID;        // +0x08 (4B): Control ID inicial
+    unsigned int nLastID;    // +0x0C (4B): Control ID final (igual a nID si es único)
+    uintptr_t    nSig;       // +0x10 (4B en x86 / 8B en x64): Firma AfxSig_* (0 = AfxSig_end)
+    void*        pfn;        // +0x14 en x86 (total 24B) / +0x18 en x64 (total 32B): Puntero al handler
+};
+struct AFX_MSGMAP {
+    const void* pfnGetBaseMap;                // +0x00: Puntero al mapa base
+    const struct AFX_MSGMAP_ENTRY* lpEntries; // +0x04 (x86) / +0x08 (x64): Arreglo terminado en {0,0,0,0,0,0}
+};</code></pre>
+<p><em>Recomendación editorial:</em> El método virtual <code>GetMessageMap()</code> en la vtable de cualquier clase derivada de <code>CWnd</code> devuelve la dirección de su <code>AFX_MSGMAP</code> en dos instrucciones (<code>lea rax, [rip + MiDialog_messageMap] ; ret</code>).</p>
+</aside>
+</main>
+<footer class="pie">
+  <p>Material educativo y defensivo. Las prácticas se limitan a programas propios, software abierto o crackmes diseñados para aprender. No se enseña a eludir licencias, DRM ni controles de acceso.</p>
+  <p><a href="../00_EMPEZAR_AQUI.html">Inicio</a> · <a href="../guia/etapa-0.html">Etapas</a> · <a href="../fuentes_y_limites.html">Fuentes y límites</a> · <a href="../registro_de_cobertura.csv">Registro de cobertura</a></p>
+</footer>
+</body>
+</html>

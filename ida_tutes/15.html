@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tute 15 · Dump y reconstrucción de la IAT — Curso IDA</title>
+<meta name="description" content="Tutorial ilustrado del tute 15 del Curso IDA desde cero: Dump y reconstrucción de la IAT.">
+<link rel="stylesheet" href="../guia/estilo.css">
+</head>
+<body>
+<a class="salto" href="#contenido">Saltar al contenido</a>
+<header class="cabecera">
+  <div class="marca"><a href="../00_EMPEZAR_AQUI.html">CLS · Curso de reversing</a> <span class="edicion">edición 5 · 27/10/2026</span></div>
+  <nav class="principal" aria-label="Navegación principal">
+    <a href="../00_EMPEZAR_AQUI.html">Inicio</a>
+    <a href="../guia/index.html">Curso</a>
+    <a href="../fichas/index.html">Fichas</a>
+    <a href="../glosario.html">Glosario</a>
+    <a href="../preguntas_y_respuestas.html">Repaso</a>
+  </nav>
+</header>
+<main id="contenido">
+<p class="migas"><a href="../ida-tutes.html">← Índice de los 69 tutes de IDA</a></p>
+<h1>Tute 15 · Dump y reconstrucción de la IAT</h1>
+<p class="meta-tute"><strong>⏱ 7 min de lectura</strong> · 1.228 palabras · 36 capturas · grupo: Unpacking didáctico (UPX, ASPack), dump e IAT</p>
+<aside class="callout nota"><p class="callout-titulo">Qué enseña</p><p>Dumpear y reconstruir la IAT con Scylla.</p></aside>
+<p><em>▶ video afín (mismo autor, en x64dbg):</em> <a href="../videos.html">«17 Unpacking 3 - IAT Redirection»</a></p>
+<aside class="callout aviso"><p class="callout-titulo">Material observado, no reescrito</p><p>Es el texto y las capturas del <code>.docx</code> original del curso, solo presentados como tutorial. Puede tener erratas de origen. El autor del curso es Ricardo Narvaja.</p></aside>
+<hr>
+<p>INTRODUCCIÓN AL REVERSING CON IDA PRO DESDE CERO PARTE 15.</p>
+<p>DUMPEADO y la RECONSTRUCCION DE LA IAT.</p>
+<p>En la parte anterior vimos un par de métodos de los tantos que hay para detectar y llegar al OEP en un archivo empacado, ahora continuaremos con los dos pasos faltantes, el DUMPEADO y la RECONSTRUCCION DE LA IAT, tratando de explicar la misma.</p>
+<figure><img loading="lazy" src="img/15/1.png" alt="Captura 1 del tute 15"></figure>
+<p>Volvemos a llegar al OEP y a REANALIZAR el programa y ya tenemos todo listo para DUMPEAR.</p>
+<p>Ahora usaremos un script de IDC no de Python.</p>
+<p>static​ ​main()</p>
+<p>{</p>
+<p>auto​ ​fp,​ ​ea;</p>
+<p>fp​ ​=​ ​fopen("pepe.bin",​ ​"wb");</p>
+<p>for​ ​(​ ​ea=0x400000;​ ​ea​ ​&lt;​ ​0x40b200;​ ​ea++​ ​)</p>
+<p>​ ​​ ​fputc(Byte(ea),​ ​fp);</p>
+<p>}</p>
+<p>En el script ponemos la ImageBase o sea 0x400000 y la dirección máxima que vemos en el IDA en la pestaña SEGMENTS, de la última sección del ejecutable a DUMPEAR, en este caso la sección OVERLAY que es la última sección del ejecutable termina en 0x40b200.</p>
+<figure><img loading="lazy" src="img/15/2.png" alt="Captura 2 del tute 15"></figure>
+<figure><img loading="lazy" src="img/15/3.png" alt="Captura 3 del tute 15"></figure>
+<p>Lo guardamos con algún nombre por ejemplo DUMPER.idc</p>
+<figure><img loading="lazy" src="img/15/4.png" alt="Captura 4 del tute 15"></figure>
+<p>Y lo corremos en FILE-SCRIPT FILE vemos que acepta scripts tanto de Python como IDC, así que no hay problema.</p>
+<figure><img loading="lazy" src="img/15/5.png" alt="Captura 5 del tute 15"></figure>
+<p>Hago una copia y lo renombro a extensión EXE. (si no ven las extensiones de los archivos deben cambiar esa opción en OPCIONES DE CARPETA)</p>
+<figure><img loading="lazy" src="img/15/6.png" alt="Captura 6 del tute 15"></figure>
+<figure><img loading="lazy" src="img/15/7.png" alt="Captura 7 del tute 15"></figure>
+<p>Vemos que ni icono tiene, así que aún faltan algunos pasos.</p>
+<p>Adjunto está el PE Editor 1.7 lo descomprimimos y abrimos.</p>
+<figure><img loading="lazy" src="img/15/8.png" alt="Captura 8 del tute 15"></figure>
+<p>En SECTIONS.</p>
+<figure><img loading="lazy" src="img/15/9.png" alt="Captura 9 del tute 15"></figure>
+<p>Hacemos click derecho en cada una de las secciones y aplicamos DUMPFIXER.</p>
+<figure><img loading="lazy" src="img/15/10.png" alt="Captura 10 del tute 15"></figure>
+<figure><img loading="lazy" src="img/15/11.png" alt="Captura 11 del tute 15"></figure>
+<p>Vemos que ya estamos más cerca, al menos ya sale el icono, aunque aún no corre, porque falta reparar la IAT.</p>
+<p>¿QUE ES LA IAT?</p>
+<p>La IAT o IMPORT ADDRESS TABLE es una tabla ubicada en el ejecutable, que se utiliza cuando arranca el programa y allí guarda las direcciones de las funciones importadas que utiliza, para que el programa pueda correr en cualquier máquina.</p>
+<p>Si la IAT esta correcta y le pasamos el ejecutable a otra persona, la IAT se llenará con los valores correspondientes a esa máquina sea cual sea la versión de Windows que tenga y se mantendrá la compatibilidad y funcionara.</p>
+<p>O sea, la IAT se encontrará siempre en una posición determinada en cada ejecutable, y tendrá posiciones fijas para que cada función la llene, por ejemplo.</p>
+<p>Recordamos de la parte anterior que quedo por explicar la diferencia entre la imagen superior que es del archivo empacado cuando estaba en el OEP antes de DUMPEAR y la del original.</p>
+<figure><img loading="lazy" src="img/15/12.png" alt="Captura 12 del tute 15"></figure>
+<p>Ambas muestran la dirección 0x403238 y parecen tener el mismo contenido, ahora abramos también el archivo original.</p>
+<figure><img loading="lazy" src="img/15/13.png" alt="Captura 13 del tute 15"></figure>
+<p>Vemos allí el FILE OFFSET 0x1038 para poder buscar en el HXD en el ejecutable original.</p>
+<p>Lo abro con HXD al original.</p>
+<figure><img loading="lazy" src="img/15/14.png" alt="Captura 14 del tute 15"></figure>
+<p>Vemos que el contenido en el offset 0x1038 es 0x355e.</p>
+<p>Si le sumo 0x355e a la ImageBase 0x400000 nos da 0x40355e y que hay allí?.</p>
+<p>Para verlo deberíamos cargar el original con MANUAL LOAD para que cargue todas las secciones del ejecutable.</p>
+<figure><img loading="lazy" src="img/15/15.png" alt="Captura 15 del tute 15"></figure>
+<p>Aceptamos todas las secciones y cuando arranca vamos a 0x40355e y vemos a la derecha el nombre de la api GetModuleHandleA.</p>
+<figure><img loading="lazy" src="img/15/16.png" alt="Captura 16 del tute 15"></figure>
+<p>Así que el sistema cuando arranca, si miramos la imagen inferior, el programa va trabajando en todos esos cajoncitos.</p>
+<figure><img loading="lazy" src="img/15/17.png" alt="Captura 17 del tute 15"></figure>
+<p>Y a cada uno le suma al contenido de la ImageBase y busca la string de la función correspondiente, y de esa string resuelve en tiempo de ejecución la dirección en nuestra máquina, como por ejemplo en este caso busca la dirección de GetModuleHandleA en nuestra máquina y machaca el 5e 35 con la dirección de la api.</p>
+<p>Por eso un ejecutable funciona en cualquier máquina, porque siempre buscara en cada entrada de la IAT el nombre de la api correspondiente y lo resolverá al arrancar, por lo cual siempre la dirección que contenga será válida aunque diferente de máquina a máquina, sin embargo la dirección del cajoncito de GetModuleHandleA en todas las maquinas será el mismo en todos los ejecutables sin randomizar como este, lo que cambiara será el contenido.</p>
+<p>Por eso en cualquier maquina si hago</p>
+<pre class='asm'>CALL [0x403238]</pre>
+<p>Siempre funcionara porque 0x403238 es la entrada de la IAT para GetModuleHandleA, lo que variara será el contenido que el sistema guardara machacando el valor original 5e 35, que apuntaba a la string si le sumamos la base.</p>
+<p>Sin cerrar los otros dos IDA con el empacado parado en el OEP y el original, en un tercer IDA abro el DUMPEADO que acabo de hacer pepe - Copy.exe.</p>
+<p>En el mismo voy a la misma entrada de la IAT en 0x403238</p>
+<figure><img loading="lazy" src="img/15/18.png" alt="Captura 18 del tute 15"></figure>
+<p>Vemos aquí el file offset es 0x3238 no coincide con el original por el DUMPFIXER que hizo que el tamaño en el disco sea igual al tamaño virtual, lo que cambia los offsets, igual será la entrada de la IAT de la api GMHA.</p>
+<p>Si lo abrimos en HXD y vamos a 0x3238.</p>
+<figure><img loading="lazy" src="img/15/19.png" alt="Captura 19 del tute 15"></figure>
+<p>Vemos allí</p>
+<figure><img loading="lazy" src="img/15/20.png" alt="Captura 20 del tute 15"></figure>
+<p>Vemos que lo que tenemos allí es una dirección de una api y no un offset para sumarle a la ImageBase para hallar el nombre de la api.</p>
+<p>Como el sistema cuando arranco el empacado resolvió la dirección de la api y guardo su dirección allí, al dumpear lo que hay es eso la dirección de la api GetModuleHandleA para el empacado.</p>
+<figure><img loading="lazy" src="img/15/21.png" alt="Captura 21 del tute 15"></figure>
+<p>¿Y cuál es el problema sino reconstruimos la IAT?</p>
+<p>Es que el sistema al arrancar busca allí en la entrada de la IAT el valor para sumarle a la ImageBase y buscar una string para resolver y eso se rompió pues al dumpear quedo guardada la dirección final, y el programa crasheara al arrancar, al no poder ir llenando las entradas de la IAT como corresponde.</p>
+<p>Bueno para terminar con esto, el tema es que hay que arreglar la IAT y restaurar todos esos offsets que apuntaban a las strings con los nombres de la api, y esto no se hace a mano, es muy largo, para eso usaremos una tool llamada Scylla.</p>
+<p>SCYLLA.</p>
+<p>https://tuts4yoututs4you.com/download.php?view.3503</p>
+<p>password del rar =tuts4you</p>
+<figure><img loading="lazy" src="img/15/22.png" alt="Captura 22 del tute 15"></figure>
+<p>Lo arranco</p>
+<figure><img loading="lazy" src="img/15/23.png" alt="Captura 23 del tute 15"></figure>
+<p>En ATTACH TO AN ACTIVE PROCESS elijo del menú desplegable, el proceso del empacado que está detenido aun en el IDA en el OEP.</p>
+<figure><img loading="lazy" src="img/15/24.png" alt="Captura 24 del tute 15"></figure>
+<p>Le​ ​cambiamos​ ​el​ ​OEP​ ​a​ ​401000</p>
+<figure><img loading="lazy" src="img/15/25.png" alt="Captura 25 del tute 15"></figure>
+<p>Apretamos​ ​IAT​ ​AUTOSEARCH</p>
+<figure><img loading="lazy" src="img/15/26.png" alt="Captura 26 del tute 15"></figure>
+<p>O sea ahí dice que la IAT empieza en 00x403184 y termina 0x108 mas adelante.</p>
+<p>Y​ ​luego​ ​GET​ ​IMPORTS.</p>
+<figure><img loading="lazy" src="img/15/27.png" alt="Captura 27 del tute 15"></figure>
+<p>Vemos que resolvió todo menos tres entradas que las muestra al apretar SHOW INVALID</p>
+<figure><img loading="lazy" src="img/15/28.png" alt="Captura 28 del tute 15"></figure>
+<p>Por otro lado vemos que el offset 3238 en el empacado sabíamos que correspondía a GetModuleHandleA y esa está bien resuelta, podemos mirar en el empacado las direcciones de las entradas invalidas 0x403248 en adelante, a ver que son.</p>
+<figure><img loading="lazy" src="img/15/29.png" alt="Captura 29 del tute 15"></figure>
+<p>Vemos que son las entradas de comctl32,</p>
+<p>Y si hago click derecho en las entradas invalidas del Scylla y elijo SCYLLA PLUGIN-PE COMPACT las reparara bien.</p>
+<figure><img loading="lazy" src="img/15/30.png" alt="Captura 30 del tute 15"></figure>
+<p>Coinciden con las que habíamos visto que eran</p>
+<figure><img loading="lazy" src="img/15/31.png" alt="Captura 31 del tute 15"></figure>
+<p>Si apretamos SHOW SUSPECT veamos si están correctas las dos sospechosas yendo a 0x403258 y 0x403278.</p>
+<figure><img loading="lazy" src="img/15/32.png" alt="Captura 32 del tute 15"></figure>
+<p>Se ven correctas así que podemos apretar el botón FIX DUMP</p>
+<figure><img loading="lazy" src="img/15/33.png" alt="Captura 33 del tute 15"></figure>
+<p>Lo guarda al reparado como pepe-Copy_SCY.exe y veo que funciona.</p>
+<figure><img loading="lazy" src="img/15/34.png" alt="Captura 34 del tute 15"></figure>
+<p>Vemos que al abrir el que desempacamos en el IDA ya arranca del OEP 0x401000 y que se ven los nombres de las apis como en el original ya que están bien resueltas.</p>
+<figure><img loading="lazy" src="img/15/35.png" alt="Captura 35 del tute 15"></figure>
+<figure><img loading="lazy" src="img/15/36.png" alt="Captura 36 del tute 15"></figure>
+<p>Incluso la parte de la IAT también se ve como el original.</p>
+<p>Bueno hemos desempacado nuestro primer y sencillo packer, más adelante veremos otros más complejos.</p>
+<p>Hasta la parte 16</p>
+<p>Ricardo Narvaja</p>
+</main>
+<footer class="pie">
+  <p>Material educativo y defensivo. Las prácticas se limitan a programas propios, software abierto o crackmes diseñados para aprender. No se enseña a eludir licencias, DRM ni controles de acceso.</p>
+  <p><a href="../00_EMPEZAR_AQUI.html">Inicio</a> · <a href="../guia/etapa-0.html">Etapas</a> · <a href="../fuentes_y_limites.html">Fuentes y límites</a> · <a href="../registro_de_cobertura.csv">Registro de cobertura</a></p>
+</footer>
+<script>
+(function(){
+  function abrir(src){
+    var o=document.createElement('div'); o.className='lightbox-ov';
+    var i=document.createElement('img'); i.src=src; o.appendChild(i);
+    function cerrar(){o.remove(); document.removeEventListener('keydown', onkey);}
+    function onkey(e){ if(e.key==='Escape') cerrar(); }
+    o.addEventListener('click', cerrar);
+    document.addEventListener('keydown', onkey);
+    document.body.appendChild(o);
+  }
+  document.addEventListener('DOMContentLoaded', function(){
+    document.querySelectorAll('figure img, main img').forEach(function(img){
+      img.style.cursor='zoom-in';
+      img.addEventListener('click', function(){ abrir(img.currentSrc||img.src); });
+    });
+  });
+})();
+</script>
+</body>
+</html>

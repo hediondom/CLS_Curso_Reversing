@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tute 47 · Más teoría de heap — Curso IDA</title>
+<meta name="description" content="Tutorial ilustrado del tute 47 del Curso IDA desde cero: Más teoría de heap.">
+<link rel="stylesheet" href="../guia/estilo.css">
+</head>
+<body>
+<a class="salto" href="#contenido">Saltar al contenido</a>
+<header class="cabecera">
+  <div class="marca"><a href="../00_EMPEZAR_AQUI.html">CLS · Curso de reversing</a> <span class="edicion">edición 5 · 27/10/2026</span></div>
+  <nav class="principal" aria-label="Navegación principal">
+    <a href="../00_EMPEZAR_AQUI.html">Inicio</a>
+    <a href="../guia/index.html">Curso</a>
+    <a href="../fichas/index.html">Fichas</a>
+    <a href="../glosario.html">Glosario</a>
+    <a href="../preguntas_y_respuestas.html">Repaso</a>
+  </nav>
+</header>
+<main id="contenido">
+<p class="migas"><a href="../ida-tutes.html">← Índice de los 69 tutes de IDA</a></p>
+<h1>Tute 47 · Más teoría de heap</h1>
+<p class="meta-tute"><strong>⏱ 7 min de lectura</strong> · 1.250 palabras · 25 capturas · grupo: Vulnerabilidades y exploiting en user-mode (VLC/CVE, DEP, Mona, canary/SEH, shellcode, heap)</p>
+<aside class="callout nota"><p class="callout-titulo">Qué enseña</p><p>Aclara conceptos de heap sobre la práctica 44.</p></aside>
+<p><em>se conecta con:</em> <a href="../guia/05-vulnerabilidades.html">Vulnerabilidades (defensivo)</a></p>
+<aside class="callout aviso"><p class="callout-titulo">Material observado, no reescrito</p><p>Es el texto y las capturas del <code>.docx</code> original del curso, solo presentados como tutorial. Puede tener erratas de origen. El autor del curso es Ricardo Narvaja.</p></aside>
+<hr>
+<p>INTRODUCCIÓN AL REVERSING CON IDA PRO DESDE CERO PARTE 47.</p>
+<p>EJERCICIO de la parte 44</p>
+<p>Vamos a tratar de aclarar algunas cosas que aún no mencionamos del tema heap y que son necesarias, lo haremos mirando nuevamente el ejercicio practica 44 que hablamos mirado en Windows 7, lo volveremos a mirar en el mismo so.</p>
+<p>Es bueno notar que la forma de manejar el heap hay cambiado mucho de XP a Windows 7, y tiene más cambios aun hasta Windows 10, por lo cual métodos de explotación que son válidos en uno, pueden no serlo en el otro.</p>
+<p>También es cierto que lo exploits que explotan un heap overflow, hay que lucharlos bastante, no son sencillos la mayor parte de las veces y no siempre funcionan el 100% delos intentos.</p>
+<p>Bueno miraremos el ejercicio de la parte 44.</p>
+<p>http://ricardonarvaja.info/WEB/INTRODUCCION%20AL%20REVERSING%20CON%20IDA%20PRO%20DESDE%20CERO/EJERCICIOS/PRACTICA_44.7z</p>
+<p>Usaremos el Windbg fuera de IDA.</p>
+<figure><img loading="lazy" src="img/47/1.png" alt="Captura 1 del tute 47"></figure>
+<p>Ya habíamos visto que hacia un malloc inicial en 0x004010D7 asi que coloco un breakpoint en el windbg con</p>
+<p>ba e1 0x004010D7</p>
+<p>Una vez que para ya sabemos que el size era el número que le pasábamos multiplicado por 4.</p>
+<figure><img loading="lazy" src="img/47/2.png" alt="Captura 2 del tute 47"></figure>
+<p>El numero ese pasado a hexadecimal es</p>
+<p>hex(1073741828)</p>
+<p>'0x40000004'</p>
+<p>Al multiplicar por 4 daba 0x10</p>
+<figure><img loading="lazy" src="img/47/3.png" alt="Captura 3 del tute 47"></figure>
+<p>Asi que alocara 0x10.</p>
+<figure><img loading="lazy" src="img/47/4.png" alt="Captura 4 del tute 47"></figure>
+<p>Al pasar por encima del malloc con f10 veo en mi caso que allocó en 0x00301b20</p>
+<figure><img loading="lazy" src="img/47/5.png" alt="Captura 5 del tute 47"></figure>
+<p>Vemos que pertenece a un bloque de tamaño 0x10 de UserSize, o sea sera 0x10 el espacio que reserva de memoria para utilizar por el usuario, sin contar el header.</p>
+<p>Usando !heap -a 0x2c0000 para ver los chunks del heap.</p>
+<figure><img loading="lazy" src="img/47/6.png" alt="Captura 6 del tute 47"></figure>
+<p>Vemos que hay un chunk en 0x301860 de largo 0x400 que tendría mi dirección dentro, pues 0x301b20 esta incluido dentro de ese bloque que empieza en 0x301860 y sumandole 0x400 terminaría en 0x301c60.</p>
+<p>hex(0x301860+0x400)=0x301c60</p>
+<p>Veamos que nos dice el mona en el mismo caso.</p>
+<p>Lo cargo con</p>
+<p>.load pykd.pyd</p>
+<p>Y luego</p>
+<p>!py mona.py heap -h  0x2c0000 -t chunks</p>
+<figure><img loading="lazy" src="img/47/7.png" alt="Captura 7 del tute 47"></figure>
+<p>Vemos que nos muestra al igual que el windbg el mismo chunk de 0x400 salvo que ademas de Internal nos dice que es LFH.</p>
+<p>LOW FRAGMENTATION HEAP</p>
+<p>Se puede escribir muchísimos tutoriales de LFH, es complejo trataremos de no marearlos demasiado y vamos a ir en partes, esta será la primera, en la parte siguiente trataremos de ver si podemos entender y seguir una allocacion.</p>
+<p>Realmente el LFH es como un heap especial dentro del heap estándar, con reglas un poco distintas, la idea es tener un heap para evitar la fragmentación o sea que tengas bloques allocados desperdigados en la memoria y muy separados.</p>
+<p>La fragmentación del heap ocurre cuando hay allocados pequeños bloques no contiguos. Cuando esto sucede, las asignaciones de memoria pueden fallar, aunque puede haber suficiente memoria total en el heap para satisfacer la solicitud. Sin embargo, como ningún</p>
+<p>bloque de memoria libre es lo suficientemente grande, la solicitud de asignación falla.</p>
+<p>Para aplicaciones con poco uso de memoria, el heap estándar es adecuado no habrá problema, allí las asignaciones no fallaran debido a la fragmentación del heap. Sin embargo, si las aplicaciones asignan memoria con frecuencia utilizando tamaños de asignación diferentes, estas asignaciones pueden fallar debido a la fragmentación de heap.</p>
+<p>Veremos unas cuantas tablas y en las próximas partes trataremos de comprender como el sistema toma la decisión de allocar en el LFH o en el HEAP estándar y como trabaja.</p>
+<p>Tómenlo con paciencia a nadie le gusta tragar todo esto jeje, lo haremos poco a poco en la misma practica que tenemos detenida en el Windbg.</p>
+<p>HEAP ESTANDAR Y LOW FRAGMENTATION HEAP WINDOWS 7.</p>
+<p>Ya teniendo la dirección base del heap podemos ver su contenido con</p>
+<p>dt _HEAP dirección</p>
+<figure><img loading="lazy" src="img/47/8.png" alt="Captura 8 del tute 47"></figure>
+<p>Ahí está la tabla principal del heap que se accede con dt _HEAP y la dirección del mismo que en mi caso es 0x2c0000.</p>
+<p>Vemos que en la posición 0xB8 esta BlocksIndex que es un puntero a otra tabla, en mi caso dicha tabla está en 0x2c0150, o sea 0x150 desde el inicio del heap.</p>
+<p>+0x0b8 BlocksIndex : Ptr32 Void</p>
+<figure><img loading="lazy" src="img/47/9.png" alt="Captura 9 del tute 47"></figure>
+<p>Para ver el contenido de esta tabla BlocksIndex se usa</p>
+<p>dt _HEAP_LIST_LOOKUP dirección</p>
+<figure><img loading="lazy" src="img/47/10.png" alt="Captura 10 del tute 47"></figure>
+<p>Trataremos de mostrar las tablas y explicar solo lo minino necesario, ya volveremos más adelante con esta tabla.</p>
+<p>La siguiente tablita importante sale de la tabla principal del valor FrontEndHeap</p>
+<figure><img loading="lazy" src="img/47/11.png" alt="Captura 11 del tute 47"></figure>
+<p>Vemos que en mi caso apunta a 0x2c9fb8, recordemos que al buscar mi chunk en la lista.</p>
+<figure><img loading="lazy" src="img/47/12.png" alt="Captura 12 del tute 47"></figure>
+<p>Casualmente en 0x2c9fb0 empezaban esos chunks Internal LFH, esto indica la posición del LOW FRAGMENTATION HEAP que es el FRONTEND HEAP, mientras que el heap estándar es llamado BACKEND HEAP.</p>
+<p>Aquí se ve claramente que el LFH es un heap dentro del otro heap, empieza allí tal cual fuera un chunk más del heap principal, pero dentro tiene otro heap.</p>
+<p>Sigamos adelante.</p>
+<p>Para ver el contenido del LFH apuntado por FrontEndHeap se usa</p>
+<p>dt _LFH_HEAP dirección</p>
+<figure><img loading="lazy" src="img/47/13.png" alt="Captura 13 del tute 47"></figure>
+<p>Ya queda poca paciencia jeje.</p>
+<p>Como curiosidad vayamos apuntando que el offset 0x18 SubsegmentZones tiene un puntero al tercer bloque INTERNAL LFH.</p>
+<figure><img loading="lazy" src="img/47/14.png" alt="Captura 14 del tute 47"></figure>
+<p>Ahí dentro del LFH hay un par de estructuras mas que son importantes una es _HEAP_LOCAL_DATA que esta en el offset 0x310, cuyo contenido de puede ver con</p>
+<p>dt _HEAP_LOCAL_DATA</p>
+<figure><img loading="lazy" src="img/47/15.png" alt="Captura 15 del tute 47"></figure>
+<p>Vemos que SegmentInfo es una lista de 128 de largo veamos que hay ahí, en el mismo windbg clickeando en SegmentInfo, nos muestra la lista, sino con</p>
+<p>dt _HEAP_LOCAL_SEGMENT_INFO</p>
+<figure><img loading="lazy" src="img/47/16.png" alt="Captura 16 del tute 47"></figure>
+<p>y pasando el mouse por encima de los números [0], [1], etc nos muestra la dirección.</p>
+<figure><img loading="lazy" src="img/47/17.png" alt="Captura 17 del tute 47"></figure>
+<p>Ese seria el primer Local Segment Info, podemos ver que significa su contenido haciendo click por ejemplo en el [0]</p>
+<figure><img loading="lazy" src="img/47/18.png" alt="Captura 18 del tute 47"></figure>
+<p>Vemos que hay una lista llamada CachedItems en el offset 0x8 igual podemos hacer click allí, en mi caso en el primer SegmentInfo empezara en 0x2ca2e8.</p>
+<figure><img loading="lazy" src="img/47/19.png" alt="Captura 19 del tute 47"></figure>
+<p>Vemos que cada uno es un _HEAP_SUBSEGMENT.</p>
+<p>Para ver el contenido de uno hay que usar</p>
+<p>dt _HEAP_SUBSEGMENT dirección</p>
+<figure><img loading="lazy" src="img/47/20.png" alt="Captura 20 del tute 47"></figure>
+<p>Y despues de todo esto llegamos a donde queremos dentro de AggregateExch que esta en el offset 0x8 esta _INTERLOCK_SEQ eso se puede mostrar con</p>
+<p>dt _INTERLOCK_SEQ dirección</p>
+<figure><img loading="lazy" src="img/47/21.png" alt="Captura 21 del tute 47"></figure>
+<p>También haciendo click en el windbg</p>
+<figure><img loading="lazy" src="img/47/22.png" alt="Captura 22 del tute 47"></figure>
+<p>Bueno el tema era llegar hasta FreeEntryOffset en este caso es cero, anotemos bien como llegar hasta aquí, si vemos la definición de este valor.</p>
+<p>FreeEntryOffset – This 2-byte integer holds a value, when added to the address of the _HEAP_USERDATA_HEADER, results in a pointer to the next location for freeing or allocating memory.</p>
+<p>O se que depende de este valor cual sera el siguiente bloque que allocara o liberara, se le suma a otro que es _HEAP_USERDATA_HEADER, veamos donde esta ese.</p>
+<p>Ese se llega de la misma tabla anterior solo que esta en el offset 0x4 UserBlocks</p>
+<figure><img loading="lazy" src="img/47/23.png" alt="Captura 23 del tute 47"></figure>
+<p>Y se dumpea con</p>
+<figure><img loading="lazy" src="img/47/24.png" alt="Captura 24 del tute 47"></figure>
+<p>Bueno vamos obteniendo los valores para armar el rompecabezas, vemos que UserBlocks esta justo arriba de _INTERLOCK_SEQ que es el que tiene el puntero a FreeEntryOffset con lo que overflodeando la data de un chunk se podría pisar el mismo y alterar el próximo chunk que te de para allocar, aquí vemos en la imagen un poco mas claro.</p>
+<figure><img loading="lazy" src="img/47/25.png" alt="Captura 25 del tute 47"></figure>
+<p>Ali en la imagen se ve mas claro se ve el header _HEAP_USER_DATA que habíamos visto, justo debajo viene la zona escribible por el usuario, y justo debajo esta la estructura _INTERLOCK_SEQ que es la que tiene el valor que decide cual es el siguiente que te va a dar si allocas el mismo size.</p>
+<p>Con esto tenemos una vista de las tablas principales y sus valores en la oficina parte veremos si nos ayuda para estudiar como decide alocar en el heap estándar o en el LFH.</p>
+<p>Hasta la parte 48</p>
+<p>Ricardo</p>
+</main>
+<footer class="pie">
+  <p>Material educativo y defensivo. Las prácticas se limitan a programas propios, software abierto o crackmes diseñados para aprender. No se enseña a eludir licencias, DRM ni controles de acceso.</p>
+  <p><a href="../00_EMPEZAR_AQUI.html">Inicio</a> · <a href="../guia/etapa-0.html">Etapas</a> · <a href="../fuentes_y_limites.html">Fuentes y límites</a> · <a href="../registro_de_cobertura.csv">Registro de cobertura</a></p>
+</footer>
+<script>
+(function(){
+  function abrir(src){
+    var o=document.createElement('div'); o.className='lightbox-ov';
+    var i=document.createElement('img'); i.src=src; o.appendChild(i);
+    function cerrar(){o.remove(); document.removeEventListener('keydown', onkey);}
+    function onkey(e){ if(e.key==='Escape') cerrar(); }
+    o.addEventListener('click', cerrar);
+    document.addEventListener('keydown', onkey);
+    document.body.appendChild(o);
+  }
+  document.addEventListener('DOMContentLoaded', function(){
+    document.querySelectorAll('figure img, main img').forEach(function(img){
+      img.style.cursor='zoom-in';
+      img.addEventListener('click', function(){ abrir(img.currentSrc||img.src); });
+    });
+  });
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mapa del curso</title>
+<meta name="description" content="Siete etapas numeradas: recorrido obligatorio 0–4 y ramas optativas 5–6, más la rama 2D.">
+<link rel="stylesheet" href="../guia/estilo.css">
+</head>
+<body>
+<a class="salto" href="#contenido">Saltar al contenido</a>
+<header class="cabecera">
+  <div class="marca"><a href="../00_EMPEZAR_AQUI.html">CLS · Curso de reversing</a> <span class="edicion">edición 5 · 27/10/2026</span></div>
+  <nav class="principal" aria-label="Navegación principal">
+    <a href="../00_EMPEZAR_AQUI.html">Inicio</a>
+    <a href="../guia/index.html">Curso</a>
+    <a href="../materiales.html">Materiales</a>
+    <a href="../fichas/index.html">Fichas</a>
+    <a href="../glosario.html">Glosario</a>
+    <a href="../preguntas_y_respuestas.html">Repaso</a>
+    <a href="../buscar.html">Buscar</a>
+  </nav>
+</header>
+<main id="contenido">
+<h1 id="mapa-del-curso">Mapa del curso</h1>
+<p>El recorrido obligatorio son las Etapas 0–4. Las Etapas 5–6 y la rama 2D son optativas y no agregan requisitos para completar el curso base. Cada rama tiene prerrequisitos y una puerta de salida propios.</p>
+<div class="tabla"><table>
+<thead><tr>
+<th>Etapa</th>
+<th>Foco</th>
+<th>Horas estimadas</th>
+<th>Lecciones</th>
+</tr></thead><tbody>
+<tr><td><strong>0</strong></td><td><a href="etapa-0.html">Laboratorio y método seguro</a></td><td>4 a 6 horas</td><td>1</td></tr>
+<tr><td><strong>1</strong></td><td><a href="etapa-1.html">Fundamentos</a></td><td>21 a 25 horas</td><td>5</td></tr>
+<tr><td><strong>2</strong></td><td><a href="etapa-2.html">Introducción al reversing</a></td><td>32 a 40 h (2A) + ~25 h (2B) + ~30–40 h (2C avanzado)</td><td>24</td></tr>
+<tr><td><strong>3</strong></td><td><a href="etapa-3.html">.NET como primera victoria</a></td><td>7 a 10 horas</td><td>2</td></tr>
+<tr><td><strong>4</strong></td><td><a href="etapa-4.html">Práctica guiada</a></td><td>19 a 25 horas</td><td>5</td></tr>
+<tr><td><strong>5</strong></td><td><a href="etapa-5.html">Ramas opcionales</a></td><td>Variable: 5 a 10 horas por rama</td><td>4</td></tr>
+<tr><td><strong>6</strong></td><td><a href="etapa-6.html">Rama optativa · Kernel y drivers</a></td><td>45–65 horas como estimación inicial; puede requerir más tiempo si C, WinDbg o WDK son nuevos.</td><td>6</td></tr>
+</tbody></table></div>
+<h2 id="cómo-estudiar">Cómo estudiar</h2>
+<ol><li>Leé la lección completa, sin saltear los ejemplos.</li><li>Hacé la práctica en el laboratorio; no solo leas.</li><li>Respondé las preguntas <strong>antes</strong> de abrir las respuestas.</li><li>Verificá la puerta de salida. Si no la pasás, repetí la práctica.</li><li>Anotá en <code>seguimiento.csv</code> qué hiciste, cuánto tardaste y qué duda quedó.</li></ol>
+<h2 id="tres-perfiles-o-rutas-de-estudio-principiante-intermedio-y-avanzado">Tres perfiles o rutas de estudio (Principiante, Intermedio y Avanzado)</h2>
+<p>Aunque el curso completo supera las 400 páginas al sumar el tronco obligatorio (Etapas 0–4), los bloques intermedio y avanzado de la Etapa 2 (2B y 2C), la rama de Windows internals (2D) y la de Kernel y drivers (Etapa 6), <strong>no hace falta leerlo de corrido de principio a fin en una sola sentada</strong>. Podés recorrerlo en tres hitos progresivos claramente delimitados según tu nivel actual y tu objetivo:</p>
+<div class="tabla"><table>
+<thead><tr>
+<th>Perfil y nivel</th>
+<th>Carga estimada</th>
+<th>Secuencia exacta de etapas y lecciones</th>
+<th>Herramientas centrales</th>
+<th>Hito práctico al cerrar el nivel</th>
+</tr></thead><tbody>
+<tr>
+<td><strong>Ruta 1 · Fundamentos Firmes</strong><br><em>(Nivel Principiante)</em></td>
+<td>~65 a 75 h</td>
+<td><a href="etapa-0.html">Etapa 0</a> (0.1) &rarr; <a href="etapa-1.html">Etapa 1</a> (1.1–1.5) &rarr; <a href="etapa-2.html">Etapa 2A</a> (2.1–2.9) &rarr; <a href="etapa-3.html">Etapa 3</a> (3.1–3.2) &rarr; <a href="etapa-4.html">Etapa 4 base</a> (4.1, 4.2, 4.3 y 4.4)</td>
+<td>Visor PE (PE-bear / DIE), editor hex, IDA Free, x64dbg, ILSpy / dnSpyEx, compilador C y Python</td>
+<td>Analizar un binario propio en C y uno en .NET de punta a punta sin ver el fuente, confirmar hipótesis con breakpoints y redactar un informe reproducible.</td>
+</tr>
+<tr>
+<td><strong>Ruta 2 · Analista de Binarios y Malware Defensivo</strong><br><em>(Nivel Intermedio)</em></td>
+<td>+45 a 55 h<br><em>(acumulado ~115–130 h)</em></td>
+<td>Bloque <strong>2B</strong> (<a href="02-ofuscacion.html">2.10</a>–<a href="02-ghidra.html">2.16</a>) &rarr; <a href="02-packers.html">2.17</a> (Packers) &rarr; <a href="02-scripting-debugger.html">2.21</a> (Scripting y Frida) &rarr; <a href="04-formatos-protocolos.html">4.5</a> (Formatos y protocolos) &rarr; <a href="05-malware.html">5.1</a> (Malware estático) y <a href="05-automatizacion.html">5.3</a> (Automatización) &rarr; Optativas <a href="02-opt-malware-dinamico.html">2.22</a>, <a href="02-opt-shellcode-c2.html">2.23</a> y <a href="2d-01-objetos.html">2D.1</a>–<a href="2d-05-task-scheduler.html">2D.5</a></td>
+<td>Ghidra, Scylla, trazas condicionales de x64dbg, Frida, IDAPython (<code>ida_typeinf</code>), <code>pefile</code>, <code>capstone</code>, YARA y Sysinternals / WinDbg básico</td>
+<td>Desempaquetar un binario UPX propio (x86/x64) hasta el OEP, recuperar strings ocultas y APIs por PEB/hash, reconstruir un formato binario propio (<code>CLSF</code>) y escribir reglas YARA e informes de persistencia.</td>
+</tr>
+<tr>
+<td><strong>Ruta 3 · Investigador de Vulnerabilidades, Internals y Kernel</strong><br><em>(Nivel Avanzado)</em></td>
+<td>+80 a 110 h<br><em>(curso completo)</em></td>
+<td>Núcleo duro de <strong>2C</strong> (<a href="02-cpp-profundo.html">2.18</a> C++ profundo, <a href="02-windbg-heap.html">2.19</a> WinDbg/TTD/Heap, <a href="02-patch-diffing.html">2.20</a> Patch diffing) &rarr; <a href="05-vulnerabilidades.html">5.2</a> (Vulnerabilidades) &rarr; <a href="02-opt-fuzzing.html">2.24</a> (Fuzzing y simbólico) &rarr; <a href="2d-06-com-interfaces.html">2D.6</a>–<a href="2d-13-integrador.html">2D.13</a> (COM/RPC/WMI/IPC/Excepciones/ETW) &rarr; <a href="etapa-6.html">Etapa 6</a> (6.1–6.6, Kernel y drivers)</td>
+<td>WinDbg Preview + Time-Travel Debugging (TTD), GFlags / Page Heap, BinDiff / Diaphora / Version Tracking, OleViewDotNet, WDK / KMDF y Driver Verifier en VM descartable</td>
+<td>Reconstruir clases C++ (vtable, RTTI, SSO, excepciones x64), diagnosticar corrupciones de heap con Page Heap/TTD, aislar un parche de seguridad con diffing, auditar canales IPC/COM y revisar un driver <code>.sys</code> estática y dinámicamente.</td>
+</tr>
+</tbody></table></div>
+
+<aside class="callout nota"><p class="callout-titulo">Consejo para elegir tu punto de entrada</p><p>Si empezás desde cero, completá primero la <strong>Ruta 1</strong> sin desviarte a 2B ni a 2C cuando llegues al final de 2.9: saltar de 2.9 directo a la Etapa 3 (.NET) y a la Etapa 4 base te da una victoria real y consolida el método en la mitad de tiempo. Una vez aprobada la puerta de salida de la Etapa 4, volvé para cursar la <strong>Ruta 2</strong> y luego la <strong>Ruta 3</strong>. En cualquier nivel, acompañate con el <a href="../hilo-conductor-y-plantillas.html">Hilo conductor multi-nivel y kit de plantillas C/C++</a> y las <a href="../hojas-referencia-rapida.html">Hojas de referencia rápida (Cheat Sheets)</a>.</p></aside>
+
+<h2 id="qué-es-cada-etapa">Qué es cada etapa</h2>
+<h3 id="etapa-0-laboratorio-y-método-seguro">Etapa 0 · Laboratorio y método seguro</h3>
+<p>Armar un entorno aislado, tomar snapshots, verificar hashes y registrar cada práctica con su alcance.</p>
+<p>Prerrequisitos: Ninguno.</p>
+<h3 id="etapa-1-fundamentos">Etapa 1 · Fundamentos</h3>
+<p>Leer un binario sencillo: números, memoria, procesos, formato PE y programas propios en C y Python.</p>
+<p>Prerrequisitos: Etapa 0.</p>
+<h3 id="etapa-2-introducción-al-reversing">Etapa 2 · Introducción al reversing</h3>
+<p>Leer assembly x86/x64, seguir el flujo y usar debugger y desensamblador con criterio. Se divide en 2A (base, 2.1–2.9), 2B (Windows intermedio, 2.10–2.16: ofuscación, TLS, MFC, huella, PE fino, anti-análisis, Ghidra) y 2C (Windows avanzado, 2.17–2.21: packers didácticos, C++ profundo, WinDbg/heap, patch diffing, scripting). Las tres rutas optativas (<a href="02-opt-malware-dinamico.html">2.22</a>, <a href="02-opt-shellcode-c2.html">2.23</a> y <a href="02-opt-fuzzing.html">2.24</a>) quedan fuera de la puerta obligatoria; como requieren las lecciones <code>4.1</code>, <code>4.2</code>, <code>4.4</code> y <code>5.1</code>, se recomienda cursarlas después de completar la Etapa 4 y la lección 5.1.</p>
+<p>Prerrequisitos: Etapa 1.</p>
+<h3 id="etapa-3-net-como-primera-victoria">Etapa 3 · .NET como primera victoria</h3>
+<p>Entender el runtime .NET, leer IL y comparar fuente, IL y decompilación en un programa propio.</p>
+<p>Prerrequisitos: Etapa 2.</p>
+<h3 id="etapa-4-práctica-guiada">Etapa 4 · Práctica guiada</h3>
+<p>Analizar un programa propio con método, contener la ejecución y escribir un informe reproducible.</p>
+<p>Prerrequisitos: Etapas 0 a 3.</p>
+<h3 id="etapa-5-ramas-opcionales">Etapa 5 · Ramas opcionales</h3>
+<p>Elegir una especialización dentro de Windows, con prerrequisitos y práctica propia, sin convertir el corpus en una lista de tareas peligrosas.</p>
+<p>Prerrequisitos: Etapas 0 a 4 completas.</p>
+<h3 id="etapa-6-rama-optativa-kernel-y-drivers">Etapa 6 · Rama optativa · Kernel y drivers</h3>
+<p>Comprender, construir y revisar un driver KMDF didáctico con una interfaz inocua, depurarlo solo en VM descartable y explicar mitigaciones actuales.</p>
+<p>Prerrequisitos: Etapa 0 (laboratorio aislado), C, assembly, memoria y sincronización, WinDbg y 2D.1 (objetos/tokens), 2D.2 (memoria/loader) y 2D.11 (excepciones/debugging). Etapa 2C es recomendada, no requisito; no hace falta completar toda 2D.</p>
+<h2 id="material-de-apoyo">Material de apoyo</h2>
+<ul><li><a href="../videos.html">Índice de videotutoriales</a>: dónde está en Windows cada video que menciona el curso, con enlace y ruta absoluta.</li><li><a href="../ida-tutes.html">Curso IDA desde cero (69 tutoriales)</a>: índice por tema, con el texto extraído de cada uno.</li><li><a href="../teorias.html">Teorias_Numeradas clasificadas</a>: los 2.017 títulos separados en educativos vs cracking de software comercial.</li><li><a href="../telegram.html">Transcripciones de Telegram por tema</a>: las 523 transcripciones tamizadas; dónde están las sesiones de práctica.</li><li><a href="../fichas/index.html">Fichas de recursos</a>: qué se revisó, qué falta y qué límites tiene cada fuente.</li><li><a href="../hilo-conductor-y-plantillas.html">Hilo conductor multi-nivel y kit de plantillas C/C++</a>: evolución de <code>check.c</code> a <code>BlocLab</code> en los 3 niveles y 5 esqueletos en C/C++ listos para compilar.</li><li><a href="../hojas-referencia-rapida.html">Hojas de referencia rápida (Cheat Sheets)</a>: resumen de 1 página por nivel (Principiante, Intermedio y Avanzado).</li><li><a href="../glosario.html">Glosario</a>: términos en lenguaje de principiante.</li><li><a href="../preguntas_y_respuestas.html">Preguntas y respuestas</a>: repaso por etapa.</li><li><a href="../fuentes_y_limites.html">Fuentes y límites</a>: criterios, cobertura y exclusiones.</li></ul>
+<h2 id="dónde-seguir-practicando-legal-y-seguro">Dónde seguir practicando (legal y seguro)</h2>
+<p>Esta guía practica con <strong>programas propios</strong>, pero conviene seguir con retos pensados para aprender. Estos recursos son <strong>recomendación externa</strong> (no salen del corpus CLS) y permiten practicar reversing de Windows sin problemas legales:</p>
+<ul><li><a href="https://crackmes.one/" rel="noopener" target="_blank">crackmes.one</a>: miles de crackmes subidos para aprender; filtrá por plataforma <strong>Windows</strong> y por dificultad. Analizalos en tu VM.</li><li><a href="https://flare-on.com/" rel="noopener" target="_blank">Flare-On Challenge</a>: competencia anual y gratuita de reversing, centrada en Windows; los retos de años anteriores quedan publicados con soluciones.</li><li><strong>CTFs (categoría rev)</strong>: <a href="https://ctftime.org/" rel="noopener" target="_blank">CTFtime</a> lista competencias; muchos retos de reversing son binarios de Windows. Buenísimos para practicar con límite de tiempo.</li><li><strong>Talleres abiertos</strong>: materiales públicos de análisis de malware y reversing (por ejemplo, <a href="https://www.openanalysis.net/" rel="noopener" target="_blank">OALabs</a> o Malware Unicorn) con binarios de práctica.</li><li><strong>Tus propios programas</strong>: seguí compilando ejemplos con condiciones cada vez más complejas; es la práctica más segura y la que más enseña.</li></ul>
+<p>Regla que no cambia: todo en la VM aislada de la Etapa 0, y nada de software ajeno sin permiso.</p>
+</main>
+<footer class="pie">
+  <p>Material educativo y defensivo. Las prácticas se limitan a programas propios, software abierto o crackmes diseñados para aprender. No se enseña a eludir licencias, DRM ni controles de acceso.</p>
+  <p><a href="../00_EMPEZAR_AQUI.html">Inicio</a> · <a href="../guia/etapa-0.html">Etapas</a> · <a href="../fuentes_y_limites.html">Fuentes y límites</a> · <a href="../registro_de_cobertura.csv">Registro de cobertura</a></p>
+</footer>
+</body>
+</html>

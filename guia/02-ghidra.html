@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>2.16 · Ghidra (y Cutter): la alternativa libre, con práctica</title>
+<meta name="description" content="Analizar el mismo binario que en IDA, pero en Ghidra: proyecto, autoanálisis, strings y referencias, tipos y estructuras, decompilador, scripting y modo headless — y Cutter/radare2 como opción.">
+<link rel="stylesheet" href="../guia/estilo.css">
+</head>
+<body>
+<a class="salto" href="#contenido">Saltar al contenido</a>
+<header class="cabecera">
+  <div class="marca"><a href="../00_EMPEZAR_AQUI.html">CLS · Curso de reversing</a> <span class="edicion">edición 5 · 27/10/2026</span></div>
+  <nav class="principal" aria-label="Navegación principal">
+    <a href="../00_EMPEZAR_AQUI.html">Inicio</a>
+    <a href="../guia/index.html">Curso</a>
+    <a href="../materiales.html">Materiales</a>
+    <a href="../fichas/index.html">Fichas</a>
+    <a href="../glosario.html">Glosario</a>
+    <a href="../preguntas_y_respuestas.html">Repaso</a>
+    <a href="../buscar.html">Buscar</a>
+  </nav>
+</header>
+<main id="contenido">
+<nav class="migas" aria-label="Ubicación"><a href="../00_EMPEZAR_AQUI.html">Inicio</a><span aria-hidden="true">›</span><a href="../guia/index.html">Curso</a><span aria-hidden="true">›</span><span>Etapa 2 · Windows intermedio</span></nav><h1 id="ghidra-y-cutter-la-alternativa-libre-con-práctica">Ghidra (y Cutter): la alternativa libre, con práctica</h1>
+<aside class="callout nota"><p class="callout-titulo">Objetivo de la lección</p><p>Hacer en <strong>Ghidra</strong> el mismo recorrido que hiciste en IDA, para no depender de una sola herramienta: importar, dejar que autoanalice, seguir strings y referencias, corregir tipos, leer el decompilador y documentar. <strong>Prerrequisitos:</strong> <a href="02-ida.html">IDA y el análisis estático</a> (2.7), estructuras (2.7).</p></aside>
+<aside class="callout aviso"><p class="callout-titulo">Herramienta externa al corpus</p><p>El curso CLS enseña con IDA, OllyDbg y x64dbg; <strong>Ghidra y radare2 no son material de CLS</strong>, así que esta lección es <strong>conocimiento externo</strong>. En el corpus hay, sin revisar, una copia de <strong>Ghidra 11.3.2</strong> y una carpeta <strong>RADARE</strong> (en <code>CLS_fuentes_externas/links_chat</code> y <code>.../RADARE</code>); igual conviene <strong>descargar Ghidra del sitio oficial</strong> y verificar el hash antes de usarlo.</p></aside>
+<h2 id="por-qué-una-segunda-herramienta">Por qué una segunda herramienta</h2>
+<p>Ghidra es gratis y open source (NSA), trae <strong>decompilador</strong> integrado y corre en cualquier sistema. Saber leer el mismo binario en IDA <strong>y</strong> en Ghidra te da dos ventajas: cuando una decompila mal una función, la otra suele aclararla; y no quedás atado a una licencia. Cutter (la GUI de <strong>radare2</strong>) es otra opción libre, más liviana.</p>
+<h2 id="el-recorrido-equivalente-al-de-ida">El recorrido equivalente al de IDA</h2>
+<ol><li><strong>Proyecto e import.</strong> Ghidra trabaja con un <em>project</em> que contiene uno o varios binarios. <code>File → Import File</code>, elegí el <code>.exe</code>; Ghidra detecta el formato PE y el procesador.</li><li><strong>Autoanálisis.</strong> Al abrirlo por primera vez, ofrece correr los <em>analyzers</em>: dejalos con la opción por defecto la primera vez. Son el equivalente al análisis inicial de IDA (arma funciones, resuelve referencias, nombra imports).</li><li><strong>Navegación.</strong> Las ventanas clave: <strong>Symbol Tree</strong> (funciones, imports, exports), <strong>Defined Strings</strong> (el equivalente a las strings de IDA), <strong>Listing</strong> (el desensamblado) y <strong>Decompile</strong> (el pseudo-C, como Hex-Rays).</li><li><strong>Seguir el hilo.</strong> Doble clic en una string te lleva a su uso; clic derecho → <strong>References → Show References to</strong> es el <code>X</code> (xrefs) de IDA. Con eso llegás a la lógica igual que en 2.7.</li><li><strong>Corregir tipos.</strong> En el decompilador, clic derecho → <strong>Retype Variable</strong> y <strong>Rename Variable/Function</strong>; para estructuras, el <strong>Data Type Manager</strong>. Es el <code>T</code>/renombrado de IDA: cada tipo que corregís hace el pseudo-C más legible.</li><li><strong>Documentar.</strong> Comentarios (<code>;</code>), <em>bookmarks</em> y renombrado quedan en el proyecto. Exportá un resumen de hallazgos para tu informe (Etapa 4).</li></ol>
+<h2 id="tipos-y-estructuras-donde-ghidra-más-mejora-el-pseudo-c">Tipos y estructuras: donde Ghidra más mejora el pseudo-C</h2>
+<p>El decompilador es tan bueno como los tipos que le das. Tres herramientas cubren casi todo (<strong>conocimiento externo</strong>, guías de Ghidra):</p>
+<ul><li><strong>Data Type Manager.</strong> Ventana con los tipos del programa y los <strong>archivos de tipos</strong> (<code>.gdt</code>) que trae Ghidra; para un PE aplica automáticamente los de Windows, por eso <code>CreateFileW</code> ya aparece con sus parámetros. Ahí creás estructuras a mano (<em>New → Structure</em>) con los campos que dedujiste, como en <a href="02-ida.html">IDA y el análisis estático</a>.</li><li><strong>Auto Create Structure.</strong> En el decompilador, clic derecho sobre una variable que es un puntero → <em>Auto Create Structure</em>: Ghidra mira los accesos <code>[ptr+N]</code> de la función y arma una estructura con un campo por offset. Es un punto de partida, no el resultado: renombrá los campos y corregí tamaños cuando sepas qué son.</li><li><strong>Parse C Source.</strong> Si tenés el encabezado <code>.h</code> de tu propio programa (o la definición de una estructura documentada), <em>File → Parse C Source</em> lo convierte en tipos de Ghidra. Es lo que más rápido transforma un listado de <code>param_1 + 0x18</code> en <code>ctx-&gt;contador</code>.</li></ul>
+<p>Regla de trabajo: cada vez que el pseudo-C muestra aritmética de punteros sobre la misma variable, hay una estructura sin declarar.</p>
+<h2 id="scripting-y-modo-headless">Scripting y modo headless</h2>
+<p>Ghidra expone toda su API para scripts en <strong>Java</strong> y <strong>Python</strong> (Jython en el <em>Script Manager</em> y, en versiones recientes, también CPython mediante PyGhidra). Es el equivalente a IDAPython de la <a href="05-automatizacion.html">Etapa 5</a>. Dentro de un script, <code>currentProgram</code> es el programa abierto y hay funciones de conveniencia de la API "plana" (<em>FlatProgramAPI</em>), como <code>getReferencesTo(direccion)</code>.</p>
+<p><em>(Ejemplo <strong>ilustrativo</strong>, no ejecutado en esta edición: listar las veinte funciones sin nombre más grandes, para decidir por dónde empezar.)</em></p>
+<pre><code class="lenguaje-python"># Ghidra, Script Manager (Python): funciones FUN_ ordenadas por tamaño
+fm = currentProgram.getFunctionManager()
+sin_nombre = [f for f in fm.getFunctions(True) if f.getName().startswith("FUN_")]
+sin_nombre.sort(key=lambda f: f.getBody().getNumAddresses(), reverse=True)
+for f in sin_nombre[:20]:
+    print(f.getEntryPoint(), f.getName(), f.getBody().getNumAddresses())</code></pre>
+<p>El <strong>modo headless</strong> corre el autoanálisis y los scripts sin interfaz, para procesar varios binarios en lote o repetir un análisis exactamente igual:</p>
+<pre><code class="lenguaje-text">analyzeHeadless C:\proyectos_ghidra LabCLS -import hola.exe -postScript listar_fun.py</code></pre>
+<p>Eso deja el resultado del script en la salida de consola y el binario analizado en el proyecto, que es evidencia reproducible.</p>
+<h2 id="version-tracking-llevar-el-trabajo-de-una-versión-a-otra">Version Tracking: llevar el trabajo de una versión a otra</h2>
+<p>Si ya renombraste y comentaste la versión 1 de un programa y aparece la versión 2, no hace falta empezar de cero. <strong>Version Tracking</strong> compara dos programas (origen y destino), busca funciones y datos que se corresponden con distintos <strong>correlacionadores</strong> (bytes idénticos, mismo código con otras direcciones, mismas referencias, mismos símbolos) y te deja <strong>aceptar</strong> cada coincidencia y <strong>trasladar</strong> al destino nombres, comentarios y tipos. Lo que queda sin correspondencia es justamente lo que cambió. Se usa a fondo en <a href="02-patch-diffing.html">2.20 Patch diffing</a>; acá alcanza con saber que existe.</p>
+<h2 id="ejemplo-paso-a-paso-la-misma-función-en-ida-y-en-ghidra">Ejemplo paso a paso: la misma función en IDA y en Ghidra</h2>
+<p><em>(Ejemplo <strong>ilustrativo</strong>: pseudo-C representativo de los dos decompiladores.)</em></p>
+<p>La misma rutina de chequeo, decompilada por cada herramienta antes de renombrar:</p>
+<pre><code class="lenguaje-c">// IDA (Hex-Rays)                      // Ghidra
+int sub_401050(char *a1) {             undefined4 FUN_00401050(char *param_1) {
+  if ( strlen(a1) != 6 )                 size_t sVar1 = strlen(param_1);
+    return 0;                            if (sVar1 != 6) return 0;
+  return strcmp(a1, "s3cr3t") == 0;      iVar2 = strcmp(param_1,"s3cr3t");
+}                                        return (uint)(iVar2 == 0);
+                                       }</code></pre>
+<p>Dicen lo mismo con otra prosa: la longitud debe ser 6 y el texto <code>"s3cr3t"</code>. Dónde <strong>conviene comparar</strong>: a veces Ghidra resuelve mejor una <code>switch</code> o una estructura que Hex-Rays enreda (y al revés). Después de <strong>renombrar</strong> (<code>FUN_00401050</code> → <code>check</code>, <code>param_1</code> → <code>clave</code>) y <strong>tipar</strong>, el pseudo-C de Ghidra queda tan legible como el de IDA:</p>
+<pre><code class="lenguaje-c">bool check(char *clave) {
+  if (strlen(clave) != 6) return false;
+  return strcmp(clave, "s3cr3t") == 0;
+}</code></pre>
+<h2 id="práctica">Práctica</h2>
+<p>En tu VM, con el <strong>mismo crackme</strong> que analizaste en IDA (ver <a href="../practicas.html">Banco de prácticas</a>):</p>
+<ol><li>Importalo en un proyecto de Ghidra y corré el autoanálisis.</li><li>Encontrá la misma string clave que usaste en IDA y llegá, por referencias, a la función de decisión.</li><li>Leé la función en el <strong>decompilador</strong>; renombrá dos variables y confirmá que el pseudo-C mejora.</li><li>Compará lado a lado con la vista de IDA: ¿coincide el decompilado? ¿Alguna lo hace más claro?</li><li>(Opcional) Abrí el mismo binario en <strong>Cutter</strong> y repetí el paso 2.</li><li>Elegí una función de tu programa que reciba un puntero a estructura. Usá <em>Auto Create Structure</em>, renombrá los campos y compará el pseudo-C antes y después; si tenés el <code>.h</code>, importalo con <em>Parse C Source</em> y compará con la estructura automática.</li><li>Corré el script de ejemplo desde el <em>Script Manager</em> y después en modo headless sobre el mismo binario. Guardá la salida como evidencia.</li></ol>
+<h2 id="preguntas-de-repaso">Preguntas de repaso</h2>
+<details class="qa"><summary>¿Qué ventaja concreta da leer el mismo binario en IDA y en Ghidra?</summary><div class="respuesta"><p>Que cuando una <strong>decompila mal</strong> una función, la otra suele aclararla; además no dependés de una licencia. Son dos lecturas del mismo código.</p></div></details>
+<details class="qa"><summary>¿Cuál es el equivalente en Ghidra de las "strings" y de los "xrefs" de IDA?</summary><div class="respuesta"><p><strong>Defined Strings</strong> para las cadenas y <strong>References → Show References to</strong> (clic derecho) para los xrefs.</p></div></details>
+<details class="qa"><summary>¿Qué hacés la primera vez que abrís un binario en Ghidra?</summary><div class="respuesta"><p>Dejar correr el <strong>autoanálisis</strong> con la opción por defecto: arma funciones, resuelve referencias y nombra imports, como el análisis inicial de IDA.</p></div></details>
+<details class="qa"><summary>¿Cómo mejorás el decompilado de una función?</summary><div class="respuesta"><p><strong>Renombrando</strong> variables/funciones y <strong>corrigiendo tipos</strong> (Retype Variable, Data Type Manager); cada corrección hace el pseudo-C más legible, igual que <code>T</code>/rename en IDA.</p></div></details>
+<details class="qa"><summary>¿Qué hace <em>Auto Create Structure</em> y por qué no es el resultado final?</summary><div class="respuesta"><p>Crea una estructura con un campo por cada offset que la función usa sobre ese puntero. Es un borrador: no conoce los nombres ni el tamaño total, y puede faltarle campos que solo se usan en otras funciones.</p></div></details>
+<details class="qa"><summary>¿Para qué sirve el modo headless?</summary><div class="respuesta"><p>Para correr el autoanálisis y scripts sin interfaz: procesar varios binarios en lote o repetir el mismo análisis exactamente igual, lo que lo vuelve reproducible.</p></div></details>
+<details class="qa"><summary>¿Qué te ahorra Version Tracking cuando aparece una versión nueva del programa?</summary><div class="respuesta"><p>Rehacer el trabajo: encuentra las funciones correspondientes y traslada nombres, comentarios y tipos; lo que queda sin correspondencia es lo que cambió.</p></div></details>
+<details class="qa"><summary>¿Por qué conviene bajar Ghidra del sitio oficial aunque haya una copia en el corpus?</summary><div class="respuesta"><p>Porque la copia del corpus <strong>no está revisada</strong>; del sitio oficial, verificando el hash, tenés garantía de integridad. Es la misma precaución que con cualquier herramienta.</p></div></details>
+<aside class="callout nota"><p class="callout-titulo">Puerta de salida</p><p>Podés: (1) importar y autoanalizar un binario en Ghidra; (2) llegar a la función de decisión por strings y referencias; (3) mejorar el decompilado renombrando y tipando; (4) comparar la lectura de IDA y Ghidra del mismo binario; (5) crear y aplicar una estructura con el Data Type Manager o <em>Auto Create Structure</em>; (6) correr un script propio desde el <em>Script Manager</em> y en modo headless. Con esto cerrás el bloque <strong>2B · Windows intermedio</strong>.</p></aside>
+<aside class="callout nota"><p class="callout-titulo">Lo que queda fuera</p><p>Escribir analizadores o extensiones de Ghidra, el lenguaje de especificación de procesadores (SLEIGH), el trabajo colaborativo con Ghidra Server y la depuración integrada. Son temas de uso avanzado de la herramienta, no de método.</p></aside>
+<h2 id="fuentes-de-esta-lección">Fuentes de esta lección</h2>
+<ul><li><strong>Conocimiento externo:</strong> Ghidra (proyecto NSA) y su decompilador; recorrido equivalente al de IDA. Guías oficiales: <a href="https://ghidra.re/ghidra_docs/GhidraClass/Beginner/Introduction_to_Ghidra_Student_Guide.html" rel="noopener" target="_blank">Ghidra class · Beginner</a> e <a href="https://ghidra.re/ghidra_docs/GhidraClass/Intermediate/Intermediate_Ghidra_Student_Guide.html" rel="noopener" target="_blank">Intermediate</a>.</li><li>En el corpus (sin revisar): copia de <strong>Ghidra 11.3.2</strong> y carpeta <strong>RADARE</strong> en <code>CLS_fuentes_externas</code>. No se usaron como fuente; se mencionan por completitud.</li><li><a href="02-ida.html">IDA y el análisis estático</a> (2.7) — el recorrido que esta lección replica en otra herramienta.</li><li>Ghidra (conocimiento externo): <a href="https://ghidra.re/ghidra_docs/GhidraClass/Advanced/improvingDisassemblyAndDecompilation.pdf" rel="noopener" target="_blank">Improving Disassembly and Decompilation</a> (presentación en PDF) (tipos y estructuras en el decompilador), <a href="https://ghidra.re/ghidra_docs/GhidraClass/Intermediate/VersionTracking.html" rel="noopener" target="_blank">Version Tracking</a> y <a href="https://ghidra.re/ghidra_docs/api/" rel="noopener" target="_blank">API de Ghidra</a> (<code>FlatProgramAPI</code>, <code>FunctionManager</code>).</li></ul>
+<aside class="callout nota"><p class="callout-titulo">Capas de esta lección</p><p><strong>Contenido observado en CLS:</strong> solo la existencia de Ghidra 11.3.2 y la carpeta RADARE en el corpus (sin revisar). <strong>Conocimiento externo:</strong> todo el manejo de Ghidra/Cutter (tipos, scripting, headless, Version Tracking) y el paralelo con IDA. <strong>Ejemplo ilustrativo:</strong> el pseudo-C comparado, el script de funciones sin nombre y la línea de <code>analyzeHeadless</code> (no ejecutados en esta edición). <strong>Recomendación editorial:</strong> el recorrido paso a paso, la comparación lado a lado y la práctica con el mismo crackme.</p></aside>
+</main>
+<footer class="pie">
+  <p>Material educativo y defensivo. Las prácticas se limitan a programas propios, software abierto o crackmes diseñados para aprender. No se enseña a eludir licencias, DRM ni controles de acceso.</p>
+  <p><a href="../00_EMPEZAR_AQUI.html">Inicio</a> · <a href="../guia/etapa-0.html">Etapas</a> · <a href="../fuentes_y_limites.html">Fuentes y límites</a> · <a href="../registro_de_cobertura.csv">Registro de cobertura</a></p>
+</footer>
+</body>
+</html>

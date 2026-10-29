@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Etapa 2 · Herramientas: del OllyDbg histórico al taller actual</title>
+<meta name="description" content="Qué herramienta sirve para cada tarea, cuáles están discontinuadas y cómo armar un taller verificable.">
+<link rel="stylesheet" href="../guia/estilo.css">
+</head>
+<body>
+<a class="salto" href="#contenido">Saltar al contenido</a>
+<header class="cabecera">
+  <div class="marca"><a href="../00_EMPEZAR_AQUI.html">CLS · Curso de reversing</a> <span class="edicion">edición 5 · 27/10/2026</span></div>
+  <nav class="principal" aria-label="Navegación principal">
+    <a href="../00_EMPEZAR_AQUI.html">Inicio</a>
+    <a href="../guia/index.html">Curso</a>
+    <a href="../materiales.html">Materiales</a>
+    <a href="../fichas/index.html">Fichas</a>
+    <a href="../glosario.html">Glosario</a>
+    <a href="../preguntas_y_respuestas.html">Repaso</a>
+    <a href="../buscar.html">Buscar</a>
+  </nav>
+</header>
+<main id="contenido">
+<nav class="migas" aria-label="Ubicación"><a href="../00_EMPEZAR_AQUI.html">Inicio</a><span aria-hidden="true">›</span><a href="../guia/index.html">Curso</a><span aria-hidden="true">›</span><span>Etapa 2 · Introducción al reversing</span></nav><h1 id="herramientas-del-ollydbg-histórico-al-taller-actual">Herramientas: del OllyDbg histórico al taller actual</h1>
+<aside class="callout nota"><p class="callout-titulo">Objetivo de la lección</p><p>Al terminar vas a poder elegir la herramienta adecuada para identificar, desensamblar, depurar o inspeccionar un binario, justificar por qué algunas del curso son históricas y registrar versiones y hashes de tu taller.</p></aside>
+<p><strong>Prerrequisitos:</strong> debugger e IDA. <strong>Duración sugerida:</strong> 2 horas. Estimación aproximada.</p>
+<h2 id="por-qué-hablar-de-herramientas">Por qué hablar de herramientas</h2>
+<p>El conocimiento de reversing —registros, stack, saltos, PE— envejece poco. Las herramientas envejecen rápido. El curso de CLS mezcla material de 2007, 2016 y 2021, y usa OllyDbg en una parte y x64dbg en otra. Si no distinguís qué es concepto y qué es botón, vas a estudiar una interfaz muerta creyendo que estudias reversing.</p>
+<h2 id="el-taller-mínimo">El taller mínimo</h2>
+<div class="tabla"><table>
+<thead><tr>
+<th>Tarea</th>
+<th>Herramienta</th>
+<th>Estado</th>
+<th>Nota</th>
+</tr></thead><tbody>
+<tr><td>Depurar 32 y 64 bits</td><td><strong>x64dbg</strong></td><td>Activa</td><td>Gratis, open source, Windows</td></tr>
+<tr><td>Desensamblar</td><td><strong>IDA Free</strong></td><td>Activa (versión gratuita)</td><td>Limitada pero suficiente para empezar</td></tr>
+<tr><td>Desensamblar y decompilar</td><td><strong>Ghidra</strong></td><td>Activa</td><td>Gratis, open source, multiplataforma</td></tr>
+<tr><td>Editar bytes</td><td><strong>HxD</strong></td><td>Activa</td><td>Gratis para uso personal; verificar licencia</td></tr>
+<tr><td>Ver cabecera PE</td><td><strong>PE-bear</strong>, <strong>CFF Explorer</strong>, <strong>Detect It Easy</strong></td><td>Activas</td><td>Detect It Easy también identifica empaquetado</td></tr>
+<tr><td>Ver procesos y handles</td><td><strong>Process Explorer</strong> (Sysinternals)</td><td>Activa</td><td>Útil para el mapa de memoria y handles</td></tr>
+<tr><td>Ver actividad de archivos/registro</td><td><strong>Process Monitor</strong></td><td>Activa</td><td>Para análisis dinámico controlado</td></tr>
+<tr><td>Ver red</td><td><strong>TCPView</strong>, <strong>Wireshark</strong></td><td>Activas</td><td>Solo en laboratorio aislado</td></tr>
+<tr><td>Automatizar</td><td><strong>Python</strong> + <code>pefile</code>, <code>capstone</code></td><td>Activas</td><td>Opcional</td></tr>
+<tr><td>Detección</td><td><strong>YARA</strong></td><td>Activa</td><td>Para reglas defensivas</td></tr>
+</tbody></table></div>
+<p>No necesitás instalar todo el primer día. x64dbg, un editor hexadecimal y un visor de PE alcanzan para las etapas 1 a 4.</p>
+<h2 id="el-taller-actual-2026-más-allá-de-lo-mínimo">El taller actual (2026): más allá de lo mínimo</h2>
+<aside class="callout aviso"><p class="callout-titulo">Actualización externa</p><p>El corpus CLS no cubre estas herramientas (son más nuevas que su material). Las agregamos como <strong>conocimiento externo</strong> para que el taller esté al día. Todas corren o se usan sobre <strong>Windows</strong>; no son obligatorias para el recorrido base, pero sí para análisis real.</p>
+<p>Verificá siempre la versión y descargá desde el sitio oficial.</p></aside>
+<p>Cuando el taller mínimo se te queda corto, estas categorías son las que usa hoy un analista de Windows:</p>
+<div class="tabla"><table>
+<thead><tr>
+<th>Categoría</th>
+<th>Herramienta</th>
+<th>Para qué</th>
+</tr></thead><tbody>
+<tr><td><strong>Instrumentación dinámica</strong></td><td><strong>Frida</strong></td><td>Enganchar (<em>hook</em>) funciones de un proceso en vivo, leer/alterar argumentos y resultados con scripts. Potente para ver qué pasa sin trazar a mano.</td></tr>
+<tr><td><strong>Time-travel debugging</strong></td><td><strong>WinDbg</strong> + <strong>TTD</strong></td><td>Grabar una ejecución completa y recorrerla <strong>hacia atrás</strong>. Ideal para "¿quién puso este valor?" sin reiniciar mil veces.</td></tr>
+<tr><td><strong>Diffing de binarios</strong></td><td><strong>BinDiff</strong>, <strong>Diaphora</strong></td><td>Comparar dos versiones de un binario (por ejemplo, antes y después de un parche) para ver qué cambió. Clave en análisis de parches.</td></tr>
+<tr><td><strong>Extracción de strings</strong></td><td><strong>FLOSS</strong> (Mandiant)</td><td>Saca strings normales <strong>y</strong> las ofuscadas/apiladas que <code>strings</code> no ve.</td></tr>
+<tr><td><strong>Triage y capacidades</strong></td><td><strong>CAPA</strong>, <strong>PEStudio</strong></td><td>Identifican qué "sabe hacer" un binario (red, cripto, persistencia) por patrones, sin ejecutarlo.</td></tr>
+<tr><td><strong>Clasificación/detección</strong></td><td><strong>YARA</strong></td><td>Reglas para reconocer familias y rasgos. Defensivo.</td></tr>
+<tr><td><strong>Emulación y análisis simbólico</strong></td><td><strong>Unicorn</strong>, <strong>Qiling</strong>, <strong>angr</strong>, <strong>Triton</strong></td><td>Ejecutar un fragmento sin el programa completo, o explorar caminos de forma simbólica (p. ej. "¿qué entrada llega a este bloque?").</td></tr>
+<tr><td><strong>Desensamblado programable</strong></td><td><strong>Capstone</strong> (leer) + <strong>Keystone</strong> (ensamblar)</td><td>Librerías para construir tus propias herramientas en Python.</td></tr>
+</tbody></table></div>
+<aside class="callout nota"><p class="callout-titulo">Asistencia con IA (con cautela)</p><p>Hay plugins que usan modelos de lenguaje para <strong>sugerir</strong> nombres de funciones y variables o explicar un bloque decompilado (por ejemplo, asistentes para Ghidra/IDA). Pueden acelerar la lectura, pero <strong>alucinan</strong>: un nombre sugerido es una hipótesis, no un hecho. Usalos como punto de partida y <strong>verificá</strong> cada afirmación contra el código, igual que harías con el renombrado automático de un script.</p></aside>
+<p>Elegí por tarea, no por moda: para "¿quién escribe este buffer?" quizás te alcance un breakpoint de memoria en x64dbg; TTD y angr son para cuando el problema lo justifica.</p>
+<aside class="callout nota"><p class="callout-titulo">En el Curso IDA: plugins y cuidado con la versión</p><p>El Curso IDA dedica una parte a los <strong>plugins</strong> que amplían IDA, con una advertencia que sigue valiendo: algunos no andan en la 6.8 pero sí en la 7.x, así que si no los podés instalar, al menos leé para qué sirven. Y muestra un <strong>bug de la versión 6.8</strong> (corregido en la 6.9) y cómo reconocerlo. Moraleja: <strong>fijate qué versión de IDA tenés</strong> antes de pelearte con un plugin que "no funciona" (<a href="../ida_tutes/13.html">Curso IDA · tute 13, Plugins</a> y <a href="../ida_tutes/11.html">tute 11, Bug de la 6.8</a>).</p></aside>
+<h2 id="ollydbg-herramienta-histórica-no-obsoleta-como-concepto">OllyDbg: herramienta histórica, no obsoleta como concepto</h2>
+<p>OllyDbg es un debugger de <strong>ring 3 para binarios de 32 bits</strong>, muy popular en los 2000. El curso de Cayetano de Juan Úbeda lo usa como herramienta principal en los videos 23 a 40, con una máquina virtual Windows 7 de 32 bits (<a class="fuente" href="../../CLS_resultados_intermedios/transcripciones/extraidos/Videos%20y%20material%20adicional%20Ingenieria%20Inversa/Videos_Video24_Video24.txt">Videos y material adicional, Video 24</a>, 00:00:00 y 00:31:47).</p>
+<p>Lo que OllyDbg enseña sigue siendo válido:</p>
+<ul><li>Ver el estado de los registros y la pila.</li><li>Poner breakpoints y trazar instrucción por instrucción.</li><li>Leer el flujo de un <code>if</code> compilado.</li><li>Identificar una comparación de clave.</li></ul>
+<p>Lo que cambió:</p>
+<ul><li>No maneja binarios de 64 bits.</li><li>No se actualiza desde hace años.</li><li>Su interfaz y sus atajos no son los de x64dbg.</li><li>Algunos plugins y técnicas de la época ya no funcionan en Windows modernos.</li></ul>
+<p><strong>Conclusión:</strong> mirá los videos de OllyDbg por el método y los conceptos, no para aprender la interfaz. Después repetí el mismo ejercicio en x64dbg.</p>
+<h2 id="el-flujo-de-trabajo-con-herramientas">El flujo de trabajo con herramientas</h2>
+<pre><code class="lenguaje-text">1. Identificar      -&gt; Detect It Easy / ExeInfoPE / PE-bear
+2. Entender formato -&gt; cabecera PE, secciones, imports
+3. Análisis estático-&gt; IDA Free / Ghidra
+4. Análisis dinámico-&gt; x64dbg (solo en laboratorio)
+5. Documentar       -&gt; bitácora + informe</code></pre>
+<p>Cada paso tiene una pregunta:</p>
+<div class="tabla"><table>
+<thead><tr>
+<th>Paso</th>
+<th>Pregunta que responde</th>
+</tr></thead><tbody>
+<tr><td>Identificar</td><td>¿Qué tipo de archivo es? ¿Está empacado? ¿Es .NET?</td></tr>
+<tr><td>Formato</td><td>¿Dónde está el código? ¿Qué imports usa?</td></tr>
+<tr><td>Estático</td><td>¿Qué hace esta función? ¿Qué cadenas y APIs aparecen?</td></tr>
+<tr><td>Dinámico</td><td>¿Qué valores toma en esta ejecución? ¿Qué camino sigue?</td></tr>
+<tr><td>Documentar</td><td>¿Puede otra persona reproducir lo que hice?</td></tr>
+</tbody></table></div>
+<p>El video 33 insiste en que el <strong>mapa de memoria</strong> es lo primero que abre al analizar un binario (<a class="fuente" href="../../CLS_resultados_intermedios/transcripciones/extraidos/Videos%20y%20material%20adicional%20Ingenieria%20Inversa/Videos_Video33_Video33.txt">Videos y material adicional, Video 33</a>, 00:02:00–00:03:00). El video 39 muestra ExeInfoPE mirando cabecera, linker, secciones y entry point (<a class="fuente" href="../../CLS_resultados_intermedios/transcripciones/extraidos/Videos%20y%20material%20adicional%20Ingenieria%20Inversa/Videos_Video39_Video39.txt">Videos y material adicional, Video 39</a>, 00:00:32–00:02:09).</p>
+<h2 id="lo-que-no-cambia">Lo que no cambia</h2>
+<p>Estos conceptos valen igual en OllyDbg, x64dbg, IDA y Ghidra:</p>
+<ul><li>La diferencia entre dirección virtual, RVA y offset.</li><li>El stack y las convenciones de llamada.</li><li>El significado de <code>cmp</code>, <code>test</code> y los saltos.</li><li>La IAT y las llamadas indirectas.</li><li>La diferencia entre análisis estático y dinámico.</li></ul>
+<p>Si entendés eso, cambiar de herramienta es aprender una interfaz nueva, no empezar de cero.</p>
+<h2 id="práctica-inventario-del-taller">Práctica: inventario del taller</h2>
+<ol><li>Instalá x64dbg, un editor hexadecimal y un visor de PE. Anotá versión y fecha de descarga.</li><li>Calculá el SHA-256 de cada instalador y guardalo en tu bitácora.</li><li>Abrí tu <code>check.exe</code> con el visor de PE, con x64dbg y con IDA Free. Completá:</li></ol>
+<div class="tabla"><table>
+<thead><tr>
+<th>Herramienta</th>
+<th>Qué te mostró que las otras no</th>
+</tr></thead><tbody>
+<tr><td>Visor de PE</td><td></td></tr>
+<tr><td>x64dbg</td><td></td></tr>
+<tr><td>IDA Free</td><td></td></tr>
+</tbody></table></div>
+<ol><li>Buscá en el binario una cadena tuya ("Correcto") con las tres herramientas. ¿Cuál fue más rápida?</li><li>Escribí en tu bitácora qué herramienta usarías para: (a) saber si un binario está empacado, (b) encontrar quién escribe un buffer, (c) leer una función que nunca se ejecuta.</li></ol>
+<h2 id="preguntas-de-repaso">Preguntas de repaso</h2>
+<p><strong>1. ¿Por qué OllyDbg se considera histórico?</strong> Porque es un debugger de 32 bits que ya no se actualiza. Sigue siendo útil para estudiar el método de la época, pero no es la herramienta recomendada para empezar hoy.</p>
+<p><strong>2. ¿x64dbg reemplaza a IDA?</strong> No. x64dbg es un debugger; IDA es un desensamblador estático. Se complementan.</p>
+<p><strong>3. ¿Qué herramienta usarías para saber si un binario está empacado?</strong> Detect It Easy, ExeInfoPE o un visor de PE: miran secciones, imports y entry point. La señal orienta, no concluye.</p>
+<p><strong>4. ¿Qué significa que una herramienta esté "activa"?</strong> Que recibe mantenimiento y funciona en sistemas actuales. No significa que sea obligatoria ni que sea la mejor para todo.</p>
+<p><strong>5. ¿Por qué registrar la versión de las herramientas?</strong> Porque un cambio de versión puede cambiar la interfaz o el comportamiento. Un informe reproducible dice con qué versión se hizo.</p>
+<h2 id="antes-de-avanzar">Antes de avanzar</h2>
+<p>Tenés que poder:</p>
+<ul><li>Elegir herramienta para identificar, desensamblar, depurar y editar.</li><li>Explicar por qué OllyDbg es histórico y qué se puede aprender de él.</li><li>Registrar versiones y hashes de tu taller.</li><li>Decir qué conceptos no dependen de la herramienta.</li></ul>
+<aside class="callout nota"><p class="callout-titulo">Puerta de salida</p><p>Si tu bitácora tiene el inventario del taller con versiones y hashes, estás listo para .NET.</p></aside>
+<h2 id="fuentes-de-esta-lección">Fuentes de esta lección</h2>
+<ul><li><a class="fuente" href="../../CLS_resultados_intermedios/transcripciones/extraidos/Videos%20y%20material%20adicional%20Ingenieria%20Inversa/Videos_Video23_Video23.txt">Videos y material adicional, Video 23</a> — introducción al reversing y limitaciones del análisis.</li><li><a class="fuente" href="../../CLS_resultados_intermedios/transcripciones/extraidos/Videos%20y%20material%20adicional%20Ingenieria%20Inversa/Videos_Video24_Video24.txt">Videos y material adicional, Video 24</a> — OllyDbg y la VM Windows 7 de 32 bits.</li><li><a class="fuente" href="../../CLS_resultados_intermedios/transcripciones/extraidos/Videos%20y%20material%20adicional%20Ingenieria%20Inversa/Videos_Video33_Video33.txt">Videos y material adicional, Video 33</a> — PE, secciones e imports.</li><li><a class="fuente" href="../../CLS_resultados_intermedios/transcripciones/extraidos/Videos%20y%20material%20adicional%20Ingenieria%20Inversa/Videos_Video39_Video39.txt">Videos y material adicional, Video 39</a> — ExeInfoPE.</li><li><a class="fuente" href="../../CLS_resultados_intermedios/transcripciones/extraidos/Reversing%20desde%20cero%20%28Ricardo%20y%20Solid%29/Ricardo%20Narvaja%20y%20Solid%20-%20Reversing%20desde%20cero_14%20Conociendo%20IDA_14%20Conociendo%20IDA.txt">Reversing desde cero, cap. 14</a> — IDA y sus límites.</li><li><a href="../ida_tutes/11.html">Curso IDA · tutes 11 y 13</a> — plugins de IDA y el bug de la versión 6.8 (atención a la versión).</li></ul>
+<aside class="callout nota"><p class="callout-titulo">Capas de esta lección</p><p><strong>Contenido observado en CLS:</strong> el uso de OllyDbg en los videos 23–40, la VM Windows 7 y el recorrido de ExeInfoPE. <strong>Conocimiento externo (agregado por esta edición):</strong> el estado actual de las herramientas y todo el "taller actual 2026" (Frida, WinDbg/TTD, BinDiff/Diaphora, FLOSS, CAPA, angr/Unicorn, asistencia con IA). <strong>Recomendación editorial:</strong> el taller mínimo, la tabla de decisión y la cautela con la IA.</p></aside>
+</main>
+<footer class="pie">
+  <p>Material educativo y defensivo. Las prácticas se limitan a programas propios, software abierto o crackmes diseñados para aprender. No se enseña a eludir licencias, DRM ni controles de acceso.</p>
+  <p><a href="../00_EMPEZAR_AQUI.html">Inicio</a> · <a href="../guia/etapa-0.html">Etapas</a> · <a href="../fuentes_y_limites.html">Fuentes y límites</a> · <a href="../registro_de_cobertura.csv">Registro de cobertura</a></p>
+</footer>
+</body>
+</html>

@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tute 42 · Ejercicios pendientes — Curso IDA</title>
+<meta name="description" content="Tutorial ilustrado del tute 42 del Curso IDA desde cero: Ejercicios pendientes.">
+<link rel="stylesheet" href="../guia/estilo.css">
+</head>
+<body>
+<a class="salto" href="#contenido">Saltar al contenido</a>
+<header class="cabecera">
+  <div class="marca"><a href="../00_EMPEZAR_AQUI.html">CLS · Curso de reversing</a> <span class="edicion">edición 5 · 27/10/2026</span></div>
+  <nav class="principal" aria-label="Navegación principal">
+    <a href="../00_EMPEZAR_AQUI.html">Inicio</a>
+    <a href="../guia/index.html">Curso</a>
+    <a href="../fichas/index.html">Fichas</a>
+    <a href="../glosario.html">Glosario</a>
+    <a href="../preguntas_y_respuestas.html">Repaso</a>
+  </nav>
+</header>
+<main id="contenido">
+<p class="migas"><a href="../ida-tutes.html">← Índice de los 69 tutes de IDA</a></p>
+<h1>Tute 42 · Ejercicios pendientes</h1>
+<p class="meta-tute"><strong>⏱ 8 min de lectura</strong> · 1.488 palabras · 48 capturas · grupo: Vulnerabilidades y exploiting en user-mode (VLC/CVE, DEP, Mona, canary/SEH, shellcode, heap)</p>
+<aside class="callout nota"><p class="callout-titulo">Qué enseña</p><p>Resolución de los ejercicios dejados en la parte 41.</p></aside>
+<p><em>se conecta con:</em> <a href="../guia/05-vulnerabilidades.html">Vulnerabilidades (defensivo)</a></p>
+<aside class="callout aviso"><p class="callout-titulo">Material observado, no reescrito</p><p>Es el texto y las capturas del <code>.docx</code> original del curso, solo presentados como tutorial. Puede tener erratas de origen. El autor del curso es Ricardo Narvaja.</p></aside>
+<hr>
+<p>INTRODUCCIÓN AL REVERSING CON IDA PRO DESDE CERO PARTE 42</p>
+<p>EJERCICIOS PENDIENTES.</p>
+<p>Había dos ejercicios pendientes de la parte 41 para que practiquen, lamentablemente nadie me envió una solución, lo cual es algo que a uno le deja pensando si lo que hace vale la pena, al menos alguna pregunta, algún feedback no hubo nada.</p>
+<p>Esto hace replantear las cosas y preguntarme si vale la pena llegar tan lejos como pensaba con este curso, ya veremos qué decisión tomamos ante la falta de feedback, por ahora solucionaremos el ejercicio 41.</p>
+<p>Es necesario actualizar a la nueva versión del keypatch pues lo utilizaremos al final.</p>
+<figure><img loading="lazy" src="img/42/1.png" alt="Captura 1 del tute 42"></figure>
+<p>https://github.com/keystone-engine/keypatch</p>
+<p>Reemplazo el .py por el nuevo.</p>
+<p>http://ricardo.crver.net/WEB/INTRODUCCION%20AL%20REVERSING%20CON%20IDA%20PRO%20DESDE%20CERO/EJERCICIOS/</p>
+<p>Abramos el ejercicio 41 en IDA.</p>
+<p>Tratare de no usar símbolos ya que ustedes tampoco los tienen, así lo hacemos en forma similar.</p>
+<figure><img loading="lazy" src="img/42/2.png" alt="Captura 2 del tute 42"></figure>
+<p>Si vemos las strings vemos la string Mypepe.dll así que es probable que haya que colocarla en la misma carpeta, la misma dll de los ejercicios anteriores.</p>
+<figure><img loading="lazy" src="img/42/3.png" alt="Captura 3 del tute 42"></figure>
+<p>Lo hago la colocó en la carpeta.</p>
+<figure><img loading="lazy" src="img/42/4.png" alt="Captura 4 del tute 42"></figure>
+<p>haciendo doble click en la string</p>
+<figure><img loading="lazy" src="img/42/5.png" alt="Captura 5 del tute 42"></figure>
+<p>Vemos la referencia vamos allí con X o CTRL X en la misma.</p>
+<figure><img loading="lazy" src="img/42/6.png" alt="Captura 6 del tute 42"></figure>
+<p>Vemos que la carga allí, así que vamos bien, esta parece ser la función main como es un programa de consola, si es así, debería tener como referencia una función que le pasa como argumentos argc argv etc.</p>
+<figure><img loading="lazy" src="img/42/7.png" alt="Captura 7 del tute 42"></figure>
+<p>Vemos que en la referencia a la función si vamos allí, está el típico llamado a main se ven los argumentos de consola.</p>
+<figure><img loading="lazy" src="img/42/8.png" alt="Captura 8 del tute 42"></figure>
+<p>Así que 401090 es el main, la renombramos.</p>
+<figure><img loading="lazy" src="img/42/9.png" alt="Captura 9 del tute 42"></figure>
+<p>No hay buffer en el stack que proteger por eso no agrego un CANARY a pesar de que esta compilado con esa opción.</p>
+<p>Comencemos a reversear.</p>
+<figure><img loading="lazy" src="img/42/10.png" alt="Captura 10 del tute 42"></figure>
+<p>Allí vemos que lee la entrada de la IAT de system, que está en la sección idata, la dirección de dicha api y la mueve a EAX.</p>
+<p>A veces si tienen alguna duda con la sintaxis del IDA, usando el keypatch ven la alternativa sencilla hasta que se acostumbren.</p>
+<figure><img loading="lazy" src="img/42/11.png" alt="Captura 11 del tute 42"></figure>
+<p>Allí ven la entrada de la IAT que lógicamente dice extrn, pues es una api externa al módulo importada para usarla.</p>
+<figure><img loading="lazy" src="img/42/12.png" alt="Captura 12 del tute 42"></figure>
+<p>Por supuesto en IMPORTS están las funciones importadas por el módulo y la dirección de la entrada de la IAT muestra 4020a8, así que todo coincide.</p>
+<figure><img loading="lazy" src="img/42/13.png" alt="Captura 13 del tute 42"></figure>
+<p>Luego escribe en la variable global 0x403088 que es un dword según IDA.</p>
+<figure><img loading="lazy" src="img/42/14.png" alt="Captura 14 del tute 42"></figure>
+<p>Recordamos que en ida si hay un prefijo de tipo de dato delante de una dirección, significa que el contenido de esa dirección es de ese tipo en este caso un dword, al menos es de 4 bytes de largo, además escribe  allí la dirección de la api.</p>
+<p>Así que renombramos la variable global como p_system.</p>
+<p>Sabemos que es de largo 4 y como guarda una dirección debe ser del tipo puntero, la cambiare.</p>
+<figure><img loading="lazy" src="img/42/15.png" alt="Captura 15 del tute 42"></figure>
+<p>Como se que es un puntero a una api, puedo sin complicarme mucho poner que es un puntero a algo no conocido.</p>
+<p>void * p_system</p>
+<p>Total no son necesarias definiciones tan precisas pues se castea, lo importante que es un puntero a algo.</p>
+<figure><img loading="lazy" src="img/42/16.png" alt="Captura 16 del tute 42"></figure>
+<p>Así que en definitiva será una variable del tipo puntero que guardará la dirección de la api system.</p>
+<figure><img loading="lazy" src="img/42/17.png" alt="Captura 17 del tute 42"></figure>
+<p>Hay otra variable del mismo tipo que guarda la dirección de la api SetProcessDEPPolicy, hago lo mismo.</p>
+<p>Lo cambio también en el decompilado del hexrays con f5 y cambiando el tipo ahí, aunque no influye en nada.</p>
+<figure><img loading="lazy" src="img/42/18.png" alt="Captura 18 del tute 42"></figure>
+<figure><img loading="lazy" src="img/42/19.png" alt="Captura 19 del tute 42"></figure>
+<p>No tiene mucha influencia esto solo es para mostrar más opciones.</p>
+<figure><img loading="lazy" src="img/42/20.png" alt="Captura 20 del tute 42"></figure>
+<p>Vemos que la variable global p_system se reusa y guarda el puntero (usa LEA para hallar la dirección) a la variable size que es un dword obviamente casteara para hacerlo en C++ pero acá no importa ambos son punteros.</p>
+<p>Normalmente cuando una variable se reusa yo lo que hago es poner barras horizontales ya que no se puede poner la barra inclinada y a continuación el segundo nombre.</p>
+<p>Algo como</p>
+<p>p_system_____p_size</p>
+<p>jeje y bueno en funciones complejas se reúsa mucho y hay que seguir eso.</p>
+<figure><img loading="lazy" src="img/42/21.png" alt="Captura 21 del tute 42"></figure>
+<p>Luego compara argc que es la cantidad de argumentos con 2, así que es el nombre del ejecutable más un argumento, o sea dos en total, si  no son dos argumentos saltea todo y sale de la función directamente.</p>
+<figure><img loading="lazy" src="img/42/22.png" alt="Captura 22 del tute 42"></figure>
+<p>Sabemos que argv es un array y que en la posición 0 se guarda la string del nombre del ejecutable y si le sumamos 4 como hace allí obtendrá la dirección de la string del primer argumento.</p>
+<figure><img loading="lazy" src="img/42/23.png" alt="Captura 23 del tute 42"></figure>
+<p>Luego la pasa esa string a atoi, para tratar de convertirlo a un entero, si no puede dará error.</p>
+<figure><img loading="lazy" src="img/42/24.png" alt="Captura 24 del tute 42"></figure>
+<figure><img loading="lazy" src="img/42/25.png" alt="Captura 25 del tute 42"></figure>
+<p>Al volver de atoi ese valor se guarda en la variable size que está en el stack.</p>
+<figure><img loading="lazy" src="img/42/26.png" alt="Captura 26 del tute 42"></figure>
+<p>No confundir con la variable global p_system_____p_size que tiene guardada la dirección de esta misma variable size.</p>
+<p>Compara ese valor size que provino de argv con 0x300 y si es mas grande saltea y va al return del main, por supuesto ese size es signed, porque la comparación usando JLE nos dice eso.</p>
+<figure><img loading="lazy" src="img/42/27.png" alt="Captura 27 del tute 42"></figure>
+<p>Al ser signed pasarle un valor negativo, lo tomara como menor que 0x300 por ejemplo si paso -1 será menor considerando el signo a 0x300, y pasará la comparación.</p>
+<p>Obviamente si es size se usa como tamaño de una api que lo tome como unsigned podrá haber overflow, pues para dicha api no será un valor negativo sino sin signo, por ejemplo si era -1, para la api que lo tome como positivo será 0xffffffff el máximo positivo.</p>
+<figure><img loading="lazy" src="img/42/28.png" alt="Captura 28 del tute 42"></figure>
+<p>Vemos la función cuyo argumento es el size, a la misma aún no le pusimos nombre ya veremos según lo que hace, entremos en ella.</p>
+<figure><img loading="lazy" src="img/42/29.png" alt="Captura 29 del tute 42"></figure>
+<p>Vemos que hay un gets_s para ingresar datos así que le pongo a la función el nombre ingreso.</p>
+<p>Ese gets_s tiene como tamaño el size que sabiamos que podía ser un valor que tomado como unsigned podía overflodear el buffer.</p>
+<figure><img loading="lazy" src="img/42/30.png" alt="Captura 30 del tute 42"></figure>
+<p>Allí vemos que el tamaño la api lo toma como del tipo size_t</p>
+<figure><img loading="lazy" src="img/42/31.png" alt="Captura 31 del tute 42"></figure>
+<p>Y este size_t es unsigned, así que seguro podremos overflodear el buffer, veamos cuanto es el largo del mismo, aunque ya vimos que lo hacia mal, pero intentaba filtrar los tamaños de size mayores que 0x300 así que es muy probable que el size del buffer sea ese.</p>
+<figure><img loading="lazy" src="img/42/32.png" alt="Captura 32 del tute 42"></figure>
+<p>Vemos que el buffer está en la sección data e IDA me dice que el largo del mismo es de 0x64 justo debajo del buffer vemos las variables globales p_SetDEP y p_system____p_size, así que no hay error, el chequeo de si es mayor de 0x300 incluso permite overflodear este buffer de 0x64  (100 decimal), sin necesidad de ser negativo, solo con ser el size mayor que 0x64.</p>
+<figure><img loading="lazy" src="img/42/33.png" alt="Captura 33 del tute 42"></figure>
+<p>Una vez que escriba más que 0x64, seguiré hacia abajo, y podré pisar los punteros guardados allí en la sección data.</p>
+<p>¿Ahora después de que los escriba usara alguna vez esos punteros?</p>
+<figure><img loading="lazy" src="img/42/34.png" alt="Captura 34 del tute 42"></figure>
+<p>Veo en las referencias a p_SetDEP que hay un call usando ese puntero a la función y que si lo piso con el overflow podría desviar la ejecución.</p>
+<figure><img loading="lazy" src="img/42/35.png" alt="Captura 35 del tute 42"></figure>
+<p>Justo esta despues del gets_s así que viene perfecto, hagamos el script.</p>
+<figure><img loading="lazy" src="img/42/36.png" alt="Captura 36 del tute 42"></figure>
+<p>Modifico el script que tenía que era bastante similar le dejo -1 cómo size, total pasará el chequeo y pongo 0x64 Aes para llenar el buffer, y luego por ahora pongo 0x99989796 que supuestamente debería pisar el puntero que está justo debajo.</p>
+<p>Como el ROP de Mypepe.dll ya estaba hecho lo dejo, ya veré como lo acomodo, por ahora ejecuto el script y atacheo el IDA pongo un breakpoint justo después del gets_s, para que pare allí.</p>
+<figure><img loading="lazy" src="img/42/37.png" alt="Captura 37 del tute 42"></figure>
+<figure><img loading="lazy" src="img/42/38.png" alt="Captura 38 del tute 42"></figure>
+<figure><img loading="lazy" src="img/42/39.png" alt="Captura 39 del tute 42"></figure>
+<p>Vemos que el buffer se ve bastante lleno vayamos allí a ver.</p>
+<p>Si aprieto U para UNDEFINE se ven las Aes vayamos a ver si piso el puntero.</p>
+<figure><img loading="lazy" src="img/42/40.png" alt="Captura 40 del tute 42"></figure>
+<p>Nos queda ver si pisamos el puntero.</p>
+<figure><img loading="lazy" src="img/42/41.png" alt="Captura 41 del tute 42"></figure>
+<p>Aprieto la D hasta que lo convierto en un dword y veo que está bien pisado, por el valor que puse.</p>
+<figure><img loading="lazy" src="img/42/42.png" alt="Captura 42 del tute 42"></figure>
+<p>Veo que no tiene DEP pues acabamos de pisar la justo la api que lo iba a habilitar SetProcessDEPPolicy, así que no necesitaremos el ROP aquí.</p>
+<figure><img loading="lazy" src="img/42/43.png" alt="Captura 43 del tute 42"></figure>
+<p>EAX está apuntando al buffer con las Aes, así que si puedo saltar allí podré acomodar el shellcode al inicio,  y ejecutarlo.</p>
+<p>Podría buscar un CALL EAX en la mypepe que no tiene asir, uso el nuevo keypatch con la opción SEARCH y pongo CALL EAX.</p>
+<figure><img loading="lazy" src="img/42/44.png" alt="Captura 44 del tute 42"></figure>
+<figure><img loading="lazy" src="img/42/45.png" alt="Captura 45 del tute 42"></figure>
+<p>Vemos en los resultados que hay varios de mypepe, elijo alguno por ejemplo.</p>
+<figure><img loading="lazy" src="img/42/46.png" alt="Captura 46 del tute 42"></figure>
+<p>Cuando voy allí aprieto la C para que se transforme en código, pues no lo había desensamblado.</p>
+<p>0x7802c16e será el CALL EAX que elijo lo pongo en el script.</p>
+<figure><img loading="lazy" src="img/42/47.png" alt="Captura 47 del tute 42"></figure>
+<p>Al shellcode lo coloco adelante, ya que salta al inicio del buffer y para no variar el largo antes del puntero le resto el largo del shellcode a la cantidad de Aes .(el ROP ya no lo necesito así que lo quito.)</p>
+<figure><img loading="lazy" src="img/42/48.png" alt="Captura 48 del tute 42"></figure>
+<p>Listo el pollo ya ejecuta la calculadora, les dejo a ver si alguien me pone contento y hace el 41b. (o al menos lo intenta)</p>
+<p>Hasta la parte siguiente.</p>
+<p>Ricardo Narvaja</p>
+</main>
+<footer class="pie">
+  <p>Material educativo y defensivo. Las prácticas se limitan a programas propios, software abierto o crackmes diseñados para aprender. No se enseña a eludir licencias, DRM ni controles de acceso.</p>
+  <p><a href="../00_EMPEZAR_AQUI.html">Inicio</a> · <a href="../guia/etapa-0.html">Etapas</a> · <a href="../fuentes_y_limites.html">Fuentes y límites</a> · <a href="../registro_de_cobertura.csv">Registro de cobertura</a></p>
+</footer>
+<script>
+(function(){
+  function abrir(src){
+    var o=document.createElement('div'); o.className='lightbox-ov';
+    var i=document.createElement('img'); i.src=src; o.appendChild(i);
+    function cerrar(){o.remove(); document.removeEventListener('keydown', onkey);}
+    function onkey(e){ if(e.key==='Escape') cerrar(); }
+    o.addEventListener('click', cerrar);
+    document.addEventListener('keydown', onkey);
+    document.body.appendChild(o);
+  }
+  document.addEventListener('DOMContentLoaded', function(){
+    document.querySelectorAll('figure img, main img').forEach(function(img){
+      img.style.cursor='zoom-in';
+      img.addEventListener('click', function(){ abrir(img.currentSrc||img.src); });
+    });
+  });
+})();
+</script>
+</body>
+</html>

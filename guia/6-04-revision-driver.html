@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>6.4 · Revisión defensiva de un driver</title>
+<meta name="description" content="Auditar device names, IOCTLs, ACL/SDDL, validación de entradas, METHOD_NEITHER y punteros de usuario, propiedad y cancelación de solicitudes en un driver propio o didáctico.">
+<link rel="stylesheet" href="../guia/estilo.css">
+</head>
+<body>
+<a class="salto" href="#contenido">Saltar al contenido</a>
+<header class="cabecera">
+  <div class="marca"><a href="../00_EMPEZAR_AQUI.html">CLS · Curso de reversing</a> <span class="edicion">edición 5 · 27/10/2026</span></div>
+  <nav class="principal" aria-label="Navegación principal">
+    <a href="../00_EMPEZAR_AQUI.html">Inicio</a>
+    <a href="../guia/index.html">Curso</a>
+    <a href="../materiales.html">Materiales</a>
+    <a href="../fichas/index.html">Fichas</a>
+    <a href="../glosario.html">Glosario</a>
+    <a href="../preguntas_y_respuestas.html">Repaso</a>
+    <a href="../buscar.html">Buscar</a>
+  </nav>
+</header>
+<main id="contenido">
+<nav class="migas" aria-label="Ubicación"><a href="../00_EMPEZAR_AQUI.html">Inicio</a><span aria-hidden="true">›</span><a href="../guia/index.html">Curso</a><span aria-hidden="true">›</span><span>Etapa 6 · Kernel y drivers (rama optativa)</span></nav><h1 id="revisión-defensiva-de-un-driver">Revisión defensiva de un driver</h1>
+<aside class="callout aviso"><p class="callout-titulo">Sin explotación</p><p>Esta revisión busca defectos de diseño y evidencia para corregirlos. No pruebes IOCTLs contra drivers de terceros ni intentes conseguir acceso privilegiado. Los patrones de riesgo de esta lección se usan para <strong>leer</strong> código y binarios propios o didácticos, no para construir pruebas contra un kernel cargado.</p></aside>
+<aside class="callout nota"><p class="callout-titulo">Propósito</p><p>Reconstruir la superficie de acceso de un driver desde nombre/interfaz y permisos hasta cada IOCTL y su validación, y leer el ciclo de vida de una solicitud (colas, propiedad, cancelación) para encontrar rutas donde la validación o la finalización fallan.</p></aside>
+<p><strong>Prerrequisitos</strong></p>
+<ul><li><em>Obligatorios:</em> <a href="6-01-arquitectura-kernel.html">6.1 modelo E/S</a>, <a href="6-02-kmdf-ioctl.html">6.2 KMDF</a>, <a href="2d-01-objetos.html">2D.1 objetos/ACL</a>.</li><li><em>Recomendados:</em> <a href="2d-02-memoria-loader.html">2D.2 memoria</a>, <a href="2d-11-excepciones.html">2D.11 excepciones</a>, seguridad de <a href="6-06-mitigaciones.html">6.6</a>.</li></ul>
+<h2 id="lista-de-lectura">Lista de lectura</h2>
+<ol><li>¿El driver crea un nombre de dispositivo solo cuando hace falta? ¿La interfaz usa ACL/SDDL limitada?</li><li>¿Qué IOCTLs exporta, con qué <strong>método</strong> y qué permisos de acceso exige cada uno?</li><li>¿Valida tamaño, versión, enum, flags, longitud de salida y estado antes de operar?</li><li>¿Evita punteros del usuario, direcciones físicas, handles sin validar y salida no inicializada? Si usa <code>METHOD_NEITHER</code> o punteros embebidos, ¿aplica el patrón de la sección siguiente?</li><li>¿Completa solicitudes en todas las rutas, una sola vez, y sincroniza estado compartido?</li><li>Si retiene solicitudes, ¿las marca como cancelables o comprueba la cancelación?</li></ol>
+<p>La <strong>superficie de ataque</strong> es el conjunto de entradas accesibles y efectos asociados; una interfaz amplia aumenta revisión necesaria, pero no basta para afirmar vulnerabilidad.</p>
+<h2 id="patrón-de-revisión-method-neither-y-punteros-de-usuario">Patrón de revisión: <code>METHOD_NEITHER</code> y punteros de usuario</h2>
+<p>Con <code>METHOD_NEITHER</code>, el I/O manager entrega al driver las <strong>direcciones de usuario</strong> originales (<code>Type3InputBuffer</code>, <code>UserBuffer</code>) sin validarlas ni bloquearlas (ver la tabla de métodos en la <a href="6-02-kmdf-ioctl.html">6.2</a>). Lo mismo pasa con un <strong>puntero embebido</strong> dentro de una estructura que llegó por <code>METHOD_BUFFERED</code>: el buffer es de sistema, pero el puntero que trae adentro sigue siendo de usuario. Que un driver use cualquiera de los dos no es un defecto en sí, pero marca código que hay que leer con este patrón.</p>
+<p><strong>Dónde aparece.</strong> En el código: el bit de método <code>3</code> en las definiciones <code>CTL_CODE</code> (<code>METHOD_NEITHER</code>), accesos a <code>Type3InputBuffer</code> o <code>UserBuffer</code>, o en KMDF un <code>EvtIoInCallerContext</code> con <code>WdfRequestRetrieveUnsafeUserInputBuffer</code>/<code>…OutputBuffer</code>. En un binario: las mismas constantes en el <code>switch</code> del código de control (los dos bits bajos en <code>11</code>) y lecturas de esos campos del IRP o llamadas a esas funciones.</p>
+<p><strong>Por qué <code>ProbeForRead</code> no alcanza por sí solo.</strong> <code>ProbeForRead</code>/<code>ProbeForWrite</code> comprueban que el rango esté en la parte de usuario del espacio de direcciones y alineado, <strong>en ese momento</strong>. Microsoft documenta además que:</p>
+<ul><li>con <code>Length = 0</code> no comprueba nada;</li><li>deben llamarse dentro de <code>try/except</code>;</li><li><strong>todo acceso posterior</strong> también debe estar protegido, porque otro hilo de la aplicación puede liberar, sustituir o cambiar la protección del rango en cualquier momento, incluso durante o después del sondeo;</li><li>el contenido puede cambiar mientras el driver lo usa.</li></ul>
+<p>Es decir: el sondeo valida una <strong>dirección</strong>, no una <strong>decisión</strong> basada en el contenido.</p>
+<p><strong>Preguntas de revisión</strong> (sobre código propio o didáctico):</p>
+<div class="tabla"><table>
+<thead><tr>
+<th>Pregunta</th>
+<th>Qué buscar</th>
+<th>Señal de riesgo</th>
+</tr></thead><tbody>
+<tr><td>¿Distingue llamadas desde user mode y kernel mode?</td><td>Uso de <code>RequestorMode</code> antes de sondear</td><td>Sondeo incondicional o ausencia de distinción</td></tr>
+<tr><td>¿La longitud sondeada es la que después se usa?</td><td>Misma variable para sondear y copiar; cálculo de tamaños sin desbordamiento</td><td>Sondeo con un tamaño y copia con otro, o multiplicaciones sin control</td></tr>
+<tr><td>¿Cada acceso al buffer de usuario está dentro de <code>try/except</code>?</td><td>Bloques de excepción alrededor de <strong>todas</strong> las lecturas y escrituras</td><td>Solo el sondeo protegido</td></tr>
+<tr><td>¿Captura los datos una sola vez?</td><td>Copia a un buffer del kernel y validación sobre la copia</td><td>Validar un campo en memoria de usuario y volver a leerlo para usarlo (doble lectura)</td></tr>
+<tr><td>¿Se usa el buffer fuera del hilo que llamó?</td><td>Bloqueo (<code>WdfRequestProbeAndLockUserBufferForRead</code>/<code>…ForWrite</code> o MDL propio) antes de encolar</td><td>Dirección de usuario guardada y usada desde otra cola, un DPC o un hilo del sistema</td></tr>
+<tr><td>¿Hacen falta estos punteros?</td><td>Diseño alternativo con offsets relativos o buffers de longitud variable</td><td>Punteros embebidos en una interfaz que podría ser <code>METHOD_BUFFERED</code> puro</td></tr>
+</tbody></table></div>
+<p>Lectura <strong>ilustrativa</strong> de un fragmento hipotético, para practicar el patrón (no es código de un driver real ni una receta):</p>
+<pre><code class="lenguaje-text">// handler hipotético, METHOD_NEITHER
+p = Type3InputBuffer
+ProbeForRead(p, sizeof(REQ), 4)        // dentro de try/except: OK
+if (p-&gt;Len &gt; MAX) fail                  // valida en memoria de usuario...
+memcpy(local, p-&gt;Data, p-&gt;Len)          // ...y vuelve a leer Len: doble lectura
+                                        // memcpy fuera del try/except: acceso sin protección</code></pre>
+<p>Hallazgos que debería registrar el informe: la validación y el uso leen <code>Len</code> dos veces de memoria de usuario; la copia no está protegida por el manejador de excepciones. Corrección propuesta: capturar la estructura completa en un buffer del kernel dentro de <code>try/except</code>, validar la copia y usar solo la copia; o rediseñar el IOCTL como <code>METHOD_BUFFERED</code> sin punteros.</p>
+<h2 id="leer-el-flujo-de-una-solicitud-colas-propiedad-y-cancelación">Leer el flujo de una solicitud: colas, propiedad y cancelación</h2>
+<p>Muchos defectos no están en la validación sino en <strong>quién es dueño</strong> de la solicitud y <strong>cuántas veces</strong> se completa. En WDF el modelo es explícito:</p>
+<ul><li><strong>Propiedad.</strong> Mientras la solicitud está en una cola, es del <strong>framework</strong>. Cuando la entrega a un callback, pasa a ser del <strong>driver</strong>, que debe hacer exactamente una de estas cosas: completarla, reencolarla, reenviarla a un destino de E/S o cancelarla. Después de eso ya no la posee y no puede tocarla (ni sus buffers).</li><li><strong>Colas y despacho.</strong> Cada cola tiene un modo de despacho (secuencial, paralelo o manual) y unos callbacks registrados; <code>WdfDeviceConfigureRequestDispatching</code> puede desviar tipos de solicitud a colas distintas. Al revisar, armá una tabla cola → modo → callbacks → tipos de solicitud.</li><li><strong>Cancelación.</strong> Si la operación se cancela, el framework cancela con <code>STATUS_CANCELLED</code> las solicitudes que <strong>todavía no entregó</strong> al driver. Una vez entregada, solo el driver puede cancelarla, y para enterarse debe haberla marcado con <code>WdfRequestMarkCancelable</code>/<code>…Ex</code> (registrando <code>EvtRequestCancel</code>) o consultar <code>WdfRequestIsCanceled</code> mientras la posee. Si la reencola en una cola con <code>EvtIoCanceledOnQueue</code>, el framework llama a ese callback en lugar de cancelarla, y el driver debe completarla.</li></ul>
+<p>Ejemplo de lectura <strong>ilustrativo</strong> de una solicitud retenida (no corresponde al driver de 6.2, que completa en el acto):</p>
+<pre><code class="lenguaje-text">EvtIoDeviceControl(R)          // el driver ahora posee R
+  WdfRequestMarkCancelableEx(R, EvtCancel)
+  guarda R en la lista "pendientes"      // espera un evento del dispositivo
+--- más tarde, una de dos rutas ---
+(a) llega el evento:  WdfRequestUnmarkCancelable(R) -&gt; completa R con STATUS_SUCCESS
+(b) la app cancela:   EvtCancel(R) -&gt; quita R de la lista -&gt; completa R con STATUS_CANCELLED</code></pre>
+<p>Preguntas de revisión: ¿hay alguna ruta en la que <strong>ambas</strong> ramas completen la misma solicitud? ¿Se respeta el resultado de <code>WdfRequestUnmarkCancelable</code> antes de completar? ¿La lista de pendientes está protegida contra acceso concurrente? ¿Una solicitud retenida mucho tiempo <strong>sin</strong> marcarse cancelable puede dejar colgado al proceso que la envió? Microsoft dedica una página a sincronizar cancelación y finalización; si el código no la sigue, es un hallazgo a documentar con archivo y línea.</p>
+<aside class="callout nota"><p class="callout-titulo">Recuadro conceptual: PnP y energía</p><p>Un driver de función KMDF suele registrar callbacks de PnP y energía: <code>EvtDevicePrepareHardware</code>/<code>EvtDeviceReleaseHardware</code> (recursos del hardware) y <code>EvtDeviceD0Entry</code>/<code>EvtDeviceD0Exit</code> (entrada y salida del estado de trabajo D0). Las colas <strong>administradas por energía</strong> solo entregan solicitudes cuando el dispositivo está en D0; si no lo está, las solicitudes esperan. En la revisión basta con saber dos cosas: si la cola de IOCTL es administrada por energía (lo que explica solicitudes que “no avanzan”) y si algún callback de energía libera estado que un callback de E/S todavía puede usar. El dispositivo software de la 6.2 apenas usa esta maquinaria; el diseño de PnP/energía queda fuera del curso.</p></aside>
+<h2 id="ejemplo-trabajado">Ejemplo trabajado</h2>
+<p><em>(Checklist ilustrativo para el driver de 6.2.)</em></p>
+<pre><code class="lenguaje-text">Device interface: acceso solo a Administrators/SYSTEM
+IOCTL 0x80006000 (BLOCLAB_QUERY_VERSION, contrato ilustrativo de 6.2)
+  METHOD_BUFFERED, FILE_READ_DATA -&gt; input=0, output=12
+  sin punteros embebidos; no hay METHOD_NEITHER
+Otras solicitudes: rechazadas con STATUS_INVALID_DEVICE_REQUEST
+Buffer: longitud comprobada; respuesta inicializada por completo
+Cola: una cola por defecto; la solicitud se completa en el mismo callback
+Cancelación: no aplica (no se retienen solicitudes)
+Conclusión: diseño acotado en el fragmento revisado; falta validar build/configuración INF</code></pre>
+<p>El código <code>0x80006000</code> sale del contrato <strong>ilustrativo</strong> de la 6.2; en un driver real se toma de su header, no se supone.</p>
+<h2 id="práctica">Práctica</h2>
+<p>Revisá el source de tu driver o una muestra didáctica de Microsoft:</p>
+<ol><li>Enumerá device interfaces, SDDL, definiciones de IOCTL (con método y acceso) y callbacks.</li><li>Trazá un IOCTL desde la entrada hasta la finalización.</li><li>Si hay <code>METHOD_NEITHER</code> o punteros embebidos, completá la tabla de preguntas del patrón para cada uno. Si no hay, decilo explícitamente.</li><li>Armá la tabla de colas (modo, callbacks, tipos de solicitud) y, para cada solicitud que el driver retenga, dibujá las rutas de finalización y de cancelación.</li><li>Verificá casos límite por pruebas unitarias en user mode, sin fuzzing contra un kernel cargado.</li></ol>
+<h2 id="entregable">Entregable</h2>
+<p>Tabla entrada–control–validación–resultado; tabla de colas y rutas de finalización/cancelación; hallazgos con archivo/línea, severidad razonada y corrección propuesta. No publiques el driver o detalles sensibles sin autorización.</p>
+<h2 id="repaso">Repaso</h2>
+<details class="qa"><summary>¿Una DACL fuerte vuelve seguro un IOCTL?</summary><div class="respuesta"><p>No. Reduce quién puede llamarlo, pero el callback debe validar toda entrada y salida.</p></div></details>
+<details class="qa"><summary>¿Por qué limitar IOCTLs?</summary><div class="respuesta"><p>Cada operación exportada amplía lo que un cliente puede pedir y debe tener contrato y permisos explícitos.</p></div></details>
+<details class="qa"><summary>¿Qué implica “superficie de ataque”?</summary><div class="respuesta"><p>Entradas y operaciones accesibles desde una frontera; es una guía de revisión, no un veredicto.</p></div></details>
+<details class="qa"><summary>¿Por qué <code>ProbeForRead</code> no vuelve seguro todo acceso posterior?</summary><div class="respuesta"><p>Porque solo comprueba rango y alineación en ese momento (y nada si la longitud es 0); otro hilo puede cambiar el contenido o la protección después. Cada acceso posterior debe estar protegido y los datos deben capturarse una vez.</p></div></details>
+<details class="qa"><summary>¿Qué es una doble lectura en este contexto?</summary><div class="respuesta"><p>Validar un valor en memoria de usuario y volver a leerlo para usarlo: entre las dos lecturas el valor puede cambiar.</p></div></details>
+<details class="qa"><summary>¿Cuándo deja el driver de poseer una solicitud WDF?</summary><div class="respuesta"><p>Cuando la completa, la reencola, la reenvía o la cancela; desde ese momento no puede acceder a ella ni a sus buffers.</p></div></details>
+<details class="qa"><summary>¿Quién cancela una solicitud que todavía está en una cola del driver?</summary><div class="respuesta"><p>El framework, con <code>STATUS_CANCELLED</code>, sin entregarla. Una vez entregada, solo el driver puede cancelarla.</p></div></details>
+<details class="qa"><summary>Una solicitud de IOCTL “queda colgada” y el dispositivo está en un estado de bajo consumo. ¿Qué revisás?</summary><div class="respuesta"><p>Si la cola es administrada por energía: esas colas solo entregan solicitudes en D0.</p></div></details>
+<aside class="callout nota"><p class="callout-titulo">Puerta optativa</p><p>Podés rastrear una operación desde la interfaz hasta su callback y demostrar permisos, validación de longitudes y tratamiento de errores; aplicar el patrón de revisión a <code>METHOD_NEITHER</code> y punteros embebidos; y leer las rutas de propiedad, finalización y cancelación de una solicitud.</p></aside>
+<aside class="callout nota"><p class="callout-titulo">Lo que queda fuera</p><p>Pruebas dinámicas o fuzzing contra drivers cargados, DMA, filtros y pilas de drivers, la sincronización de cancelación en detalle y el diseño de PnP/energía (solo como recuadro) no se desarrollan. La revisión no reemplaza las herramientas de análisis de Microsoft ni una auditoría completa.</p></aside>
+<h2 id="fuentes">Fuentes</h2>
+<ul><li>Microsoft Learn: <a href="https://learn.microsoft.com/en-us/windows-hardware/drivers/driversecurity/driver-security-checklist" rel="noopener" target="_blank">Driver security checklist</a>, <a href="https://learn.microsoft.com/en-us/windows-hardware/drivers/wdf/controlling-device-access-in-kmdf-drivers" rel="noopener" target="_blank">Controlling device access in KMDF</a>, <a href="https://learn.microsoft.com/en-us/windows-hardware/drivers/kernel/defining-i-o-control-codes" rel="noopener" target="_blank">Using I/O control codes</a>.</li><li>Microsoft Learn, memoria de usuario: <a href="https://learn.microsoft.com/en-us/windows-hardware/drivers/kernel/methods-for-accessing-data-buffers" rel="noopener" target="_blank">Methods for Accessing Data Buffers</a>, <a href="https://learn.microsoft.com/en-us/windows-hardware/drivers/kernel/using-neither-buffered-nor-direct-i-o" rel="noopener" target="_blank">Using Neither Buffered Nor Direct I/O</a>, <a href="https://learn.microsoft.com/en-us/windows-hardware/drivers/kernel/errors-in-referencing-user-space-addresses" rel="noopener" target="_blank">Errors in Referencing User-Space Addresses</a>, <a href="https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-probeforread" rel="noopener" target="_blank">ProbeForRead</a>, <a href="https://learn.microsoft.com/en-us/windows-hardware/drivers/kernel/handling-exceptions" rel="noopener" target="_blank">Handling Exceptions</a>, <a href="https://learn.microsoft.com/en-us/windows-hardware/drivers/wdf/accessing-data-buffers-in-wdf-drivers" rel="noopener" target="_blank">Accessing Data Buffers in WDF Drivers</a>.</li><li>Microsoft Learn, colas y cancelación: <a href="https://learn.microsoft.com/en-us/windows-hardware/drivers/wdf/request-ownership" rel="noopener" target="_blank">Request Ownership</a>, <a href="https://learn.microsoft.com/en-us/windows-hardware/drivers/wdf/configuring-dispatch-mode-for-an-i-o-queue" rel="noopener" target="_blank">Configuring Dispatch Mode for an I/O Queue</a>, <a href="https://learn.microsoft.com/en-us/windows-hardware/drivers/wdf/canceling-i-o-requests" rel="noopener" target="_blank">Canceling I/O Requests</a>, <a href="https://learn.microsoft.com/en-us/windows-hardware/drivers/wdf/synchronizing-cancel-and-completion-code" rel="noopener" target="_blank">Synchronizing Cancel and Completion Code</a>.</li><li>Microsoft Learn, PnP y energía: <a href="https://learn.microsoft.com/en-us/windows-hardware/drivers/wdf/supporting-pnp-and-power-management-in-function-drivers" rel="noopener" target="_blank">Supporting PnP and Power Management in Function Drivers</a>, <a href="https://learn.microsoft.com/en-us/windows-hardware/drivers/wdf/power-management-for-i-o-queues" rel="noopener" target="_blank">Power Management for I/O Queues</a>.</li></ul>
+<aside class="callout nota"><p class="callout-titulo">Etiquetas</p><p><strong>Observado en CLS:</strong> superficie/mitigaciones de user mode. <strong>Conocimiento externo:</strong> seguridad de drivers, métodos de buffer, sondeo de memoria de usuario, propiedad y cancelación de solicitudes WDF, PnP/energía (recuadro). <strong>Ejemplo ilustrativo:</strong> checklist, fragmento <code>METHOD_NEITHER</code> y flujo de cancelación hipotéticos. <strong>Laboratorio verificado:</strong> no; revisión de código fuente.</p></aside>
+</main>
+<footer class="pie">
+  <p>Material educativo y defensivo. Las prácticas se limitan a programas propios, software abierto o crackmes diseñados para aprender. No se enseña a eludir licencias, DRM ni controles de acceso.</p>
+  <p><a href="../00_EMPEZAR_AQUI.html">Inicio</a> · <a href="../guia/etapa-0.html">Etapas</a> · <a href="../fuentes_y_limites.html">Fuentes y límites</a> · <a href="../registro_de_cobertura.csv">Registro de cobertura</a></p>
+</footer>
+</body>
+</html>

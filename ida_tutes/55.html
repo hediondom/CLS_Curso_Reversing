@@ -1,0 +1,202 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tute 55 · Otro ejercicio de kernel — Curso IDA</title>
+<meta name="description" content="Tutorial ilustrado del tute 55 del Curso IDA desde cero: Otro ejercicio de kernel.">
+<link rel="stylesheet" href="../guia/estilo.css">
+</head>
+<body>
+<a class="salto" href="#contenido">Saltar al contenido</a>
+<header class="cabecera">
+  <div class="marca"><a href="../00_EMPEZAR_AQUI.html">CLS · Curso de reversing</a> <span class="edicion">edición 5 · 27/10/2026</span></div>
+  <nav class="principal" aria-label="Navegación principal">
+    <a href="../00_EMPEZAR_AQUI.html">Inicio</a>
+    <a href="../guia/index.html">Curso</a>
+    <a href="../fichas/index.html">Fichas</a>
+    <a href="../glosario.html">Glosario</a>
+    <a href="../preguntas_y_respuestas.html">Repaso</a>
+  </nav>
+</header>
+<main id="contenido">
+<p class="migas"><a href="../ida-tutes.html">← Índice de los 69 tutes de IDA</a></p>
+<h1>Tute 55 · Otro ejercicio de kernel</h1>
+<p class="meta-tute"><strong>⏱ 9 min de lectura</strong> · 1.633 palabras · 40 capturas · grupo: Kernel de Windows y temas avanzados (drivers, HackSys/HEVD, SSDT/syscalls, VA→física)</p>
+<aside class="callout nota"><p class="callout-titulo">Qué enseña</p><p>Modificar un valor desde kernel evitando la pantalla azul.</p></aside>
+<p><em>se conecta con:</em> <a href="../guia/05-fuera-de-alcance.html">Fuera de alcance</a></p>
+<aside class="callout aviso"><p class="callout-titulo">Material observado, no reescrito</p><p>Es el texto y las capturas del <code>.docx</code> original del curso, solo presentados como tutorial. Puede tener erratas de origen. El autor del curso es Ricardo Narvaja.</p></aside>
+<hr>
+<p>INTRODUCCION AL REVERSING CON IDA PRO DESDE CERO PARTE 55 KERNEL.</p>
+<p>OTRO EJERCICIO KERNEL</p>
+<p>Vamos a ver el siguiente ejemplo, pero como en este caso vamos a modificar un valor desde kernel, debemos ver bien que hacemos sino provocaremos una pantalla azul.</p>
+<p>Lo primero que haremos sera cargar el ejercicio anterior y debuggearlo con windbg para ver un valor que es necesario para este ejemplo.</p>
+<p>Porque no digo el valor es tal, porque este offset cambia entre sistema y sistema, a pesar de que avise de que estoy usando Windows 7 de 32 bits como target por ahora, conviene chequearlo de paso aprendemos mas sobre las estructuras que se manejan.</p>
+<p>Como vimos en la parte anterior arrancamos el target con el windbg debuggeando el kernel remoto como se explica alli, y cuando arranca el sistema, con el OSRLOADER arrancamos el driver, luego breakeamos en el windbg y como vimos cambiamos al proceso OSRLOADER con</p>
+<p>.process /i xxxxxxx</p>
+<p>, poniendo el numero al lado del nombre del proceso.</p>
+<figure><img loading="lazy" src="img/55/1.png" alt="Captura 1 del tute 55"></figure>
+<p>En mi caso</p>
+<p>.process /i 840f7d40</p>
+<p>Y luego G.</p>
+<p>Bueno ese famoso numerito que nunca dijimos el nombre, es la dirección de la estructura _EPROCESS en mi caso 840f7d40 .</p>
+<figure><img loading="lazy" src="img/55/2.png" alt="Captura 2 del tute 55"></figure>
+<p>Si dumpeo la estructura en mi caso usare.</p>
+<p>_EPROCESS</p>
+<p>dt _EPROCESS 840f7d40</p>
+<p>Veo que en mi caso en 0xB8 esta la estructura ActiveProcessLinks que es la que estoy buscando, este offset varia de sistema en sistema, en XP esta en 0x88 y en otros sistemas variara también de posición por lo cual esta bueno chequear su valor en nuestra maquina target.</p>
+<p>La estructuras del tipo _LIST_ENTRY como esta, en 32 bits tienen 8 bytes de largo, y están compuestas de dos punteros.</p>
+<figure><img loading="lazy" src="img/55/3.png" alt="Captura 3 del tute 55"></figure>
+<p>Usando dd se puede ver también.</p>
+<figure><img loading="lazy" src="img/55/4.png" alt="Captura 4 del tute 55"></figure>
+<p>Que alli en el offset 0xb8 esta el primer puntero que es Flink cuyo valor en mi caso 0x85c1dd20 y el Blink que vale en mi caso 0x84119568.</p>
+<p>Esos son los dos campos de la misma estructura ActiveProcessLink y apuntan a la misma estructura en el siguiente y el anterior proceso, como sabemos que esa estructura en nuestro sistema esta en el offset 0xb8, podemos hallar el EPROCESS del proceso anterior al mio y del siguiente al mio, restandole a ambos valores 0xb8.</p>
+<figure><img loading="lazy" src="img/55/5.png" alt="Captura 5 del tute 55"></figure>
+<p>Si vemos los EPROCESS de los otros procesos con !process 0 0</p>
+<figure><img loading="lazy" src="img/55/6.png" alt="Captura 6 del tute 55"></figure>
+<figure><img loading="lazy" src="img/55/7.png" alt="Captura 7 del tute 55"></figure>
+<p>Vemos que nos da el EPROCESS del proceso siguiente y el anterior al OSRLOADER.</p>
+<p>Por lo tanto FLINK que es FORWARD LINK apunta a la misma estructura ActiveProcessLink del siguiente proceso y BLINK que es BACKWARD LINK apunta a la misma estructura del anterior proceso de la lista y en mi sistema el OFFSET a ActiveProcessLink es 0xb8.</p>
+<p>Bueno esto es por ahora lo que necesitamos saber para entender el funcionamiento del próximo driver que compilaremos.</p>
+<p>Como siempre adjuntare el código fuente, pero esencialmente al driver anterior le agregamos una función que se llama HideCaller ya estudiaremos que hace, lo compilo en modo release y lo copio junto con los símbolos a una carpeta para abrirlo con IDA.</p>
+<figure><img loading="lazy" src="img/55/8.png" alt="Captura 8 del tute 55"></figure>
+<p>Vemos que la agregamos una función llamada HideCaller, si lo abrimos en IDA con sus simbolos, vemos dentro del DriverDispatch una llamada a HideCaller.</p>
+<figure><img loading="lazy" src="img/55/9.png" alt="Captura 9 del tute 55"></figure>
+<p>Vemos que es una rutina sencilla</p>
+<figure><img loading="lazy" src="img/55/10.png" alt="Captura 10 del tute 55"></figure>
+<p>La función IoGetCurrentProcess devuelve un puntero al EPROCESS de nuestro proceso.</p>
+<figure><img loading="lazy" src="img/55/11.png" alt="Captura 11 del tute 55"></figure>
+<p>Bueno la estructura eprocess no la tenemos en IDA hay que agregarla a mano pero con lo que ya vimos en el windbg podemos crear una estructura vacía de largo 0x300 que nos sobra.</p>
+<p>Vemos que cree una estructura vacía con el método que mostramos anteriormente en el curso.</p>
+<figure><img loading="lazy" src="img/55/12.png" alt="Captura 12 del tute 55"></figure>
+<p>Sabíamos que en el offset 0xb8 empezaba la estructura de 8 bytes ActiveProcessLink asi que vamos allí en la pestaña estructuras y la agregamos.</p>
+<figure><img loading="lazy" src="img/55/13.png" alt="Captura 13 del tute 55"></figure>
+<figure><img loading="lazy" src="img/55/14.png" alt="Captura 14 del tute 55"></figure>
+<p>Allí es un DWORD veremos de cambiarla ya que es del tipo _LIST_ENTRY.</p>
+<figure><img loading="lazy" src="img/55/15.png" alt="Captura 15 del tute 55"></figure>
+<p>Sincronizamos _LIST_ENTRY y entonces volvemos a la estructura y nos posicionamos en el campo y apretamos ALT más Q para cambiar ese campo al tipo estructura y elegimos la estructura LIST_ENTRY que es de 8 bytes.</p>
+<figure><img loading="lazy" src="img/55/16.png" alt="Captura 16 del tute 55"></figure>
+<figure><img loading="lazy" src="img/55/17.png" alt="Captura 17 del tute 55"></figure>
+<p>Ahora quedo mas lindo jeje.</p>
+<figure><img loading="lazy" src="img/55/18.png" alt="Captura 18 del tute 55"></figure>
+<p>Ahora apretando T vemos que ese campo es el BLINK ya que esta en 0xBC.</p>
+<p>El método es pisar el FLINK del proceso anterior para que deje de apuntar a mi proceso y lo saltee en la lista apuntando al próximo, y lo mismo el BLINK del próximo en vez de apuntar a mi proceso que lo haga al anterior al mío, de esa forma cuando vaya recorriendo la lista salteara el mío.</p>
+<p>HIDING A PROCESS</p>
+<figure><img loading="lazy" src="img/55/19.png" alt="Captura 19 del tute 55"></figure>
+<p>En este ejemplo vemos que al FLINK del proceso anterior que apuntaba a 0x20000000 lo pisamos con 0x30000000 y al BLINK del proceso siguiente que apuntaba a 0x20000000 lo pisare con 0x10000000.</p>
+<p>De esta forma ni el anterior ni el siguiente al mío tendrán punteros a mi proceso, lo saltearan al recorrer la lista.</p>
+<p>EAX apunta a la estructura ActiceProcessLink y es del tipo _LIST_ENTRY podemos donde hay EAX + XXX apretar T y elegir la estructura LIST_ENTRY para que muestre su campo.</p>
+<figure><img loading="lazy" src="img/55/20.png" alt="Captura 20 del tute 55"></figure>
+<p>A EAX que tenía el eprocess le suma 0xB8</p>
+<figure><img loading="lazy" src="img/55/21.png" alt="Captura 21 del tute 55"></figure>
+<p>El contenido (mi FLINK) lo mueve a ECX luego lo guarda en el contenido de EDX que tenía mi BLINK, como apunta al proceso anterior, su contenido es el FLINK del proceso anterior así que hace lo que dice el método anterior, pisar el FLINK del proceso anterior con mi FLINK.</p>
+<figure><img loading="lazy" src="img/55/22.png" alt="Captura 22 del tute 55"></figure>
+<p>Luego viene el otro puntero que es escribir en FLINK +4 (ya que mi FLINK es 0x30000000 mas 4 da el BLINK del siguiente proceso 0x30000004 y al pisar su contenido machacaremos el valor que tenía con 0x10000000 que es mi BLINK.</p>
+<figure><img loading="lazy" src="img/55/23.png" alt="Captura 23 del tute 55"></figure>
+<p>Allí lo hace guarda BLINK de mi proceso en el contenido de FLINK más 4 o sea en el contenido de 0x30000004 machaca el valor que había allí en BLINK del siguiente con 0x10000000.</p>
+<p>Lo último es que EAX que tiene la dirección de la estructura ActiveProcessLink, en su contenido esta mi FLINK lo pisa con esa misma dirección y lo mismo con mi BLINK, ahora lo debuggearemos para aclarar un poco.</p>
+<p>Pongo un BREAKPOINT allí</p>
+<figure><img loading="lazy" src="img/55/24.png" alt="Captura 24 del tute 55"></figure>
+<p>Reinicio la maquina copio el nuevo driver y atacheo el windbg, luego cuando ya arranca lo cierro y atacheo el IDA como hicimos las veces anteriores.</p>
+<figure><img loading="lazy" src="img/55/25.png" alt="Captura 25 del tute 55"></figure>
+<figure><img loading="lazy" src="img/55/26.png" alt="Captura 26 del tute 55"></figure>
+<p>Cuando lo llamo desde el script de python user.py del ejercicio anterior va al Dispatch y llega al llamado de HideCaller.</p>
+<figure><img loading="lazy" src="img/55/27.png" alt="Captura 27 del tute 55"></figure>
+<p>Al pasarla api en EAX queda la dirección del EPROCESS en mi caso 844C1D40</p>
+<figure><img loading="lazy" src="img/55/28.png" alt="Captura 28 del tute 55"></figure>
+<p>Verifiquemos con el Windbg en la barra del plugin.</p>
+<figure><img loading="lazy" src="img/55/29.png" alt="Captura 29 del tute 55"></figure>
+<p>En este caso el proceso que llamo al Driver es el python.exe y ahi se ve el EPROCESS 0x844c1d40.</p>
+<p>Veamos la estructura ActiveProcessLinks</p>
+<figure><img loading="lazy" src="img/55/30.png" alt="Captura 30 del tute 55"></figure>
+<p>Allí vemos en la dirección de memoria EPROCESS + 0xb8 o sea 0x844c1df8</p>
+<figure><img loading="lazy" src="img/55/31.png" alt="Captura 31 del tute 55"></figure>
+<p>Su contenido es el FLINK = 0x82757e98</p>
+<figure><img loading="lazy" src="img/55/32.png" alt="Captura 32 del tute 55"></figure>
+<p>Y el siguiente dword a continuación es el BLINK = 0x84a80828</p>
+<p>Ambos son el FLINK y BLINK de mi proceso.</p>
+<p>FLINK = 82757de0  y  BLINK = 0x84a80828</p>
+<figure><img loading="lazy" src="img/55/33.png" alt="Captura 33 del tute 55"></figure>
+<p>Al tracear y apretar T veo que lee mi BLINK y lo pasa a EDX</p>
+<figure><img loading="lazy" src="img/55/34.png" alt="Captura 34 del tute 55"></figure>
+<p>En EAX queda la dirección de la estructura ActiveProcessLink, su contenido es FLINK lo mueve a ECX.</p>
+<figure><img loading="lazy" src="img/55/35.png" alt="Captura 35 del tute 55"></figure>
+<p>Luego va a copiar mi FLINK en el contenido de EDX que era mi BLINK el cual apuntara al ActiveProcessLink del proceso anterior.</p>
+<figure><img loading="lazy" src="img/55/36.png" alt="Captura 36 del tute 55"></figure>
+<p>Va a pisar ese el FLINK del proceso anterior con mi FLINK.</p>
+<figure><img loading="lazy" src="img/55/37.png" alt="Captura 37 del tute 55"></figure>
+<p>Luego levanta mi FLINK el cual por supuesto apunta al ActiveProcessLink del siguiente proceso y le suma 4 y halla el contenido, veamos el siguiente proceso.</p>
+<figure><img loading="lazy" src="img/55/38.png" alt="Captura 38 del tute 55"></figure>
+<p>Pisara el BLINK del siguiente proceso con mi BLINK.</p>
+<figure><img loading="lazy" src="img/55/39.png" alt="Captura 39 del tute 55"></figure>
+<p>Luego finaliza pisando mi FLINK Y BLINK de mi proceso con la dirección de la estructura ActiveProcessLink, veamos como lista los procesos.</p>
+<p>Vemos mi propio proceso tanto FLINK Y BLINK apuntan a la misma dirección de la estructura ActiveProcessLink.</p>
+<figure><img loading="lazy" src="img/55/40.png" alt="Captura 40 del tute 55"></figure>
+<p>Al hacer !process 0 0 lo mismo en la barra de tareas vemos que el proceso python desapareció de la lista a pesar de que esta corriendo y eso es porque al ir recorriendo la lista y llegar al proceso justo anterior el FLINK del mismo ya no apunta a mi proceso python.exe sino al siguiente, lo saltea, lo mismo que el BLINK del siguiente no apunta mas al proceso python.exe sino al anterior, por eso es como si no existiera mas.</p>
+<p>Ahora lo tiro de nuevo los valores cambiaran.</p>
+<p>PROCESS 844b0d00 SessionId: 1 Cid: 09ac Peb: 7ffd4000 ParentCid: 05f0</p>
+<p>DirBase: 3ec33540 ObjectTable: 92850c90 HandleCount: 93.</p>
+<p>Image: cmd.exe</p>
+<p>PROCESS 85da2b48 SessionId: 1 Cid: 0ae8 Peb: 7ffdb000 ParentCid: 01a4</p>
+<p>DirBase: 3ec33560 ObjectTable: 9e02eb90 HandleCount: 51.</p>
+<p>Image: conhost.exe</p>
+<p>PROCESS 84a76030 SessionId: 0 Cid: 0d88 Peb: 7ffdc000 ParentCid: 020c</p>
+<p>DirBase: 3ec33580 ObjectTable: 9fe4a3d8 HandleCount: 230.</p>
+<p>Image: taskhost.exe</p>
+<p>PROCESS 84bfad40 SessionId: 1 Cid: 0e24 Peb: 7ffd7000 ParentCid: 05f0</p>
+<p>DirBase: 3ec33460 ObjectTable: 9e37c198 HandleCount: 119.</p>
+<p>Image: taskmgr.exe</p>
+<p>PROCESS 844c1d40 SessionId: 1 Cid: 0dec Peb: 7ffd9000 ParentCid: 09ac</p>
+<p>DirBase: 3ec334a0 ObjectTable: 9a2ab3c0 HandleCount: 51.</p>
+<p>Image: python.exe</p>
+<p>WINDBG&gt;dt nt!_EPROCESS 844c1d40</p>
+<p>+0x000 Pcb : _KPROCESS</p>
+<p>+0x098 ProcessLock : _EX_PUSH_LOCK</p>
+<p>+0x0a0 CreateTime : _LARGE_INTEGER 0x01d362e6`34e8bf28</p>
+<p>+0x0a8 ExitTime : _LARGE_INTEGER 0x0</p>
+<p>+0x0b0 RundownProtect : _EX_RUNDOWN_REF</p>
+<p>+0x0b4 UniqueProcessId : 0x00000dec Void</p>
+<p>+0x0b8 ActiveProcessLinks : _LIST_ENTRY [ 0x82757e98 - 0x84bfadf8 ]</p>
+<p>Despues de correr el driver y que pase por el dispatcher y la función HideCaller.</p>
+<p>PROCESS 844b0d00 SessionId: 1 Cid: 09ac Peb: 7ffd4000 ParentCid: 05f0</p>
+<p>DirBase: 3ec33540 ObjectTable: 92850c90 HandleCount: 93.</p>
+<p>Image: cmd.exe</p>
+<p>PROCESS 85da2b48 SessionId: 1 Cid: 0ae8 Peb: 7ffdb000 ParentCid: 01a4</p>
+<p>DirBase: 3ec33560 ObjectTable: 9e02eb90 HandleCount: 51.</p>
+<p>Image: conhost.exe</p>
+<p>PROCESS 84a76030 SessionId: 0 Cid: 0d88 Peb: 7ffdc000 ParentCid: 020c</p>
+<p>DirBase: 3ec33580 ObjectTable: 9fe4a3d8 HandleCount: 230.</p>
+<p>Image: taskhost.exe</p>
+<p>PROCESS 84bfad40 SessionId: 1 Cid: 0e24 Peb: 7ffd7000 ParentCid: 05f0</p>
+<p>DirBase: 3ec33460 ObjectTable: 9e37c198 HandleCount: 121.</p>
+<p>Image: taskmgr.exe</p>
+<p>La lista termina alli, no existe mas en la misma el proceso python.exe.</p>
+<p>No es muy difícil, no hay que hacerse lío con la lista enlazada de ActiveProcessLink, una vez que se entiende eso es fácil.</p>
+<p>Hasta la próxima parte 56</p>
+<p>Ricardo Narvaja</p>
+</main>
+<footer class="pie">
+  <p>Material educativo y defensivo. Las prácticas se limitan a programas propios, software abierto o crackmes diseñados para aprender. No se enseña a eludir licencias, DRM ni controles de acceso.</p>
+  <p><a href="../00_EMPEZAR_AQUI.html">Inicio</a> · <a href="../guia/etapa-0.html">Etapas</a> · <a href="../fuentes_y_limites.html">Fuentes y límites</a> · <a href="../registro_de_cobertura.csv">Registro de cobertura</a></p>
+</footer>
+<script>
+(function(){
+  function abrir(src){
+    var o=document.createElement('div'); o.className='lightbox-ov';
+    var i=document.createElement('img'); i.src=src; o.appendChild(i);
+    function cerrar(){o.remove(); document.removeEventListener('keydown', onkey);}
+    function onkey(e){ if(e.key==='Escape') cerrar(); }
+    o.addEventListener('click', cerrar);
+    document.addEventListener('keydown', onkey);
+    document.body.appendChild(o);
+  }
+  document.addEventListener('DOMContentLoaded', function(){
+    document.querySelectorAll('figure img, main img').forEach(function(img){
+      img.style.cursor='zoom-in';
+      img.addEventListener('click', function(){ abrir(img.currentSrc||img.src); });
+    });
+  });
+})();
+</script>
+</body>
+</html>

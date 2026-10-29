@@ -1,0 +1,177 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>2D.6 · COM: interfaces, IUnknown y vida de los objetos</title>
+<meta name="description" content="Leer contratos COM: GUID, IID, HRESULT, vtables, QueryInterface, reference counting, apartamentos STA/MTA y proxies, con un componente propio. Rama optativa 2D.">
+<link rel="stylesheet" href="../guia/estilo.css">
+</head>
+<body>
+<a class="salto" href="#contenido">Saltar al contenido</a>
+<header class="cabecera">
+  <div class="marca"><a href="../00_EMPEZAR_AQUI.html">CLS · Curso de reversing</a> <span class="edicion">edición 5 · 27/10/2026</span></div>
+  <nav class="principal" aria-label="Navegación principal">
+    <a href="../00_EMPEZAR_AQUI.html">Inicio</a>
+    <a href="../guia/index.html">Curso</a>
+    <a href="../materiales.html">Materiales</a>
+    <a href="../fichas/index.html">Fichas</a>
+    <a href="../glosario.html">Glosario</a>
+    <a href="../preguntas_y_respuestas.html">Repaso</a>
+    <a href="../buscar.html">Buscar</a>
+  </nav>
+</header>
+<main id="contenido">
+<nav class="migas" aria-label="Ubicación"><a href="../00_EMPEZAR_AQUI.html">Inicio</a><span aria-hidden="true">›</span><a href="../guia/index.html">Curso</a><span aria-hidden="true">›</span><span>Etapa 2 · 2D · Windows internals (optativa)</span></nav><h1 id="com-interfaces-iunknown-y-vida-de-los-objetos">COM: interfaces, IUnknown y vida de los objetos</h1>
+<aside class="callout aviso"><p class="callout-titulo">Rama optativa 2D</p><p>Lección conceptual y de análisis. El ejemplo es un componente propio; no se registra ni modifica software ajeno.</p></aside>
+<aside class="callout nota"><p class="callout-titulo">Propósito</p><p>Reconocer cómo un cliente pide una interfaz COM, cómo interpretar el resultado y cómo seguir la llamada hasta la implementación sin confundir una interfaz con una clase C++ concreta. Al terminar deberías poder decir, frente a una llamada indirecta, <strong>qué contrato</strong> se está usando, <strong>en qué apartamento</strong> vive el objeto y si el puntero que tenés delante es el objeto o un <strong>proxy</strong>.</p></aside>
+<p><strong>Prerrequisitos</strong></p>
+<ul><li><em>Obligatorios:</em> punteros, estructuras y convención de llamada (<a href="01-c-python.html">1.5</a>, <a href="02-llamadas.html">2.5</a>); objetos y handles (<a href="2d-01-objetos.html">2D.1</a>).</li><li><em>Recomendados:</em> C++ profundo (<a href="02-cpp-profundo.html">2.18</a>); memoria y loader (<a href="2d-02-memoria-loader.html">2D.2</a>); procesos e hilos (<a href="01-procesos.html">1.3</a>).</li></ul>
+<h2 id="conceptos">Conceptos</h2>
+<ul><li><strong>CLSID</strong> identifica una clase COM; <strong>IID</strong> identifica un contrato de interfaz. Ambos son GUID, pero responden preguntas distintas.</li><li><strong><code>IUnknown</code></strong> es la base de las interfaces COM: <code>QueryInterface</code>, <code>AddRef</code> y <code>Release</code>. La consulta devuelve <code>S_OK</code> si el objeto ofrece el IID o <code>E_NOINTERFACE</code> si no.</li><li><strong>HRESULT</strong> comunica éxito o fallo. No lo interpretes como un booleano: se usa <code>SUCCEEDED(hr)</code> / <code>FAILED(hr)</code>; algunos resultados no negativos (como <code>S_FALSE</code>) indican éxito informativo.</li><li>Una <strong>vtable</strong> contiene punteros a métodos en orden contractual. En una interfaz derivada, los métodos de <code>IUnknown</code> preceden a los propios.</li><li>El <strong>reference counting</strong> administra la vida del objeto. Una referencia obtenida debe equilibrarse con <code>Release</code>; después de la última liberación, ese puntero no se reutiliza.</li><li>Una llamada puede atravesar una <strong>proxy/stub</strong> si el objeto vive en otro apartamento o proceso. El puntero visible al cliente no tiene por qué apuntar directamente al código servidor.</li></ul>
+<h2 id="inicialización-por-hilo-coinitializeex-y-couninitialize">Inicialización por hilo: <code>CoInitializeEx</code> y <code>CoUninitialize</code></h2>
+<p>COM no se “enciende” una vez por proceso: <strong>cada hilo</strong> que usa interfaces COM llama a <code>CoInitializeEx</code> y, con eso, declara su modelo de concurrencia y queda asociado a un <strong>apartamento</strong>. El primer parámetro es reservado (<code>NULL</code>); el segundo lleva exactamente uno de <code>COINIT_APARTMENTTHREADED</code> o <code>COINIT_MULTITHREADED</code>, más opciones como <code>COINIT_DISABLE_OLE1DDE</code>.</p>
+<p>Lo que conviene registrar al analizar un binario:</p>
+<div class="tabla"><table>
+<thead><tr>
+<th>Resultado</th>
+<th>Significado documentado</th>
+<th>Qué implica para el análisis</th>
+</tr></thead><tbody>
+<tr><td><code>S_OK</code></td><td>COM se inicializó en ese hilo.</td><td>Debe haber un <code>CoUninitialize</code> equilibrado antes de que el hilo termine.</td></tr>
+<tr><td><code>S_FALSE</code></td><td>COM ya estaba inicializado en ese hilo con el mismo modelo.</td><td>Es éxito; <strong>también</strong> debe equilibrarse con <code>CoUninitialize</code>.</td></tr>
+<tr><td><code>RPC_E_CHANGED_MODE</code></td><td>Un llamado previo fijó un modelo incompatible para ese hilo.</td><td>Es fallo: el hilo <strong>sigue</strong> en el modelo anterior y no corresponde un <code>CoUninitialize</code> por este llamado.</td></tr>
+</tbody></table></div>
+<p>Microsoft indica además que no se llame a <code>CoInitialize(Ex)</code> ni a <code>CoUninitialize</code> desde <code>DllMain</code>. Cuando veas una DLL que lo hace, anotalo como hallazgo de calidad, no como intención maliciosa.</p>
+<h2 id="apartamentos-sta-mta-y-por-qué-existe-el-marshaling">Apartamentos: STA, MTA y por qué existe el marshaling</h2>
+<p>Un <strong>apartamento</strong> agrupa objetos COM y los hilos que pueden llamarlos <strong>directamente</strong>. Cada objeto vive en exactamente un apartamento; un hilo de otro apartamento que quiera llamarlo debe pasar por un <strong>proxy</strong>.</p>
+<ul><li><strong>STA (single-threaded apartment)</strong>: un único hilo. Las llamadas que llegan desde otros apartamentos se entregan a través de la <strong>cola de mensajes</strong> de ese hilo, así que se serializan y solo avanzan cuando el hilo bombea mensajes. Si un hilo STA se bloquea en una espera sin bombear (por ejemplo, <code>WaitForSingleObject</code>), las llamadas entrantes no se entregan y aparece un interbloqueo. La documentación recomienda <code>CoWaitForMultipleHandles</code> o <code>MsgWaitForMultipleObjects</code> en esos hilos.</li><li><strong>MTA (multithreaded apartment)</strong>: uno o más hilos; a lo sumo <strong>una</strong> MTA por proceso. Cualquier hilo de la MTA puede llamar directamente a los objetos de la MTA, y <strong>el objeto</strong> debe sincronizarse por su cuenta (secciones críticas, mutex, etc.).</li><li>Un proceso puede tener <strong>cero o más STA</strong> y <strong>cero o una MTA</strong>. También existe el apartamento <strong>neutral</strong> (NA), que aparece en la próxima lección a través de <code>ThreadingModel=Neutral</code>.</li></ul>
+<p><strong>Marshaling</strong> es empaquetar la llamada (parámetros, punteros de interfaz) para que cruce un límite de apartamento, de proceso o de equipo. Existe porque las reglas anteriores solo se cumplen si nadie copia un puntero de interfaz “crudo” a un hilo de otro apartamento. Para pasar una interfaz entre apartamentos del mismo proceso se usan mecanismos explícitos —la Global Interface Table o, en código moderno (Windows 8.1+), <code>RoGetAgileReference</code>— que devuelven un puntero directo si se resuelve en el mismo apartamento o un proxy si no.</p>
+<aside class="callout nota"><p class="callout-titulo">Lectura defensiva del modelo de hilos</p><p>En un análisis, el modelo de hilos sale de la evidencia: el flag pasado a <code>CoInitializeEx</code> (si lo ves en un argumento constante), el <code>ThreadingModel</code> del servidor (2D.7) y la presencia de un bucle de mensajes. Si solo tenés una de las tres, escribí “probable STA/MTA” y por qué.</p></aside>
+<h2 id="proxies-y-stubs-cuando-el-puntero-no-es-el-objeto">Proxies y stubs: cuando el puntero no es el objeto</h2>
+<p>Un <strong>proxy</strong> vive en el espacio del llamador y, para el cliente, <em>es</em> el objeto: implementa la misma interfaz, empaqueta los parámetros en un búfer y los entrega al canal (RPC). Del otro lado, un <strong>stub</strong> desempaqueta y llama a la implementación real. El proxy es un objeto compuesto: un <em>proxy manager</em> (que implementa el <code>IUnknown</code> controlador) y un <em>interface proxy</em> por cada interfaz expuesta a ese cliente. El código de esos interface proxies puede estar en una DLL distinta, que el registro asocia al IID mediante <code>HKCR\Interface\{IID}\ProxyStubClsid32</code>.</p>
+<p>Cómo reconocerlo en el depurador, sin suponer nombres:</p>
+<ol><li>Tomá el puntero de interfaz <code>p</code> y leé su primer campo: es la dirección de la vtable.</li><li>Resolvé a qué <strong>módulo</strong> pertenecen la vtable y sus primeras entradas (<code>lm</code>/<code>ln</code> en WinDbg, o el mapa de memoria de tu depurador).</li><li>Si apuntan al <strong>módulo servidor</strong>, probablemente es un puntero directo. Si apuntan a módulos del runtime COM/RPC o a una DLL de proxy/stub, es un proxy. Los nombres concretos de esos módulos y funciones dependen de la versión de Windows y de los símbolos disponibles: registrá lo que veas, no lo que esperabas ver.</li><li>Confirmalo con el contexto: ¿el objeto se creó en otro proceso (<code>LocalServer32</code>) o en otro apartamento? ¿El hilo cliente es STA y el servidor <code>Free</code>?</li></ol>
+<p>Consecuencia práctica: poner un breakpoint en la entrada de la vtable de un proxy <strong>no</strong> te lleva a la implementación; te lleva al código de marshaling. La implementación se sigue en el <strong>proceso o apartamento del servidor</strong>.</p>
+<h2 id="marshaling-a-medida-y-el-free-threaded-marshaler">Marshaling a medida y el <em>free-threaded marshaler</em></h2>
+<p>El marshaling estándar no es la única opción. Un objeto puede implementar <strong><code>IMarshal</code></strong> y decidir por su cuenta cómo se empaqueta una referencia a sí mismo (<em>custom marshaling</em>). Para el analista, esto significa que el proxy que aparece del otro lado puede no ser el estándar: puede ser un objeto escrito por el autor del componente, con su propio protocolo.</p>
+<p>El caso más común es el <strong>free-threaded marshaler</strong> (FTM), que se obtiene con <code>CoCreateFreeThreadedMarshaler</code> y se <strong>agrega</strong> al objeto (ver “Agregación y <em>tear-offs</em>”, más abajo). Cuando alguien marshalea una interfaz de ese objeto, el FTM mira el contexto de destino:</p>
+<ul><li>si el destino es <strong>otro apartamento del mismo proceso</strong> (<code>MSHCTX_INPROC</code>), copia el puntero real: el otro apartamento recibe un <strong>puntero directo</strong>, sin proxy;</li><li>si el destino es <strong>otro proceso u otro equipo</strong>, delega en el marshaling estándar: ahí <strong>sí</strong> hay proxy y stub.</li></ul>
+<p>Tres límites que conviene escribir en el informe:</p>
+<ol><li>El FTM <strong>no elimina</strong> el marshaling entre procesos; solo evita el proxy dentro del proceso.</li><li>Al eliminar el proxy, también elimina la sincronización que el apartamento le daba al objeto: <strong>el objeto tiene que manejar su propia concurrencia</strong>. Microsoft lo describe como una violación calculada de las reglas de COM, con riesgo de comportamiento indefinido si el objeto guarda punteros directos a objetos que no usan el FTM o referencias a proxies de otros apartamentos.</li><li>En código nuevo (Windows 8.1+), Microsoft recomienda <code>RoGetAgileReference</code> en lugar del FTM.</li></ol>
+<p>Señales en un binario: una llamada a <code>CoCreateFreeThreadedMarshaler</code> en la construcción del objeto y un <code>QueryInterface</code> que responde a <code>IID_IMarshal</code> delegando en otro objeto. Si las ves, “no hay proxy entre apartamentos” deja de ser una anomalía y pasa a ser el comportamiento esperado; lo que hay que revisar es si el objeto se sincroniza bien.</p>
+<h2 id="reglas-de-queryinterface-que-podés-usar-como-evidencia">Reglas de <code>QueryInterface</code> que podés usar como evidencia</h2>
+<p>Microsoft fija tres reglas para implementar <code>QueryInterface</code>:</p>
+<ul><li><strong>Identidad</strong>: para un mismo objeto, <code>QueryInterface(IID_IUnknown)</code> devuelve <strong>siempre el mismo valor de puntero</strong>. Por eso, para saber si dos interfaces pertenecen al mismo objeto, se comparan los resultados de pedir <code>IID_IUnknown</code> a cada una, no los punteros de interfaz originales (que suelen diferir).</li><li><strong>Conjunto estático</strong>: si un IID devolvió <code>S_OK</code> una vez, no puede devolver <code>E_NOINTERFACE</code> después en el mismo objeto, y viceversa.</li><li><strong>Reflexiva, simétrica y transitiva</strong>: desde cualquier interfaz se puede pedir la misma interfaz, volver a la anterior y llegar a cualquier otra que el objeto ofrezca.</li></ul>
+<p>Uso en reversing: si observás un objeto que ofrece un IID “a veces”, o dos <code>IUnknown</code> distintos para lo que creías un solo objeto, no es una curiosidad. Puede ser un bug del componente, que en realidad son objetos distintos o que estás mirando un proxy. Registralo y explicá cuál hipótesis sostenés y con qué evidencia.</p>
+<h2 id="agregación-y-tear-offs-un-objeto-varias-implementaciones">Agregación y <em>tear-offs</em>: un objeto, varias implementaciones</h2>
+<p>La regla de identidad habla del <strong>objeto COM</strong>, no de una clase C++. Dos técnicas hacen que un objeto COM esté formado por varias piezas de código, y las dos se ven raras si no las conocés.</p>
+<p><strong>Agregación.</strong> Un objeto <strong>externo</strong> expone interfaces de un objeto <strong>interno</strong> como si fueran propias. Para que la identidad se mantenga:</p>
+<ul><li>al crear el interno, el externo pasa su propio <code>IUnknown</code> como <code>pUnkOuter</code> en <code>CoCreateInstance</code> y <strong>debe pedir <code>IID_IUnknown</code></strong>; si pide otra interfaz, la creación falla (un objeto que no admite agregación devuelve <code>CLASS_E_NOAGGREGATION</code>);</li><li>el interno tiene <strong>dos</strong> <code>IUnknown</code>: uno propio (<em>no delegante</em>), que controla su vida y que solo conoce el externo, y el de sus demás interfaces, que <strong>delega</strong> <code>QueryInterface</code>, <code>AddRef</code> y <code>Release</code> en el <code>IUnknown</code> <strong>controlador</strong> del externo;</li><li>el cliente siempre ve un solo objeto: pedir <code>IID_IUnknown</code> desde cualquier interfaz devuelve el <code>IUnknown</code> del externo.</li></ul>
+<p>Cómo se ve en un binario: un <code>CoCreateInstance</code> (o un constructor) que recibe un <code>pUnkOuter</code> no nulo junto con <code>IID_IUnknown</code>, y métodos <code>QueryInterface</code>/<code>AddRef</code>/<code>Release</code> que solo hacen un salto indirecto a través de un puntero guardado (el controlador). Si seguís la vtable de una interfaz agregada, sus primeros tres slots apuntan a código del <strong>interno</strong> que solo reenvía al controlador del <strong>externo</strong>, y el resto, a la implementación del interno, que puede estar en otra DLL.</p>
+<p><strong>Tear-offs.</strong> Algunas bibliotecas (ATL, por ejemplo, con <code>COM_INTERFACE_ENTRY_TEAR_OFF</code>) crean la implementación de una interfaz poco usada <strong>recién cuando alguien la pide</strong>, como un objeto auxiliar que delega <code>IUnknown</code> en el principal. Consecuencias: dos <code>QueryInterface</code> del mismo IID pueden devolver <strong>punteros de interfaz distintos</strong> (dos tear-offs), sin violar la identidad, porque ambos devuelven el mismo <code>IUnknown</code>; y la memoria de esa interfaz puede no existir antes del primer pedido.</p>
+<p>Para el informe: si los punteros de interfaz difieren pero <code>IID_IUnknown</code> coincide, anotá “compatible con agregación o tear-off” y buscá el patrón de delegación antes de afirmar cuál es.</p>
+<h2 id="monikers-y-la-tabla-de-objetos-en-ejecución-rot">Monikers y la tabla de objetos en ejecución (ROT)</h2>
+<p>Un <strong>moniker</strong> es un objeto (interfaz <code>IMoniker</code>) que <strong>nombra</strong> a otro objeto y sabe cómo obtenerlo: a eso se le llama <em>binding</em>. Hay monikers de archivo, de ítem, de clase, compuestos y otros; OLE los usa para conectar y activar objetos en el mismo equipo o en la red, por ejemplo en los vínculos de documentos compuestos.</p>
+<p>La <strong>ROT</strong> (<em>Running Object Table</em>, interfaz <code>IRunningObjectTable</code>, obtenida con <code>GetRunningObjectTable</code>) es una tabla por estación de trabajo con pares (moniker, objeto en ejecución). Cuando un cliente resuelve un moniker, se consulta la ROT para conectarse a la instancia que ya corre en vez de crear otra. Un objeto se <strong>registra</strong> en la ROT al cargarse y debe <strong>revocar</strong> su registro al terminar.</p>
+<p>Qué aporta al análisis:</p>
+<ul><li>Un cliente que obtiene un objeto con <code>CoGetObject</code>, <code>BindMoniker</code>/<code>IMoniker::BindToObject</code> o consultando la ROT <strong>no</strong> pasa necesariamente por <code>CoCreateInstance</code>: si buscás solo activaciones, te lo perdés.</li><li>Un servidor que llama a <code>IRunningObjectTable::Register</code> está publicando un objeto para que otros procesos lo encuentren por nombre. Anotá qué moniker usa y con qué flags; es parte de su superficie.</li><li>Enumerar la ROT (<code>EnumRunning</code>) es una operación de lectura; conectarse a un objeto encontrado ahí <strong>no</strong> lo es, porque ejecuta código del servidor. En la práctica de esta lección solo se anota lo que el <strong>binario propio</strong> registra o consulta.</li></ul>
+<aside class="callout nota"><p class="callout-titulo">Recuadro conceptual: COM+</p><p>COM+ (Component Services) agrupa componentes COM en <strong>aplicaciones COM+</strong> que se administran como una unidad: alcance de despliegue, configuración y seguridad común, atributos que el autor del componente no escribió (transacciones, sincronización), y procesos anfitriones administrados (<code>DllHost.exe</code>) que cargan las DLL bajo demanda. Su configuración vive en un <strong>catálogo</strong> propio, no solo en las claves de 2D.7. Si en un análisis ves un <code>DllHost.exe</code> con una DLL de componente o referencias a contextos COM+, sabé que existe esta capa; esta lección <strong>no</strong> la desarrolla y no conviene sacar conclusiones de seguridad sin consultar la configuración del catálogo.</p></aside>
+<h2 id="iid-orden-de-métodos-slot-y-convención-de-llamada">IID, orden de métodos, slot y convención de llamada</h2>
+<p>El <strong>slot</strong> de vtable se deduce así: <code>slot = offset / tamaño_de_puntero</code>. El nombre del método <strong>no</strong> sale del offset; sale de combinar cuatro datos:</p>
+<ol><li><strong>IID</strong> usado para obtener el puntero (lo ves como argumento de <code>QueryInterface</code> o <code>CoCreateInstance</code>).</li><li><strong>Definición de la interfaz</strong> (IDL, header, type library o PDB) con el <strong>orden</strong> de los métodos, incluida la herencia (<code>IUnknown</code> aporta los slots 0–2).</li><li><strong>Arquitectura</strong>: 4 bytes por slot en x86, 8 bytes en x64.</li><li><strong>Convención de llamada</strong>: en x86, los métodos COM usan <code>__stdcall</code> y <code>this</code> va en la pila como primer argumento; en x64 hay una sola convención y <code>this</code> viaja en <code>RCX</code>, seguido de <code>RDX</code>, <code>R8</code> y <code>R9</code>.</li></ol>
+<div class="tabla"><table>
+<thead><tr>
+<th>Slot</th>
+<th>Método (<code>IStatus : IUnknown</code>)</th>
+<th>Offset x86</th>
+<th>Offset x64</th>
+</tr></thead><tbody>
+<tr><td>0</td><td><code>QueryInterface</code></td><td><code>+0x00</code></td><td><code>+0x00</code></td></tr>
+<tr><td>1</td><td><code>AddRef</code></td><td><code>+0x04</code></td><td><code>+0x08</code></td></tr>
+<tr><td>2</td><td><code>Release</code></td><td><code>+0x08</code></td><td><code>+0x10</code></td></tr>
+<tr><td>3</td><td><code>GetState</code></td><td><code>+0x0C</code></td><td><code>+0x18</code></td></tr>
+</tbody></table></div>
+<p>Un <code>call [rax+18h]</code> en x64 es “slot 3”; solo es <code>IStatus::GetState</code> si el puntero vino de un <code>QueryInterface</code>/<code>CoCreateInstance</code> con <code>IID_IStatus</code> (o de una interfaz que deriva de ella) <strong>y</strong> la definición confirma el orden.</p>
+<h2 id="ejemplo-trabajado-x64-msvc">Ejemplo trabajado (x64, MSVC)</h2>
+<p><em>(Ejemplo ilustrativo de un componente propio <code>BlocStatus</code> compilado para <strong>x64</strong>. Las instrucciones muestran el patrón que genera MSVC para llamadas COM; las posiciones de pila y los resultados no son una captura de un binario real.)</em></p>
+<p>Contrato, tal como lo declararía el IDL propio:</p>
+<pre><code class="lenguaje-text">interface IStatus : IUnknown        // IID_IStatus
+{
+    HRESULT GetState([out] ULONG* state);   // slot 3
+};</code></pre>
+<p>Llamadas del cliente, en el orden que se ve en el desensamblado. Primero, inicialización y creación:</p>
+<pre><code class="lenguaje-text">; hilo cliente
+xor   ecx, ecx                    ; pvReserved = NULL
+mov   edx, 2                      ; COINIT_APARTMENTTHREADED  -&gt; hilo STA
+call  CoInitializeEx              ; anotar HRESULT en eax
+
+lea   rcx, CLSID_BlocStatus       ; rclsid
+xor   edx, edx                    ; pUnkOuter = NULL
+mov   r8d, 1                      ; CLSCTX_INPROC_SERVER
+lea   r9,  IID_IStatus            ; riid
+lea   rax, [rsp+40h]
+mov   [rsp+20h], rax              ; ppv (5.º argumento, en la pila tras el shadow space)
+call  CoCreateInstance</code></pre>
+<p>Después, las llamadas a través de la vtable y el cierre:</p>
+<pre><code class="lenguaje-text">mov   rcx, [rsp+40h]              ; this = p (IStatus*)
+mov   rax, [rcx]                  ; rax = vptr
+lea   rdx, [rsp+48h]              ; &amp;state
+call  qword ptr [rax+18h]         ; slot 3 = 0x18 / 8 -&gt; IStatus::GetState
+
+mov   rcx, [rsp+40h]
+mov   rax, [rcx]
+lea   rdx, IID_IResettable
+lea   r8,  [rsp+50h]
+call  qword ptr [rax]             ; slot 0 -&gt; QueryInterface
+
+mov   rcx, [rsp+40h]
+mov   rax, [rcx]
+call  qword ptr [rax+10h]         ; slot 2 -&gt; Release
+
+call  CoUninitialize              ; equilibra el CoInitializeEx anterior</code></pre>
+<p>Ficha de lectura, separando qué sale del código y qué se infiere:</p>
+<div class="tabla"><table>
+<thead><tr>
+<th>Dato</th>
+<th>Fuente</th>
+<th>Tipo</th>
+</tr></thead><tbody>
+<tr><td>El hilo pide STA (<code>2</code> = <code>COINIT_APARTMENTTHREADED</code>).</td><td>Constante en <code>EDX</code> + definición del enum.</td><td>Observable en el binario.</td></tr>
+<tr><td><code>[rax+18h]</code> es el slot 3.</td><td>Aritmética x64: <code>0x18 / 8</code>.</td><td>Observable.</td></tr>
+<tr><td>El slot 3 es <code>GetState</code>.</td><td>IID pasado en <code>R9</code> + IDL propio.</td><td>Inferencia respaldada por el contrato.</td></tr>
+<tr><td><code>E_NOINTERFACE</code> para <code>IID_IResettable</code>.</td><td>Valor de <code>EAX</code> tras la llamada al slot 0.</td><td>Se obtiene <strong>solo</strong> ejecutando en el laboratorio; acá es ilustrativo.</td></tr>
+<tr><td><code>p</code> apunta directo a la implementación.</td><td>Vtable dentro de <code>BlocCom.dll</code>, servidor in-proc compatible con STA.</td><td>Inferencia; se confirma resolviendo el módulo de la vtable.</td></tr>
+</tbody></table></div>
+<p>Variante x86, para contraste: el mismo <code>GetState</code> se vería como <code>push</code> de <code>&amp;state</code>, <code>push</code> de <code>p</code> (el <code>this</code>), <code>mov eax,[p]</code> y <code>call [eax+0Ch]</code>, porque cada slot ocupa 4 bytes y <code>__stdcall</code> pasa <code>this</code> en la pila. No mezcles las dos tablas al leer un binario.</p>
+<h2 id="práctica">Práctica</h2>
+<p>Con un componente COM <strong>propio</strong> o un binario didáctico ya incluido en una VM:</p>
+<ol><li>Anotá la arquitectura del cliente (x86/x64), CLSID e IIDs documentados, y cuál interfaz obtiene el cliente.</li><li>Ubicá <code>CoInitializeEx</code> en cada hilo que use COM: flag pasado, HRESULT y dónde está el <code>CoUninitialize</code> correspondiente. Si no lo encontrás, decilo.</li><li>En el depurador, seguí una llamada a <code>QueryInterface</code>; registrá IID solicitado, HRESULT y destino de retorno.</li><li>Identificá la dirección de la vtable, el <strong>módulo</strong> al que pertenece y si el puntero es directo o un proxy. Relacioná un método con su prototipo usando la tabla slot/offset de tu arquitectura. No invoques métodos desconocidos.</li><li>Pedí <code>IID_IUnknown</code> desde dos interfaces del mismo objeto y compará los punteros (regla de identidad). Si los punteros de interfaz difieren, buscá el patrón de agregación o tear-off.</li><li>Buscá en el binario <code>CoCreateFreeThreadedMarshaler</code>, respuestas a <code>IID_IMarshal</code>, <code>pUnkOuter</code> no nulos y llamadas a la ROT. Anotá cada hallazgo como observación y su consecuencia como inferencia.</li><li>Dibujá el ciclo de referencias: creación, consultas, <code>AddRef</code>/<code>Release</code> y liberación final. Si no hay símbolos, marcá las inferencias.</li></ol>
+<h2 id="entregable">Entregable</h2>
+<p>Diagrama cliente → (proxy/stub si corresponde) → interfaz → implementación; tabla CLSID/IID/HRESULT; tabla slot/offset/método con la arquitectura declarada; apartamento de cada hilo y evidencia de una llamada. Separá lo observado de lo inferido; no afirmes reference count exacto si el binario no lo expone.</p>
+<h2 id="repaso">Repaso</h2>
+<details class="qa"><summary>¿CLSID e IID significan lo mismo?</summary><div class="respuesta"><p>No. CLSID identifica la clase; IID, una interfaz/contrato que el objeto puede ofrecer.</p></div></details>
+<details class="qa"><summary>¿Qué comunica <code>E_NOINTERFACE</code>?</summary><div class="respuesta"><p>Que el objeto consultado no implementa el IID solicitado; no prueba que la clase COM no exista.</p></div></details>
+<details class="qa"><summary>¿Por qué una vtable no basta para nombrar métodos?</summary><div class="respuesta"><p>Los slots solo son direcciones. Hace falta el IID, el contrato con su orden, la arquitectura (tamaño de slot) y la convención de llamada para asociarlos con nombres y prototipos.</p></div></details>
+<details class="qa"><summary>En x64, ¿qué slot es <code>call [rax+18h]</code> y dónde estaría ese mismo slot en x86?</summary><div class="respuesta"><p>Slot 3 (<code>0x18 / 8</code>). En x86 el slot 3 está en <code>+0x0C</code> (<code>3 × 4</code>).</p></div></details>
+<details class="qa"><summary>¿Qué riesgo hay después de <code>Release</code>?</summary><div class="respuesta"><p>Si se liberó la última referencia, el objeto pudo destruirse; reutilizar el puntero sería usar una referencia inválida.</p></div></details>
+<details class="qa"><summary><code>CoInitializeEx</code> devuelve <code>S_FALSE</code>. ¿Hace falta <code>CoUninitialize</code>?</summary><div class="respuesta"><p>Sí. <code>S_FALSE</code> es éxito (COM ya estaba inicializado en ese hilo) y debe equilibrarse igual. <code>RPC_E_CHANGED_MODE</code>, en cambio, es fallo y no se equilibra.</p></div></details>
+<details class="qa"><summary>¿Por qué un hilo STA que espera con <code>WaitForSingleObject</code> puede colgar una llamada COM?</summary><div class="respuesta"><p>Porque las llamadas entrantes a objetos de una STA se entregan por la cola de mensajes de ese hilo; si no bombea mensajes, nunca llegan.</p></div></details>
+<details class="qa"><summary>¿Cómo comprobás que dos punteros de interfaz pertenecen al mismo objeto?</summary><div class="respuesta"><p>Pidiendo <code>IID_IUnknown</code> a cada uno y comparando los resultados: la regla de identidad exige el mismo valor.</p></div></details>
+<details class="qa"><summary>Un breakpoint en la entrada de vtable cae en código del runtime COM/RPC y no en tu DLL. ¿Qué estás viendo?</summary><div class="respuesta"><p>Probablemente un proxy: la llamada se empaqueta y la implementación corre en otro apartamento o proceso.</p></div></details>
+<details class="qa"><summary>Un objeto agrega el free-threaded marshaler. ¿Hay proxy cuando se pasa a otro apartamento del mismo proceso? ¿Y a otro proceso?</summary><div class="respuesta"><p>Dentro del proceso, no: el otro apartamento recibe el puntero directo y el objeto debe sincronizarse solo. Hacia otro proceso, sí: el FTM delega en el marshaling estándar.</p></div></details>
+<details class="qa"><summary>Dos <code>QueryInterface</code> del mismo IID devuelven punteros distintos, pero <code>IID_IUnknown</code> coincide. ¿Se rompió la identidad?</summary><div class="respuesta"><p>No necesariamente. Es compatible con tear-offs o agregación; la identidad se juzga por el <code>IUnknown</code>, no por cada puntero de interfaz.</p></div></details>
+<details class="qa"><summary>¿Por qué al crear un objeto agregado hay que pedir <code>IID_IUnknown</code>?</summary><div class="respuesta"><p>Porque el externo necesita el <code>IUnknown</code> no delegante del interno para controlar su vida; las demás interfaces del interno delegan en el externo.</p></div></details>
+<details class="qa"><summary>¿Por qué buscar solo <code>CoCreateInstance</code> puede no alcanzar para encontrar cómo un cliente obtiene un objeto?</summary><div class="respuesta"><p>Porque puede obtenerlo resolviendo un moniker o consultando la ROT, que conecta con una instancia ya en ejecución.</p></div></details>
+<aside class="callout nota"><p class="callout-titulo">Puerta optativa</p><p>Podés distinguir CLSID/IID, interpretar HRESULT (incluidos los de <code>CoInitializeEx</code>), explicar qué cambia entre STA y MTA, reconocer un proxy por el módulo de su vtable, explicar cuándo el free-threaded marshaler evita un proxy y cuándo no, reconocer agregación y tear-offs sin confundirlos con una violación de identidad, aplicar la regla de identidad y nombrar un slot de vtable con el contrato y la arquitectura correctos.</p></aside>
+<aside class="callout nota"><p class="callout-titulo">Lo que queda fuera</p><p>La implementación de <code>IMarshal</code> propio, el formato de una referencia marshaleada (OBJREF), el detalle interno de los proxies estándar, los contextos COM+ y el catálogo COM+ (solo como recuadro), la escritura de monikers propios y WinRT no se desarrollan. El apartamento neutral solo se menciona. La lección prepara para leer evidencia COM; no es una cobertura completa de COM.</p></aside>
+<h2 id="fuentes">Fuentes</h2>
+<ul><li>Microsoft Learn: <a href="https://learn.microsoft.com/en-us/windows/win32/api/unknwn/nn-unknwn-iunknown" rel="noopener" target="_blank">IUnknown</a>, <a href="https://learn.microsoft.com/en-us/windows/win32/com/queryinterface--navigating-in-an-object" rel="noopener" target="_blank">QueryInterface</a>, <a href="https://learn.microsoft.com/en-us/windows/win32/com/rules-for-implementing-queryinterface" rel="noopener" target="_blank">reglas de QueryInterface</a>, <a href="https://learn.microsoft.com/en-us/windows/win32/learnwin32/managing-the-lifetime-of-an-object" rel="noopener" target="_blank">vida y reference counting</a>, <a href="https://learn.microsoft.com/en-us/windows/win32/seccrypto/common-hresult-values" rel="noopener" target="_blank">HRESULT</a>.</li><li>Microsoft Learn, hilos y apartamentos: <a href="https://learn.microsoft.com/en-us/windows/win32/learnwin32/initializing-the-com-library" rel="noopener" target="_blank">Initializing the COM Library</a>, <a href="https://learn.microsoft.com/en-us/windows/win32/api/combaseapi/nf-combaseapi-coinitializeex" rel="noopener" target="_blank">CoInitializeEx</a>, <a href="https://learn.microsoft.com/en-us/windows/win32/com/processes--threads--and-apartments" rel="noopener" target="_blank">Processes, Threads, and Apartments</a>, <a href="https://learn.microsoft.com/en-us/windows/win32/com/accessing-interfaces-across-apartments" rel="noopener" target="_blank">Accessing Interfaces Across Apartments</a>.</li><li>Microsoft Learn, proxies y convención: <a href="https://learn.microsoft.com/en-us/windows/win32/com/proxy" rel="noopener" target="_blank">Proxy</a>, <a href="https://learn.microsoft.com/en-us/windows/win32/com/proxystubclsid32" rel="noopener" target="_blank">ProxyStubClsid32</a>, <a href="https://learn.microsoft.com/en-us/cpp/build/x64-calling-convention" rel="noopener" target="_blank">x64 calling convention</a>.</li><li>Microsoft Learn, marshaling a medida y composición: <a href="https://learn.microsoft.com/en-us/windows/win32/com/in-process-server-threading-issues" rel="noopener" target="_blank">In-Process Server Threading Issues</a>, <a href="https://learn.microsoft.com/en-us/windows/win32/api/combaseapi/nf-combaseapi-cocreatefreethreadedmarshaler" rel="noopener" target="_blank">CoCreateFreeThreadedMarshaler</a>, <a href="https://learn.microsoft.com/en-us/windows/win32/api/objidl/nn-objidl-imarshal" rel="noopener" target="_blank">IMarshal</a>, <a href="https://learn.microsoft.com/en-us/windows/win32/com/aggregation" rel="noopener" target="_blank">Aggregation</a>, <a href="https://learn.microsoft.com/en-us/cpp/atl/reference/com-interface-entry-macros" rel="noopener" target="_blank">ATL COM_INTERFACE_ENTRY macros (tear-offs)</a>.</li><li>Microsoft Learn, monikers y COM+: <a href="https://learn.microsoft.com/en-us/windows/win32/com/monikers" rel="noopener" target="_blank">Monikers</a>, <a href="https://learn.microsoft.com/en-us/windows/win32/api/objidl/nn-objidl-irunningobjecttable" rel="noopener" target="_blank">IRunningObjectTable</a>, <a href="https://learn.microsoft.com/en-us/windows/win32/cossdk/com--application-overview" rel="noopener" target="_blank">COM+ Application Overview</a>.</li><li><strong>CLS:</strong> complemento externo a la ruta de C++ y vtables de <a href="02-cpp-profundo.html">2.18</a>.</li></ul>
+<aside class="callout nota"><p class="callout-titulo">Etiquetas</p><p><strong>Observado en CLS:</strong> conceptos generales de C++ y vtables. <strong>Conocimiento externo:</strong> COM, apartamentos, marshaling estándar y a medida, free-threaded marshaler, agregación, tear-offs, monikers/ROT, COM+ (recuadro), reglas de <code>QueryInterface</code> y convención x64. <strong>Ejemplo ilustrativo:</strong> desensamblado y resultados de <code>BlocStatus</code> (patrón MSVC x64, no capturado de un binario). <strong>Laboratorio verificado:</strong> no; usar solo un componente propio/didáctico.</p></aside>
+</main>
+<footer class="pie">
+  <p>Material educativo y defensivo. Las prácticas se limitan a programas propios, software abierto o crackmes diseñados para aprender. No se enseña a eludir licencias, DRM ni controles de acceso.</p>
+  <p><a href="../00_EMPEZAR_AQUI.html">Inicio</a> · <a href="../guia/etapa-0.html">Etapas</a> · <a href="../fuentes_y_limites.html">Fuentes y límites</a> · <a href="../registro_de_cobertura.csv">Registro de cobertura</a></p>
+</footer>
+</body>
+</html>

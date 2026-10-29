@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tute 35 · DEP vs. sin DEP — Curso IDA</title>
+<meta name="description" content="Tutorial ilustrado del tute 35 del Curso IDA desde cero: DEP vs. sin DEP.">
+<link rel="stylesheet" href="../guia/estilo.css">
+</head>
+<body>
+<a class="salto" href="#contenido">Saltar al contenido</a>
+<header class="cabecera">
+  <div class="marca"><a href="../00_EMPEZAR_AQUI.html">CLS · Curso de reversing</a> <span class="edicion">edición 5 · 27/10/2026</span></div>
+  <nav class="principal" aria-label="Navegación principal">
+    <a href="../00_EMPEZAR_AQUI.html">Inicio</a>
+    <a href="../guia/index.html">Curso</a>
+    <a href="../fichas/index.html">Fichas</a>
+    <a href="../glosario.html">Glosario</a>
+    <a href="../preguntas_y_respuestas.html">Repaso</a>
+  </nav>
+</header>
+<main id="contenido">
+<p class="migas"><a href="../ida-tutes.html">← Índice de los 69 tutes de IDA</a></p>
+<h1>Tute 35 · DEP vs. sin DEP</h1>
+<p class="meta-tute"><strong>⏱ 4 min de lectura</strong> · 648 palabras · 16 capturas · grupo: Vulnerabilidades y exploiting en user-mode (VLC/CVE, DEP, Mona, canary/SEH, shellcode, heap)</p>
+<aside class="callout nota"><p class="callout-titulo">Qué enseña</p><p>Compila con y sin DEP (SetProcessDEPPolicy) para comparar.</p></aside>
+<p><em>se conecta con:</em> <a href="../guia/05-vulnerabilidades.html">Vulnerabilidades (defensivo)</a></p>
+<aside class="callout aviso"><p class="callout-titulo">Material observado, no reescrito</p><p>Es el texto y las capturas del <code>.docx</code> original del curso, solo presentados como tutorial. Puede tener erratas de origen. El autor del curso es Ricardo Narvaja.</p></aside>
+<hr>
+<p>INTRODUCCIÓN AL REVERSING CON IDA PRO DESDE CERO PARTE 35</p>
+<p>DEP Y NO DEP.</p>
+<p>He compilado dos ejecutables uno con DEP y otro sin DEP para poder hacerlos ambos, el código es el mismo, pero en este caso en vez de cambiarlo en la compilación directamente llamo a la api SetProcessDEPPolicy, en uno con el argumento 0 (sin dep) y el otro con el argumento 1 (con DEP).</p>
+<p>Si corro ambos y los veo en el Process Explorer, ambos están detenidos en el gets_s esperando data, y ya pasaron por SetProcessDEPPolicy, así que el DEP está seteado en ambos con la api.(en uno activado y en el otro no)</p>
+<figure><img loading="lazy" src="img/35/1.png" alt="Captura 1 del tute 35"></figure>
+<p>Estos ejemplos nos van a servir mejor que el anterior ya que el código es similar y el anterior se quedaba un poco chico el buffer para poder hacer ROP.</p>
+<p>El único plugin que nos faltaba instalar es el idasploiter.</p>
+<p>IDASPLOITER.</p>
+<p>https://github.com/iphelix/ida-sploiter</p>
+<p>Es un .py que se baja de allí, apretando el botón CLONE OR DOWNLOAD y se copia el .py a la carpeta plugins del IDA nada mas.</p>
+<figure><img loading="lazy" src="img/35/2.png" alt="Captura 2 del tute 35"></figure>
+<p>El código es similar en ambos, solo cambio de 0 a 1 el argumento de la función.</p>
+<p>Bueno dado que es el primero, nos será más fácil analizarlo una sola vez ya que el reversing será similar, teniendo el mismo código.</p>
+<figure><img loading="lazy" src="img/35/3.png" alt="Captura 3 del tute 35"></figure>
+<p>Lo haré en el que tiene DEP igual el análisis servirá para ambos.</p>
+<figure><img loading="lazy" src="img/35/4.png" alt="Captura 4 del tute 35"></figure>
+<p>Vemos que usa la api atoi para pasar a entero el numero que tipeamos como argumento y lo guarda en la variable size que es signed, ya vemos que más abajo compara usando JG que es una comparación con signo, así que se podrán pasar números negativos y estos serán menores que 0x300, lo cual como size se pasa como argumento de la función saluda y dentro de la misma se usa como un size de gets_s, la cual lo toma como unsigned, provocando un posible overflow ya que permitirá ingresar más de 0x300 bytes en el buffer de ese tamaño.</p>
+<figure><img loading="lazy" src="img/35/5.png" alt="Captura 5 del tute 35"></figure>
+<p>Carga el módulo Mypepe.dll usando LoadLibrary, podemos hacer demangle names para que se vea más lindo.</p>
+<figure><img loading="lazy" src="img/35/6.png" alt="Captura 6 del tute 35"></figure>
+<p>Ahora si se ve bien, aquí está todo claro, veamos la función saluda.</p>
+<figure><img loading="lazy" src="img/35/7.png" alt="Captura 7 del tute 35"></figure>
+<p>Como lo compile con símbolos, ya detecta el buffer nombre y le pasa la dirección al get_s, además del size, que es el argumento de esta función.</p>
+<p>Veamos la representación del stack.</p>
+<p>Allí veo que para desbordar el buffer y pisar el justo antes del stack necesito 772 bytes.</p>
+<figure><img loading="lazy" src="img/35/8.png" alt="Captura 8 del tute 35"></figure>
+<p>Así que en el gets debería ingresar algo como.</p>
+<p>fruta="A" * 772 + struct.pack("&lt;L",0xCCCCCCCC) + shellcode</p>
+<p>Armemos el script, el mismo además debe ingresar el size negativo por argumento para provocar el overflow.</p>
+<figure><img loading="lazy" src="img/35/9.png" alt="Captura 9 del tute 35"></figure>
+<p>Si lo ejecuto y atacheo el IDA que tiene el análisis del NO DEP.</p>
+<figure><img loading="lazy" src="img/35/10.png" alt="Captura 10 del tute 35"></figure>
+<figure><img loading="lazy" src="img/35/11.png" alt="Captura 11 del tute 35"></figure>
+<p>Veo que está todo bien calculado, allí salta a 0xCCCCCCCC como puse en mi script.</p>
+<figure><img loading="lazy" src="img/35/12.png" alt="Captura 12 del tute 35"></figure>
+<figure><img loading="lazy" src="img/35/13.png" alt="Captura 13 del tute 35"></figure>
+<p>Por supuesto al aceptar, ESP queda apuntando a mi shellcode en el stack y como no hay DEP si en vez de saltar a CCCCCCCC saltara a un JMP ESP, CALL ESP o PUSH ESP-RET en algún módulo sin randomización para que no se mueva, estaría listo.</p>
+<p>Cortesía del IDA SPLOITER aparecerá otra lista de módulos, esta se encuentra en VIEW-OPEN SUBVIEW-MODULES o SHIFT mas f6.</p>
+<figure><img loading="lazy" src="img/35/14.png" alt="Captura 14 del tute 35"></figure>
+<p>Allí vemos la lista de módulos, vemos que Mypepe.dll no tiene ASLR (randomización) así que es un buen candidato para buscar el JMP ESP allí.</p>
+<p>Vemos que si hacemos click derecho, tiene la opción SEARCH GADGETS que busca pedazos de código que terminan en RET, una vez que hago que liste todos los gadgets, puedo hacer CTRL mas F y buscar PUSH ESP.</p>
+<figure><img loading="lazy" src="img/35/15.png" alt="Captura 15 del tute 35"></figure>
+<p>Así que podría usar esa dirección aquí, no hay problema con los ceros, pues gets_s los acepta.</p>
+<figure><img loading="lazy" src="img/35/16.png" alt="Captura 16 del tute 35"></figure>
+<p>Listo, el shellcode estaba hecho para Mypepe.dll así que funcionara igual que la vez anterior.</p>
+<p>La parte siguiente haremos el DEP.exe con ROP.</p>
+<p>Hasta la parte 36.</p>
+<p>Ricardo Narvaja</p>
+</main>
+<footer class="pie">
+  <p>Material educativo y defensivo. Las prácticas se limitan a programas propios, software abierto o crackmes diseñados para aprender. No se enseña a eludir licencias, DRM ni controles de acceso.</p>
+  <p><a href="../00_EMPEZAR_AQUI.html">Inicio</a> · <a href="../guia/etapa-0.html">Etapas</a> · <a href="../fuentes_y_limites.html">Fuentes y límites</a> · <a href="../registro_de_cobertura.csv">Registro de cobertura</a></p>
+</footer>
+<script>
+(function(){
+  function abrir(src){
+    var o=document.createElement('div'); o.className='lightbox-ov';
+    var i=document.createElement('img'); i.src=src; o.appendChild(i);
+    function cerrar(){o.remove(); document.removeEventListener('keydown', onkey);}
+    function onkey(e){ if(e.key==='Escape') cerrar(); }
+    o.addEventListener('click', cerrar);
+    document.addEventListener('keydown', onkey);
+    document.body.appendChild(o);
+  }
+  document.addEventListener('DOMContentLoaded', function(){
+    document.querySelectorAll('figure img, main img').forEach(function(img){
+      img.style.cursor='zoom-in';
+      img.addEventListener('click', function(){ abrir(img.currentSrc||img.src); });
+    });
+  });
+})();
+</script>
+</body>
+</html>

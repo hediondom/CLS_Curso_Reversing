@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>2.20 · Patch diffing y CVE: leer qué cambió</title>
+<meta name="description" content="Comparar dos versiones de un binario con BinDiff, Diaphora o Ghidra Version Tracking para ver qué arregló un parche —primero en un programa propio, después un CVE público—, separar el ruido del cambio real y usar símbolos públicos, en clave defensiva.">
+<link rel="stylesheet" href="../guia/estilo.css">
+</head>
+<body>
+<a class="salto" href="#contenido">Saltar al contenido</a>
+<header class="cabecera">
+  <div class="marca"><a href="../00_EMPEZAR_AQUI.html">CLS · Curso de reversing</a> <span class="edicion">edición 5 · 27/10/2026</span></div>
+  <nav class="principal" aria-label="Navegación principal">
+    <a href="../00_EMPEZAR_AQUI.html">Inicio</a>
+    <a href="../guia/index.html">Curso</a>
+    <a href="../materiales.html">Materiales</a>
+    <a href="../fichas/index.html">Fichas</a>
+    <a href="../glosario.html">Glosario</a>
+    <a href="../preguntas_y_respuestas.html">Repaso</a>
+    <a href="../buscar.html">Buscar</a>
+  </nav>
+</header>
+<main id="contenido">
+<nav class="migas" aria-label="Ubicación"><a href="../00_EMPEZAR_AQUI.html">Inicio</a><span aria-hidden="true">›</span><a href="../guia/index.html">Curso</a><span aria-hidden="true">›</span><span>Etapa 2 · Windows avanzado (2C)</span></nav><h1 id="patch-diffing-y-cve-leer-qué-cambió">Patch diffing y CVE: leer qué cambió</h1>
+<aside class="callout nota"><p class="callout-titulo">Objetivo de la lección</p><p>Comparar <strong>dos versiones</strong> de un binario y entender <strong>qué cambió un parche</strong> y qué riesgo mitiga, sin convertirlo en una práctica de explotación. <strong>Prerrequisitos:</strong> IDA (2.7) y el differ mencionado en flujo (2.4). <em>Contexto recomendado (no bloqueante):</em> la rama de vulnerabilidades (5.2) — 2C es la continuación natural de 2B y no exige haber hecho la Etapa 5.</p></aside>
+<h2 id="qué-es-un-differ">Qué es un differ</h2>
+<p>Un <strong>differ</strong> toma dos versiones consecutivas de un programa y <strong>empareja</strong> (matchea) sus funciones a pesar de los cambios, para mostrarte <strong>cuáles cambiaron y dónde</strong>. El tute 22 del Curso IDA lo define así y aclara el caso que nos importa: esos cambios pueden ser <strong>un parche de seguridad</strong> que corrige una vulnerabilidad (<a class="fuente" href="../../CLS_Guia/_trabajo/extraido_ida/22-INTRODUCCION%20AL%20REVERSING%20CON%20IDA%20PRO%20DESDE%20CERO.txt">Curso IDA, tute 22</a>). Las herramientas estándar (<strong>conocimiento externo</strong>) son <strong>BinDiff</strong> y <strong>Diaphora</strong>: emparejan por estructura del grafo, hashes de instrucciones, llamadas y nombres, y te dan un porcentaje de similitud por función.</p>
+<p>Por qué es <strong>defensivo</strong>: comparar la versión vulnerable con la parcheada te dice <strong>qué chequeo agregaron</strong>, es decir, cuál era el defecto. Es la base del análisis de <strong>1-day</strong> (entender una falla ya corregida) y de verificar que un parche realmente arregla lo que dice. Identificar el cambio <strong>no</strong> es construir el exploit.</p>
+<h2 id="el-flujo">El flujo</h2>
+<ol><li><strong>Conseguí las dos versiones</strong> (antes y después del parche) de un binario que tengas derecho a analizar.</li><li><strong>Analizá cada una</strong> en IDA/Ghidra y exportá para el differ.</li><li><strong>Corré el differ</strong>: ordená por "más cambiadas / menos similares". Las funciones con 100% de match no te interesan; mirá las que bajaron.</li><li><strong>Leé el cambio</strong>: casi siempre es un <strong>chequeo agregado</strong> (una comparación de tamaño, un <code>if</code> nuevo antes de un <code>memcpy</code>).</li><li><strong>Redactá</strong> qué cambió y qué riesgo mitiga, para tu informe.</li></ol>
+<h2 id="el-caso-real-del-curso-vlc-cve-2008-4654">El caso real del curso: VLC (CVE-2008-4654)</h2>
+<p>El Curso IDA toma un <strong>CVE público</strong> y lo trabaja como diff de <strong>dos versiones consecutivas de VLC</strong>, usando el número de CVE como guía de qué buscar (<a class="fuente" href="../../CLS_Guia/_trabajo/extraido_ida/30-INTRODUCCION%20AL%20REVERSING%20CON%20IDA%20PRO%20DESDE%20CERO.txt">Curso IDA, tute 30</a>; explicación en el <a href="../ida_tutes/31.html">tute 31</a>). El objetivo acá es <strong>entender el defecto y el arreglo</strong> (qué validación faltaba), no desarrollar un exploit; la <a href="05-vulnerabilidades.html">rama de vulnerabilidades</a> ya enmarca esto en clave defensiva.</p>
+<h2 id="ejemplo-paso-a-paso-una-función-antes-y-después-del-parche">Ejemplo paso a paso: una función antes y después del parche</h2>
+<p><em>(Ejemplo <strong>ilustrativo</strong>: pseudo-C construido para mostrar qué resalta un differ.)</em></p>
+<p>BinDiff marca <code>leer_registro</code> con <strong>82%</strong> de similitud (bajó): algo cambió. Abrís las dos:</p>
+<pre><code class="lenguaje-c">// versión vulnerable                 // versión parcheada
+int leer_registro(FILE *f) {          int leer_registro(FILE *f) {
+  char buf[64];                         char buf[64];
+  int n = leer_u16(f);                  int n = leer_u16(f);
+                                        if (n &gt; sizeof(buf))        // &lt;-- chequeo AGREGADO
+                                            return -1;
+  fread(buf, 1, n, f);                  fread(buf, 1, n, f);
+  ...                                   ...
+}</code></pre>
+<p>El diff resalta el bloque nuevo: un <code>if (n &gt; sizeof(buf)) return -1</code> antes del <code>fread</code>. Conclusión para el informe: <strong>el defecto era un overflow de stack</strong> (se leían <code>n</code> bytes controlados por el archivo en un buffer de 64 sin validar <code>n</code>); <strong>el parche agrega la validación de tamaño</strong>. Eso es todo lo que esta lección busca: leer el cambio, nombrar el riesgo.</p>
+<h2 id="cómo-empareja-un-differ-y-dónde-se-equivoca">Cómo empareja un differ, y dónde se equivoca</h2>
+<p>Saber cómo trabaja la herramienta te dice cuándo creerle (<strong>conocimiento externo</strong>). <strong>BinDiff</strong> es hoy de código abierto y trabaja sobre exportaciones en formato <strong>BinExport</strong>, que se generan desde IDA, Binary Ninja o Ghidra; <strong>Diaphora</strong> corre como script dentro de IDA. Los dos siguen la misma lógica general:</p>
+<ol><li>Empiezan por las coincidencias <strong>más seguras</strong>: mismo nombre (si hay símbolos), mismos bytes o el mismo hash de instrucciones.</li><li>Siguen con atributos <strong>estructurales</strong>: cantidad de bloques y aristas del grafo, llamadas que hace y recibe la función, constantes y cadenas que usa.</li><li><strong>Propagan</strong>: si <code>A</code> coincide con <code>A'</code>, las funciones que <code>A</code> llama probablemente coincidan con las que llama <code>A'</code>.</li></ol>
+<p>Cada par queda con una <strong>similitud</strong> (cuánto se parecen) y una <strong>confianza</strong> (qué tan seguro está el emparejamiento). Una similitud baja con confianza alta es lo que buscás: la misma función, cambiada. Donde se equivoca: funciones <strong>chicas</strong> y parecidas entre sí (envoltorios, <em>thunks</em>, métodos triviales) que se emparejan mal; funciones que el compilador <strong>inlineó</strong> en una versión y no en la otra, y que "desaparecen"; y código <strong>reordenado</strong> que cambia el grafo sin cambiar la lógica.</p>
+<h2 id="separar-el-ruido-del-parche">Separar el ruido del parche</h2>
+<p>En un diff real, la mayoría de las funciones que cambiaron <strong>no</strong> son el parche. Fuentes típicas de ruido:</p>
+<div class="tabla"><table>
+<thead><tr>
+<th>Ruido</th>
+<th>Cómo se ve</th>
+<th>Cómo descartarlo</th>
+</tr></thead><tbody>
+<tr><td>Otra versión del compilador o del enlazador</td><td>Cientos de funciones con cambios menores</td><td>El cambio está repartido en todo el binario, no concentrado</td></tr>
+<tr><td>Otras opciones de optimización</td><td>Mismos bloques en otro orden, registros distintos</td><td>El grafo cambia pero las llamadas y constantes son las mismas</td></tr>
+<tr><td>Direcciones y constantes de enlace</td><td>Solo cambian inmediatos que son direcciones</td><td>Ignorar diferencias en offsets a datos</td></tr>
+<tr><td>Bibliotecas actualizadas</td><td>Cambios en funciones del runtime</td><td>Mirar primero el código propio del programa</td></tr>
+</tbody></table></div>
+<p>La señal del parche suele ser otra: <strong>un bloque nuevo</strong> con una comparación y una salida temprana, una llamada nueva a una función de validación o una API "segura" en lugar de la anterior (por ejemplo, una variante con tamaño explícito). Mirar también el <strong>diff de imports</strong> ayuda: una función nueva importada a veces nombra el arreglo.</p>
+<h2 id="símbolos-públicos-nombres-para-los-binarios-de-windows">Símbolos públicos: nombres para los binarios de Windows</h2>
+<p>Para diffear binarios de Windows, Microsoft publica <strong>símbolos públicos</strong> en su servidor de símbolos: el debugger o la herramienta de análisis los descarga según la versión exacta del binario. Traen nombres de funciones y variables globales, no el código fuente ni los tipos privados. Con nombres en las dos versiones, el emparejamiento mejora mucho y el informe puede decir "cambió <code>FuncionX</code>" en lugar de "cambió <code>sub_180012340</code>". La ruta de símbolos que combina el servidor público de Microsoft con tus propios PDB se arma igual que en la depuración de kernel de <a href="6-03-debug-kernel.html">6.3</a>; IDA y Ghidra también pueden descargarlos.</p>
+<h2 id="ghidra-version-tracking-como-alternativa">Ghidra Version Tracking como alternativa</h2>
+<p><strong>Version Tracking</strong> de Ghidra (<a href="02-ghidra.html">2.16</a>) hace un trabajo parecido con otro enfoque: corrés <strong>correlacionadores</strong> (bytes exactos, instrucciones exactas, mismas referencias a datos, mismos símbolos, y otros más permisivos), revisás las coincidencias propuestas, las <strong>aceptás</strong> y trasladás nombres y comentarios del origen al destino. Lo que queda sin aceptar es el candidato a cambio. Es más manual que BinDiff, pero todo queda dentro de un solo proyecto y no necesita IDA.</p>
+<h2 id="práctica">Práctica</h2>
+<p>En tu VM:</p>
+<ol><li>Compilá un programa <strong>propio</strong> con un bug simple (un <code>fread</code>/<code>memcpy</code> sin validar tamaño). Guardá el binario <strong>"v1"</strong>.</li><li>Arreglalo (agregá la validación) y compilá <strong>"v2"</strong>.</li><li>Corré <strong>BinDiff</strong> o <strong>Diaphora</strong> entre v1 y v2; ordená por menor similitud.</li><li>Abrí la función que cambió y escribí dos líneas: <strong>qué</strong> cambió y <strong>qué riesgo</strong> mitiga.</li><li>Compilá una <strong>v2b</strong> con el mismo arreglo pero otra opción de optimización (por ejemplo <code>/O1</code> en lugar de <code>/O2</code>). Diffeá v1 contra v2b, contá cuántas funciones cambiaron y explicá cuáles son ruido y cuál es el parche.</li><li>Repetí el diff v1/v2 con <strong>Version Tracking</strong> de Ghidra y compará con el resultado de BinDiff o Diaphora: ¿encontraron la misma función?</li></ol>
+<h2 id="preguntas-de-repaso">Preguntas de repaso</h2>
+<details class="qa"><summary>¿Qué hace un differ y para qué sirve en defensa?</summary><div class="respuesta"><p>Empareja las funciones de <strong>dos versiones</strong> de un binario y marca las que cambiaron. En defensa sirve para ver <strong>qué arregló un parche</strong> (qué chequeo agregaron = cuál era el defecto): análisis de 1-day y verificación de parches.</p></div></details>
+<details class="qa"><summary>Al correr BinDiff, ¿qué funciones mirás?</summary><div class="respuesta"><p>Las de <strong>menor similitud</strong> (las que cambiaron). Las que matchean al 100% no aportan; el parche está en las que bajaron.</p></div></details>
+<details class="qa"><summary>En el ejemplo, ¿cuál era el defecto y cuál el arreglo?</summary><div class="respuesta"><p>El defecto: leer <code>n</code> bytes (controlados por el archivo) en un buffer de 64 <strong>sin validar</strong> <code>n</code> → overflow de stack. El arreglo: un <code>if (n &gt; sizeof(buf)) return -1</code> antes del <code>fread</code>.</p></div></details>
+<details class="qa"><summary>¿Qué aporta el número de CVE al hacer el diff de VLC?</summary><div class="respuesta"><p>Es una <strong>guía</strong>: te dice qué clase de falla y en qué zona buscar, para no comparar a ciegas las dos versiones.</p></div></details>
+<details class="qa"><summary>En un diff, ¿qué combinación de similitud y confianza buscás?</summary><div class="respuesta"><p>Similitud <strong>baja</strong> con confianza <strong>alta</strong>: el differ está seguro de que es la misma función y de que cambió. Similitud baja con confianza baja puede ser un mal emparejamiento.</p></div></details>
+<details class="qa"><summary>Diffeaste dos versiones y cambiaron trescientas funciones. ¿Qué hacés?</summary><div class="respuesta"><p>Separar el ruido: cambios repartidos por todo el binario suelen ser otra versión del compilador u otras optimizaciones. Buscás el cambio concentrado: un bloque nuevo con comparación y salida temprana, una validación nueva o un import nuevo.</p></div></details>
+<details class="qa"><summary>¿Qué aportan los símbolos públicos de Microsoft al diffear binarios de Windows?</summary><div class="respuesta"><p>Nombres de funciones y variables globales en las dos versiones: mejoran el emparejamiento y permiten describir el cambio por nombre. No incluyen código fuente ni tipos privados.</p></div></details>
+<details class="qa"><summary>¿Dónde está el límite de esta lección?</summary><div class="respuesta"><p>En <strong>leer el cambio y nombrar el riesgo</strong>. Identificar el defecto no es construir el exploit; eso queda fuera (la guía es defensiva).</p></div></details>
+<aside class="callout nota"><p class="callout-titulo">Puerta de salida</p><p>Podés: (1) explicar qué es un differ y por qué es defensivo; (2) correr BinDiff/Diaphora entre dos versiones propias y encontrar la función cambiada; (3) leer el chequeo agregado y nombrar el defecto que mitiga; (4) explicar el rol del CVE en el caso VLC; (5) explicar cómo empareja un differ y en qué casos se equivoca; (6) separar el ruido de compilación del cambio real; (7) usar símbolos públicos o Version Tracking para mejorar el diff.</p></aside>
+<aside class="callout nota"><p class="callout-titulo">Lo que queda fuera</p><p>El diff de parches mensuales completos de Windows, la extracción de archivos de los paquetes de actualización, el diff de controladores de kernel y, por el marco del curso, cualquier paso desde "entendí el defecto" hacia "construí un exploit".</p></aside>
+<h2 id="fuentes-de-esta-lección">Fuentes de esta lección</h2>
+<ul><li><a class="fuente" href="../../CLS_Guia/_trabajo/extraido_ida/22-INTRODUCCION%20AL%20REVERSING%20CON%20IDA%20PRO%20DESDE%20CERO.txt">Curso IDA, tute 22</a> — qué es un differ; empareja funciones entre versiones; el caso del parche de seguridad.</li><li><a class="fuente" href="../../CLS_Guia/_trabajo/extraido_ida/30-INTRODUCCION%20AL%20REVERSING%20CON%20IDA%20PRO%20DESDE%20CERO.txt">Curso IDA, tute 30</a> — VLC / CVE-2008-4654 como diff de dos versiones (explicación en el tute 31).</li><li><a href="05-vulnerabilidades.html">Rama vulnerabilidades</a> (5.2) — el marco defensivo del defecto y las mitigaciones.</li><li>Conocimiento externo: <a href="https://github.com/google/bindiff" rel="noopener" target="_blank">BinDiff</a> (código abierto; trabaja sobre BinExport desde IDA, Binary Ninja o Ghidra), <a href="https://github.com/joxeankoret/diaphora" rel="noopener" target="_blank">Diaphora</a>, <a href="https://ghidra.re/ghidra_docs/GhidraClass/Intermediate/VersionTracking.html" rel="noopener" target="_blank">Ghidra Version Tracking</a> y Microsoft Learn: <a href="https://learn.microsoft.com/en-us/windows-hardware/drivers/debugger/microsoft-public-symbols" rel="noopener" target="_blank">Microsoft public symbols</a>.</li></ul>
+<aside class="callout nota"><p class="callout-titulo">Capas de esta lección</p><p><strong>Contenido observado en CLS:</strong> la definición de differ del capítulo 22 y el caso VLC/CVE de los tutes 30–31. <strong>Conocimiento externo:</strong> BinDiff, Diaphora y Version Tracking, cómo emparejan funciones, el ruido de compilación y los símbolos públicos de Microsoft. <strong>Recomendación editorial:</strong> el ejemplo ilustrativo, la tabla de ruido, el flujo de 1-day defensivo y la práctica con dos versiones propias (sin laboratorio compilado con hashes en esta edición).</p></aside>
+</main>
+<footer class="pie">
+  <p>Material educativo y defensivo. Las prácticas se limitan a programas propios, software abierto o crackmes diseñados para aprender. No se enseña a eludir licencias, DRM ni controles de acceso.</p>
+  <p><a href="../00_EMPEZAR_AQUI.html">Inicio</a> · <a href="../guia/etapa-0.html">Etapas</a> · <a href="../fuentes_y_limites.html">Fuentes y límites</a> · <a href="../registro_de_cobertura.csv">Registro de cobertura</a></p>
+</footer>
+</body>
+</html>

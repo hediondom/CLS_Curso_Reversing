@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Etapa 0 · Un laboratorio que podés romper sin miedo</title>
+<meta name="description" content="Cómo armar un entorno aislado, con snapshots y trazabilidad, para practicar reversing sin exponer tus datos.">
+<link rel="stylesheet" href="../guia/estilo.css">
+</head>
+<body>
+<a class="salto" href="#contenido">Saltar al contenido</a>
+<header class="cabecera">
+  <div class="marca"><a href="../00_EMPEZAR_AQUI.html">CLS · Curso de reversing</a> <span class="edicion">edición 5 · 27/10/2026</span></div>
+  <nav class="principal" aria-label="Navegación principal">
+    <a href="../00_EMPEZAR_AQUI.html">Inicio</a>
+    <a href="../guia/index.html">Curso</a>
+    <a href="../materiales.html">Materiales</a>
+    <a href="../fichas/index.html">Fichas</a>
+    <a href="../glosario.html">Glosario</a>
+    <a href="../preguntas_y_respuestas.html">Repaso</a>
+    <a href="../buscar.html">Buscar</a>
+  </nav>
+</header>
+<main id="contenido">
+<nav class="migas" aria-label="Ubicación"><a href="../00_EMPEZAR_AQUI.html">Inicio</a><span aria-hidden="true">›</span><a href="../guia/index.html">Curso</a><span aria-hidden="true">›</span><span>Etapa 0 · Laboratorio y método</span></nav><h1 id="un-laboratorio-que-podés-romper-sin-miedo">Un laboratorio que podés romper sin miedo</h1>
+<aside class="callout nota"><p class="callout-titulo">Objetivo de la lección</p><p>Al terminar vas a poder armar una máquina virtual aislada, tomar una snapshot, transferir un programa de práctica sin compartir carpetas y registrar su hash antes y después de analizarlo. Ese es el piso de todo lo que sigue.</p></aside>
+<p><strong>Prerrequisitos:</strong> ninguno. <strong>Duración sugerida:</strong> 4 a 6 horas, casi todas de trabajo práctico. Es una estimación aproximada de esta guía, no una duración declarada por el material de CLS.</p>
+<h2 id="por-qué-el-laboratorio-va-primero">Por qué el laboratorio va primero</h2>
+<p>Reversing significa ejecutar y observar programas que no escribiste. A veces son programas de práctica inofensivos; otras veces son binarios de origen desconocido. La diferencia entre aprender y arruinar tu máquina está en <strong>dónde</strong> los ejecutás.</p>
+<p>Un laboratorio de reversing tiene una regla simple: <strong>lo que se rompe, se descarta; lo que importa, vive afuera</strong>. El programa sospechoso corre en una máquina virtual (VM) que podés borrar y recrear. Tus documentos, tus cuentas, tus claves y tus carpetas compartidas se quedan en el host, fuera del alcance.</p>
+<p>El curso de CLS usa esta idea desde el principio. En el capítulo 01, Solid abre un ejecutable de práctica en x64dbg y explica que el debugger sirve para ver el comportamiento de un programa <strong>mientras está corriendo en memoria</strong> (<a class="fuente" href="../../CLS_resultados_intermedios/transcripciones/extraidos/Reversing%20desde%20cero%20%28Ricardo%20y%20Solid%29/Ricardo%20Narvaja%20y%20Solid%20-%20Reversing%20desde%20cero_01%20x64dbg%20primeros%20pasos_01%20x64dbg%20primeros%20pasos.txt">Reversing desde cero, cap. 01</a>, 00:00:26). Para observar hay que ejecutar. Por eso el entorno importa.</p>
+<aside class="callout aviso"><p class="callout-titulo">Lo que este curso no hace</p><p>No vas a ejecutar adjuntos del chat, cracks, keygens, instaladores desconocidos ni muestras en cuarentena. Tampoco vas a analizar malware dinámicamente en tu máquina personal. Las prácticas usan <strong>programas propios</strong>, software abierto o crackmes diseñados para aprender, y siempre dentro de la VM.</p></aside>
+<h2 id="las-tres-capas-host-hipervisor-e-invitado">Las tres capas: host, hipervisor e invitado</h2>
+<p>Conviene fijar tres palabras que vas a ver todo el tiempo:</p>
+<div class="tabla"><table>
+<thead><tr>
+<th>Capa</th>
+<th>Qué es</th>
+<th>Ejemplos</th>
+<th>Qué va adentro</th>
+</tr></thead><tbody>
+<tr><td><strong>Host</strong> (anfitrión)</td><td>Tu computadora real</td><td>Windows 11, tu notebook</td><td>Tus documentos, cuentas, claves</td></tr>
+<tr><td><strong>Hipervisor</strong></td><td>El programa que crea y administra máquinas virtuales</td><td>VirtualBox, VMware Workstation Player, Hyper-V</td><td>La configuración de las VMs</td></tr>
+<tr><td><strong>Guest</strong> (invitado)</td><td>El sistema operativo que corre dentro de la VM</td><td>Windows 10/11, Linux</td><td>Las herramientas de análisis y las muestras</td></tr>
+</tbody></table></div>
+<p>El guest es descartable. El host no. Todo lo que hagas para "compartir" entre ambos —carpetas compartidas, portapapeles bidireccional, unidades de red, USB— es un puente, y los puentes se cruzan en las dos direcciones.</p>
+<aside class="callout peligro"><p class="callout-titulo">El error más común</p><p>Crear la VM, activar "carpeta compartida" para pasar el programa, ejecutarlo y descubrir que el malware cifró la carpeta del host. Si necesitás pasar un archivo, usá una imagen ISO de solo lectura o una unidad extraíble virtual que montás, copiás y desmontás. Nunca una carpeta compartida permanente.</p></aside>
+<h2 id="reglas-de-diseño-del-laboratorio">Reglas de diseño del laboratorio</h2>
+<p>Estas reglas son <strong>recomendación editorial</strong> de la guía, basadas en prácticas estándar de análisis seguro. No salen de un archivo de CLS; se apoyan en el principio de aislamiento que el propio material usa cuando analiza binarios.</p>
+<ol><li><strong>Una VM por objetivo.</strong> Si analizás dos programas distintos, usá dos snapshots o dos VMs. Así sabés qué cambió cada uno.</li><li><strong>Snapshot limpia antes de empezar.</strong> La snapshot se toma con el sistema actualizado, sin la muestra y sin conexión a tu red personal. Ese es tu "punto cero".</li><li><strong>Red host-only o NAT sin acceso a la LAN.</strong> La VM no debe ver tus otras computadoras ni tus unidades de red. Si el programa necesita internet, evaluá si de verdad lo necesita; para un crackme, no.</li><li><strong>Sin credenciales reales.</strong> Dentro de la VM usá una cuenta local descartable, sin tus contraseñas, sin tu correo, sin tus tokens.</li><li><strong>Sin carpetas compartidas ni portapapeles bidireccional.</strong> Si el hipervisor lo permite, desactivalos explícitamente.</li><li><strong>Herramientas instaladas desde el inicio.</strong> x64dbg, un editor hexadecimal, Python, un desensamblador. Instalarlas después de la muestra contamina la línea base.</li><li><strong>Registro desde el minuto cero.</strong> Anotá qué VM, qué snapshot, qué archivo, qué hash y qué hiciste.</li></ol>
+<h2 id="ejemplo-paso-a-paso-laboratorio-mínimo-con-virtualbox">Ejemplo paso a paso: laboratorio mínimo con VirtualBox</h2>
+<p>Voy a mostrar el procedimiento con VirtualBox porque es gratuito y multiplataforma. Los conceptos se trasladan a VMware o Hyper-V; los nombres de los botones cambian.</p>
+<h3 id="paso-1-crear-la-vm">Paso 1. Crear la VM</h3>
+<ol><li>Descargá VirtualBox desde el sitio oficial y una imagen ISO de Windows 10/11 desde Microsoft. <strong>No</strong> uses imágenes "preactivadas" ni ISOs de origen dudoso: son un riesgo y además complican la trazabilidad.</li><li>Creá una VM nueva: 4 GB de RAM, 2 CPUs y un disco virtual de 60 GB. Para reversing de programas de práctica alcanza.</li><li>Instalá el sistema operativo. Cuando termine, aplicá las actualizaciones y reiniciá.</li></ol>
+<p><strong>Por qué:</strong> una VM con recursos suficientes evita que el debugger se trabe y que confundas un problema de rendimiento con un comportamiento del programa.</p>
+<h3 id="paso-2-aislar-la-red">Paso 2. Aislar la red</h3>
+<p>En la configuración de la VM, revisá la pestaña <strong>Red</strong>:</p>
+<ul><li>Adaptador 1: <strong>NAT</strong> o <strong>Host-only</strong>. Nat permite salir a internet; host-only solo habla con el host.</li><li>Desactivá el adaptador puente (bridged): ese conecta la VM directamente a tu red local.</li><li>En <strong>General &gt; Avanzado</strong>, desactivá el portapapeles compartido y el arrastrar y soltar.</li><li>En <strong>Carpetas compartidas</strong>, no agregues ninguna.</li></ul>
+<p><strong>Por qué:</strong> el adaptador puente es el que convierte una VM en otro dispositivo de tu red. Para analizar un crackme no lo necesitás.</p>
+<h3 id="paso-3-tomar-la-snapshot-limpia">Paso 3. Tomar la snapshot "limpia"</h3>
+<ol><li>Apagá la VM correctamente (no la suspendas).</li><li>En VirtualBox, seleccioná la VM y usá <strong>Instantáneas &gt; Tomar instantánea</strong>.</li><li>Nombrala <code>00-limpia-sin-muestra</code> y escribí una descripción con la fecha.</li></ol>
+<p><strong>Por qué:</strong> una snapshot guarda el estado del disco. Si algo sale mal, restaurás y volvés exactamente al punto anterior. No es un backup de tus archivos del host; es el estado de la VM.</p>
+<h3 id="paso-4-preparar-la-transferencia-sin-puentes">Paso 4. Preparar la transferencia sin puentes</h3>
+<p>Para pasar un programa de práctica:</p>
+<ol><li>Creá una imagen ISO con el archivo. En Windows podés usar <code>oscdimg</code> o una herramienta gráfica; en Linux, <code>genisoimage</code>.</li><li>Montá la ISO en la VM como unidad de CD/DVD, copiá el archivo al disco del guest y <strong>desmontá</strong> la ISO.</li><li>Verificá el hash dentro del guest y comparalo con el del host.</li></ol>
+<p>En PowerShell, el comando es:</p>
+<pre><code class="lenguaje-powershell">Get-FileHash -Algorithm SHA256 .\programa.exe</code></pre>
+<p>Salida típica (el hash es inventado a modo de ejemplo):</p>
+<pre><code>Algorithm       Hash                                                                   Path
+---------       ----                                                                   ----
+SHA256          A1B2C3D4E5F60718293A4B5C6D7E8F90123456789ABCDEF0123456789ABCDEF0       C:\lab\programa.exe</code></pre>
+<p><strong>Por qué el hash:</strong> dos archivos con el mismo SHA-256 son, en la práctica, el mismo archivo. Si el hash del host y el del guest coinciden, sabés que la transferencia no alteró nada. Si no coinciden, no analices: primero entendé por qué cambió.</p>
+<h3 id="paso-5-ejecutar-y-volver-atrás">Paso 5. Ejecutar y volver atrás</h3>
+<ol><li>Confirmá que estás en la snapshot <code>00-limpia-sin-muestra</code>.</li><li>Anotá en tu bitácora: fecha, nombre del archivo, hash, herramienta y objetivo.</li><li>Ejecutá el programa <strong>solo si es propio, abierto o un crackme de práctica</strong>.</li><li>Al terminar, apagá la VM y restaurá la snapshot. No reutilices el estado "sucio" para la próxima muestra.</li></ol>
+<p><strong>Por qué:</strong> restaurar no es opcional. Un programa puede dejar archivos, claves de registro o servicios corriendo. La snapshot te devuelve al punto conocido.</p>
+<h2 id="qué-muestra-cls-y-qué-corregimos">Qué muestra CLS y qué corregimos</h2>
+<p>En CLS hay un ejemplo real de laboratorio con dos VMs: el video 37 de «Videos y material adicional» analiza el malware Shelter dentro de una VM con Windows 7 de 32 bits, y usa otra VM con Kali Linux para simular el ataque (<a class="fuente" href="../../CLS_resultados_intermedios/transcripciones/extraidos/Videos%20y%20material%20adicional%20Ingenieria%20Inversa/Videos_Video37_Video37.txt">Video 37, introducción</a>, 00:00:00–00:00:40).</p>
+<p>Ese video <strong>sí ejecuta el malware</strong> y monta un reverse shell dentro de las VMs. La separación en máquinas virtuales es correcta como idea, pero el curso no convierte eso en una práctica recomendada: para esta guía, Shelter es un <strong>caso de estudio observado</strong>, no una tarea. Si querés analizar malware, la rama defensiva de la Etapa 5 te muestra cómo hacer triage estático y por qué no se empieza ejecutando.</p>
+<p>También conviene registrar una diferencia de criterio: el inventario del proyecto aclara que, durante su confección, <strong>no se movió, extrajo ni ejecutó ningún archivo</strong> (<a class="fuente" href="../../CLS_resultados_intermedios/inventario_limpio/LEEME.md">Inventario limpio, LEEME</a>). Esa es la conducta que esta guía adopta para el corpus: leer, listar y citar; no ejecutar.</p>
+<h2 id="práctica-tu-laboratorio-en-una-página">Práctica: tu laboratorio en una página</h2>
+<p>Hacé esto y guardá el resultado. Es el primer entregable del curso.</p>
+<ol><li>Creá la VM con las reglas de arriba.</li><li>Tomá la snapshot limpia.</li><li>Escribí tu propio programa de prueba. El más simple: un <code>.exe</code> que pida una palabra y muestre "hola" si es <code>clase</code>. Compilalo en el guest (o en el host y pasalo por ISO).</li><li>Calculá el SHA-256 en el host y en el guest. Pegá ambos en la bitácora.</li><li>Ejecutalo en x64dbg si ya lo instalaste; si no, ejecutalo suelto y anotá qué pasa.</li><li>Restaurá la snapshot y verificá que el archivo que copiaste ya no está.</li></ol>
+<aside class="callout practica"><p class="callout-titulo">Entregable mínimo</p><p>Un archivo <code>bitacora.md</code> con: nombre de la VM, snapshot usada, programa, hash del host, hash del guest, red configurada, qué hiciste y qué observaste. Sin ese registro, la práctica no cuenta como terminada.</p></aside>
+<h2 id="preguntas-de-repaso">Preguntas de repaso</h2>
+<p><strong>1. ¿Qué diferencia hay entre una snapshot y un backup?</strong> Una snapshot guarda el estado de la VM en un momento; sirve para volver atrás después de un experimento. Un backup es una copia de tus datos para recuperarlos si se pierden. La snapshot no protege tus archivos del host y no reemplaza un backup.</p>
+<p><strong>2. El inventario marca un archivo como <code>util</code>. ¿Alcanza para ejecutarlo?</strong> No. <code>util</code> es una clasificación de catálogo, no un certificado de seguridad, calidad ni vigencia. La decisión de ejecutar depende de qué es el archivo, de dónde salió y de si tenés permiso para analizarlo.</p>
+<p><strong>3. ¿Por qué se desactiva la carpeta compartida?</strong> Porque es un canal bidireccional entre guest y host. Un programa con comportamiento malicioso puede leer, cifrar o borrar archivos del host a través de ese canal. La ISO de solo lectura evita esa vía.</p>
+<p><strong>4. ¿Para qué sirve comparar el hash antes y después de copiar?</strong> Para detectar alteraciones en la transferencia y para identificar el archivo sin ambigüedad. Si los hashes no coinciden, el archivo que analizás no es el que creías.</p>
+<p><strong>5. ¿La VM alcanza para analizar cualquier muestra?</strong> No. Una VM mal configurada puede tener acceso a la red local, al portapapeles o a carpetas compartidas. Además, algunas muestras detectan la VM y cambian de comportamiento. Para empezar, alcanza con programas propios y crackmes; para malware real hace falta un laboratorio dedicado y procedimientos que esta guía no cubre en la Etapa 0.</p>
+<h2 id="antes-de-avanzar">Antes de avanzar</h2>
+<p>Tenés que poder:</p>
+<ul><li>Explicar con tus palabras la diferencia entre host, hipervisor y guest.</li><li>Crear una VM, aislarla de la red local y tomar una snapshot.</li><li>Transferir un archivo sin carpeta compartida y verificar su SHA-256 en ambos lados.</li><li>Describir qué harías si un programa deja el sistema raro: apagar, restaurar, revisar la bitácora.</li></ul>
+<aside class="callout nota"><p class="callout-titulo">Puerta de salida de la Etapa 0</p><p>Si no podés mostrar tu <code>bitacora.md</code> con los dos hashes y la snapshot, no pases a la lección siguiente. El resto del curso asume que tenés un entorno donde equivocarte no cuesta caro.</p></aside>
+<h2 id="fuentes-de-esta-lección">Fuentes de esta lección</h2>
+<ul><li><a class="fuente" href="../../CLS_resultados_intermedios/transcripciones/extraidos/Reversing%20desde%20cero%20%28Ricardo%20y%20Solid%29/Ricardo%20Narvaja%20y%20Solid%20-%20Reversing%20desde%20cero_01%20x64dbg%20primeros%20pasos_01%20x64dbg%20primeros%20pasos.txt">Reversing desde cero, cap. 01 (x64dbg primeros pasos)</a> — qué hace un debugger y por qué se ejecuta el programa.</li><li><a class="fuente" href="../../CLS_resultados_intermedios/transcripciones/extraidos/Videos%20y%20material%20adicional%20Ingenieria%20Inversa/Videos_Video37_Video37.txt">Videos y material adicional, Video 37</a> — ejemplo observado de laboratorio con dos VMs y ejecución de malware; se cita como caso, no como modelo.</li><li><a class="fuente" href="../../CLS_resultados_intermedios/inventario_limpio/LEEME.md">Inventario limpio, LEEME</a> — criterio de no ejecutar ni extraer archivos durante el inventario.</li><li><a class="fuente" href="../../CLS_Guia/FUENTES_Y_LIMITES.md">Fuentes y límites de esta edición</a> — criterios de alcance y seguridad.</li></ul>
+<aside class="callout nota"><p class="callout-titulo">Sobre las capas de esta lección</p><p><strong>Contenido observado en CLS:</strong> el uso de VMs en el video 37 y el criterio de no ejecución del inventario. <strong>Conocimiento externo:</strong> funcionamiento de hipervisores, snapshots y hashes. <strong>Recomendación editorial:</strong> las siete reglas de diseño y el procedimiento paso a paso.</p></aside>
+</main>
+<footer class="pie">
+  <p>Material educativo y defensivo. Las prácticas se limitan a programas propios, software abierto o crackmes diseñados para aprender. No se enseña a eludir licencias, DRM ni controles de acceso.</p>
+  <p><a href="../00_EMPEZAR_AQUI.html">Inicio</a> · <a href="../guia/etapa-0.html">Etapas</a> · <a href="../fuentes_y_limites.html">Fuentes y límites</a> · <a href="../registro_de_cobertura.csv">Registro de cobertura</a></p>
+</footer>
+</body>
+</html>

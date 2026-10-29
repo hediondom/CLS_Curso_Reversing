@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>6.3 · Debugging de kernel y bugchecks</title>
+<meta name="description" content="Preparar un objetivo VM de pruebas, cargar únicamente el driver didáctico propio y leer stacks, dumps y bugchecks con WinDbg (símbolos, tipos de dump, parámetros, objetos de driver e IRP); Driver Verifier con rollback.">
+<link rel="stylesheet" href="../guia/estilo.css">
+</head>
+<body>
+<a class="salto" href="#contenido">Saltar al contenido</a>
+<header class="cabecera">
+  <div class="marca"><a href="../00_EMPEZAR_AQUI.html">CLS · Curso de reversing</a> <span class="edicion">edición 5 · 27/10/2026</span></div>
+  <nav class="principal" aria-label="Navegación principal">
+    <a href="../00_EMPEZAR_AQUI.html">Inicio</a>
+    <a href="../guia/index.html">Curso</a>
+    <a href="../materiales.html">Materiales</a>
+    <a href="../fichas/index.html">Fichas</a>
+    <a href="../glosario.html">Glosario</a>
+    <a href="../preguntas_y_respuestas.html">Repaso</a>
+    <a href="../buscar.html">Buscar</a>
+  </nav>
+</header>
+<main id="contenido">
+<nav class="migas" aria-label="Ubicación"><a href="../00_EMPEZAR_AQUI.html">Inicio</a><span aria-hidden="true">›</span><a href="../guia/index.html">Curso</a><span aria-hidden="true">›</span><span>Etapa 6 · Kernel y drivers (rama optativa)</span></nav><h1 id="debugging-de-kernel-y-bugchecks">Debugging de kernel y bugchecks</h1>
+<aside class="callout peligro"><p class="callout-titulo">Driver Verifier puede detener la VM</p><p>Microsoft advierte que Driver Verifier puede generar bugchecks. Usalo solo sobre el driver didáctico propio en una VM descartable, con snapshot previo y método de recuperación probado. No verifiques todos los drivers del host.</p></aside>
+<aside class="callout nota"><p class="callout-titulo">Propósito</p><p>Separar depuración user-mode de kernel, obtener un stack reproducible de un driver propio y explicar qué evidencia aporta un dump. Al terminar deberías poder recorrer un bugcheck con un método fijo —código, parámetros, contexto, stack, módulo, memoria— y escribir una conclusión que diga qué está probado y qué no.</p></aside>
+<p><strong>Prerrequisitos</strong></p>
+<ul><li><em>Obligatorios:</em> <a href="6-01-arquitectura-kernel.html">6.1</a>, driver propio revisado de <a href="6-02-kmdf-ioctl.html">6.2</a>, WinDbg y <a href="2d-11-excepciones.html">2D.11 excepciones</a>.</li><li><em>Recomendados:</em> 2C WinDbg/heap; test-target VM configurada según WDK vigente.</li></ul>
+<h2 id="flujo-de-depuración">Flujo de depuración</h2>
+<p>WinDbg puede depurar el kernel local o un equipo de prueba conectado. En la VM, símbolos correspondientes al build permiten resolver funciones y tipos; sin ellos, direcciones/nombres pueden quedar incompletos. Ante bugcheck, guarda código, parámetros, dump y estado del snapshot. <code>!analyze -v</code> es un punto de partida, no una conclusión automática.</p>
+<p>Driver Verifier comprueba reglas de drivers y puede provocar deliberadamente un bugcheck al detectar violaciones. Configurá solo el driver objetivo de prueba a través de su UI/documentación, mantén el rollback disponible y apágalo/revierte la VM al finalizar según el procedimiento Microsoft aplicable.</p>
+<h2 id="símbolos">Símbolos</h2>
+<p>Sin símbolos correctos, el stack muestra direcciones o nombres aproximados y cualquier conclusión se debilita. La ruta de símbolos combina el servidor público de Microsoft (para el sistema) y la carpeta con el PDB <strong>de tu build</strong> del driver. Después de cambiarla se recargan con <code>.reload</code>. Anotá en el informe qué símbolos estaban disponibles; un frame que dice <code>BlocLab+0x1a2b</code> en lugar de un nombre de función es un límite, no un dato.</p>
+<h2 id="qué-contiene-un-dump-y-qué-no">Qué contiene un dump y qué no</h2>
+<p>Windows ofrece cinco configuraciones de volcado de kernel, que difieren sobre todo en tamaño:</p>
+<div class="tabla"><table>
+<thead><tr>
+<th>Tipo</th>
+<th>Qué guarda</th>
+<th>Para qué alcanza</th>
+</tr></thead><tbody>
+<tr><td>Completo</td><td>Toda la memoria física, incluida parte de user mode</td><td>El análisis más amplio; es el más grande</td></tr>
+<tr><td>Activo</td><td>Similar al completo para la mayoría de los fines, algo más chico</td><td>Casi todo lo del completo</td></tr>
+<tr><td>De kernel</td><td>Memoria del kernel; en general omite user mode</td><td>Stacks, objetos y pool del kernel</td></tr>
+<tr><td>Automático</td><td>Igual que el de kernel, con más flexibilidad en el archivo de paginación</td><td>Ídem kernel</td></tr>
+<tr><td>Pequeño (minidump)</td><td>64 KB</td><td>Código, parámetros, stack básico y lista de módulos</td></tr>
+</tbody></table></div>
+<p>Microsoft aclara que ningún dump da tanta información como depurar en vivo: es una <strong>foto</strong> de un instante. Si el dump es pequeño, declarar que no se pudo inspeccionar memoria que no está incluida.</p>
+<h2 id="lectura-guiada-de-un-bugcheck">Lectura guiada de un bugcheck</h2>
+<p>Un orden de trabajo que evita saltar a conclusiones:</p>
+<div class="tabla"><table>
+<thead><tr>
+<th>Paso</th>
+<th>Comando</th>
+<th>Qué responde</th>
+<th>Límite</th>
+</tr></thead><tbody>
+<tr><td>1. Código y parámetros</td><td><code>.bugcheck</code>, <code>!analyze -v</code></td><td>Qué condición detectó el sistema y con qué argumentos</td><td>El “módulo sospechoso” es una heurística</td></tr>
+<tr><td>2. Significado de los parámetros</td><td>Página del código en la referencia de bugchecks</td><td>Qué representa cada argumento para <strong>ese</strong> código</td><td>Cada código tiene su propia tabla</td></tr>
+<tr><td>3. Contexto</td><td><code>.trap</code> (si hay trap frame) o <code>.cxr</code></td><td>Registros y stack en el punto del fallo</td><td>No siempre hay trap frame</td></tr>
+<tr><td>4. Stack</td><td><code>k</code>, <code>kv</code></td><td>Ruta de llamadas</td><td>Depende de símbolos</td></tr>
+<tr><td>5. Instrucción y memoria</td><td><code>ln</code>, <code>u</code> sobre la dirección; <code>!pool</code>, <code>!address</code>, <code>!pte</code> sobre la memoria referenciada</td><td>Qué función accedió a qué y si era pool paginado</td><td>Interpretación técnica, no causa raíz automática</td></tr>
+<tr><td>6. IRQL y módulos</td><td><code>!irql</code>, <code>lm t n</code></td><td>Nivel en el momento y versiones de los módulos</td><td><code>!irql</code> refleja lo guardado por el depurador</td></tr>
+<tr><td>7. Objetos del driver</td><td><code>!drvobj</code>, <code>!devobj</code>, <code>!irp</code>; <code>!wdfkd.*</code> en KMDF (6.2)</td><td>Qué dispositivo y qué solicitud estaban en curso</td><td>Requiere saber qué objeto mirar</td></tr>
+</tbody></table></div>
+<p>Para un 0xD1, por ejemplo, la documentación indica usar <code>ln</code> con el cuarto parámetro para ver la función que hizo el acceso, <code>!pool</code> sobre el primero para saber si era pool paginado y <code>dx KiBugCheckDriver</code> para leer el nombre del driver que el sistema registró como responsable. También advierte que, en la mayoría de los casos de ese código, el problema no es el IRQL sino la memoria accedida.</p>
+<h2 id="ejemplo-trabajado">Ejemplo trabajado</h2>
+<p><em>(Esquema ficticio, no dump real.)</em></p>
+<pre><code class="lenguaje-text">Bugcheck observado: DRIVER_VERIFIER_DETECTED_VIOLATION
+!analyze -v: módulo sospechoso = BlocLab.sys
+stack: nt!Verifier -&gt; Wdf01000!callback -&gt; BlocLab!EvtIoDeviceControl
+Conclusión: revisar la longitud del buffer en el callback; confirmar parámetros y código fuente</code></pre>
+<p>El módulo señalado es evidencia para investigar; comprueba stack, parámetros, build/símbolos y si el driver estaba realmente activo en esa solicitud.</p>
+<p>Informe de ese caso, separando observación de inferencia (ilustrativo):</p>
+<div class="tabla"><table>
+<thead><tr>
+<th>Afirmación</th>
+<th>Tipo</th>
+<th>Evidencia</th>
+</tr></thead><tbody>
+<tr><td>Driver Verifier detectó una violación</td><td>Observación</td><td>Código de bugcheck y parámetros</td></tr>
+<tr><td>La violación ocurrió durante <code>EvtIoDeviceControl</code> de BlocLab</td><td>Observación con símbolos</td><td>Stack con PDB del build propio</td></tr>
+<tr><td>La solicitud en curso era el IOCTL <code>0x80006000</code></td><td>Observación</td><td><code>!wdfkd</code>/<code>!irp</code> sobre la solicitud del frame</td></tr>
+<tr><td>La causa es una validación de longitud ausente</td><td>Inferencia</td><td>Coincide con el parámetro y el código fuente; falta reproducir</td></tr>
+<tr><td>Ningún otro driver intervino</td><td>No determinado</td><td>El dump pequeño no incluye toda la memoria</td></tr>
+</tbody></table></div>
+<h2 id="práctica">Práctica</h2>
+<p>En VM con snapshot, conecta el debugger a un target de prueba ya configurado y carga solo el driver propio permitido. Captura una solicitud válida, inspecciona lista de módulos/stack y unload. Driver Verifier es opcional y solo si el docente confirma el rollback; no provoques un fallo deliberado ni fuerces un bugcheck. Si aparece uno, conserva el dump, analiza offline y revierte.</p>
+<ol><li>Configurá la ruta de símbolos con el PDB de tu build y verificá con <code>lm</code> que el driver propio tiene símbolos.</li><li>Con el target vivo, ubicá tu driver con <code>!drvobj</code> y su dispositivo con <code>!devobj</code>; si estás en el callback, seguí la solicitud con <code>!wdfkd</code> o <code>!irp</code>.</li><li>Si tenés un dump (propio o de un ejercicio provisto), recorré la tabla de lectura guiada paso por paso y completá la tabla de afirmaciones.</li></ol>
+<h2 id="entregable">Entregable</h2>
+<p>Registro de build/VM, símbolos, tipo de dump, comandos de inspección usados, stack, tabla de afirmaciones (observación/inferencia/no determinado) y evidencia de que driver/verifier ya no están activos o snapshot revertido.</p>
+<h2 id="repaso">Repaso</h2>
+<details class="qa"><summary>¿<code>!analyze -v</code> da siempre la causa raíz?</summary><div class="respuesta"><p>No. Resume el bugcheck y pistas; hay que correlacionar parámetros, stack, símbolos y estado.</p></div></details>
+<details class="qa"><summary>¿Por qué no usar Driver Verifier sobre el host?</summary><div class="respuesta"><p>Puede causar bugchecks y afectar estabilidad; se limita a un target de pruebas recuperable.</p></div></details>
+<details class="qa"><summary>¿Qué no podés esperar de un minidump?</summary><div class="respuesta"><p>La memoria completa: tiene 64 KB; alcanza para código, parámetros y stack básico, no para inspeccionar estructuras grandes.</p></div></details>
+<details class="qa"><summary>¿Para qué sirve <code>.trap</code> o <code>.cxr</code> antes de <code>k</code>?</summary><div class="respuesta"><p>Para poner el contexto en el punto del fallo, de modo que el stack corresponda a ese momento.</p></div></details>
+<details class="qa"><summary>En un 0xD1, ¿qué parámetro llevás a <code>ln</code> y cuál a <code>!pool</code>?</summary><div class="respuesta"><p>El cuarto (dirección de la instrucción) a <code>ln</code>, para ver la función; el primero (memoria referenciada) a <code>!pool</code>, para ver si era pool paginado.</p></div></details>
+<details class="qa"><summary>Un frame dice <code>BlocLab+0x1a2b</code>. ¿Qué te falta?</summary><div class="respuesta"><p>Símbolos correctos del build; sin ellos, el nombre de la función es una suposición.</p></div></details>
+<aside class="callout nota"><p class="callout-titulo">Puerta optativa</p><p>Podés capturar un stack/dump del driver propio, configurar y declarar símbolos, recorrer un bugcheck con el orden código–parámetros–contexto–stack–memoria–objetos, explicar límites del tipo de dump y salir del ejercicio con target restaurado.</p></aside>
+<aside class="callout nota"><p class="callout-titulo">Lo que queda fuera</p><p>La configuración del enlace de depuración de kernel paso a paso (se sigue la documentación del WDK vigente), el análisis de hangs y deadlocks, la depuración de hipervisor y el análisis de dumps de terceros no se desarrollan.</p></aside>
+<h2 id="fuentes">Fuentes</h2>
+<ul><li>Microsoft Learn: <a href="https://learn.microsoft.com/en-us/windows-hardware/drivers/debugger/setting-up-kernel-mode-debugging-in-windbg--cdb--or-ntsd" rel="noopener" target="_blank">Setting up kernel-mode debugging</a>, <a href="https://learn.microsoft.com/en-us/windows-hardware/drivers/debugger/performing-kernel-mode-debugging-using-windbg" rel="noopener" target="_blank">Live kernel-mode debugging using WinDbg</a>, <a href="https://learn.microsoft.com/en-us/windows-hardware/drivers/devtest/driver-verifier" rel="noopener" target="_blank">Driver Verifier</a>, <a href="https://learn.microsoft.com/en-us/windows-hardware/drivers/debugger/bug-check-code-reference2" rel="noopener" target="_blank">Bug check analysis</a>.</li><li>Microsoft Learn, lectura: <a href="https://learn.microsoft.com/en-us/windows-hardware/drivers/debugger/symbol-path" rel="noopener" target="_blank">Symbol path</a>, <a href="https://learn.microsoft.com/en-us/windows-hardware/drivers/debugger/varieties-of-kernel-mode-dump-files" rel="noopener" target="_blank">Varieties of Kernel-Mode Dump Files</a>, <a href="https://learn.microsoft.com/en-us/windows-hardware/drivers/debuggercmds/-analyze" rel="noopener" target="_blank">!analyze</a>, <a href="https://learn.microsoft.com/en-us/windows-hardware/drivers/debuggercmds/-bugcheck--display-bug-check-data-" rel="noopener" target="_blank">.bugcheck</a>, <a href="https://learn.microsoft.com/en-us/windows-hardware/drivers/debuggercmds/-drvobj" rel="noopener" target="_blank">!drvobj</a>, <a href="https://learn.microsoft.com/en-us/windows-hardware/drivers/debuggercmds/-devobj" rel="noopener" target="_blank">!devobj</a>, <a href="https://learn.microsoft.com/en-us/windows-hardware/drivers/debuggercmds/-irp" rel="noopener" target="_blank">!irp</a>, <a href="https://learn.microsoft.com/en-us/windows-hardware/drivers/debugger/bug-check-0xd1--driver-irql-not-less-or-equal" rel="noopener" target="_blank">Bug Check 0xD1</a>, <a href="https://learn.microsoft.com/en-us/windows-hardware/drivers/debugger/kernel-mode-driver-framework-extensions--wdfkd-dll-" rel="noopener" target="_blank">Wdfkd.dll extensions</a>.</li></ul>
+<aside class="callout nota"><p class="callout-titulo">Etiquetas</p><p><strong>Observado en CLS:</strong> WinDbg de user mode. <strong>Conocimiento externo:</strong> depuración kernel, símbolos, tipos de dump, lectura de bugchecks y verifier. <strong>Ejemplo ilustrativo:</strong> bugcheck e informe ficticios. <strong>Laboratorio verificado:</strong> no; el target de kernel no se probó.</p></aside>
+</main>
+<footer class="pie">
+  <p>Material educativo y defensivo. Las prácticas se limitan a programas propios, software abierto o crackmes diseñados para aprender. No se enseña a eludir licencias, DRM ni controles de acceso.</p>
+  <p><a href="../00_EMPEZAR_AQUI.html">Inicio</a> · <a href="../guia/etapa-0.html">Etapas</a> · <a href="../fuentes_y_limites.html">Fuentes y límites</a> · <a href="../registro_de_cobertura.csv">Registro de cobertura</a></p>
+</footer>
+</body>
+</html>

@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>2.15 · Taxonomía anti-análisis: reconocer, no evadir</title>
+<meta name="description" content="Clasificar las técnicas que un binario usa para estorbar el análisis — anti-debug, anti-VM, anti-disassembly, anti-dump —, reconocer sus firmas en el listado y documentarlas, en clave defensiva.">
+<link rel="stylesheet" href="../guia/estilo.css">
+</head>
+<body>
+<a class="salto" href="#contenido">Saltar al contenido</a>
+<header class="cabecera">
+  <div class="marca"><a href="../00_EMPEZAR_AQUI.html">CLS · Curso de reversing</a> <span class="edicion">edición 5 · 27/10/2026</span></div>
+  <nav class="principal" aria-label="Navegación principal">
+    <a href="../00_EMPEZAR_AQUI.html">Inicio</a>
+    <a href="../guia/index.html">Curso</a>
+    <a href="../materiales.html">Materiales</a>
+    <a href="../fichas/index.html">Fichas</a>
+    <a href="../glosario.html">Glosario</a>
+    <a href="../preguntas_y_respuestas.html">Repaso</a>
+    <a href="../buscar.html">Buscar</a>
+  </nav>
+</header>
+<main id="contenido">
+<nav class="migas" aria-label="Ubicación"><a href="../00_EMPEZAR_AQUI.html">Inicio</a><span aria-hidden="true">›</span><a href="../guia/index.html">Curso</a><span aria-hidden="true">›</span><span>Etapa 2 · Windows intermedio</span></nav><h1 id="taxonomía-anti-análisis-reconocer-no-evadir">Taxonomía anti-análisis: reconocer, no evadir</h1>
+<aside class="callout nota"><p class="callout-titulo">Objetivo de la lección</p><p>Tener un <strong>mapa</strong> de las técnicas que un binario usa para dificultar su análisis y saber <strong>reconocerlas</strong> cuando aparecen. <strong>Prerrequisitos:</strong> debugger (2.6), PE y TLS (1.4, 2.11), ofuscación (2.10).</p></aside>
+<p>Esto es <strong>reconocimiento defensivo</strong>: clasificar y detectar estas técnicas para analizar mejor. No se enseña a <strong>evadirlas</strong> para proteger software comercial; la mayoría de los títulos de <code>Teorias_Numeradas</code> que las usan con ese fin quedan fuera del recorrido.</p>
+<h2 id="las-cuatro-familias">Las cuatro familias</h2>
+<div class="tabla"><table>
+<thead><tr>
+<th>Familia</th>
+<th>Qué intenta</th>
+<th>Ejemplos de señales</th>
+</tr></thead><tbody>
+<tr><td><strong>Anti-debug</strong></td><td>Detectar que hay un debugger y cambiar de comportamiento o cerrarse</td><td><code>IsDebuggerPresent</code>, <code>PEB.BeingDebugged</code>, <code>NtGlobalFlag</code>, flags del heap, <code>NtQueryInformationProcess</code>, chequeos de tiempo (<code>rdtsc</code>, <code>GetTickCount</code>), detección de breakpoints (<code>0xCC</code>, registros <code>DR</code>)</td></tr>
+<tr><td><strong>Anti-VM / anti-sandbox</strong></td><td>Detectar que corre en una máquina virtual o sandbox</td><td>Claves de registro de VMware/VBox, direcciones MAC conocidas, drivers/dispositivos, pocos núcleos/poca RAM, nombres de usuario típicos de sandbox</td></tr>
+<tr><td><strong>Anti-disassembly</strong></td><td>Confundir al desensamblador estático</td><td>Instrucciones solapadas, saltos al medio, <code>jmp</code> a registro, basura entre bloques (lo viste en <a href="02-ofuscacion.html">2.10</a>)</td></tr>
+<tr><td><strong>Anti-dump</strong></td><td>Dificultar volcar el proceso de memoria</td><td>Borrar la cabecera PE en memoria, <code>SizeOfImage</code> alterado, secciones sin permisos esperados</td></tr>
+</tbody></table></div>
+<h2 id="qué-muestra-cls">Qué muestra CLS</h2>
+<p>El capítulo 22 introduce anti-debug "desde lo más básico": qué es (técnicas para <strong>detectar</strong> un debugger y reaccionar), el comando <strong><code>hide</code></strong> de x64dbg para ocultarse, y cómo un programa detecta <strong>breakpoints por software y por hardware</strong> (<a class="fuente" href="../../CLS_resultados_intermedios/transcripciones/extraidos/Reversing%20desde%20cero%20%28Ricardo%20y%20Solid%29/Ricardo%20Narvaja%20y%20Solid%20-%20Reversing%20desde%20cero_22%20Antidebug%201_22%20Antidebug%201.txt">Reversing desde cero, cap. 22</a>).</p>
+<p>El capítulo 24 usa una <strong>aplicación propia</strong> que aplica varias técnicas a la vez: al ejecutarla suelta "no encontró debugger", pero si hay un IDA abierto —<strong>aunque no cargue el programa</strong>— lo detecta por el <strong>nombre del proceso/ventana</strong> y muestra "detected by IDA"; lo mismo con <code>x32dbg</code> ("detected by x32dbg"). Es el ejemplo perfecto de <strong>detección por entorno</strong>, no solo por breakpoint (<a class="fuente" href="../../CLS_resultados_intermedios/transcripciones/extraidos/Reversing%20desde%20cero%20%28Ricardo%20y%20Solid%29/Ricardo%20Narvaja%20y%20Solid%20-%20Reversing%20desde%20cero_24%20Antidebug%202_24%20Antidebug%202.txt">Reversing desde cero, cap. 24</a>).</p>
+<h2 id="cómo-detectarlas-al-analizar">Cómo detectarlas al analizar</h2>
+<ul><li><strong>Por imports/strings:</strong> <code>IsDebuggerPresent</code>, <code>CheckRemoteDebuggerPresent</code>, <code>NtQueryInformationProcess</code>, nombres de procesos (<code>ida</code>, <code>x32dbg</code>, <code>ollydbg</code>), claves de VM.</li><li><strong>Por comportamiento:</strong> el programa "anda distinto" cuando lo abrís con un debugger o dentro de una VM. Ese cambio <strong>es</strong> la pista.</li><li><strong>Dónde miran temprano:</strong> acordate de los <strong>TLS callbacks</strong> (<a href="02-tls.html">2.11</a>): un chequeo anti-debug puesto ahí corre antes de <code>main</code>.</li></ul>
+<p>Existen herramientas que <strong>ocultan</strong> el debugger (el comando <code>hide</code> de x64dbg, plugins tipo ScyllaHide). Se mencionan <strong>solo para que las reconozcas</strong> si aparecen; esquivar protecciones queda fuera del marco de esta lección, que es de <strong>reconocimiento y documentación</strong>.</p>
+<h2 id="ejemplo-paso-a-paso-dos-formas-del-mismo-chequeo">Ejemplo paso a paso: dos formas del mismo chequeo</h2>
+<p><em>(Ejemplo <strong>ilustrativo</strong>: listado representativo de un anti-debug típico.)</em></p>
+<p>El mismo "¿me están debuggeando?" se ve de dos maneras:</p>
+<pre><code class="lenguaje-asm">; (a) por API — la más fácil de reconocer
+call  IsDebuggerPresent          ; kernel32
+test  eax, eax
+jnz   detectado
+
+; (b) a mano, leyendo el PEB (x64) — sin llamar a ninguna API
+mov   rax, gs:[0x60]             ; RAX = puntero al PEB
+movzx eax, byte ptr [rax+2]      ; PEB.BeingDebugged (offset 0x02)
+test  al, al
+jnz   detectado</code></pre>
+<p>La forma (a) la cazás en los imports (<code>IsDebuggerPresent</code>). La (b) <strong>no usa imports</strong>: la pista es el acceso a <code>gs:[0x60]</code> (en x86 sería <code>fs:[0x30]</code>) y el offset <code>+2</code>. Reconocer el patrón del PEB es lo que te permite detectar el anti-debug aunque no haya una API delatora. Lo documentás y seguís; no hace falta evadirlo para entenderlo.</p>
+<h2 id="más-variantes-del-mismo-chequeo">Más variantes del mismo chequeo</h2>
+<p>Las técnicas cambian de forma, pero cada una deja una <strong>firma</strong> reconocible. Estas tres aparecen a menudo (<strong>conocimiento externo</strong>; lo citado viene de la documentación de Microsoft):</p>
+<p><strong><code>CheckRemoteDebuggerPresent</code>.</strong> Recibe un handle de proceso y un puntero a un <code>BOOL</code>, y escribe <code>TRUE</code> si ese proceso está siendo depurado. El "remote" del nombre no significa otra máquina: según Microsoft, el debugger está en <strong>otro proceso</strong>. La señal en el listado es el <code>call</code> y la lectura posterior de la variable, no el valor de retorno (que solo indica si la llamada funcionó).</p>
+<p><strong><code>NtQueryInformationProcess</code> con <code>ProcessDebugPort</code>.</strong> Es una función de <code>ntdll</code> (la capa nativa de <a href="02-pe-fino.html">2.14</a>); Microsoft la documenta como interna y sujeta a cambios, y no tiene biblioteca de importación, así que el programa suele obtenerla con <code>GetProcAddress</code>. Con la clase <code>ProcessDebugPort</code> (valor 7) devuelve un número de puerto: <strong>distinto de cero</strong> indica que el proceso corre bajo un debugger de modo usuario.</p>
+<p><em>(Ejemplo <strong>ilustrativo</strong>, x64: la consulta del puerto de depuración.)</em></p>
+<pre><code class="lenguaje-asm">; rbx = GetProcAddress(GetModuleHandleW(L"ntdll.dll"), "NtQueryInformationProcess")
+call  cs:GetCurrentProcess
+mov   rcx, rax                    ; ProcessHandle
+mov   edx, 7                      ; ProcessInformationClass = ProcessDebugPort
+lea   r8, [rsp+30h]               ; &amp;puerto (DWORD_PTR)
+mov   r9d, 8                      ; tamaño del buffer
+mov   qword ptr [rsp+20h], 0      ; ReturnLength = NULL
+call  rbx
+cmp   qword ptr [rsp+30h], 0      ; distinto de 0 -&gt; hay debugger
+jnz   detectado</code></pre>
+<p>Qué delata: la cadena <code>"NtQueryInformationProcess"</code> (o su hash, si la resolución está ofuscada), la constante <code>7</code> en <code>EDX</code> y la comparación del buffer contra cero.</p>
+<p><strong>Chequeos de tiempo.</strong> Dos lecturas de <code>rdtsc</code> (o de <code>GetTickCount</code>/<code>QueryPerformanceCounter</code>) alrededor de un fragmento corto y una comparación de la diferencia contra un umbral: si paso a paso tardó demasiado, "hay alguien mirando". La firma es el <strong>par de lecturas</strong> con una resta y un <code>cmp</code> contra una constante grande.</p>
+<p><strong>Anti-VM por <code>CPUID</code>.</strong> La instrucción <code>cpuid</code> con <code>EAX = 1</code> devuelve en el bit 31 de <code>ECX</code> el indicador de <strong>hipervisor presente</strong>; con <code>EAX = 0x40000000</code> un hipervisor devuelve su identificación en <code>EBX</code>, <code>ECX</code> y <code>EDX</code> (en el de Microsoft, los textos <code>"Micr"</code>, <code>"osof"</code>, <code>"t Hv"</code>). Ver <code>cpuid</code> seguido de <code>bt ecx, 31</code> o de comparaciones contra esas cadenas es una señal anti-VM. <strong>Límite de la señal:</strong> en un Windows con Hyper-V o seguridad basada en virtualización (VBS) activa, el propio sistema corre sobre un hipervisor, así que el bit también aparece en una máquina física. Un programa que lo usa como prueba de "estoy en una VM" se equivoca, y eso también se documenta.</p>
+<h2 id="cómo-documentar-lo-que-encontrás">Cómo documentar lo que encontrás</h2>
+<p>Cada chequeo hallado se registra en una fila, con la misma disciplina de evidencia de la Etapa 4:</p>
+<div class="tabla"><table>
+<thead><tr>
+<th>Dirección / función</th>
+<th>Técnica</th>
+<th>Familia</th>
+<th>Señal que la delata</th>
+<th>Efecto observado</th>
+<th>Cómo se confirmó</th>
+</tr></thead><tbody>
+<tr><td><code>0x140001120</code> (TLS)</td><td><code>PEB.BeingDebugged</code></td><td>Anti-debug</td><td><code>gs:[60h]</code> + <code>[rax+2]</code></td><td>Con debugger muestra "modo seguro"</td><td>Breakpoint en el <code>jnz</code>, <code>AL = 1</code></td></tr>
+<tr><td><code>0x1400013A0</code></td><td><code>ProcessDebugPort</code></td><td>Anti-debug</td><td><code>GetProcAddress</code> + <code>edx = 7</code></td><td>Igual que la anterior</td><td>Valor del buffer con y sin debugger</td></tr>
+<tr><td><code>0x140001500</code></td><td><code>CPUID</code> bit 31</td><td>Anti-VM</td><td><code>cpuid</code> + <code>bt ecx, 31</code></td><td>Mensaje "entorno virtual"</td><td>Mismo resultado en VM y en host con VBS</td></tr>
+</tbody></table></div>
+<p><em>(Filas <strong>ilustrativas</strong>: direcciones y efectos de un programa de práctica hipotético.)</em></p>
+<p>La columna "cómo se confirmó" es la que distingue una sospecha de un hallazgo: sin ella, la fila es una hipótesis.</p>
+<h2 id="práctica">Práctica</h2>
+<p>En tu VM, con un <strong>programa propio</strong> (podés compilar uno que llame a <code>IsDebuggerPresent</code> y cambie un mensaje):</p>
+<ol><li>Hacé una tabla de tres columnas: técnica, familia, cómo la detectaste (import / string / comportamiento).</li><li>Ejecutá tu binario con y sin debugger y anotá la diferencia.</li><li>Poné el chequeo en un <strong>TLS callback</strong> y verificá que corre antes de <code>main</code>.</li><li><strong>Documentá</strong> el cambio de comportamiento: qué muestra el programa con y sin debugger, y qué señal (import, string, lectura del PEB) lo delata. El objetivo es reconocer y dejar registrado, no evadir.</li><li>Agregá a tu programa <code>CheckRemoteDebuggerPresent</code> y la consulta de <code>ProcessDebugPort</code> (resolviendo <code>NtQueryInformationProcess</code> con <code>GetProcAddress</code>). Anotá el valor que devuelve cada una con y sin debugger.</li><li>Agregá la lectura de <code>CPUID</code> (bit 31 y, si está, la identificación del hipervisor) e imprimí el resultado en la VM. Escribí en la tabla de documentación por qué esa señal no prueba por sí sola que el equipo sea virtual.</li></ol>
+<h2 id="preguntas-de-repaso">Preguntas de repaso</h2>
+<details class="qa"><summary>¿Cuál es la diferencia entre anti-debug y anti-disassembly?</summary><div class="respuesta"><p>Anti-debug detecta/estorba la ejecución <strong>dinámica</strong> bajo un debugger; anti-disassembly confunde el análisis <strong>estático</strong> del desensamblador (instrucciones solapadas, saltos al medio). Son familias distintas.</p></div></details>
+<details class="qa"><summary>En el cap. 24, ¿por qué el programa dice "detected by IDA" sin que IDA cargue el binario?</summary><div class="respuesta"><p>Porque detecta por <strong>entorno</strong>: busca el proceso/ventana de IDA abierto en el sistema, no necesita estar siendo debuggeado por él. Es detección por nombre de proceso.</p></div></details>
+<details class="qa"><summary>Nombrá tres señales de anti-debug visibles sin ejecutar.</summary><div class="respuesta"><p>Imports/uso de <code>IsDebuggerPresent</code>, <code>CheckRemoteDebuggerPresent</code>, <code>NtQueryInformationProcess</code>; lectura de <code>PEB.BeingDebugged</code>/<code>NtGlobalFlag</code>; o strings con nombres de debuggers.</p></div></details>
+<details class="qa"><summary>¿Por qué conviene recordar los TLS callbacks acá?</summary><div class="respuesta"><p>Porque un chequeo anti-debug puesto en un callback corre <strong>antes de <code>main</code></strong>: si solo mirás desde el entry point, ya decidió.</p></div></details>
+<details class="qa"><summary>¿Qué significa un <code>ProcessDebugPort</code> distinto de cero y por qué el programa suele obtener la función con <code>GetProcAddress</code>?</summary><div class="respuesta"><p>Que el proceso corre bajo un debugger de modo usuario. <code>NtQueryInformationProcess</code> es una función interna de <code>ntdll</code> sin biblioteca de importación, así que se resuelve en tiempo de ejecución; la cadena con su nombre (o su hash) es una pista.</p></div></details>
+<details class="qa"><summary>¿Por qué el bit de hipervisor de <code>CPUID</code> no prueba que el programa corre en una VM?</summary><div class="respuesta"><p>Porque un Windows con Hyper-V o VBS activo corre sobre un hipervisor aunque la máquina sea física, así que el bit también aparece ahí.</p></div></details>
+<details class="qa"><summary>¿Qué columna convierte una fila de la tabla de documentación en un hallazgo?</summary><div class="respuesta"><p>"Cómo se confirmó": el breakpoint, el valor leído o la comparación con y sin debugger. Sin ella, la fila es una hipótesis.</p></div></details>
+<details class="qa"><summary>¿Por qué el cambio de comportamiento con y sin debugger es, en sí, una pista?</summary><div class="respuesta"><p>Porque significa que el programa <strong>chequea</strong> su entorno: si hace algo distinto al correr bajo un debugger (o en una VM), tiene anti-análisis. Ese cambio te dice dónde buscar el chequeo, aunque no lo evites.</p></div></details>
+<aside class="callout nota"><p class="callout-titulo">Puerta de salida</p><p>Podés: (1) clasificar una técnica en anti-debug/anti-VM/anti-disassembly/anti-dump; (2) detectar anti-debug por imports, strings y comportamiento; (3) explicar la detección por entorno del cap. 24; (4) relacionar un chequeo temprano con un TLS callback; (5) reconocer <code>CheckRemoteDebuggerPresent</code>, <code>ProcessDebugPort</code>, un chequeo de tiempo y un chequeo de <code>CPUID</code> por su firma en el listado; (6) registrar cada chequeo en una tabla con su confirmación.</p></aside>
+<aside class="callout nota"><p class="callout-titulo">Lo que queda fuera</p><p>Cómo neutralizar estos chequeos, los anti-debug de modo kernel y los de protectores comerciales, y las técnicas basadas en excepciones o en manipular hilos (se mencionan como familia, sin detalle). La lección es un mapa para <strong>reconocer y documentar</strong>; no es un catálogo completo.</p></aside>
+<h2 id="fuentes-de-esta-lección">Fuentes de esta lección</h2>
+<ul><li><a class="fuente" href="../../CLS_resultados_intermedios/transcripciones/extraidos/Reversing%20desde%20cero%20%28Ricardo%20y%20Solid%29/Ricardo%20Narvaja%20y%20Solid%20-%20Reversing%20desde%20cero_22%20Antidebug%201_22%20Antidebug%201.txt">Reversing desde cero, cap. 22</a> — qué es anti-debug, <code>hide</code> de x64dbg, detección de breakpoints software y hardware.</li><li><a class="fuente" href="../../CLS_resultados_intermedios/transcripciones/extraidos/Reversing%20desde%20cero%20%28Ricardo%20y%20Solid%29/Ricardo%20Narvaja%20y%20Solid%20-%20Reversing%20desde%20cero_24%20Antidebug%202_24%20Antidebug%202.txt">Reversing desde cero, cap. 24</a> — app propia con varias técnicas; detección por nombre de proceso ("detected by IDA/x32dbg").</li><li><a href="../teorias.html">Teorias_Numeradas · clasificación</a> — títulos de anti-debug (material por título, no leído; muchos con fin de evasión comercial, fuera de alcance).</li><li>Microsoft Learn (conocimiento externo): <a href="https://learn.microsoft.com/en-us/windows/win32/api/debugapi/nf-debugapi-isdebuggerpresent" rel="noopener" target="_blank">IsDebuggerPresent</a>, <a href="https://learn.microsoft.com/en-us/windows/win32/api/debugapi/nf-debugapi-checkremotedebuggerpresent" rel="noopener" target="_blank">CheckRemoteDebuggerPresent</a>, <a href="https://learn.microsoft.com/en-us/windows/win32/api/winternl/nf-winternl-ntqueryinformationprocess" rel="noopener" target="_blank">NtQueryInformationProcess</a> (clase <code>ProcessDebugPort</code>, función interna sin biblioteca de importación) y <a href="https://learn.microsoft.com/en-us/virtualization/hyper-v-on-windows/tlfs/feature-discovery" rel="noopener" target="_blank">Hypervisor Feature Discovery</a> (bit de hipervisor presente y hoja <code>0x40000000</code>).</li></ul>
+<aside class="callout nota"><p class="callout-titulo">Capas de esta lección</p><p><strong>Contenido observado en CLS:</strong> el <code>hide</code> y la detección de breakpoints del capítulo 22 y la detección por entorno del 24. <strong>Conocimiento externo:</strong> la taxonomía de las cuatro familias y las señales concretas (PEB, NtGlobalFlag, <code>ProcessDebugPort</code>, chequeos de tiempo, <code>CPUID</code>, anti-VM, anti-dump). <strong>Ejemplo ilustrativo:</strong> los listados del PEB y de <code>ProcessDebugPort</code>, y las filas de la tabla de documentación. <strong>Recomendación editorial:</strong> el enfoque de reconocer y no evadir, la tabla de documentación y la práctica con binario propio.</p></aside>
+
+<aside class="ampliacion-ext">
+<p class="callout-titulo">Ampliación editorial basada en fuentes externas — PEB.NtGlobalFlag en x86 vs. x64 y clases 0x1E / 0x1F de NtQueryInformationProcess</p>
+<p>Según <a href="https://learn.microsoft.com/en-us/windows-hardware/drivers/debugger/gflags-flag-table" rel="noopener" target="_blank">GFlags Flag Table</a> y <a href="https://learn.microsoft.com/en-us/windows/win32/api/winternl/nf-winternl-ntqueryinformationprocess" rel="noopener" target="_blank">NtQueryInformationProcess</a> en Microsoft Learn <em>(Hecho confirmado)</em>:</p>
+<ul>
+<li><strong><code>PEB.NtGlobalFlag</code> (valor <code>0x70</code>):</strong> Combina <code>FLG_HEAP_ENABLE_TAIL_CHECK (0x10) | FLG_HEAP_ENABLE_FREE_CHECK (0x20) | FLG_HEAP_VALIDATE_PARAMETERS (0x40) = 0x70</code>. En <strong>x86</strong> se ubica en <code>fs:[30h] -&gt; [peb + 0x68]</code>; en <strong>x64</strong> se desplaza a <code>gs:[60h] -&gt; [peb + 0xBC]</code>.</li>
+<li><strong><code>ProcessDebugObjectHandle</code> (clase <code>0x1E = 30</code>):</strong> Consulta el handle al <code>DEBUG_OBJECT</code> del kernel. Si no hay debugger, <code>NtQueryInformationProcess</code> devuelve <code>0xC0000353</code> (<code>STATUS_PORT_NOT_SET</code>).</li>
+<li><strong><code>ProcessDebugFlags</code> (clase <code>0x1F = 31</code>):</strong> Consulta <code>NoDebugInherit</code>; devuelve <code>0</code> si hay depurador activo y <code>1</code> si no está siendo depurado.</li>
+</ul>
+</aside>
+</main>
+<footer class="pie">
+  <p>Material educativo y defensivo. Las prácticas se limitan a programas propios, software abierto o crackmes diseñados para aprender. No se enseña a eludir licencias, DRM ni controles de acceso.</p>
+  <p><a href="../00_EMPEZAR_AQUI.html">Inicio</a> · <a href="../guia/etapa-0.html">Etapas</a> · <a href="../fuentes_y_limites.html">Fuentes y límites</a> · <a href="../registro_de_cobertura.csv">Registro de cobertura</a></p>
+</footer>
+</body>
+</html>

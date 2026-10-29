@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>6.1 · Arquitectura del kernel y modelo de E/S</title>
+<meta name="description" content="Ubicar user/kernel mode, IRQL, contexto de hilo, objetos de dispositivo y pilas, IRP y stack locations, pool, DPC, sincronización y bugchecks antes de tocar un driver.">
+<link rel="stylesheet" href="../guia/estilo.css">
+</head>
+<body>
+<a class="salto" href="#contenido">Saltar al contenido</a>
+<header class="cabecera">
+  <div class="marca"><a href="../00_EMPEZAR_AQUI.html">CLS · Curso de reversing</a> <span class="edicion">edición 5 · 27/10/2026</span></div>
+  <nav class="principal" aria-label="Navegación principal">
+    <a href="../00_EMPEZAR_AQUI.html">Inicio</a>
+    <a href="../guia/index.html">Curso</a>
+    <a href="../materiales.html">Materiales</a>
+    <a href="../fichas/index.html">Fichas</a>
+    <a href="../glosario.html">Glosario</a>
+    <a href="../preguntas_y_respuestas.html">Repaso</a>
+    <a href="../buscar.html">Buscar</a>
+  </nav>
+</header>
+<main id="contenido">
+<nav class="migas" aria-label="Ubicación"><a href="../00_EMPEZAR_AQUI.html">Inicio</a><span aria-hidden="true">›</span><a href="../guia/index.html">Curso</a><span aria-hidden="true">›</span><span>Etapa 6 · Kernel y drivers (rama optativa)</span></nav><h1 id="arquitectura-del-kernel-y-modelo-de-e-s">Arquitectura del kernel y modelo de E/S</h1>
+<aside class="callout peligro"><p class="callout-titulo">Rama optativa de alto impacto</p><p>Todo el bloque requiere VM descartable con snapshot. Un error en kernel puede colgar o detener el invitado; nunca pruebes un driver en el host ni en un equipo de uso diario.</p></aside>
+<aside class="callout nota"><p class="callout-titulo">Propósito</p><p>Construir el mapa mental de la ruta de una solicitud desde user mode al driver y reconocer qué estado/memoria es válido según IRQL. Al terminar deberías poder mirar una rutina de un driver y decir <strong>a qué IRQL</strong> corre, <strong>en el contexto de qué hilo</strong>, <strong>qué memoria</strong> puede tocar y <strong>qué</strong> podría hacer que el sistema se detenga.</p></aside>
+<p><strong>Prerrequisitos</strong></p>
+<ul><li><em>Obligatorios para Etapa 6:</em> C básico, assembly, memoria/stack, sincronización elemental, WinDbg y <a href="2d-01-objetos.html">2D.1 objetos/tokens</a>, <a href="2d-02-memoria-loader.html">2D.2 memoria/loader</a>, <a href="2d-11-excepciones.html">2D.11 excepciones/debugging</a>.</li><li><em>Recomendados:</em> <a href="02-windbg-heap.html">2C WinDbg/heap</a> y fundamentos de kernel; no exige COM, Scheduler ni toda 2D.</li></ul>
+<h2 id="mapa-del-kernel">Mapa del kernel</h2>
+<p>Las aplicaciones corren en <strong>user mode</strong> con privilegios limitados; el kernel y drivers operan en <strong>kernel mode</strong>, donde un fallo puede afectar al sistema entero. El <strong>I/O Manager</strong> traduce solicitudes en IRP y las dirige por una pila de drivers. El <strong>IRQL</strong> limita qué rutinas/operaciones son válidas en cada contexto; a IRQL elevado no se puede asumir que una operación bloqueante o memoria paginable sea segura.</p>
+<p>El <strong>pool</strong> es memoria del kernel con políticas de paginación/NX. La sincronización protege estado compartido entre CPU, callbacks e interrupciones. Un <strong>bugcheck</strong> detiene Windows al detectar una condición grave; el dump y stack ayudan a atribuirla, aunque el driver señalado puede no ser el origen.</p>
+<h2 id="irql-qué-se-puede-hacer-en-cada-nivel">IRQL: qué se puede hacer en cada nivel</h2>
+<p>El IRQL al que corre una rutina determina qué funciones de soporte puede llamar. Los niveles que más vas a ver, de menor a mayor:</p>
+<div class="tabla"><table>
+<thead><tr>
+<th>IRQL</th>
+<th>Qué rutinas típicas corren ahí</th>
+<th>Qué se puede y qué no</th>
+</tr></thead><tbody>
+<tr><td><code>PASSIVE_LEVEL</code></td><td><code>DriverEntry</code>, <code>AddDevice</code>, <code>Unload</code>, la mayoría de las rutinas de despacho, hilos del driver, callbacks de <em>worker threads</em></td><td>Hay contexto de hilo; se puede esperar y el código/datos pueden ser paginables</td></tr>
+<tr><td><code>APC_LEVEL</code></td><td>Algunas rutinas de despacho</td><td>Igual que <code>PASSIVE_LEVEL</code>, salvo que no se reciben APC; el código puede ser paginable</td></tr>
+<tr><td><code>DISPATCH_LEVEL</code></td><td><code>StartIo</code>, DPC (<code>DpcForIsr</code>, <code>CustomDpc</code>), timers, rutinas de completion de drivers de nivel superior, <code>Cancel</code> con el spin lock tomado</td><td><strong>No</strong> se puede esperar un objeto con intervalo no nulo; <strong>no</strong> se puede tocar memoria paginable; los spin locks suben a este nivel</td></tr>
+<tr><td>DIRQL</td><td>Rutina de interrupción (ISR), <code>SynchCritSection</code></td><td>Lo mínimo indispensable; se difiere el resto a un DPC</td></tr>
+</tbody></table></div>
+<p>Dos reglas documentadas que explican muchos bugchecks: una rutina por encima de <code>APC_LEVEL</code> no puede asignar ni acceder a pool paginado (un fallo de página ahí es fatal), y esperar con intervalo no nulo a <code>DISPATCH_LEVEL</code> o más también es fatal. Cuanto más alto el IRQL, más corta debe ser la rutina.</p>
+<h2 id="contexto-de-hilo">Contexto de hilo</h2>
+<p>La mayoría de las rutinas de un driver corren en un <strong>contexto de hilo arbitrario</strong>: el del hilo que estaba ejecutándose cuando se las llamó, que puede no tener nada que ver con la aplicación que pidió la operación. Solo los drivers de más alto nivel (por ejemplo, la parte de un sistema de archivos que atiende la llamada) corren en el contexto del hilo que hizo la solicitud. Consecuencias:</p>
+<ul><li>Una dirección de <strong>user mode</strong> solo tiene sentido en el contexto del proceso que la pasó; por eso los métodos de buffer de <a href="6-02-kmdf-ioctl.html">6.2</a> y el patrón de <code>METHOD_NEITHER</code> de <a href="6-04-revision-driver.html">6.4</a>.</li><li>El estado de cada dispositivo se guarda en la <strong>extensión del dispositivo</strong> (en KMDF, en el contexto del objeto), no en variables del hilo.</li></ul>
+<h2 id="objetos-de-dispositivo-pilas-y-stack-locations">Objetos de dispositivo, pilas y stack locations</h2>
+<p>Cada dispositivo se representa con una <strong>pila de objetos de dispositivo</strong>: el <strong>PDO</strong> que crea el driver de bus, el <strong>FDO</strong> del driver de función y, opcionalmente, <strong>filtros</strong> por encima o por debajo. Un IRP entra por arriba y baja por la pila; cada driver tiene en el IRP su propia <strong>I/O stack location</strong> con los parámetros que le corresponden (código de función, longitudes, código de IOCTL). Al completarse, el IRP sube y los drivers que registraron rutinas de <em>completion</em> las ejecutan, normalmente a IRQL elevado. El resultado viaja en <code>IoStatus.Status</code> y la cantidad de bytes en <code>IoStatus.Information</code>.</p>
+<p>En KMDF todo esto existe igual, pero el framework lo encapsula en objetos request, colas y callbacks (6.2).</p>
+<h2 id="pool-y-nx">Pool y NX</h2>
+<p>El pool <strong>no paginado</strong> se puede usar a cualquier IRQL, pero es un recurso escaso; el <strong>paginado</strong> solo por debajo de <code>DISPATCH_LEVEL</code>. Desde Windows 8, la documentación pide asignar la memoria no paginada desde el pool <strong>no ejecutable</strong> (<code>NonPagedPoolNx</code>) y usar el pool ejecutable solo cuando haga falta ejecutar código ahí. En un análisis, una asignación de pool ejecutable en un driver moderno es algo a explicar; con integridad de memoria (HVCI, ver <a href="6-06-mitigaciones.html">6.6</a>) las asignaciones de kernel están más restringidas.</p>
+<h2 id="ejemplo-trabajado">Ejemplo trabajado</h2>
+<p><em>(Diagrama conceptual.)</em></p>
+<pre><code class="lenguaje-text">app: DeviceIoControl
+  -&gt; I/O Manager crea IRP
+  -&gt; pila: filtro -&gt; function driver -&gt; bus
+  -&gt; completion/status vuelve al cliente</code></pre>
+<p>En KMDF, el framework recibe/organiza IRP y llama a callbacks del driver. En WDM, el código trabaja más directamente con dispatch routines e IRPs. No deduzcas que una app se comunica con hardware solo por llamar <code>DeviceIoControl</code>: puede ser un dispositivo software.</p>
+<p>Lectura de un bugcheck <strong>ilustrativo</strong> con los conceptos de esta lección (no es un dump real):</p>
+<pre><code class="lenguaje-text">Bug check 0xD1 DRIVER_IRQL_NOT_LESS_OR_EQUAL
+  Arg1: dirección referenciada
+  Arg2: 2              ; IRQL en ese momento = DISPATCH_LEVEL
+  Arg3: 0              ; operación de lectura
+  Arg4: dirección de la instrucción que leyó</code></pre>
+<p>Interpretación prudente: a <code>DISPATCH_LEVEL</code> se leyó una dirección paginable o inválida. Microsoft lista como causas típicas código o datos paginables usados a ese IRQL (por ejemplo, una función marcada paginable que corre con un spin lock tomado), un puntero inválido o liberado, o una llamada a un driver que ya se descargó. El IRQL no suele ser el problema en sí: lo es la memoria accedida. La 6.3 muestra cómo seguir cada parámetro.</p>
+<h2 id="práctica-de-lectura">Práctica de lectura</h2>
+<p>Usá un diagrama/documentación de un driver propio o una muestra WDK ya compilada. Identificá user/kernel mode, entrada IRP, callback, cola, IRQL declarado y finalización. No cargues ni modifiques drivers en esta lección.</p>
+<ol><li>Para cada callback de la muestra, anotá a qué IRQL puede llamarse según la documentación.</li><li>Marcá cada asignación de memoria como paginada, no paginada o no paginada NX, y verificá que las que se usan a <code>DISPATCH_LEVEL</code> no sean paginadas.</li><li>Señalá dónde el driver depende del contexto del hilo llamador, si lo hace.</li></ol>
+<h2 id="entregable">Entregable</h2>
+<p>Diagrama de la ruta de una solicitud (con pila de dispositivos y stack locations), tabla callback–IRQL–memoria usada, glosario IRP/IRQL/pool/DPC/bugcheck y dos condiciones que podrían invalidar una rutina en IRQL elevado.</p>
+<h2 id="repaso">Repaso</h2>
+<details class="qa"><summary>¿Qué transporta un IRP?</summary><div class="respuesta"><p>Una solicitud de E/S y su estado/resultado a través de la pila de drivers.</p></div></details>
+<details class="qa"><summary>¿Por qué importa IRQL?</summary><div class="respuesta"><p>Restringe qué operaciones y memoria son válidas en el contexto actual.</p></div></details>
+<details class="qa"><summary>¿Qué no puede hacer una rutina a <code>DISPATCH_LEVEL</code>?</summary><div class="respuesta"><p>Esperar con intervalo no nulo ni acceder a memoria paginable; un fallo de página ahí es fatal.</p></div></details>
+<details class="qa"><summary>¿Qué significa que un driver corre en contexto de hilo arbitrario?</summary><div class="respuesta"><p>Que el hilo actual puede no ser el que pidió la operación; las direcciones de user mode del solicitante no son válidas en general.</p></div></details>
+<details class="qa"><summary>¿Qué es una I/O stack location?</summary><div class="respuesta"><p>La parte del IRP con los parámetros para un driver concreto de la pila.</p></div></details>
+<details class="qa"><summary>¿Por qué se prefiere <code>NonPagedPoolNx</code>?</summary><div class="respuesta"><p>Porque es pool no paginado no ejecutable; el ejecutable solo se usa si hace falta ejecutar código en esa memoria.</p></div></details>
+<details class="qa"><summary>¿Un bugcheck identifica siempre al culpable?</summary><div class="respuesta"><p>No necesariamente; muestra dónde se detectó el problema. El análisis debe reconstruir el estado y las llamadas previas.</p></div></details>
+<aside class="callout nota"><p class="callout-titulo">Puerta optativa</p><p>Podés explicar la ruta user mode → I/O Manager → pila de dispositivos → driver, decir a qué IRQL corre un callback y qué memoria puede usar, y leer los parámetros de un 0xD1 sin atribuirle una causa única.</p></aside>
+<aside class="callout nota"><p class="callout-titulo">Lo que queda fuera</p><p>El scheduler, APC en detalle, la arquitectura de la memoria virtual del kernel, PnP y energía (ver el recuadro de 6.4), DMA e interrupciones de hardware no se desarrollan.</p></aside>
+<h2 id="fuentes">Fuentes</h2>
+<ul><li>Microsoft Learn: <a href="https://learn.microsoft.com/en-us/windows-hardware/drivers/kernel/overview-of-the-windows-i-o-model" rel="noopener" target="_blank">Overview of the Windows I/O Model</a>, <a href="https://learn.microsoft.com/en-us/windows-hardware/drivers/kernel/managing-hardware-priorities" rel="noopener" target="_blank">IRQL</a>, <a href="https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/ne-wdm-_pool_type" rel="noopener" target="_blank">POOL_TYPE (pool paginado, no paginado y NX)</a>, <a href="https://learn.microsoft.com/en-us/windows-hardware/drivers/kernel/synchronization-techniques" rel="noopener" target="_blank">Synchronization</a>.</li><li>Microsoft Learn, contexto y pilas: <a href="https://learn.microsoft.com/en-us/windows-hardware/drivers/kernel/driver-thread-context" rel="noopener" target="_blank">Driver Thread Context</a>, <a href="https://learn.microsoft.com/en-us/windows-hardware/drivers/kernel/introduction-to-device-objects" rel="noopener" target="_blank">Introduction to Device Objects</a>, <a href="https://learn.microsoft.com/en-us/windows-hardware/drivers/gettingstarted/device-nodes-and-device-stacks" rel="noopener" target="_blank">Device nodes and device stacks</a>, <a href="https://learn.microsoft.com/en-us/windows-hardware/drivers/kernel/i-o-stack-locations" rel="noopener" target="_blank">I/O Stack Locations</a>, <a href="https://learn.microsoft.com/en-us/windows-hardware/drivers/kernel/introduction-to-dpc-objects" rel="noopener" target="_blank">Introduction to DPC Objects</a>, <a href="https://learn.microsoft.com/en-us/windows-hardware/drivers/kernel/introduction-to-spin-locks" rel="noopener" target="_blank">Introduction to Spin Locks</a>, <a href="https://learn.microsoft.com/en-us/windows-hardware/drivers/kernel/no-execute-nonpaged-pool" rel="noopener" target="_blank">No-Execute Nonpaged Pool</a>, <a href="https://learn.microsoft.com/en-us/windows-hardware/drivers/debugger/bug-check-0xd1--driver-irql-not-less-or-equal" rel="noopener" target="_blank">Bug Check 0xD1</a>.</li><li><strong>CLS:</strong> stack/memoria <a href="01-memoria.html">1.2</a>; fundamentos user-mode en <a href="2d-01-objetos.html">2D.1</a>.</li></ul>
+<aside class="callout nota"><p class="callout-titulo">Etiquetas</p><p><strong>Observado en CLS:</strong> conceptos de memoria y procesos. <strong>Conocimiento externo:</strong> arquitectura del kernel/driver, IRQL, contexto de hilo, pilas de dispositivos y pool. <strong>Ejemplo ilustrativo:</strong> diagrama IRP y lectura de 0xD1. <strong>Laboratorio verificado:</strong> no; lectura conceptual.</p></aside>
+</main>
+<footer class="pie">
+  <p>Material educativo y defensivo. Las prácticas se limitan a programas propios, software abierto o crackmes diseñados para aprender. No se enseña a eludir licencias, DRM ni controles de acceso.</p>
+  <p><a href="../00_EMPEZAR_AQUI.html">Inicio</a> · <a href="../guia/etapa-0.html">Etapas</a> · <a href="../fuentes_y_limites.html">Fuentes y límites</a> · <a href="../registro_de_cobertura.csv">Registro de cobertura</a></p>
+</footer>
+</body>
+</html>

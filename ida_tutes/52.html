@@ -1,0 +1,246 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tute 52 · Estructuras de kernel — Curso IDA</title>
+<meta name="description" content="Tutorial ilustrado del tute 52 del Curso IDA desde cero: Estructuras de kernel.">
+<link rel="stylesheet" href="../guia/estilo.css">
+</head>
+<body>
+<a class="salto" href="#contenido">Saltar al contenido</a>
+<header class="cabecera">
+  <div class="marca"><a href="../00_EMPEZAR_AQUI.html">CLS · Curso de reversing</a> <span class="edicion">edición 5 · 27/10/2026</span></div>
+  <nav class="principal" aria-label="Navegación principal">
+    <a href="../00_EMPEZAR_AQUI.html">Inicio</a>
+    <a href="../guia/index.html">Curso</a>
+    <a href="../fichas/index.html">Fichas</a>
+    <a href="../glosario.html">Glosario</a>
+    <a href="../preguntas_y_respuestas.html">Repaso</a>
+  </nav>
+</header>
+<main id="contenido">
+<p class="migas"><a href="../ida-tutes.html">← Índice de los 69 tutes de IDA</a></p>
+<h1>Tute 52 · Estructuras de kernel</h1>
+<p class="meta-tute"><strong>⏱ 10 min de lectura</strong> · 1.884 palabras · 55 capturas · grupo: Kernel de Windows y temas avanzados (drivers, HackSys/HEVD, SSDT/syscalls, VA→física)</p>
+<aside class="callout nota"><p class="callout-titulo">Qué enseña</p><p>Estructuras y mecanismos previos a la explotación.</p></aside>
+<p><em>se conecta con:</em> <a href="../guia/05-fuera-de-alcance.html">Fuera de alcance</a></p>
+<aside class="callout aviso"><p class="callout-titulo">Material observado, no reescrito</p><p>Es el texto y las capturas del <code>.docx</code> original del curso, solo presentados como tutorial. Puede tener erratas de origen. El autor del curso es Ricardo Narvaja.</p></aside>
+<hr>
+<p>INTRODUCCION AL REVERSING CON IDA PRO DESDE CERO PARTE 52 KERNEL</p>
+<p>MAS KERNEL</p>
+<p>Seguiremos con esta tercera parte de kernel y antes de ir directo a la explotación reversearemos y entenderemos ciertas estructuras y funcionamientos que despues nos serán mas familiares cuando las veamos en drivers mas complejos.</p>
+<p>En este caso crearemos un driver que no solo se cargara y descargara como antes sino que se podrá desde un programa en modo user, enviarle ciertos argumentos para interactuar con el.</p>
+<p>Para recibir información desde modo user, debemos enseñarle a nuestro driver a responder a los códigos de control de entrada y salida del dispositivo (IOCTL) que se le pueden suministrar desde el modo de usuario utilizando la API de DeviceIoControl. Ya hemos visto cómo nuestro driver puede cambiar la rutina de descarga, usando la estructura DRIVER_OBJECT y modificando el puntero que allí se guarda. Manejar IOCTLs es muy similar, solo tenemos que proporcionar un par de rutinas mas.</p>
+<p>IOCTL</p>
+<figure><img loading="lazy" src="img/52/1.png" alt="Captura 1 del tute 52"></figure>
+<p>Lo primero que debemos hacer en nuestro punto de entrada sera crear un DEVICE OBJECT.</p>
+<p>DEVICE OBJECT</p>
+<p>No voy a explicar toda la teoría sobre esto el que quiere profundizar léase:</p>
+<p>https://docs.microsoft.com/en-us/windows-hardware/drivers/kernel/introduction-to-device-objects</p>
+<figure><img loading="lazy" src="img/52/2.png" alt="Captura 2 del tute 52"></figure>
+<p>Y esto debe ser asi, en nuestro primer driver solo lo podíamos arrancar y parar y no podía recibir comandos de control desde user, por eso ahora debemos crear el DEVICE OBJECT usando la api IoCreateDevice.</p>
+<p>En el código fuente eso esta aquí dentro de la función DriverEntry</p>
+<p>status = IoCreateDevice(DriverObject,</p>
+<p>0,</p>
+<p>&amp;deviceNameUnicodeString,</p>
+<p>FILE_DEVICE_HELLOWORLD,</p>
+<p>0,</p>
+<p>TRUE,</p>
+<p>&amp;interfaceDevice);</p>
+<p>--------------------------------------------------------------------------------------------------------------------------------</p>
+<figure><img loading="lazy" src="img/52/3.png" alt="Captura 3 del tute 52"></figure>
+<p>Parameters</p>
+<p>DriverObject [in]</p>
+<p>Pointer to the driver object for the caller. Each driver receives a pointer to its driver object in a parameter to its DriverEntry routine.</p>
+<p>NTSTATUS DriverEntry(</p>
+<p>PDRIVER_OBJECT DriverObject,</p>
+<p>PUNICODE_STRING RegistryPath)</p>
+<p>{</p>
+<p>Como hablamos visto DriverEntry recibía dos argumentos, el primero es un puntero a la estructura DRIVER OBJECT ese se pasa como primer argumento de IoCreateDevice.</p>
+<p>DeviceName [in, optional]</p>
+<p>Optionally points to a buffer containing a null-terminated Unicode string that names the device object.</p>
+<p>WCHAR deviceNameBuffer[] = L"\\Device\\HelloWorld";</p>
+<p>UNICODE_STRING deviceNameUnicodeString;</p>
+<p>En nuestro código corresponde al nombre del device y luego se copia a deviceNameUnicodeString que se pasa como argumento de la api.</p>
+<p>DeviceType [in]</p>
+<p>Specifies one of the system-defined FILE_DEVICE_XXX constants that indicate the type of device (such as FILE_DEVICE_DISK or FILE_DEVICE_KEYBOARD) or a vendor-defined value for a new type of device.</p>
+<p>En nuestro caso es un valor definido por nosotros al inicio del código.</p>
+<p>#define FILE_DEVICE_HELLOWORLD 0x00008337</p>
+<p>DeviceObject [out]</p>
+<p>Pointer to a variable that receives a pointer to the newly created DEVICE_OBJECT structure. The DEVICE_OBJECT structure is allocated from nonpaged pool.</p>
+<p>Es un puntero a un dword donde la api guardara un puntero allí, por eso dice OUT es para salida de la misma api.</p>
+<p>Esos son los mas importantes, veamos ahora un poco el código en IDA, ahora que conocemos esta api.</p>
+<p>Vemos que la función que llama a nuestro DriverEntry es similar</p>
+<figure><img loading="lazy" src="img/52/4.png" alt="Captura 4 del tute 52"></figure>
+<p>Veamos la parte de nuestro código.</p>
+<figure><img loading="lazy" src="img/52/5.png" alt="Captura 5 del tute 52"></figure>
+<p>Allí empieza tiene los dos mismos punteros a estructuras del tipo _DRIVER_OBJECT y _UNICODE_STRING.</p>
+<p>Los demás son variables, como tenemos símbolos en este caso no es muy difícil, pero es bueno irse acostumbrandose de a poco para los casos reales donde no tengamos símbolos.</p>
+<p>Vemos que en var_4 guarda la COOKIE de protección del stack.</p>
+<figure><img loading="lazy" src="img/52/6.png" alt="Captura 6 del tute 52"></figure>
+<figure><img loading="lazy" src="img/52/7.png" alt="Captura 7 del tute 52"></figure>
+<p>Allí copia el device name unicode con un size de 9 dwords (0x24 bytes) al destination que es deviceNameBuffer, cuyo largo es 19 words o sea 19 por 2, en total 38 bytes decimal 0x26 bytes hexa, asi que todo bien lo que copiara es menor al buffer.</p>
+<figure><img loading="lazy" src="img/52/8.png" alt="Captura 8 del tute 52"></figure>
+<p>Python&gt;hex(0x19*2)</p>
+<p>0x32</p>
+<figure><img loading="lazy" src="img/52/9.png" alt="Captura 9 del tute 52"></figure>
+<p>Luego copia el DOS_DEVICE_NAME copiara 0xb dwords o sea 0xb *4 es 0x2c bytes hexa en total</p>
+<figure><img loading="lazy" src="img/52/10.png" alt="Captura 10 del tute 52"></figure>
+<p>Y el buffer de destino es deviceLinkBuffer veamos su largo.</p>
+<figure><img loading="lazy" src="img/52/11.png" alt="Captura 11 del tute 52"></figure>
+<p>Es 23 decimal por 2 o sea 46 bytes o sea 0x2e hexa, asi que tampoco hay overflow aquí.</p>
+<figure><img loading="lazy" src="img/52/12.png" alt="Captura 12 del tute 52"></figure>
+<p>La cuestión es que en deviceNameBuffer esta el device name y en deviceLinkBuffer esta el Dos device name.</p>
+<figure><img loading="lazy" src="img/52/13.png" alt="Captura 13 del tute 52"></figure>
+<p>Luego esta el DbgPrint que imprime el mensaje “DriverEntry called”</p>
+<figure><img loading="lazy" src="img/52/14.png" alt="Captura 14 del tute 52"></figure>
+<p>Sigamos lo siguiente sera transformar una string unicode en una que sea del tipo _UNICODE_STRING, eso lo hará la api RtlInitUnicodeString.</p>
+<figure><img loading="lazy" src="img/52/15.png" alt="Captura 15 del tute 52"></figure>
+<p>Tenemos una llamada a RtlInitUnicodeString</p>
+<figure><img loading="lazy" src="img/52/16.png" alt="Captura 16 del tute 52"></figure>
+<p>WCHAR deviceNameBuffer[] = L"\\Device\\HelloWorld";</p>
+<p>El source deviceNameBuffer es un puntero a un buffer que tiene una string unicode y el destination es un puntero a una estructura UNICODE_STRING .</p>
+<p>Esta estructura ya la habíamos visto tiene tres campos dos words (lenght y MaximumLenght) y el tercero debe ser un puntero a la string unicode.</p>
+<p>Quiere decir que la api copiara la dirección de ese buffer source en el tercer campo de la estructura, le agregara el lenght y MaximumLenght en los campos correspondientes y con eso habra transformado un buffer común con una string unicode en una estructura _UNICODE_STRING.</p>
+<figure><img loading="lazy" src="img/52/17.png" alt="Captura 17 del tute 52"></figure>
+<figure><img loading="lazy" src="img/52/18.png" alt="Captura 18 del tute 52"></figure>
+<figure><img loading="lazy" src="img/52/19.png" alt="Captura 19 del tute 52"></figure>
+<p>Es una estructura del tipo UNICODE_STRING con 8 bytes de largo ya que son dos words para los lenghts y un dword para copiar allí el puntero al buffer con la string unicode,</p>
+<p>Luego esta la llamada a la api que habíamos hablado IoCreateDevice.</p>
+<figure><img loading="lazy" src="img/52/20.png" alt="Captura 20 del tute 52"></figure>
+<p>Habíamos visto que el argumento mas lejano o sea el ultimo era un puntero a un dword que se usaba como salida para que la api guarde allí un puntero, vemos eso pone a cero la variable interfaceDevice y luego con lea halla el puntero a esa variable donde escribirá un puntero.</p>
+<figure><img loading="lazy" src="img/52/21.png" alt="Captura 21 del tute 52"></figure>
+<p>Luego hay un PUSH 1 que es el argumento Exclusive que no lo vimos antes porque no es de gran importancia, luego viene PUSH EDI, vemos que en EDI hay un cero ya que había un XOR EDI, EDI antes.</p>
+<figure><img loading="lazy" src="img/52/22.png" alt="Captura 22 del tute 52"></figure>
+<p>No es tampoco muy importante, luego viene push 8337h que es el DeviceType que habíamos definido en el código fuente</p>
+<p>#define FILE_DEVICE_HELLOWORLD 0x00008337</p>
+<p>Luego viene el puntero a la estructura con la _UNICODE_STRING con el deviceName</p>
+<figure><img loading="lazy" src="img/52/23.png" alt="Captura 23 del tute 52"></figure>
+<p>Luego otro PUSH EDI que es cero de DeviceExtensionSize y al final en EBX esta el puntero a DriverObject.</p>
+<figure><img loading="lazy" src="img/52/24.png" alt="Captura 24 del tute 52"></figure>
+<p>_DRIVER_OBJECT</p>
+<p>Recordamos que eso era un puntero a la estructura _DRIVER_OBJECT.</p>
+<figure><img loading="lazy" src="img/52/25.png" alt="Captura 25 del tute 52"></figure>
+<p>Bueno al salir de la api se habrá creado el DeviceObject.</p>
+<figure><img loading="lazy" src="img/52/26.png" alt="Captura 26 del tute 52"></figure>
+<p>Si en EAX tiene un valor negativo habrá fallado y el JS saltara por la flecha verde sino sera correcto y ira al DbgPrint que imprimirá “Sucess”</p>
+<p>Luego hará lo mismo con la otra string unicode al convertirla de un buffer con una string unicode a la forma de estructura _UNICODE_STRING al igual que antes con la api RtlInitUnicodeString.</p>
+<p>Por lo tanto deviceLinkUnicodeString ahora sera del tipo _UNICODE_STRING y tendrá en su tercer campo un puntero a un buffer con la string unicode L"\\DosDevices\\HelloWorld".</p>
+<p>SYMBOLIC LINK</p>
+<figure><img loading="lazy" src="img/52/27.png" alt="Captura 27 del tute 52"></figure>
+<p>Luego pasando los punteros a las dos _UNICODE_STRING a la api IoCreateSymbolicLink creamos el symbolic link entre el DeviceObject y el modo user.</p>
+<pre class='asm'>EBX tenia el puntero a la estructura DRIVER_OBJECT</pre>
+<figure><img loading="lazy" src="img/52/28.png" alt="Captura 28 del tute 52"></figure>
+<p>Si no esta en estructuras como antes vamos a LOCAL TYPES y sincronizamos para que aparezca y apretamos T en cada uno de esos campos.</p>
+<p>Al igual que en el caso anterior seteamos una rutina custom para cuando se descarga el driver, que esta en ebx+34h, apretando T vemos que es el campo DriverUnload.</p>
+<figure><img loading="lazy" src="img/52/29.png" alt="Captura 29 del tute 52"></figure>
+<p>Vemos que la rutina al descargar el driver no solo imprime con DbgPrint la string “Driver unloading”</p>
+<figure><img loading="lazy" src="img/52/30.png" alt="Captura 30 del tute 52"></figure>
+<p>Como antes habíamos creado el symbolicLink con la api IoCreateSymbolicLink al salir tenemos que borrarla con IoDeleteSymbolicLink y también como habíamos usando para crear el DeviceObject con  IoCreateDevice ahora se borrara con IoDeleteDevice sino habrá problemas para cargarlo nuevamente.</p>
+<p>MajorFunction</p>
+<p>Lo ultimo en la función de entrada es el campo MajorFunction que es un array de punteros callbacks (dwords) a diferentes funciones.</p>
+<figure><img loading="lazy" src="img/52/31.png" alt="Captura 31 del tute 52"></figure>
+<figure><img loading="lazy" src="img/52/32.png" alt="Captura 32 del tute 52"></figure>
+<p>Allí vemos que MajorFuncion [IRP_MJ_CREATE] que es la primera posición del array o sea  MajorFuncion [0x0]</p>
+<p>Ya que hay una tablita</p>
+<figure><img loading="lazy" src="img/52/33.png" alt="Captura 33 del tute 52"></figure>
+<p>[IRP_MJ_CREATE] es 0x0</p>
+<p>[IRP_MJ_CLOSE] es 0x02</p>
+<p>[IRP_MJ_DEVICE_CONTROL] es 0x0e</p>
+<p>A los tres campos se los inicializa con la dirección de la función DriverDispatch.</p>
+<figure><img loading="lazy" src="img/52/34.png" alt="Captura 34 del tute 52"></figure>
+<p>Se escribe en la posición 0x0 ya que [IRP_MJ_CLOSE]  es 0x0 por 4 es 0</p>
+<p>Luego</p>
+<p>[IRP_MJ_CLOSE] es 0x02 por 4 da el byte 8</p>
+<p>Y luego</p>
+<p>[IRP_MJ_DEVICE_CONTROL] es 0x0e por 4 es 0x38</p>
+<p>Así que en los tres escribe el mismo puntero a la misma función.</p>
+<p>Vemos que cada uno de esos callbacks se llama en diferentes momentos de la interacción desde un programa en modo user.</p>
+<figure><img loading="lazy" src="img/52/35.png" alt="Captura 35 del tute 52"></figure>
+<figure><img loading="lazy" src="img/52/36.png" alt="Captura 36 del tute 52"></figure>
+<figure><img loading="lazy" src="img/52/37.png" alt="Captura 37 del tute 52"></figure>
+<p>Se ve que cuando llamemos de una aplicación en user mode a través de DeviceIoControl usando un IOCTL se utiliza ese callback, igual en los tres casos va a la misma función ya que los pisamos con punteros a DriverDispatch.</p>
+<figure><img loading="lazy" src="img/52/38.png" alt="Captura 38 del tute 52"></figure>
+<p>Vemos que la función recibe dos argumentos el famoso puntero a DEVICE_OBJECT y el segundo es un puntero al Irp que es una estructura compleja ya la veremos mejor luego.</p>
+<p>IRP</p>
+<figure><img loading="lazy" src="img/52/39.png" alt="Captura 39 del tute 52"></figure>
+<figure><img loading="lazy" src="img/52/40.png" alt="Captura 40 del tute 52"></figure>
+<p>Vemos que al igual que la vez anterior al registrarlo y arrancarlo imprime DriverEntry called y Sucess y al descargar Driver Unloading pero ahora ademas desde una aplicación user que yo hice cuando esta corriendo o sea antes hay que darle a START SERVICE para que corra.</p>
+<figure><img loading="lazy" src="img/52/41.png" alt="Captura 41 del tute 52"></figure>
+<p>Con las interacciones desde el programa en user mode se llama al dispatch, vemos que mi programita solo hace esto.(el ejecutable estará adjunto)</p>
+<p>#include "stdafx.h"</p>
+<p>#include &lt;windows.h&gt;</p>
+<p>#define FILE_DEVICE_HELLOWORLD 0x00008337</p>
+<p>#define IOCTL_SAYHELLO (ULONG) CTL_CODE( FILE_DEVICE_HELLOWORLD, 0x00, METHOD_BUFFERED, FILE_ANY_ACCESS )</p>
+<p>int main()</p>
+<p>{</p>
+<p>HANDLE hDevice;</p>
+<pre class='asm'>DWORD nb;</pre>
+<p>hDevice = CreateFile(TEXT("\\\\.\\HelloWorld"), GENERIC_READ | GENERIC_WRITE, 0, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);</p>
+<p>DeviceIoControl(hDevice, IOCTL_SAYHELLO, NULL, 0, NULL, 0, &amp;nb, NULL);</p>
+<p>CloseHandle(hDevice);</p>
+<p>return 0;</p>
+<p>}</p>
+<p>O sea cuando llamo a CreateFile para poder tener un handle del driver salta al dispatch a través del callback [IRP_MJ_CREATE] y imprime</p>
+<figure><img loading="lazy" src="img/52/42.png" alt="Captura 42 del tute 52"></figure>
+<p>DeviceIoControl</p>
+<p>Luego al llamar usando la api DeviceIoControl pasándole el IOCTL</p>
+<figure><img loading="lazy" src="img/52/43.png" alt="Captura 43 del tute 52"></figure>
+<p>Vemos que usa el callback [IRP_MJ_DEVICE_CONTROL] y luego chequea cual es el IOCTL en este caso  IOCTL_SAYHELLO</p>
+<figure><img loading="lazy" src="img/52/44.png" alt="Captura 44 del tute 52"></figure>
+<p>En ese caso imprime “Hello World”</p>
+<figure><img loading="lazy" src="img/52/45.png" alt="Captura 45 del tute 52"></figure>
+<p>Y el ultimo se llama cuando hago CloseHandle y llama a [IRP_MJ_CLOSE]</p>
+<figure><img loading="lazy" src="img/52/46.png" alt="Captura 46 del tute 52"></figure>
+<p>Sincronizo la estructura IRP en LOCAL TYPES</p>
+<figure><img loading="lazy" src="img/52/47.png" alt="Captura 47 del tute 52"></figure>
+<p>Y puedo ver en la pestaña ESTRUCTURAS la misma.</p>
+<p>Vemos que cuando lo tiro debuggeando y pongo Breakpoint en la función dispatch luego de llegar alli</p>
+<figure><img loading="lazy" src="img/52/48.png" alt="Captura 48 del tute 52"></figure>
+<p>Lee desde la estructura IRP, la parte TAIL no esta especificada en MSDN pero alli, luego de buscar el campo en EDI+60, y pasarlo a EBX , el contenido del mismo va a EAX que tiene la primera vez que para el valor de [IRP_MJ_CREATE] o sea cero, y en este caso va alli a imprimir ese mensaje de que paso por create.</p>
+<p>Si le doy RUN nuevamente parara de nuevo con EAX=0e de [IRP_MJ_DEVICE_CONTROL]</p>
+<figure><img loading="lazy" src="img/52/49.png" alt="Captura 49 del tute 52"></figure>
+<p>Como EAX es diferente de cero va por aquí</p>
+<figure><img loading="lazy" src="img/52/50.png" alt="Captura 50 del tute 52"></figure>
+<p>Y en este caso llega al bloque rosado imprime que llego alli por un IOCTL.</p>
+<figure><img loading="lazy" src="img/52/51.png" alt="Captura 51 del tute 52"></figure>
+<p>#define IOCTL_SAYHELLO (ULONG) CTL_CODE( FILE_DEVICE_HELLOWORLD, 0x00, METHOD_BUFFERED, FILE_ANY_ACCESS )</p>
+<p>En el código el IOCTL code que se obtiene desde el 0x8337 del FILE_DEVICE se le realizan varias operaciones según el tipo de IOCTL( en este caso METHOD BUFFERED, etc etc) lo cual nos da el IOCTL 83370000.</p>
+<p>Alli lo compara y como es ese, va e imprime el cartel de “Hello World!”</p>
+<figure><img loading="lazy" src="img/52/52.png" alt="Captura 52 del tute 52"></figure>
+<p>Cuando pasamos por el DebugPrint nos muestra en la barra del Windbg el mensaje, si hubiera varios IOCTL con diferentes acciones habría un switch aquí justamente para que desvié la ejecución según el que sea.</p>
+<figure><img loading="lazy" src="img/52/53.png" alt="Captura 53 del tute 52"></figure>
+<p>La tercera vez que para es cuando hacemos CloseHandle EAX es 2.</p>
+<figure><img loading="lazy" src="img/52/54.png" alt="Captura 54 del tute 52"></figure>
+<p>Y imprime</p>
+<figure><img loading="lazy" src="img/52/55.png" alt="Captura 55 del tute 52"></figure>
+<p>Creo que con esto tenemos una buena introducción al tema, seguiremos en la siguiente parte, profundizando mas.</p>
+<p>Hasta la parte siguiente</p>
+<p>Ricardo Narvaja</p>
+</main>
+<footer class="pie">
+  <p>Material educativo y defensivo. Las prácticas se limitan a programas propios, software abierto o crackmes diseñados para aprender. No se enseña a eludir licencias, DRM ni controles de acceso.</p>
+  <p><a href="../00_EMPEZAR_AQUI.html">Inicio</a> · <a href="../guia/etapa-0.html">Etapas</a> · <a href="../fuentes_y_limites.html">Fuentes y límites</a> · <a href="../registro_de_cobertura.csv">Registro de cobertura</a></p>
+</footer>
+<script>
+(function(){
+  function abrir(src){
+    var o=document.createElement('div'); o.className='lightbox-ov';
+    var i=document.createElement('img'); i.src=src; o.appendChild(i);
+    function cerrar(){o.remove(); document.removeEventListener('keydown', onkey);}
+    function onkey(e){ if(e.key==='Escape') cerrar(); }
+    o.addEventListener('click', cerrar);
+    document.addEventListener('keydown', onkey);
+    document.body.appendChild(o);
+  }
+  document.addEventListener('DOMContentLoaded', function(){
+    document.querySelectorAll('figure img, main img').forEach(function(img){
+      img.style.cursor='zoom-in';
+      img.addEventListener('click', function(){ abrir(img.currentSrc||img.src); });
+    });
+  });
+})();
+</script>
+</body>
+</html>

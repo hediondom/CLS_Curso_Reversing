@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Etapa 2 · Llamadas, convenciones y marcos de función</title>
+<meta name="description" content="Qué hace CALL, cómo se pasan los argumentos en 32 y 64 bits y cómo reconocer la convención de una función.">
+<link rel="stylesheet" href="../guia/estilo.css">
+</head>
+<body>
+<a class="salto" href="#contenido">Saltar al contenido</a>
+<header class="cabecera">
+  <div class="marca"><a href="../00_EMPEZAR_AQUI.html">CLS · Curso de reversing</a> <span class="edicion">edición 5 · 27/10/2026</span></div>
+  <nav class="principal" aria-label="Navegación principal">
+    <a href="../00_EMPEZAR_AQUI.html">Inicio</a>
+    <a href="../guia/index.html">Curso</a>
+    <a href="../materiales.html">Materiales</a>
+    <a href="../fichas/index.html">Fichas</a>
+    <a href="../glosario.html">Glosario</a>
+    <a href="../preguntas_y_respuestas.html">Repaso</a>
+    <a href="../buscar.html">Buscar</a>
+  </nav>
+</header>
+<main id="contenido">
+<nav class="migas" aria-label="Ubicación"><a href="../00_EMPEZAR_AQUI.html">Inicio</a><span aria-hidden="true">›</span><a href="../guia/index.html">Curso</a><span aria-hidden="true">›</span><span>Etapa 2 · Introducción al reversing</span></nav><h1 id="llamadas-convenciones-y-marcos-de-función">Llamadas, convenciones y marcos de función</h1>
+<aside class="callout nota"><p class="callout-titulo">Objetivo de la lección</p><p>Al terminar vas a poder seguir un <code>call</code> hasta su destino, calcular la dirección de retorno, identificar los argumentos de una función en 32 y 64 bits y decir quién limpia el stack.</p></aside>
+<p><strong>Prerrequisitos:</strong> flujo, stack y registros. <strong>Duración sugerida:</strong> 4 horas. Estimación aproximada.</p>
+<h2 id="call-y-ret"><code>CALL</code> y <code>RET</code></h2>
+<p><code>call destino</code> hace dos cosas:</p>
+<ol><li>Empuja en el stack la dirección de la instrucción <strong>siguiente</strong> (el <em>return address</em>).</li><li>Salta a <code>destino</code>.</li></ol>
+<p><code>ret</code> hace lo inverso: saca el return address del stack y salta ahí.</p>
+<p>Ejemplo del capítulo 06: un <code>call</code> en <code>0x00401013</code> (5 bytes) deja <code>0x00401018</code> en el tope del stack; la rutina hace <code>nop; ret</code> y vuelve a <code>0x00401018</code> (<a class="fuente" href="../../CLS_resultados_intermedios/transcripciones/extraidos/Reversing%20desde%20cero%20%28Ricardo%20y%20Solid%29/Ricardo%20Narvaja%20y%20Solid%20-%20Reversing%20desde%20cero_06%20Instrucciones%203_06%20Instrucciones%203.txt">Reversing desde cero, cap. 06</a>, 00:00:53–00:03:10).</p>
+<pre><code class="lenguaje-asm">0x401013: call 0x40102C     ; push 0x401018 ; jmp 0x40102C
+0x401018: ...               ; acá vuelve</code></pre>
+<p><code>ret n</code> (por ejemplo <code>ret 0x10</code>) hace lo mismo y además suma <code>n</code> a <code>ESP</code> después de sacar el return address. Se usa en la convención <code>stdcall</code> para que la función llamada limpie los argumentos. En el ejemplo del capítulo 06, <code>ret 0x10</code> mueve el stack <code>0x10 + 4 = 0x14</code> (00:08:38–00:09:30).</p>
+<h2 id="call-directo-e-indirecto"><code>call</code> directo e indirecto</h2>
+<pre><code class="lenguaje-asm">call 0x401000          ; directo: el destino está en el opcode (E8 + desplazamiento)
+call dword ptr [0x403000]  ; indirecto: el destino está en la memoria (FF15)</code></pre>
+<p>El indirecto es el que se usa para llamar APIs a través de la IAT. En el capítulo 06, <code>call dword ptr [0x402018]</code> no salta a <code>0x402018</code> sino a lo que hay allí; el capítulo 05 lo muestra con una API de <code>kernel32</code> (<a class="fuente" href="../../CLS_resultados_intermedios/transcripciones/extraidos/Reversing%20desde%20cero%20%28Ricardo%20y%20Solid%29/Ricardo%20Narvaja%20y%20Solid%20-%20Reversing%20desde%20cero_05%20Virtual%20Adress%2C%20RVA%2C%20Offsets%20y%20Desplazamientos_05%20Virtual%20Adress%2C%20RVA%2C%20Offsets%20y%20Desplazamientos.txt">Reversing desde cero, cap. 05</a>, 00:13:00–00:18:00).</p>
+<h2 id="convenciones-de-llamada">Convenciones de llamada</h2>
+<p>Una <strong>convención de llamada</strong> es el acuerdo sobre tres cosas: dónde van los argumentos, quién limpia el stack y qué registros se preservan.</p>
+<h3 id="32-bits">32 bits</h3>
+<div class="tabla"><table>
+<thead><tr>
+<th>Convención</th>
+<th>Argumentos</th>
+<th>Limpia el stack</th>
+<th>Registros volátiles</th>
+</tr></thead><tbody>
+<tr><td><code>cdecl</code></td><td>En el stack, de derecha a izquierda</td><td>El llamador</td><td><code>EAX</code>, <code>ECX</code>, <code>EDX</code></td></tr>
+<tr><td><code>stdcall</code></td><td>En el stack, de derecha a izquierda</td><td>La función (<code>ret n</code>)</td><td><code>EAX</code>, <code>ECX</code>, <code>EDX</code></td></tr>
+<tr><td><code>fastcall</code></td><td><code>ECX</code>, <code>EDX</code> y el resto en el stack</td><td>La función</td><td><code>EAX</code>, <code>ECX</code>, <code>EDX</code></td></tr>
+<tr><td><code>thiscall</code></td><td><code>ECX</code> = <code>this</code>; resto en el stack</td><td>La función</td><td><code>EAX</code>, <code>ECX</code>, <code>EDX</code></td></tr>
+</tbody></table></div>
+<p><code>cdecl</code> es la convención por defecto de C; por eso las funciones variádicas (<code>printf</code>) la usan: solo el llamador sabe cuántos argumentos pasó. <code>stdcall</code> es la de la API de Windows (<code>MessageBoxA</code>, <code>CreateThread</code>). <code>thiscall</code> es la de los métodos de clase en C++.</p>
+<p><strong>Cómo reconocerlas en el listado:</strong></p>
+<ul><li>Si después del <code>call</code> hay un <code>add esp, N</code>, es <code>cdecl</code>: el llamador limpia.</li><li>Si la función termina en <code>ret N</code>, es <code>stdcall</code> o <code>fastcall</code>: la función limpia.</li><li>Si el primer argumento llega en <code>ECX</code>, es <code>fastcall</code> o <code>thiscall</code>.</li></ul>
+<p>El video 28 del curso de OllyDbg muestra el mismo concepto con procedimientos propios: <code>CALL</code>/<code>RET</code>, variables locales y argumentos en la pila (<a class="fuente" href="../../CLS_resultados_intermedios/transcripciones/extraidos/Videos%20y%20material%20adicional%20Ingenieria%20Inversa/Videos_Video28_Video28.txt">Videos y material adicional, Video 28</a>, 00:00:00–00:05:00).</p>
+<h3 id="64-bits">64 bits</h3>
+<p>En x64 hay una sola convención para el código de Windows: los primeros cuatro argumentos enteros van en <code>RCX</code>, <code>RDX</code>, <code>R8</code> y <code>R9</code>; el resto, en el stack. El llamador reserva <strong>32 bytes de shadow space</strong> antes del <code>call</code> y limpia el stack después. Los registros <code>RAX</code>, <code>RCX</code>, <code>RDX</code>, <code>R8</code>–<code>R11</code> son volátiles; <code>RBX</code>, <code>RBP</code>, <code>RDI</code>, <code>RSI</code>, <code>R12</code>–<code>R15</code> se preservan.</p>
+<p>El capítulo 18 lo muestra con <code>main</code>: los tres argumentos llegan en <code>RCX</code>, <code>RDX</code> y <code>R8</code>, y las variables locales se referencian como <code>[rsp+0xNN]</code> (<a class="fuente" href="../../CLS_resultados_intermedios/transcripciones/extraidos/Reversing%20desde%20cero%20%28Ricardo%20y%20Solid%29/Ricardo%20Narvaja%20y%20Solid%20-%20Reversing%20desde%20cero_18%20Funciones%20basadas%20en%20EBP%20vs%20basadas%20en%20ESP_18%20Funciones%20basadas%20en%20EBP%20vs%20basadas%20en%20ESP.txt">Reversing desde cero, cap. 18</a>, 00:13:00–00:20:00).</p>
+<aside class="callout aviso"><p class="callout-titulo">En 64 bits los argumentos no se cargan "en orden"</p><p>Como los argumentos no se apilan uno tras otro con <code>push</code>, el compilador puede setear los registros en <strong>cualquier orden</strong>: podés ver que carga <code>R8</code> y recién una línea más abajo <code>RCX</code>. No deduzcas el primer argumento por su posición en el listado; identificalo por el <strong>registro</strong> (<code>RCX</code>, <code>RDX</code>, <code>R8</code>, <code>R9</code>) y por el rol. El capítulo 19 lo muestra con <code>fgets(buffer, maxcount, stream)</code>: <code>RCX</code> es el buffer, <code>RDX</code> el máximo y <code>R8</code> el stream, aunque en el código <code>RCX</code> aparezca seteado después de <code>R8</code> (<a class="fuente" href="../../CLS_resultados_intermedios/transcripciones/extraidos/Reversing%20desde%20cero%20%28Ricardo%20y%20Solid%29/Ricardo%20Narvaja%20y%20Solid%20-%20Reversing%20desde%20cero_19%20Ejercicio%2064%20bits_19%20Ejercicio%2064%20bits.txt">Reversing desde cero, cap. 19</a>; transcripción .txt, sin marcas de tiempo).</p></aside>
+<h3 id="x64-el-resto-de-la-abi">x64: el resto de la ABI</h3>
+<p>El cap. 18 muestra lo básico; la ABI de x64 de Windows tiene cuatro detalles más que conviene conocer (<strong>conocimiento externo</strong>; <a href="https://learn.microsoft.com/en-us/cpp/build/x64-calling-convention?view=msvc-170" rel="noopener" target="_blank">convención x64 de Microsoft</a>):</p>
+<ul><li><strong>Alineación de la pila.</strong> En el punto del <code>call</code>, <code>RSP</code> debe estar alineado a <strong>16 bytes</strong>. Como el <code>call</code> empuja 8 bytes (el return address), al entrar a la función <code>RSP</code> queda "desalineado en 8"; por eso los prólogos restan una cantidad que deja todo en múltiplo de 16 (y el <strong>shadow space</strong> de 32 bytes también respeta eso). Si ves un <code>sub rsp, 0x28</code> típico, es shadow space (0x20) + alineación.</li><li><strong>Argumentos de punto flotante.</strong> <code>float</code>/<code>double</code> van en <strong><code>XMM0</code>–<code>XMM3</code></strong> (misma posición que los enteros: el 1.º en <code>XMM0</code> o <code>RCX</code>, no ambos). <code>XMM0</code>–<code>XMM5</code> son <strong>volátiles</strong>; <code>XMM6</code>–<code>XMM15</code> se <strong>preservan</strong>.</li><li><strong>Funciones variádicas.</strong> En una variádica (<code>printf</code>), cada argumento flotante se pasa <strong>a la vez</strong> en el registro XMM y en el GPR entero correspondiente, y <code>AL</code> indica cuántos registros vectoriales se usaron. Por eso una variádica se ve distinta de una función normal con los mismos tipos.</li><li><strong>Unwind / <code>.pdata</code>.</strong> No hay cadena SEH en el stack como en 32 bits: la info de desenrollado (qué registros salva el prólogo, dónde está el handler) vive en tablas <strong><code>.pdata</code>/<code>.xdata</code></strong> (lo ves en <a href="02-pe-fino.html">PE fino</a> 2.14). Sirve para <strong>delimitar funciones</strong> sin símbolos y para entender el prólogo/epílogo.</li></ul>
+<h2 id="ejemplo-paso-a-paso-suma-a-b-en-32-bits">Ejemplo paso a paso: <code>suma(a, b)</code> en 32 bits</h2>
+<pre><code class="lenguaje-c">int suma(int a, int b) { return a + b; }
+int main(void) { return suma(3, 4); }</code></pre>
+<p>Compilado con <code>cdecl</code>, la llamada se ve así:</p>
+<pre><code class="lenguaje-asm">push 4          ; segundo argumento
+push 3          ; primer argumento
+call suma
+add  esp, 8     ; el llamador limpia los dos argumentos</code></pre>
+<p>Y la función:</p>
+<pre><code class="lenguaje-asm">suma:
+push ebp
+mov  ebp, esp
+mov  eax, [ebp+8]    ; a
+add  eax, [ebp+12]   ; b
+pop  ebp
+ret</code></pre>
+<p><strong>Recorrido del stack:</strong></p>
+<pre><code class="lenguaje-text">antes del call:      [esp] = 3, [esp+4] = 4
+después del call:    [esp] = return address
+                     [esp+4] = 3
+                     [esp+8] = 4
+después del prólogo: [ebp] = ebp viejo
+                     [ebp+4] = return address
+                     [ebp+8] = 3
+                     [ebp+12] = 4</code></pre>
+<p>Si la función fuera <code>stdcall</code>, terminaría en <code>ret 8</code> y no habría <code>add esp, 8</code> después del <code>call</code>. Ese es el detalle que te dice quién limpia.</p>
+<aside class="callout nota"><p class="callout-titulo">En el Curso IDA: leer una función basada en EBP (ejercicios IDA1/IDA2)</p><p>El Curso IDA trae dos ejercicios muy didácticos de funciones basadas en <code>EBP</code>: <code>IDA1.exe</code> e <code>IDA2.exe</code>. El método es el de siempre: se llega al <code>main</code> <strong>por la string</strong> ("You are a winner man je"), se usan los <strong>xrefs</strong> (<code>X</code>) para ver dónde se tocan las variables y se las <strong>renombra</strong> (en <code>IDA2</code> hay dos "cookies" que hay que comparar para caer en la zona del "chico bueno"). Un detalle real a tener en cuenta: <code>IDA1.exe</code> está compilado con <strong>DevC++</strong>, que arma las llamadas a las APIs de una forma distinta a la habitual y puede marear al principio (<a href="../ida_tutes/23.html">Curso IDA · tute 23, IDA1.exe</a> y <a href="../ida_tutes/24.html">tute 24, IDA2 (cookies)</a>).</p></aside>
+<h2 id="recursión">Recursión</h2>
+<p>Una función recursiva se llama a sí misma. Cada llamada crea un <strong>nuevo marco</strong> en el stack, con sus propios argumentos y locales. Por eso una recursión sin caso base termina en <em>stack overflow</em>: el stack se agota.</p>
+<pre><code class="lenguaje-c">int fact(int n) { return n &lt;= 1 ? 1 : n * fact(n - 1); }</code></pre>
+<p>En el debugger vas a ver el mismo <code>call</code> repetido con valores decrecientes de <code>n</code>, y el call stack creciendo hacia arriba. El panel <strong>Call Stack</strong> te muestra la cadena de marcos; es la forma más rápida de entender una recursión.</p>
+<h2 id="llamadas-indirectas-y-funciones-virtuales">Llamadas indirectas y funciones virtuales</h2>
+<pre><code class="lenguaje-asm">call [eax]        ; llama a la función apuntada por EAX
+call [eax+4]      ; llama a la segunda entrada de una tabla</code></pre>
+<p>En C++, un objeto con funciones virtuales guarda al principio un puntero a la <strong>vtable</strong>: una tabla de punteros a métodos. <code>call [eax+4]</code> puede ser "llamar al segundo método virtual del objeto apuntado por EAX". El capítulo 37 lo desarrolla con una clase de <code>0x58</code> bytes y una vtable de cuatro punteros (<a class="fuente" href="../../CLS_resultados_intermedios/transcripciones/extraidos/Reversing%20desde%20cero%20%28Ricardo%20y%20Solid%29/Ricardo%20Narvaja%20y%20Solid%20-%20Reversing%20desde%20cero_37%20TIPS%201_TIPS%201.txt">Reversing desde cero, cap. 37</a>, 00:07:38–00:10:48). Es un tema de la rama de C++; en el recorrido base alcanza con reconocer el patrón.</p>
+<h2 id="práctica">Práctica</h2>
+<ol><li>Compilá <code>suma.c</code> con <code>gcc -O0 -m32</code> (o Visual Studio en 32 bits) y mirá el listado en x64dbg. Identificá los <code>push</code>, el <code>call</code>, el <code>add esp</code> y el <code>ret</code>.</li><li>Hacé lo mismo con <code>__stdcall</code> (en GCC, <code>__attribute__((stdcall))</code>) y comprobá si aparece <code>ret 8</code>.</li><li>Compilá la versión de 64 bits y verificá en qué registros llegan <code>a</code> y <code>b</code>.</li><li>Escribí una función recursiva de factorial y mirá el Call Stack en el debugger con <code>n = 3</code>.</li><li>En el programa del capítulo 15, identificá si <code>printf</code>/<code>scanf</code> son <code>cdecl</code> o <code>stdcall</code> y justificá con el <code>add esp</code> posterior.</li></ol>
+<h2 id="preguntas-de-repaso">Preguntas de repaso</h2>
+<p><strong>1. ¿Qué guarda <code>call</code> en el stack?</strong> La dirección de la instrucción siguiente al <code>call</code>, para que <code>ret</code> sepa dónde volver.</p>
+<p><strong>2. ¿Quién limpia los argumentos en <code>cdecl</code>? ¿Y en <code>stdcall</code>?</strong> En <code>cdecl</code>, el llamador (con <code>add esp, N</code> después del <code>call</code>). En <code>stdcall</code>, la función llamada (con <code>ret N</code>).</p>
+<p><strong>3. ¿Cómo se pasa <code>this</code> en un método de C++ de 32 bits?</strong> En <code>ECX</code>, según la convención <code>thiscall</code>.</p>
+<p><strong>4. ¿Cuántos argumentos van en registros en x64?</strong> Los primeros cuatro enteros: <code>RCX</code>, <code>RDX</code>, <code>R8</code>, <code>R9</code>. El resto va al stack, después de 32 bytes de shadow space.</p>
+<p><strong>5. ¿Por qué una recursión infinita produce un stack overflow?</strong> Porque cada llamada crea un marco nuevo y el stack tiene un tamaño limitado. Al agotarse, el sistema termina el proceso.</p>
+<h2 id="antes-de-avanzar">Antes de avanzar</h2>
+<p>Tenés que poder:</p>
+<ul><li>Calcular la dirección de retorno de un <code>call</code>.</li><li>Distinguir <code>call</code> directo de indirecto.</li><li>Reconocer <code>cdecl</code>, <code>stdcall</code> y la convención x64 en un listado.</li><li>Dibujar el marco de una función con dos argumentos.</li></ul>
+<aside class="callout nota"><p class="callout-titulo">Puerta de salida</p><p>Si podés explicar quién limpia el stack mirando el <code>ret</code> o el <code>add esp</code>, estás listo para usar el debugger con criterio.</p></aside>
+<h2 id="fuentes-de-esta-lección">Fuentes de esta lección</h2>
+<ul><li><a class="fuente" href="../../CLS_resultados_intermedios/transcripciones/extraidos/Reversing%20desde%20cero%20%28Ricardo%20y%20Solid%29/Ricardo%20Narvaja%20y%20Solid%20-%20Reversing%20desde%20cero_06%20Instrucciones%203_06%20Instrucciones%203.txt">Reversing desde cero, cap. 06</a> — <code>CALL</code> directo/indirecto, <code>RET</code>, <code>RET n</code>.</li><li><a class="fuente" href="../../CLS_resultados_intermedios/transcripciones/extraidos/Reversing%20desde%20cero%20%28Ricardo%20y%20Solid%29/Ricardo%20Narvaja%20y%20Solid%20-%20Reversing%20desde%20cero_18%20Funciones%20basadas%20en%20EBP%20vs%20basadas%20en%20ESP_18%20Funciones%20basadas%20en%20EBP%20vs%20basadas%20en%20ESP.txt">Reversing desde cero, cap. 18</a> — marcos, prólogo/epílogo, convención x64.</li><li><a class="fuente" href="../../CLS_resultados_intermedios/transcripciones/extraidos/Reversing%20desde%20cero%20%28Ricardo%20y%20Solid%29/Ricardo%20Narvaja%20y%20Solid%20-%20Reversing%20desde%20cero_19%20Ejercicio%2064%20bits_19%20Ejercicio%2064%20bits.txt">Reversing desde cero, cap. 19</a> — argumentos x64 cargados fuera de orden; identificar por registro y rol (<code>fgets</code>).</li><li><a class="fuente" href="../../CLS_resultados_intermedios/transcripciones/extraidos/Videos%20y%20material%20adicional%20Ingenieria%20Inversa/Videos_Video28_Video28.txt">Videos y material adicional, Video 28</a> — procedimientos y variables locales en MASM32.</li><li><a class="fuente" href="../../CLS_resultados_intermedios/transcripciones/extraidos/Reversing%20desde%20cero%20%28Ricardo%20y%20Solid%29/Ricardo%20Narvaja%20y%20Solid%20-%20Reversing%20desde%20cero_37%20TIPS%201_TIPS%201.txt">Reversing desde cero, cap. 37</a> — vtables y llamadas virtuales.</li><li><a href="../ida_tutes/23.html">Curso IDA · tutes 23 y 24</a> — funciones basadas en EBP (<code>IDA1.exe</code>/<code>IDA2.exe</code>), el quirk de DevC++ al llamar APIs y el método strings→<code>main</code>→xrefs→renombrar.</li></ul>
+<aside class="callout nota"><p class="callout-titulo">Capas de esta lección</p><p><strong>Contenido observado en CLS:</strong> el ejemplo del <code>call</code> en <code>0x00401013</code>, <code>ret 0x10</code>, la convención x64 del capítulo 18 y la vtable del capítulo 37. <strong>Conocimiento externo:</strong> tabla de convenciones <code>cdecl</code>/<code>stdcall</code>/<code>fastcall</code>/<code>thiscall</code>. <strong>Recomendación editorial:</strong> el ejemplo <code>suma</code> y los ejercicios.</p></aside>
+</main>
+<footer class="pie">
+  <p>Material educativo y defensivo. Las prácticas se limitan a programas propios, software abierto o crackmes diseñados para aprender. No se enseña a eludir licencias, DRM ni controles de acceso.</p>
+  <p><a href="../00_EMPEZAR_AQUI.html">Inicio</a> · <a href="../guia/etapa-0.html">Etapas</a> · <a href="../fuentes_y_limites.html">Fuentes y límites</a> · <a href="../registro_de_cobertura.csv">Registro de cobertura</a></p>
+</footer>
+</body>
+</html>

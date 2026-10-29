@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Etapa 1 · El formato PE: cabeceras, secciones e imports</title>
+<meta name="description" content="Cómo está armado un .exe de Windows, cómo se relacionan dirección virtual, RVA y offset, y cómo leer la tabla de imports.">
+<link rel="stylesheet" href="../guia/estilo.css">
+</head>
+<body>
+<a class="salto" href="#contenido">Saltar al contenido</a>
+<header class="cabecera">
+  <div class="marca"><a href="../00_EMPEZAR_AQUI.html">CLS · Curso de reversing</a> <span class="edicion">edición 5 · 27/10/2026</span></div>
+  <nav class="principal" aria-label="Navegación principal">
+    <a href="../00_EMPEZAR_AQUI.html">Inicio</a>
+    <a href="../guia/index.html">Curso</a>
+    <a href="../materiales.html">Materiales</a>
+    <a href="../fichas/index.html">Fichas</a>
+    <a href="../glosario.html">Glosario</a>
+    <a href="../preguntas_y_respuestas.html">Repaso</a>
+    <a href="../buscar.html">Buscar</a>
+  </nav>
+</header>
+<main id="contenido">
+<nav class="migas" aria-label="Ubicación"><a href="../00_EMPEZAR_AQUI.html">Inicio</a><span aria-hidden="true">›</span><a href="../guia/index.html">Curso</a><span aria-hidden="true">›</span><span>Etapa 1 · Fundamentos</span></nav><h1 id="el-formato-pe-cabeceras-secciones-e-imports">El formato PE: cabeceras, secciones e imports</h1>
+<aside class="callout nota"><p class="callout-titulo">Objetivo de la lección</p><p>Al terminar vas a poder abrir un <code>.exe</code> en un visor de PE, ubicar el entry point, la image base y las secciones; convertir una VA a un offset del archivo; y explicar qué es la IAT y por qué un <code>call</code> indirecto pasa por ella.</p></aside>
+<p><strong>Prerrequisitos:</strong> números, memoria y procesos. <strong>Duración sugerida:</strong> 4 horas. Estimación aproximada.</p>
+<h2 id="qué-es-un-pe-y-por-qué-te-importa">Qué es un PE y por qué te importa</h2>
+<p>PE (<em>Portable Executable</em>) es el formato de los ejecutables y DLLs de Windows, tanto de 32 como de 64 bits. El cargador de Windows lo lee para saber qué código ejecutar, qué DLLs cargar, qué direcciones ajustar y qué recursos mostrar.</p>
+<p>Cuando abrís un programa en un debugger, el sistema ya hizo ese trabajo: la imagen está mapeada en memoria. Cuando lo abrís en un editor hexadecimal, ves el archivo tal cual. <strong>La diferencia entre ambos mundos es el formato PE</strong>, y por eso el capítulo 05 insiste en la relación entre dirección virtual, RVA y offset.</p>
+<p>El video 33 del curso de OllyDbg lo dice sin vueltas: el PE es "como un gran diccionario o una enciclopedia" en la cabecera, que le dice a Windows de qué se compone el archivo, dónde están los datos, en qué sección está el código y qué librerías puede usar (<a class="fuente" href="../../CLS_resultados_intermedios/transcripciones/extraidos/Videos%20y%20material%20adicional%20Ingenieria%20Inversa/Videos_Video33_Video33.txt">Videos y material adicional, Video 33</a>, 00:00:00–00:02:00).</p>
+<h2 id="el-recorrido-de-una-cabecera">El recorrido de una cabecera</h2>
+<p>No hace falta memorizar cada campo. Alcanza con saber el recorrido y dónde mirar.</p>
+<h3 id="1-cabecera-dos">1. Cabecera DOS</h3>
+<p>Todo PE empieza con <code>MZ</code> (los bytes <code>4D 5A</code>). En el offset <code>0x3C</code> hay un DWORD llamado <code>e_lfanew</code> que indica dónde empieza la cabecera PE. Ese salto existe por compatibilidad histórica con MS-DOS.</p>
+<h3 id="2-firma-pe-y-cabecera-de-archivo">2. Firma PE y cabecera de archivo</h3>
+<p>En <code>e_lfanew</code> están los bytes <code>50 45 00 00</code> ("PE\0\0") y después la <strong>IMAGE_FILE_HEADER</strong>: arquitectura (<code>Machine</code>), cantidad de secciones (<code>NumberOfSections</code>), tamaño de la cabecera opcional y características.</p>
+<h3 id="3-cabecera-opcional">3. Cabecera opcional</h3>
+<p>Acá están los datos que más vas a usar:</p>
+<div class="tabla"><table>
+<thead><tr>
+<th>Campo</th>
+<th>Qué te dice</th>
+</tr></thead><tbody>
+<tr><td><code>Magic</code></td><td><code>0x10B</code> = PE32; <code>0x20B</code> = PE32+ (64 bits)</td></tr>
+<tr><td><code>AddressOfEntryPoint</code></td><td>RVA del entry point</td></tr>
+<tr><td><code>ImageBase</code></td><td>Dirección preferida de carga</td></tr>
+<tr><td><code>SectionAlignment</code></td><td>Alineación en memoria (normalmente <code>0x1000</code>)</td></tr>
+<tr><td><code>FileAlignment</code></td><td>Alineación en el archivo (normalmente <code>0x200</code> o <code>0x400</code>)</td></tr>
+<tr><td><code>DataDirectory[]</code></td><td>Tablas de imports, exports, recursos, relocalizaciones, TLS, excepciones</td></tr>
+</tbody></table></div>
+<h3 id="4-tabla-de-secciones">4. Tabla de secciones</h3>
+<p>Cada sección tiene nombre, tamaño virtual, RVA, tamaño en archivo, offset en archivo y características. Las clásicas:</p>
+<div class="tabla"><table>
+<thead><tr>
+<th>Sección</th>
+<th>Contenido</th>
+<th>Permisos típicos</th>
+</tr></thead><tbody>
+<tr><td><code>.text</code></td><td>Código</td><td>R-X</td></tr>
+<tr><td><code>.rdata</code></td><td>Constantes, strings, imports</td><td>R--</td></tr>
+<tr><td><code>.data</code></td><td>Variables globales inicializadas</td><td>RW-</td></tr>
+<tr><td><code>.rsrc</code></td><td>Recursos (iconos, diálogos, strings)</td><td>R--</td></tr>
+<tr><td><code>.reloc</code></td><td>Relocalizaciones</td><td>R--</td></tr>
+<tr><td><code>.pdata</code></td><td>Información de excepciones en x64</td><td>R--</td></tr>
+</tbody></table></div>
+<h2 id="ejemplo-paso-a-paso-de-la-va-al-offset">Ejemplo paso a paso: de la VA al offset</h2>
+<p>Volvemos al ejecutable del capítulo 05, que ya usamos en la lección de números. El debugger muestra el entry point en <code>0x6D1372</code> y el mapa de memoria dice que la imagen empieza en <code>0x6D0000</code>.</p>
+<p><strong>Paso 1. RVA.</strong></p>
+<pre><code class="lenguaje-text">RVA = 0x6D1372 - 0x6D0000 = 0x1372</code></pre>
+<p><strong>Paso 2. Offset en el archivo.</strong> El header ocupa <code>0x1000</code> en memoria y <code>.text</code> empieza en el archivo en <code>0x400</code>:</p>
+<pre><code class="lenguaje-text">offset = 0x1372 - 0x1000 + 0x400 = 0x772</code></pre>
+<p><strong>Paso 3. Verificación.</strong> En el offset <code>0x772</code> del archivo están los bytes <code>E8 C4 03 00 00</code>: el <code>call</code> que el debugger muestra en <code>0x6D1372</code>. La comprobación está en el capítulo 05, entre 00:02:30 y 00:03:10 (<a class="fuente" href="../../CLS_resultados_intermedios/transcripciones/extraidos/Reversing%20desde%20cero%20%28Ricardo%20y%20Solid%29/Ricardo%20Narvaja%20y%20Solid%20-%20Reversing%20desde%20cero_05%20Virtual%20Adress%2C%20RVA%2C%20Offsets%20y%20Desplazamientos_05%20Virtual%20Adress%2C%20RVA%2C%20Offsets%20y%20Desplazamientos.txt">Reversing desde cero, cap. 05</a>).</p>
+<aside class="callout nota"><p class="callout-titulo">La fórmula general</p><p><code>offset = VA - ImageBase - VirtualAddress_de_la_sección + PointerToRawData_de_la_sección</code></p>
+<p>Para <code>.text</code> del ejemplo: <code>VA - 0x6D0000 - 0x1000 + 0x400</code>. Cada sección tiene su propio <code>VirtualAddress</code> y su propio <code>PointerToRawData</code>. Si usás los de <code>.text</code> para una dirección de <code>.rdata</code>, el cálculo da cualquier cosa.</p></aside>
+<h2 id="imports-e-iat">Imports e IAT</h2>
+<p>Un programa de Windows casi nunca hace todo solo: llama a funciones de DLLs (<code>kernel32.dll</code>, <code>user32.dll</code>, etc.). Esas funciones no están en el <code>.exe</code>; están en la DLL que se carga en tiempo de ejecución. El PE guarda una <strong>tabla de imports</strong> con los nombres (o números) de las funciones que necesita.</p>
+<p>Cuando el cargador carga el programa, completa la <strong>IAT</strong> (<em>Import Address Table</em>): una tabla de punteros donde cada entrada contiene la dirección real de la función en memoria.</p>
+<p>Por eso un <code>call</code> a una API se ve así:</p>
+<pre><code class="lenguaje-asm">call dword ptr [0x6E300C]</code></pre>
+<p>No es un <code>call</code> directo a una dirección fija: es un <code>call</code> <strong>indirecto</strong> que lee el puntero guardado en <code>0x6E300C</code>. Si esa entrada de la IAT apunta a <code>kernel32!SetUnhandledExceptionFilter</code>, el <code>call</code> termina ahí.</p>
+<p>El capítulo 05 lo muestra en vivo: el opcode es <code>FF15</code>, la dirección entre corchetes es <code>0x6E300C</code>, y adentro está el puntero a la función de <code>kernel32</code>. Cuando Ricardo cambia manualmente el contenido de esa entrada por <code>0x6D13B8</code>, el mismo <code>call</code> pasa a llamar a una dirección interna del programa. Eso demuestra que <strong>la instrucción no cambió: cambió el puntero de la IAT</strong> (cap. 05, 00:13:00–00:18:00).</p>
+<aside class="callout aviso"><p class="callout-titulo">IAT redirection: tema avanzado, no tarea inicial</p><p>Cambiar entradas de la IAT es una técnica que usan los empacadores para ocultar llamadas. El capítulo 17 la estudia en el marco del desempaquetado de protectores comerciales. En esta guía se explica <strong>qué es</strong> y cómo reconocerla, pero no se propone como ejercicio: no vas a desempaquetar protectores comerciales ni a eludir sus protecciones.</p></aside>
+<h3 id="imports-por-nombre-y-por-ordinal">Imports por nombre y por ordinal</h3>
+<p>En la tabla de imports, cada función puede identificarse por <strong>nombre</strong> (<code>MessageBoxA</code>) o por <strong>ordinal</strong> (un número). Los ordinales se usan cuando el nombre no se exporta o para complicar el análisis. Si ves <code>ORDINAL 1234</code> en un import, no es un error: es una referencia por número.</p>
+<h3 id="exports">Exports</h3>
+<p>Una DLL puede <strong>exportar</strong> funciones para que otros programas las usen. La tabla de exports tiene nombre, ordinal y RVA de cada función. En un <code>.exe</code> normalmente no hay exports; en una DLL sí, y son el punto de entrada para analizarla.</p>
+<h2 id="relocalizaciones-y-aslr">Relocalizaciones y ASLR</h2>
+<p>Si el cargador no puede cargar la imagen en su <code>ImageBase</code> preferida, tiene que <strong>reubicarla</strong>: sumar una diferencia constante a todas las direcciones absolutas. Para eso sirve la sección <code>.reloc</code>.</p>
+<p><strong>ASLR</strong> (<em>Address Space Layout Randomization</em>) es la mitigación que hace que la imagen se cargue en una dirección distinta cada vez. Por eso el debugger muestra <code>0x6D0000</code> hoy y quizá otra base mañana, y por eso IDA (que analiza el archivo estático) muestra la base preferida. El capítulo 26b lo explica con un ejemplo concreto (<a class="fuente" href="../../CLS_resultados_intermedios/transcripciones/extraidos/Reversing%20desde%20cero%20%28Ricardo%20y%20Solid%29/Ricardo%20Narvaja%20y%20Solid%20-%20Reversing%20desde%20cero_26b%20ASLR_26b%20ASLR.txt">Reversing desde cero, cap. 26b</a>).</p>
+<p>Consecuencia práctica: <strong>no compares direcciones absolutas entre el archivo y la ejecución</strong>. Compará RVA u offsets, o rebaseá el desensamblador a la base que ves en el debugger. El capítulo 14 muestra cómo hacerlo en IDA (<a class="fuente" href="../../CLS_resultados_intermedios/transcripciones/extraidos/Reversing%20desde%20cero%20%28Ricardo%20y%20Solid%29/Ricardo%20Narvaja%20y%20Solid%20-%20Reversing%20desde%20cero_14%20Conociendo%20IDA_14%20Conociendo%20IDA.txt">Reversing desde cero, cap. 14</a>, 00:05:30–00:08:00).</p>
+<h2 id="cómo-reconocer-un-binario-empacado">Cómo reconocer un binario empacado</h2>
+<p>Un empacador comprime o cifra el código original y lo descomprime en tiempo de ejecución. Señales típicas en el PE:</p>
+<ul><li>Nombres de sección como <code>UPX0</code>, <code>UPX1</code>, <code>.aspack</code>, <code>.packed</code>.</li><li>Muy pocos imports, o imports raros para un programa de interfaz gráfica.</li><li>Entry point en una sección que no es <code>.text</code>.</li><li>Secciones con tamaños virtuales enormes y datos crudos pequeños (el espacio se llena al descomprimir).</li><li><code>RWX</code> en la sección de destino.</li></ul>
+<p>El capítulo 10 trabaja con UPX como ejemplo didáctico de desempaquetado. Esta guía <strong>no</strong> incluye el desempaquetado de protectores comerciales como práctica; si querés entender el concepto, estudiá el caso UPX sobre un binario propio y quedate con la idea de "código que se materializa en memoria", no con la receta para saltar protecciones.</p>
+<h2 id="práctica">Práctica</h2>
+<ol><li>Compilá tu propio <code>.exe</code> (el de los dos hilos sirve) y abrilo con un visor de PE: PE-bear, CFF Explorer o Detect It Easy. Anotá:</li></ol>
+<ul><li><code>Machine</code> y <code>Magic</code> (¿32 o 64 bits?).</li><li><code>ImageBase</code> y <code>AddressOfEntryPoint</code>.</li><li>Secciones con sus RVA, <code>PointerToRawData</code> y permisos.</li><li>Tres imports con nombre y la DLL de la que vienen.</li></ul>
+<ol><li>Calculá el offset del entry point y verificalo en un editor hexadecimal: en ese offset deberían estar los primeros bytes de la función de entrada.</li><li>Cambiá la vista del visor a "RVA" y a "offset" y comprobá que los números cambian. Explicá por qué.</li><li>Escribí un script en Python que lea la cabecera y muestre <code>ImageBase</code>, <code>AddressOfEntryPoint</code> y las secciones. Podés usar <code>struct</code> y <code>os.path.getsize</code>; no necesitás librerías externas.</li></ol>
+<pre><code class="lenguaje-python">import struct
+
+with open("programa.exe", "rb") as f:
+    data = f.read()
+
+pe = struct.unpack_from("&lt;I", data, 0x3C)[0]
+assert data[pe:pe+4] == b"PE\0\0"
+machine, nsec = struct.unpack_from("&lt;HH", data, pe+4)
+opt_size = struct.unpack_from("&lt;H", data, pe+20)[0]
+opt = pe + 24
+magic = struct.unpack_from("&lt;H", data, opt)[0]
+entry = struct.unpack_from("&lt;I", data, opt+16)[0]
+base = struct.unpack_from("&lt;I", data, opt+28)[0] if magic == 0x10B else struct.unpack_from("&lt;Q", data, opt+24)[0]
+print(f"magic={magic:#x} machine={machine:#x} secciones={nsec}")
+print(f"entry RVA={entry:#x} image base={base:#x}")
+sec = pe + 24 + opt_size
+for i in range(nsec):
+    off = sec + i * 40
+    name = data[off:off+8].rstrip(b"\0").decode(errors="replace")
+    vsize, vaddr, rsize, raw = struct.unpack_from("&lt;IIII", data, off+8)
+    print(f"{name:8} RVA={vaddr:#08x} raw={raw:#08x} vsize={vsize:#x}")</code></pre>
+<h2 id="preguntas-de-repaso">Preguntas de repaso</h2>
+<p><strong>1. ¿Qué diferencia hay entre RVA y offset?</strong> La RVA es una dirección relativa a la image base, en el espacio de memoria. El offset es una posición dentro del archivo en disco. Se relacionan con la alineación del header y el <code>PointerToRawData</code> de la sección.</p>
+<p><strong>2. ¿Qué es la IAT?</strong> La tabla de direcciones de imports. El cargador la completa con las direcciones reales de las funciones de las DLLs; las llamadas indirectas leen de ahí.</p>
+<p><strong>3. ¿Por qué un <code>call</code> a <code>MessageBoxA</code> no es un <code>call</code> a una dirección fija?</strong> Porque <code>MessageBoxA</code> vive en <code>user32.dll</code>, que se carga en una dirección que puede variar. El <code>.exe</code> llama a través de la IAT, que el cargador completa.</p>
+<p><strong>4. ¿Qué indica <code>Magic = 0x20B</code>?</strong> Que la cabecera opcional es PE32+, es decir, un binario de 64 bits.</p>
+<p><strong>5. ¿Por qué ASLR complica comparar IDA con el debugger?</strong> Porque la imagen se carga en una base distinta de la preferida. Las direcciones absolutas cambian; las RVA no. Hay que rebasar o comparar offsets.</p>
+<p><strong>6. ¿Un binario con secciones <code>UPX0</code>/<code>UPX1</code> es malware?</strong> No necesariamente: es un binario empacado con UPX. Puede ser un programa legítimo comprimido o un malware que usa el mismo empacador. La señal orienta, no concluye.</p>
+<h2 id="antes-de-avanzar">Antes de avanzar</h2>
+<p>Tenés que poder:</p>
+<ul><li>Recorrer la cabecera PE y ubicar entry point, image base y secciones.</li><li>Convertir una VA en offset y verificarla en el archivo.</li><li>Explicar qué es la IAT y leer un <code>call dword ptr [dirección]</code>.</li><li>Reconocer las señales de un binario empacado y decir por qué no lo vas a desempaquetar en este curso.</li></ul>
+<aside class="callout nota"><p class="callout-titulo">Puerta de salida de la Etapa 1</p><p>Si podés hacer el recorrido completo con tu propio <code>.exe</code> y explicar cada paso, terminaste los fundamentos. La Etapa 2 empieza con el lenguaje del procesador: assembly.</p></aside>
+<h2 id="fuentes-de-esta-lección">Fuentes de esta lección</h2>
+<ul><li><a class="fuente" href="../../CLS_resultados_intermedios/transcripciones/extraidos/Reversing%20desde%20cero%20%28Ricardo%20y%20Solid%29/Ricardo%20Narvaja%20y%20Solid%20-%20Reversing%20desde%20cero_05%20Virtual%20Adress%2C%20RVA%2C%20Offsets%20y%20Desplazamientos_05%20Virtual%20Adress%2C%20RVA%2C%20Offsets%20y%20Desplazamientos.txt">Reversing desde cero, cap. 05</a> — VA, RVA, offset, secciones, call directo e indirecto, IAT.</li><li><a class="fuente" href="../../CLS_resultados_intermedios/transcripciones/extraidos/Videos%20y%20material%20adicional%20Ingenieria%20Inversa/Videos_Video33_Video33.txt">Videos y material adicional, Video 33</a> — formato PE, secciones, imports, relocalizaciones.</li><li><a class="fuente" href="../../CLS_resultados_intermedios/transcripciones/extraidos/Reversing%20desde%20cero%20%28Ricardo%20y%20Solid%29/Ricardo%20Narvaja%20y%20Solid%20-%20Reversing%20desde%20cero_14%20Conociendo%20IDA_14%20Conociendo%20IDA.txt">Reversing desde cero, cap. 14</a> — rebase y file offset entre IDA y el debugger.</li><li><a class="fuente" href="../../CLS_resultados_intermedios/transcripciones/extraidos/Reversing%20desde%20cero%20%28Ricardo%20y%20Solid%29/Ricardo%20Narvaja%20y%20Solid%20-%20Reversing%20desde%20cero_26b%20ASLR_26b%20ASLR.txt">Reversing desde cero, cap. 26b</a> — ASLR.</li><li><a class="fuente" href="../../CLS_resultados_intermedios/transcripciones/extraidos/Reversing%20desde%20cero%20%28Ricardo%20y%20Solid%29/Ricardo%20Narvaja%20y%20Solid%20-%20Reversing%20desde%20cero_10%20Unpacking%201%20-%20UPX_10%20Unpacking%201%20-%20UPX%20.txt">Reversing desde cero, cap. 10</a> — UPX como caso de binario empacado.</li></ul>
+<aside class="callout nota"><p class="callout-titulo">Capas de esta lección</p><p><strong>Contenido observado en CLS:</strong> el ejemplo <code>0x6D1372 → 0x772</code>, la IAT en <code>0x6E300C</code>, la lectura del PE del video 33 y la explicación de ASLR del capítulo 26b. <strong>Conocimiento externo:</strong> estructura de la cabecera PE y del directorio de imports. <strong>Recomendación editorial:</strong> el script de Python y el límite explícito sobre desempaquetado.</p></aside>
+</main>
+<footer class="pie">
+  <p>Material educativo y defensivo. Las prácticas se limitan a programas propios, software abierto o crackmes diseñados para aprender. No se enseña a eludir licencias, DRM ni controles de acceso.</p>
+  <p><a href="../00_EMPEZAR_AQUI.html">Inicio</a> · <a href="../guia/etapa-0.html">Etapas</a> · <a href="../fuentes_y_limites.html">Fuentes y límites</a> · <a href="../registro_de_cobertura.csv">Registro de cobertura</a></p>
+</footer>
+</body>
+</html>

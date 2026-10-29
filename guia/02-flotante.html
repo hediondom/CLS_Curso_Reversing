@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Etapa 2 · Punto flotante y SSE: los registros xmm</title>
+<meta name="description" content="Cómo se ven las operaciones con float y double en x86/x64 de Windows, el FPU x87 histórico y las instrucciones SSE.">
+<link rel="stylesheet" href="../guia/estilo.css">
+</head>
+<body>
+<a class="salto" href="#contenido">Saltar al contenido</a>
+<header class="cabecera">
+  <div class="marca"><a href="../00_EMPEZAR_AQUI.html">CLS · Curso de reversing</a> <span class="edicion">edición 5 · 27/10/2026</span></div>
+  <nav class="principal" aria-label="Navegación principal">
+    <a href="../00_EMPEZAR_AQUI.html">Inicio</a>
+    <a href="../guia/index.html">Curso</a>
+    <a href="../materiales.html">Materiales</a>
+    <a href="../fichas/index.html">Fichas</a>
+    <a href="../glosario.html">Glosario</a>
+    <a href="../preguntas_y_respuestas.html">Repaso</a>
+    <a href="../buscar.html">Buscar</a>
+  </nav>
+</header>
+<main id="contenido">
+<nav class="migas" aria-label="Ubicación"><a href="../00_EMPEZAR_AQUI.html">Inicio</a><span aria-hidden="true">›</span><a href="../guia/index.html">Curso</a><span aria-hidden="true">›</span><span>Etapa 2 · Introducción al reversing</span></nav><h1 id="punto-flotante-y-sse-los-registros-xmm">Punto flotante y SSE: los registros xmm</h1>
+<aside class="callout aviso"><p class="callout-titulo">De dónde sale esta lección</p><p>Este tema <strong>no está en el corpus CLS</strong>: es <strong>conocimiento externo</strong> que agregamos para completar la guía. El curso de CLS trabaja casi todo con enteros, así que el punto flotante quedaba sin cubrir. Lo incluimos porque aparece en cualquier binario de Windows real y, sin él, te trabás la primera vez que ves un registro <code>xmm</code>.</p></aside>
+<aside class="callout nota"><p class="callout-titulo">Objetivo de la lección</p><p>Al terminar vas a poder reconocer una operación con <code>float</code>/<code>double</code> en un listado, leer las instrucciones SSE escalares más comunes (<code>movss</code>, <code>movsd</code>, <code>addsd</code>, <code>cvtsi2sd</code>, <code>ucomisd</code>) y entender por qué una comparación de flotantes se lee distinto de una de enteros.</p></aside>
+<p><strong>Prerrequisitos:</strong> instrucciones, flujo y registros (Etapa 2). <strong>Duración sugerida:</strong> 3 horas.</p>
+<h2 id="por-qué-vas-a-chocarte-con-esto">Por qué vas a chocarte con esto</h2>
+<p>Apenas analices un binario que haga una cuenta con decimales —un precio, un porcentaje, una coordenada, un promedio— vas a ver registros <code>xmm0</code>, <code>xmm1</code>… e instrucciones terminadas en <code>ss</code>, <code>sd</code>, <code>ps</code> o <code>pd</code> que no estaban en la tabla de enteros. No es un tema avanzado: es el día a día de cualquier programa compilado hoy. Además, muchos <code>memcpy</code>/<code>memset</code> optimizados usan registros <code>xmm</code> para mover 16 bytes de una.</p>
+<h2 id="dos-mundos-x87-y-sse">Dos mundos: x87 y SSE</h2>
+<p>Hay dos formas de hacer punto flotante en x86, y conviene distinguirlas porque se ven muy distinto:</p>
+<div class="tabla"><table>
+<thead><tr>
+<th></th>
+<th><strong>x87 (FPU)</strong></th>
+<th><strong>SSE / SSE2</strong></th>
+</tr></thead><tbody>
+<tr><td>Época</td><td>Clásico; común en código de 32 bits</td><td>Estándar desde ~2003; <strong>obligatorio en x64</strong></td></tr>
+<tr><td>Registros</td><td>Pila <code>st(0)</code>…<code>st(7)</code></td><td><code>xmm0</code>…<code>xmm7</code> (32 bits) / <code>xmm0</code>…<code>xmm15</code> (64 bits)</td></tr>
+<tr><td>Estilo</td><td>Basado en pila (como una calculadora RPN)</td><td>Basado en registros (como los enteros)</td></tr>
+<tr><td>Instrucciones</td><td><code>fld</code>, <code>fstp</code>, <code>faddp</code>, <code>fmul</code>, <code>fcomip</code></td><td><code>movss</code>, <code>movsd</code>, <code>addsd</code>, <code>mulsd</code>, <code>ucomisd</code></td></tr>
+</tbody></table></div>
+<p>En 64 bits el compilador usa <strong>casi siempre SSE</strong>; vas a ver x87 sobre todo en binarios viejos de 32 bits.</p>
+<h2 id="ieee-754-en-una-cucharada">IEEE 754 en una cucharada</h2>
+<ul><li>Un <strong><code>float</code></strong> ocupa 4 bytes; un <strong><code>double</code></strong>, 8. No son enteros: tienen signo, exponente y mantisa.</li><li>Por eso las constantes flotantes <strong>no se ven como el número</strong>. <code>1.0</code> en <code>double</code> es <code>0x3FF0000000000000</code>; <code>0.5</code> es <code>0x3FE0000000000000</code>. Suelen cargarse desde <code>.rdata</code>.</li><li>Si en un <code>movsd xmm0, [0x...]</code> el valor cargado es <code>0x4059000000000000</code>, no es "un número raro": es <code>100.0</code> en <code>double</code>. Cualquier conversor IEEE 754 te lo traduce; no hace falta hacerlo a mano.</li></ul>
+<h2 id="las-instrucciones-sse-que-vas-a-ver">Las instrucciones SSE que vas a ver</h2>
+<p>La clave está en el <strong>sufijo</strong>:</p>
+<ul><li><code>ss</code> = <em>scalar single</em> → un <code>float</code> (4 bytes).</li><li><code>sd</code> = <em>scalar double</em> → un <code>double</code> (8 bytes).</li><li><code>ps</code>/<code>pd</code> = <em>packed</em> → varios valores a la vez (vectorización; ver la lección de optimizaciones).</li></ul>
+<div class="tabla"><table>
+<thead><tr>
+<th>Instrucción</th>
+<th>Qué hace</th>
+</tr></thead><tbody>
+<tr><td><code>movss</code> / <code>movsd</code></td><td>mueve un float / un double</td></tr>
+<tr><td><code>movaps</code> / <code>movups</code></td><td>mueve 16 bytes (alineado / sin alinear)</td></tr>
+<tr><td><code>addsd</code>, <code>subsd</code>, <code>mulsd</code>, <code>divsd</code></td><td>aritmética con double</td></tr>
+<tr><td><code>cvtsi2sd</code></td><td>entero → double</td></tr>
+<tr><td><code>cvttsd2si</code></td><td>double → entero (trunca)</td></tr>
+<tr><td><code>cvtss2sd</code> / <code>cvtsd2ss</code></td><td>float ↔ double</td></tr>
+<tr><td><code>comiss</code> / <code>ucomisd</code></td><td><strong>comparar</strong> flotantes (actualiza EFLAGS)</td></tr>
+<tr><td><code>xorps xmm0, xmm0</code></td><td>pone el registro en 0 (truco idiomático)</td></tr>
+<tr><td><code>pxor</code>, <code>andps</code>, <code>orps</code></td><td>lógicas de 128 bits (a veces para el signo)</td></tr>
+</tbody></table></div>
+<aside class="callout nota"><p class="callout-titulo"><code>xorps xmm, xmm</code> no es "una lógica rara"</p><p>Igual que <code>xor eax, eax</code> pone <code>EAX</code> en cero, <code>xorps xmm0, xmm0</code> pone <code>xmm0</code> en cero. Es el modismo del compilador para inicializar un flotante en 0.0.</p></aside>
+<h2 id="ejemplo-paso-a-paso-double-en-x64">Ejemplo paso a paso: <code>double</code> en x64</h2>
+<pre><code class="lenguaje-c">double promedio(double a, double b) {
+    return (a + b) / 2.0;
+}</code></pre>
+<p>En x64 de Windows, los <code>double</code> llegan en <code>xmm0</code> y <code>xmm1</code>, y el resultado vuelve en <code>xmm0</code>:</p>
+<pre><code class="lenguaje-asm">promedio:
+    addsd   xmm0, xmm1              ; xmm0 = a + b
+    movsd   xmm1, [rel dos]         ; xmm1 = 2.0  (0x4000000000000000)
+    divsd   xmm0, xmm1              ; xmm0 = (a+b) / 2.0
+    ret
+dos: dq 0x4000000000000000          ; 2.0 en .rdata</code></pre>
+<p>Lo que tenés que reconocer: <code>xmm0</code>/<code>xmm1</code> traen los argumentos, <code>addsd</code> es la suma, la constante <code>2.0</code> se carga de datos y el resultado queda en <code>xmm0</code>. No hay <code>push</code>/<code>pop</code> de flotantes: viajan por registros <code>xmm</code>.</p>
+<h2 id="comparar-flotantes-es-distinto">Comparar flotantes es distinto</h2>
+<p>Una comparación de enteros usa <code>cmp</code> + <code>je/jg/jl</code>. Una de flotantes usa <code>ucomisd</code>/<code>comiss</code>, que actualiza <code>ZF</code>, <code>PF</code> y <code>CF</code> (no <code>SF</code>/<code>OF</code>), y después un salto <strong>sin signo</strong> (<code>ja</code>, <code>jae</code>, <code>jb</code>, <code>jbe</code>, <code>je</code>):</p>
+<pre><code class="lenguaje-asm">ucomisd xmm0, xmm1
+jae     es_mayor_o_igual     ; usa CF/ZF, como una comparación sin signo</code></pre>
+<p>Además aparece el <strong>flag de paridad (<code>PF</code>)</strong>: se activa si alguno de los operandos es <code>NaN</code> (<em>not a number</em>). Por eso a veces ves un <code>jp</code>/<code>jnp</code> antes del salto real: el compilador está manejando el caso "no es un número". Si ves <code>ucomisd</code> seguido de <code>jp</code>, no te asustes: es el chequeo de NaN, no la condición principal.</p>
+<h2 id="x87-en-binarios-viejos-lo-mínimo">x87 en binarios viejos (lo mínimo)</h2>
+<p>En código de 32 bits podés encontrarte con la pila del FPU:</p>
+<pre><code class="lenguaje-asm">fld  qword [a]     ; empuja a en st(0)
+fadd qword [b]     ; st(0) = a + b
+fstp qword [res]   ; guarda st(0) en res y lo saca de la pila</code></pre>
+<p>Se lee como una calculadora de pila: <code>fld</code> empuja, las operaciones trabajan sobre <code>st(0)</code>, <code>fstp</code> guarda y saca. No necesitás dominarlo; alcanza con reconocer que <strong><code>f...</code> = punto flotante x87</strong> y seguir el valor por la pila <code>st</code>.</p>
+<aside class="callout practica"><p class="callout-titulo">Práctica</p><ol><li>Compilá <code>promedio.c</code> con <code>gcc -O0</code> (x64) y mirá el listado: ubicá <code>xmm0</code>, <code>xmm1</code>, <code>addsd</code>, <code>divsd</code> y la constante <code>2.0</code> en <code>.rdata</code>.</li><li>Tomá la constante que carga tu binario y convertila con un conversor IEEE 754. ¿Coincide con <code>2.0</code>?</li><li>Agregá una comparación <code>if (a &gt; b)</code> y mirá cómo aparece <code>ucomisd</code> + salto sin signo (y quizás un <code>jp</code>).</li><li>Compilá una versión de 32 bits con <code>-mfpmath=387</code> y compará: ahora deberías ver <code>fld</code>/<code>faddp</code> en vez de <code>xmm</code>.</li></ol></aside>
+<h2 id="preguntas-de-repaso">Preguntas de repaso</h2>
+<details class="qa"><summary>¿Qué significan los sufijos <code>ss</code>, <code>sd</code>, <code>ps</code> y <code>pd</code>?</summary><div class="respuesta"><p><code>ss</code> = un <code>float</code> (scalar single); <code>sd</code> = un <code>double</code> (scalar double); <code>ps</code>/<code>pd</code> = varios valores a la vez (packed, vectorizado).</p></div></details>
+<details class="qa"><summary>Ves <code>xorps xmm0, xmm0</code>. ¿Qué hace?</summary><div class="respuesta"><p>Pone <code>xmm0</code> en 0.0. Es el modismo para inicializar un flotante en cero, igual que <code>xor eax, eax</code> con enteros.</p></div></details>
+<details class="qa"><summary>¿Por qué después de <code>ucomisd</code> aparece a veces un <code>jp</code>?</summary><div class="respuesta"><p>Porque la comparación de flotantes activa el flag de paridad si hay un <code>NaN</code>. El <code>jp</code>/<code>jnp</code> maneja ese caso antes del salto principal.</p></div></details>
+<details class="qa"><summary>Un <code>movsd xmm0, [rel k]</code> carga <code>0x3FF0000000000000</code>. ¿Qué número es?</summary><div class="respuesta"><p><code>1.0</code> en <code>double</code>. Las constantes flotantes se ven como su codificación IEEE 754, no como el número decimal.</p></div></details>
+<h2 id="antes-de-avanzar">Antes de avanzar</h2>
+<p>Tenés que poder:</p>
+<ul><li>Reconocer una operación con <code>float</code>/<code>double</code> por los registros <code>xmm</code> y los sufijos <code>ss</code>/<code>sd</code>.</li><li>Leer una comparación de flotantes (<code>ucomisd</code> + salto sin signo + chequeo de NaN).</li><li>Traducir una constante IEEE 754 con una herramienta.</li><li>Distinguir x87 (<code>f...</code>, pila <code>st</code>) de SSE (<code>xmm</code>).</li></ul>
+<aside class="callout nota"><p class="callout-titulo">Puerta de salida</p><p>Si podés leer <code>promedio</code> en assembly y explicar cómo viajan los argumentos y el resultado en <code>xmm</code>, ya no te va a frenar el punto flotante.</p></aside>
+<h2 id="fuentes-de-esta-lección">Fuentes de esta lección</h2>
+<ul><li><em>Intel 64 and IA-32 Architectures Software Developer's Manual</em>, vol. 1 (FPU x87) y vol. 2 (instrucciones SSE/SSE2). Referencia primaria del repertorio de instrucciones.</li><li><em>Microsoft x64 calling convention</em>: paso de <code>float</code>/<code>double</code> en registros <code>xmm</code>.</li><li>Estándar <strong>IEEE 754</strong> para la codificación de <code>float</code> y <code>double</code>.</li></ul>
+<aside class="callout nota"><p class="callout-titulo">Capas de esta lección</p><p><strong>Conocimiento externo (agregado por esta edición):</strong> todo el contenido (x87, SSE, IEEE 754, convención de <code>xmm</code>). <strong>No</strong> proviene del corpus CLS, que trabaja con enteros. <strong>Recomendación editorial:</strong> los ejemplos <code>promedio</code> y la práctica con conversor IEEE 754.</p></aside>
+</main>
+<footer class="pie">
+  <p>Material educativo y defensivo. Las prácticas se limitan a programas propios, software abierto o crackmes diseñados para aprender. No se enseña a eludir licencias, DRM ni controles de acceso.</p>
+  <p><a href="../00_EMPEZAR_AQUI.html">Inicio</a> · <a href="../guia/etapa-0.html">Etapas</a> · <a href="../fuentes_y_limites.html">Fuentes y límites</a> · <a href="../registro_de_cobertura.csv">Registro de cobertura</a></p>
+</footer>
+</body>
+</html>

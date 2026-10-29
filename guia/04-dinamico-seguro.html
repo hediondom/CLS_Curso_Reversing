@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Etapa 4 · Análisis dinámico seguro: cuándo ejecutar y cuándo no</title>
+<meta name="description" content="Criterios para decidir si un programa se ejecuta, cómo contenerlo y qué hacer si algo sale mal.">
+<link rel="stylesheet" href="../guia/estilo.css">
+</head>
+<body>
+<a class="salto" href="#contenido">Saltar al contenido</a>
+<header class="cabecera">
+  <div class="marca"><a href="../00_EMPEZAR_AQUI.html">CLS · Curso de reversing</a> <span class="edicion">edición 5 · 27/10/2026</span></div>
+  <nav class="principal" aria-label="Navegación principal">
+    <a href="../00_EMPEZAR_AQUI.html">Inicio</a>
+    <a href="../guia/index.html">Curso</a>
+    <a href="../materiales.html">Materiales</a>
+    <a href="../fichas/index.html">Fichas</a>
+    <a href="../glosario.html">Glosario</a>
+    <a href="../preguntas_y_respuestas.html">Repaso</a>
+    <a href="../buscar.html">Buscar</a>
+  </nav>
+</header>
+<main id="contenido">
+<nav class="migas" aria-label="Ubicación"><a href="../00_EMPEZAR_AQUI.html">Inicio</a><span aria-hidden="true">›</span><a href="../guia/index.html">Curso</a><span aria-hidden="true">›</span><span>Etapa 4 · Práctica guiada</span></nav><h1 id="análisis-dinámico-seguro-cuándo-ejecutar-y-cuándo-no">Análisis dinámico seguro: cuándo ejecutar y cuándo no</h1>
+<aside class="callout nota"><p class="callout-titulo">Objetivo de la lección</p><p>Al terminar vas a poder decidir si un programa se analiza solo en estático o se ejecuta en un laboratorio, preparar la observación con herramientas de monitoreo y actuar si el comportamiento se sale de lo previsto.</p></aside>
+<p><strong>Prerrequisitos:</strong> laboratorio (Etapa 0) y método (Etapa 4). <strong>Duración sugerida:</strong> 3 horas. Estimación aproximada.</p>
+<h2 id="la-decisión-más-importante">La decisión más importante</h2>
+<p>No todo se ejecuta. Antes de abrir un programa en el debugger, hacete tres preguntas:</p>
+<ol><li><strong>¿Tengo permiso?</strong> ¿Es mío, es de código abierto, es un crackme de práctica, o tengo autorización escrita?</li><li><strong>¿Puedo contenerlo?</strong> ¿Está en una VM aislada, con snapshot, sin carpetas compartidas y sin red personal?</li><li><strong>¿Necesito ejecutarlo?</strong> ¿La pregunta se responde con análisis estático, o el comportamiento dinámico es imprescindible?</li></ol>
+<p>Si alguna respuesta es "no", el programa no se ejecuta. Se analiza estático, se documenta y se deriva a quien corresponda.</p>
+<div class="tabla"><table>
+<thead><tr>
+<th>Situación</th>
+<th>Qué hacer</th>
+</tr></thead><tbody>
+<tr><td>Programa propio o de práctica</td><td>Ejecutar en VM, con snapshot</td></tr>
+<tr><td>Software abierto que querés entender</td><td>Ejecutar en VM, con la licencia respetada</td></tr>
+<tr><td>Binario de origen desconocido</td><td>Estático primero; dinámico solo en laboratorio dedicado</td></tr>
+<tr><td>Malware confirmado</td><td>Estático y detección; dinámico solo con protocolo defensivo</td></tr>
+<tr><td>Software comercial con protección</td><td>No eludir protecciones; analizar solo lo permitido</td></tr>
+<tr><td>Archivo en cuarentena o excluido</td><td>No ejecutar; respetar la clasificación</td></tr>
+</tbody></table></div>
+<h2 id="antes-de-ejecutar-línea-base">Antes de ejecutar: línea base</h2>
+<p>Una observación sin línea base no sirve. Antes de correr el programa, registrá el estado del sistema:</p>
+<ul><li>Procesos en ejecución.</li><li>Conexiones de red.</li><li>Archivos en la carpeta de trabajo.</li><li>Claves de registro relevantes (si vas a observar persistencia).</li><li>Hora de inicio.</li></ul>
+<p>Herramientas: <strong>Process Explorer</strong> (procesos, handles), <strong>Process Monitor</strong> (archivos, registro, procesos), <strong>TCPView</strong> (conexiones), <strong>Autoruns</strong> (persistencia). Todas son de Sysinternals o equivalentes gratuitos.</p>
+<p>En la VM:</p>
+<pre><code class="lenguaje-text">1. Restaurar snapshot 00-limpia.
+2. Anotar hora y estado.
+3. Iniciar Process Monitor con filtro por nombre del proceso.
+4. Iniciar TCPView.
+5. Ejecutar el programa.
+6. Observar, anotar y detenerse.
+7. Cerrar el programa, detener las capturas y restaurar snapshot.</code></pre>
+<h2 id="qué-observar">Qué observar</h2>
+<div class="tabla"><table>
+<thead><tr>
+<th>Categoría</th>
+<th>Qué mirar</th>
+<th>Herramienta</th>
+</tr></thead><tbody>
+<tr><td>Archivos</td><td>Creación, lectura, escritura, borrado</td><td>Process Monitor</td></tr>
+<tr><td>Registro</td><td>Claves creadas/modificadas</td><td>Process Monitor</td></tr>
+<tr><td>Procesos</td><td>Hijos, inyecciones, elevación</td><td>Process Explorer</td></tr>
+<tr><td>Red</td><td>Conexiones, DNS, puertos</td><td>TCPView, Wireshark</td></tr>
+<tr><td>Memoria</td><td>Regiones RWX, módulos cargados</td><td>x64dbg, Process Explorer</td></tr>
+<tr><td>Persistencia</td><td>Run keys, servicios, tareas</td><td>Autoruns</td></tr>
+</tbody></table></div>
+<p>No hace falta observar todo a la vez. Elegí dos o tres categorías según la pregunta.</p>
+<h2 id="el-caso-shelter-lo-que-cls-muestra-y-lo-que-no-se-copia">El caso Shelter: lo que CLS muestra y lo que no se copia</h2>
+<p>El video 37 analiza el malware Shelter dentro de una VM Windows 7 de 32 bits, con otra VM Kali Linux para simular el ataque. El propio autor distingue análisis estático y dinámico y dice que en su caso va a ejecutar la muestra (<a class="fuente" href="../../CLS_resultados_intermedios/transcripciones/extraidos/Videos%20y%20material%20adicional%20Ingenieria%20Inversa/Videos_Video37_Video37.txt">Videos y material adicional, Video 37</a>, 00:24:01–00:24:21).</p>
+<p>Ese video es un <strong>caso observado</strong>, no un modelo para esta guía. Ejecuta malware, monta un reverse shell y usa una segunda VM para el ataque. Para un principiante, el orden correcto es:</p>
+<ol><li>Triage estático: tipo de archivo, secciones, imports, strings, hashes.</li><li>Detección: reglas YARA, firmas, comparación con VirusTotal <strong>sin subir muestras confidenciales</strong>.</li><li>Documentación de indicadores.</li><li>Solo si hay un propósito defensivo claro y un laboratorio dedicado, análisis dinámico controlado.</li></ol>
+<p>El video 36 inyecta una puerta trasera de Metasploit en una calculadora y usa una VM "por seguridad" (<a class="fuente" href="../../CLS_resultados_intermedios/transcripciones/extraidos/Videos%20y%20material%20adicional%20Ingenieria%20Inversa/Videos_Video36_Video36.txt">Videos y material adicional, Video 36</a>, 00:29:21–00:29:42). Tampoco es una práctica de esta guía.</p>
+<aside class="callout peligro"><p class="callout-titulo">Lo que no se hace</p><p>No se ejecuta malware en el host. No se conecta la VM de análisis a la red doméstica. No se comparten carpetas. No se usan cuentas personales. No se sube una muestra a un servicio público sin evaluar si es confidencial. No se copia el malware fuera del laboratorio.</p></aside>
+<h2 id="anti-debug-una-señal-no-un-obstacle-a-vencer">Anti-debug: una señal, no un obstacle a vencer</h2>
+<p>Si un programa detecta el debugger y se cierra, eso <strong>es información</strong>. Puede indicar:</p>
+<ul><li>Que el programa tiene protecciones anti-análisis.</li><li>Que está empaquetado.</li><li>Que su comportamiento cambia según el entorno.</li></ul>
+<p>Los chequeos más comunes están en el capítulo 22 (PEB, <code>IsDebuggerPresent</code>, <code>NtGlobalFlag</code>) y en el capítulo 24 (lista de procesos, ParentPID, <code>CloseHandle</code> inválido). El capítulo 24 usa un crackme propio que muestra qué técnica lo detectó (<a class="fuente" href="../../CLS_resultados_intermedios/transcripciones/extraidos/Reversing%20desde%20cero%20%28Ricardo%20y%20Solid%29/Ricardo%20Narvaja%20y%20Solid%20-%20Reversing%20desde%20cero_24%20Antidebug%202_24%20Antidebug%202.txt">Reversing desde cero, cap. 24</a>, 00:01:17–00:03:31).</p>
+<p>Para esta guía:</p>
+<ul><li><strong>Estudiá</strong> los mecanismos para reconocerlos y explicar por qué un binario se comporta distinto.</li><li><strong>No</strong> aprendas a evadir las protecciones de software comercial.</li><li><strong>No</strong> uses técnicas de ocultamiento para analizar muestras fuera de un laboratorio autorizado.</li><li>Si el objetivo es defender, la pregunta es "¿cómo detecto este comportamiento?", no "¿cómo lo esquivo?".</li></ul>
+<h2 id="si-algo-sale-mal">Si algo sale mal</h2>
+<p>Un plan de contención tiene que existir antes de ejecutar:</p>
+<ol><li><strong>Detener la VM</strong> (no suspenderla): apagado forzado si hace falta.</li><li><strong>Desconectar la red</strong> de la VM desde el hipervisor.</li><li><strong>Restaurar la snapshot</strong> limpia.</li><li><strong>Revisar el host</strong>: procesos, conexiones, archivos compartidos, cuentas.</li><li><strong>Anotar</strong> qué pasó, a qué hora y qué se observó.</li><li><strong>Reportar</strong> si hubo exposición de datos o credenciales.</li><li><strong>Cambiar</strong> las credenciales que pudieron quedar expuestas.</li></ol>
+<p>Si el programa logró escribir en una carpeta compartida o conectar a la red local, el aislamiento falló. Eso se documenta y se corrige antes de la próxima práctica.</p>
+<h2 id="práctica">Práctica</h2>
+<ol><li>Ejecutá tu <code>check.exe</code> en la VM con Process Monitor filtrando por el nombre del proceso. Anotá qué archivos abre y qué claves de registro lee.</li><li>Ejecutá una versión que abra un archivo (<code>fopen</code>) y observá la operación de escritura.</li><li>Hacé una lista de línea base antes y después. ¿Qué cambió?</li><li>Elegí un archivo del proyecto marcado <code>cuarentena</code> y hacé <strong>solo</strong> triage estático: tipo, secciones, imports, strings, hash. No lo ejecutes.</li><li>Escribí un procedimiento de 10 líneas para "qué hago si la VM se comporta raro".</li></ol>
+<h2 id="preguntas-de-repaso">Preguntas de repaso</h2>
+<p><strong>1. ¿Cuándo NO se ejecuta un programa?</strong> Cuando no tenés permiso, no podés contenerlo o no necesitás el comportamiento dinámico. También cuando está en cuarentena o excluido.</p>
+<p><strong>2. ¿Por qué se toma una línea base antes de ejecutar?</strong> Porque sin el estado inicial no podés atribuir los cambios al programa. La comparación antes/después es la evidencia.</p>
+<p><strong>3. ¿Qué indica que un programa detecte el debugger?</strong> Que tiene protecciones anti-análisis o que su comportamiento depende del entorno. Es un dato para documentar, no un obstáculo para "saltar".</p>
+<p><strong>4. ¿Qué hace primero si una muestra resulta sospechosa?</strong> Triage estático, cálculo de hash, documentación de indicadores y, si corresponde, derivación. No se ejecuta en el host.</p>
+<p><strong>5. ¿Qué hace si la VM se conecta a la red local?</strong> Se desconecta desde el hipervisor, se restaura la snapshot, se revisa el host y se documenta el fallo de aislamiento.</p>
+<h2 id="antes-de-avanzar">Antes de avanzar</h2>
+<p>Tenés que poder:</p>
+<ul><li>Decidir si un programa se ejecuta o no, con justificación.</li><li>Tomar una línea base y observar con Process Monitor/TCPView.</li><li>Explicar por qué el video 37 no es un modelo de práctica.</li><li>Describir un plan de contención.</li></ul>
+<aside class="callout nota"><p class="callout-titulo">Puerta de salida de la Etapa 4</p><p>Si podés analizar, documentar y contener una práctica completa, terminaste el recorrido base. Las ramas de la Etapa 5 son opcionales y exigen prerrequisitos.</p></aside>
+<h2 id="fuentes-de-esta-lección">Fuentes de esta lección</h2>
+<ul><li><a class="fuente" href="../../CLS_resultados_intermedios/transcripciones/extraidos/Videos%20y%20material%20adicional%20Ingenieria%20Inversa/Videos_Video37_Video37.txt">Videos y material adicional, Video 37</a> — caso Shelter: VM, Kali y ejecución de malware; se cita como caso observado.</li><li><a class="fuente" href="../../CLS_resultados_intermedios/transcripciones/extraidos/Videos%20y%20material%20adicional%20Ingenieria%20Inversa/Videos_Video36_Video36.txt">Videos y material adicional, Video 36</a> — XOR, crypter y backdoor en VM.</li><li><a class="fuente" href="../../CLS_resultados_intermedios/transcripciones/extraidos/Reversing%20desde%20cero%20%28Ricardo%20y%20Solid%29/Ricardo%20Narvaja%20y%20Solid%20-%20Reversing%20desde%20cero_22%20Antidebug%201_22%20Antidebug%201.txt">Reversing desde cero, cap. 22</a> — PEB y detección de debugger.</li><li><a class="fuente" href="../../CLS_resultados_intermedios/transcripciones/extraidos/Reversing%20desde%20cero%20%28Ricardo%20y%20Solid%29/Ricardo%20Narvaja%20y%20Solid%20-%20Reversing%20desde%20cero_24%20Antidebug%202_24%20Antidebug%202.txt">Reversing desde cero, cap. 24</a> — cuatro chequeos anti-debug.</li><li><a class="fuente" href="../../CLS_resultados_intermedios/inventario_limpio/LEEME.md">Inventario limpio, LEEME</a> — estados <code>cuarentena</code> y criterio de no ejecución.</li></ul>
+<aside class="callout nota"><p class="callout-titulo">Capas de esta lección</p><p><strong>Contenido observado en CLS:</strong> el laboratorio con dos VMs del video 37, la inyección del video 36 y los chequeos de los capítulos 22 y 24. <strong>Conocimiento externo:</strong> observación con Process Monitor/TCPView y planes de contención. <strong>Recomendación editorial:</strong> la matriz de decisión y el protocolo de incidentes.</p></aside>
+</main>
+<footer class="pie">
+  <p>Material educativo y defensivo. Las prácticas se limitan a programas propios, software abierto o crackmes diseñados para aprender. No se enseña a eludir licencias, DRM ni controles de acceso.</p>
+  <p><a href="../00_EMPEZAR_AQUI.html">Inicio</a> · <a href="../guia/etapa-0.html">Etapas</a> · <a href="../fuentes_y_limites.html">Fuentes y límites</a> · <a href="../registro_de_cobertura.csv">Registro de cobertura</a></p>
+</footer>
+</body>
+</html>

@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Etapa 2 · Cómo cambia el código con optimizaciones</title>
+<meta name="description" content="Por qué un binario optimizado no se parece al código fuente: inlining, strength reduction, división por constante, vectorización y tail calls.">
+<link rel="stylesheet" href="../guia/estilo.css">
+</head>
+<body>
+<a class="salto" href="#contenido">Saltar al contenido</a>
+<header class="cabecera">
+  <div class="marca"><a href="../00_EMPEZAR_AQUI.html">CLS · Curso de reversing</a> <span class="edicion">edición 5 · 27/10/2026</span></div>
+  <nav class="principal" aria-label="Navegación principal">
+    <a href="../00_EMPEZAR_AQUI.html">Inicio</a>
+    <a href="../guia/index.html">Curso</a>
+    <a href="../materiales.html">Materiales</a>
+    <a href="../fichas/index.html">Fichas</a>
+    <a href="../glosario.html">Glosario</a>
+    <a href="../preguntas_y_respuestas.html">Repaso</a>
+    <a href="../buscar.html">Buscar</a>
+  </nav>
+</header>
+<main id="contenido">
+<nav class="migas" aria-label="Ubicación"><a href="../00_EMPEZAR_AQUI.html">Inicio</a><span aria-hidden="true">›</span><a href="../guia/index.html">Curso</a><span aria-hidden="true">›</span><span>Etapa 2 · Introducción al reversing</span></nav><h1 id="cómo-cambia-el-código-con-optimizaciones">Cómo cambia el código con optimizaciones</h1>
+<aside class="callout aviso"><p class="callout-titulo">De dónde sale esta lección</p><p>Este tema <strong>no está en el corpus CLS</strong>: es <strong>conocimiento externo</strong> que agregamos para completar la guía. El curso de CLS usa ejemplos compilados en modo depuración (<code>-O0</code>/Debug), donde el assembly sigue de cerca al código fuente. Los binarios reales vienen optimizados (<code>-O2</code>/Release) y se ven muy distintos. Esta lección cubre ese salto, que es donde más se traba quien recién sale de los ejercicios.</p></aside>
+<aside class="callout nota"><p class="callout-titulo">Objetivo de la lección</p><p>Al terminar vas a poder reconocer los patrones de optimización más comunes —inlining, <em>strength reduction</em>, división por constante, vectorización, <em>tail call</em>— y no confundirlos con "código raro" o con una protección.</p></aside>
+<p><strong>Prerrequisitos:</strong> instrucciones, flujo, llamadas (Etapa 2). <strong>Duración sugerida:</strong> 3 horas.</p>
+<h2 id="el-problema">El problema</h2>
+<p>En <code>-O0</code>, cada variable vive en el stack, cada operación es una instrucción y las funciones se llaman tal como las escribiste. En <code>-O2</code>, el compilador reescribe todo para que corra más rápido: mete funciones una dentro de otra, reemplaza multiplicaciones por sumas, borra código que "no hace falta" y reordena instrucciones. El resultado es correcto pero <strong>no se parece</strong> al fuente. Reconocer estos patrones es lo que separa leer un ejercicio de leer un programa real.</p>
+<h2 id="strength-reduction-multiplicar-sin-mul">Strength reduction: multiplicar sin <code>mul</code></h2>
+<p>El compilador cambia operaciones caras por otras baratas. La más común: multiplicar por una constante usando <code>lea</code> y shifts.</p>
+<pre><code class="lenguaje-asm">; x * 2
+add eax, eax            ; o:  shl eax, 1
+; x * 8
+shl eax, 3
+; x * 5   -&gt;  x + x*4
+lea eax, [rax + rax*4]
+; x * 9   -&gt;  x + x*8
+lea eax, [rax + rax*8]</code></pre>
+<p>Si ves un <code>lea</code> haciendo cuentas (no calculando una dirección), es casi seguro una multiplicación por constante disfrazada. <code>lea eax, [rax+rax*4]</code> es <code>x*5</code>, no "un acceso a memoria".</p>
+<h2 id="división-por-constante-el-número-mágico">División por constante: el número mágico</h2>
+<p>Dividir es carísimo, así que, en código optimizado, el compilador <strong>casi nunca</strong> usa <code>div</code> para dividir por una constante: lo habitual es que multiplique por un "número mágico" y desplace. Depende del compilador, la arquitectura y las opciones (sin optimizar, o con un divisor que no conoce en tiempo de compilación, sí vas a ver <code>div</code>/<code>idiv</code>).</p>
+<pre><code class="lenguaje-asm">; unsigned  x / 3
+mov   eax, 0xAAAAAAAB     ; número mágico
+mul   edx                 ; producto de 64 bits
+shr   edx, 1              ; EDX = x / 3</code></pre>
+<p>Cuando veas una multiplicación por una constante aparentemente arbitraria (<code>0xAAAAAAAB</code>, <code>0x55555556</code>, <code>0xCCCCCCCD</code>…) seguida de un <code>shr</code>, es una <strong>división por constante</strong>, no un algoritmo secreto. Hay tablas y calculadoras para recuperar el divisor; lo importante es reconocer el patrón y no perder tiempo buscando sentido a la constante.</p>
+<h2 id="inlining-la-función-que-desaparece">Inlining: la función que desaparece</h2>
+<p>Con <code>-O2</code>, una función corta que llamás una vez puede <strong>desaparecer</strong>: el compilador copia su cuerpo donde se usaba (<em>inlining</em>). Entonces:</p>
+<ul><li>No vas a encontrar un <code>call</code> a esa función.</li><li>El código de la función aparece <strong>mezclado</strong> dentro de quien la llamaba.</li><li>Varias funciones del fuente pueden colapsar en un solo bloque grande.</li></ul>
+<p>La consecuencia para el análisis: no asumas "una función del fuente = una función en el binario". Buscá el comportamiento, no el nombre.</p>
+<h2 id="vectorización-sse-donde-esperabas-un-bucle">Vectorización: SSE donde esperabas un bucle</h2>
+<p>Un bucle que suma o copia un arreglo puede convertirse en instrucciones <strong>packed</strong> (<code>addps</code>, <code>movdqu</code>, <code>paddd</code>) que procesan varios elementos por vuelta. En vez de un bucle de 100 iteraciones de a 1, ves un bucle de 25 de a 4. Si un bucle "no tiene sentido" porque usa <code>xmm</code> y avanza de a 16 bytes, está vectorizado (ver la lección de punto flotante y SSE).</p>
+<h2 id="tail-call-un-jmp-donde-esperabas-call">Tail call: un <code>jmp</code> donde esperabas <code>call</code></h2>
+<p>Si lo último que hace una función es llamar a otra y devolver su resultado, el compilador reemplaza <code>call f; ret</code> por un simple <code>jmp f</code> (<em>tail call</em>). Ahorra un marco de stack. El efecto al analizar: una función "termina" saltando a otra con <code>jmp</code>, sin <code>ret</code> propio. No es un salto sospechoso ni ofuscación: es una llamada final optimizada.</p>
+<h2 id="otros-patrones-frecuentes">Otros patrones frecuentes</h2>
+<div class="tabla"><table>
+<thead><tr>
+<th>Patrón</th>
+<th>Cómo se ve</th>
+<th>Qué es</th>
+</tr></thead><tbody>
+<tr><td><code>xor eax, eax</code></td><td>poner 0</td><td>modismo para <code>eax = 0</code></td></tr>
+<tr><td><code>test eax, eax</code> + <code>je</code></td><td>en vez de <code>cmp eax, 0</code></td><td>"¿es cero?"</td></tr>
+<tr><td><code>cmovcc</code> / <code>setcc</code></td><td>decisión sin salto</td><td>el <code>if</code> se hizo sin bifurcar (ver lección de flujo)</td></tr>
+<tr><td><code>lea</code> con cuentas</td><td>aritmética</td><td>suma/multiplicación, no acceso a memoria</td></tr>
+<tr><td>bloques reordenados</td><td>el camino "frío" (error) va al final</td><td>mejora la predicción de saltos</td></tr>
+<tr><td>constantes plegadas</td><td><code>mov eax, 480</code> donde el fuente decía <code>(a+b)*4</code></td><td><em>constant folding</em> en tiempo de compilación</td></tr>
+</tbody></table></div>
+<h2 id="cómo-convivir-con-esto">Cómo convivir con esto</h2>
+<ol><li><strong>Aprendé con <code>-O0</code>, analizá con <code>-O2</code>.</strong> Compilá tu ejemplo en los dos modos y poné los listados lado a lado. Ver la misma lógica en ambas versiones entrena el ojo.</li><li><strong>Usá el decompilador.</strong> Ghidra o Hex-Rays deshacen muchos de estos patrones: te muestran <code>x / 3</code> en vez del número mágico, y la función inlineada como una sola expresión. No es mágico, pero ahorra tiempo.</li><li><strong>Pensá en comportamiento, no en forma.</strong> La pregunta no es "¿por qué hay un <code>lea</code> acá?", sino "¿qué valor queda en este registro al final?".</li></ol>
+<aside class="callout practica"><p class="callout-titulo">Práctica</p><ol><li>Compilá una función <code>int f(int x){ return x*5 + x/3; }</code> con <code>-O0</code> y con <code>-O2</code>. Encontrá el <code>lea [rax+rax*4]</code> (el <code>*5</code>) y el número mágico (el <code>/3</code>).</li><li>Escribí dos funciones chicas donde una llame a la otra y compilá con <code>-O2</code>. ¿Desapareció la llamada (inlining)?</li><li>Hacé un bucle que sume un arreglo de 1000 <code>int</code> y compilá con <code>-O3 -mavx2</code>. ¿Ves registros <code>xmm</code>/<code>ymm</code> y avance de a varios elementos?</li><li>Abrí el <code>-O2</code> en Ghidra y compará el decompilado con tu fuente. ¿Recuperó la división por 3?</li></ol></aside>
+<h2 id="preguntas-de-repaso">Preguntas de repaso</h2>
+<details class="qa"><summary>Ves <code>lea eax, [rax+rax*4]</code>. ¿Qué es?</summary><div class="respuesta"><p>Una multiplicación por 5 (<code>x + x*4</code>). <code>lea</code> se usa acá para aritmética, no para calcular una dirección.</p></div></details>
+<details class="qa"><summary>Aparece <code>mov eax, 0xAAAAAAAB</code> seguido de <code>mul</code> y <code>shr</code>. ¿Qué está pasando?</summary><div class="respuesta"><p>Es una división por constante (por 3) implementada con un número mágico. El compilador evita <code>div</code>.</p></div></details>
+<details class="qa"><summary>Una función termina con <code>jmp otra_funcion</code> en vez de <code>call</code> + <code>ret</code>. ¿Es sospechoso?</summary><div class="respuesta"><p>No. Es una <em>tail call</em>: la última acción era llamar y devolver, y el compilador la optimizó a un salto.</p></div></details>
+<details class="qa"><summary>No encontrás el <code>call</code> a una función que sí está en el fuente. ¿Qué pudo pasar?</summary><div class="respuesta"><p>Inlining: el compilador copió su cuerpo dentro de quien la llamaba, así que no hay llamada separada.</p></div></details>
+<h2 id="antes-de-avanzar">Antes de avanzar</h2>
+<p>Tenés que poder:</p>
+<ul><li>Reconocer <em>strength reduction</em> (<code>lea</code>/shifts) y división por constante (número mágico).</li><li>Explicar por qué una función del fuente puede no existir como función en el binario.</li><li>Identificar un bucle vectorizado y una <em>tail call</em>.</li><li>Usar un decompilador para deshacer estos patrones.</li></ul>
+<aside class="callout nota"><p class="callout-titulo">Puerta de salida</p><p>Si podés mirar un listado <code>-O2</code> y decir "esto es <code>x*5</code>, esto es <code>x/3</code>, esta función está inlineada" sin frustrarte, estás listo para binarios reales.</p></aside>
+<h2 id="fuentes-de-esta-lección">Fuentes de esta lección</h2>
+<ul><li>Agner Fog, <em>Optimizing subroutines in assembly language</em> y <em>Instruction tables</em> (patrones de código generado y costos).</li><li>Documentación de <strong>GCC</strong> (<code>-O1/-O2/-O3</code>) y <strong>LLVM/Clang</strong> sobre pases de optimización.</li><li><em>Hacker's Delight</em> (Warren) para división por constantes y trucos aritméticos.</li></ul>
+<aside class="callout nota"><p class="callout-titulo">Capas de esta lección</p><p><strong>Conocimiento externo (agregado por esta edición):</strong> todos los patrones de optimización. El corpus CLS usa binarios sin optimizar, así que este salto no estaba cubierto. <strong>Recomendación editorial:</strong> la estrategia "aprendé con Debug, analizá con Release" y los ejercicios.</p></aside>
+</main>
+<footer class="pie">
+  <p>Material educativo y defensivo. Las prácticas se limitan a programas propios, software abierto o crackmes diseñados para aprender. No se enseña a eludir licencias, DRM ni controles de acceso.</p>
+  <p><a href="../00_EMPEZAR_AQUI.html">Inicio</a> · <a href="../guia/etapa-0.html">Etapas</a> · <a href="../fuentes_y_limites.html">Fuentes y límites</a> · <a href="../registro_de_cobertura.csv">Registro de cobertura</a></p>
+</footer>
+</body>
+</html>

@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>2.23 (optativa) · Shellcode, red y C2: reconocer y describir</title>
+<meta name="description" content="Identificar que un blob es shellcode y describir el tráfico de C2 contra un entorno simulado. Solo análisis y clasificación, no construcción. Ruta optativa.">
+<link rel="stylesheet" href="../guia/estilo.css">
+</head>
+<body>
+<a class="salto" href="#contenido">Saltar al contenido</a>
+<header class="cabecera">
+  <div class="marca"><a href="../00_EMPEZAR_AQUI.html">CLS · Curso de reversing</a> <span class="edicion">edición 5 · 27/10/2026</span></div>
+  <nav class="principal" aria-label="Navegación principal">
+    <a href="../00_EMPEZAR_AQUI.html">Inicio</a>
+    <a href="../guia/index.html">Curso</a>
+    <a href="../materiales.html">Materiales</a>
+    <a href="../fichas/index.html">Fichas</a>
+    <a href="../glosario.html">Glosario</a>
+    <a href="../preguntas_y_respuestas.html">Repaso</a>
+    <a href="../buscar.html">Buscar</a>
+  </nav>
+</header>
+<main id="contenido">
+<nav class="migas" aria-label="Ubicación"><a href="../00_EMPEZAR_AQUI.html">Inicio</a><span aria-hidden="true">›</span><a href="../guia/index.html">Curso</a><span aria-hidden="true">›</span><span>Etapa 2 · Windows avanzado (2C) · ruta optativa</span></nav><h1 id="shellcode-red-y-c2-reconocer-y-describir">Shellcode, red y C2: reconocer y describir</h1>
+<aside class="callout aviso"><p class="callout-titulo">Ruta optativa · solo análisis y clasificación</p><p>Especialización, no requisito de 2C. Acá se <strong>reconoce y describe</strong> —a alto nivel— shellcode y tráfico de C2 en un entorno controlado. <strong>No</strong> se explica cómo escribir shellcode ni cómo montar un C2: esta guía es defensiva y se queda en identificar y clasificar. <strong>Prerrequisitos:</strong> PE e imports (1.4), malware dinámico defensivo (<a href="02-opt-malware-dinamico.html">2.22</a>), criptografía/encoding (4.2).</p></aside>
+<h2 id="cómo-se-reconoce-que-algo-es-shellcode">Cómo se reconoce que algo es shellcode</h2>
+<p>Shellcode es <strong>código máquina suelto</strong>, sin envoltura PE: no tiene cabecera, secciones ni tabla de imports. Para el análisis alcanza con <strong>reconocerlo</strong> por sus rasgos, sin entrar en cómo está hecho por dentro (<strong>conocimiento externo</strong>):</p>
+<ul><li><strong>No es un PE:</strong> aparece como un <strong>blob de bytes</strong> dentro de un buffer, un recurso (RCDATA), un documento o tráfico de red, no como un <code>.exe</code>/<code>.dll</code>.</li><li><strong>No tiene IAT PE:</strong> al ser un blob sin formato PE, no trae la tabla de imports PE. Eso <strong>no demuestra</strong> que resuelva APIs por su cuenta: puede recibir funciones o datos desde un cargador, no usar APIs, usar llamadas al sistema, o resolverlas en tiempo de ejecución. La ausencia de IAT por sí sola no identifica cuál de esos casos aplica.</li><li><strong>Autosuficiente:</strong> strings armadas al vuelo o cifradas, y saltos/llamadas por direcciones calculadas en vez de referencias con nombre.</li></ul>
+<p>El Curso IDA menciona shellcode en el contexto de exploiting (p. ej. el tute 40, que además avisa que técnicas viejas pueden no andar en Windows 10 moderno). Lo tomamos solo como <strong>algo a identificar</strong>, no a producir (<a class="fuente" href="../../CLS_Guia/_trabajo/extraido_ida/40-INTRODUCCION%20AL%20REVERSING%20CON%20IDA%20PRO%20DESDE%20CERO.txt">Curso IDA, tute 40</a>).</p>
+<h2 id="analizar-un-blob-sin-ejecutarlo-en-tu-sistema">Analizar un blob sin ejecutarlo en tu sistema</h2>
+<p>La forma segura de ver <strong>qué hace</strong> un shellcode es un <strong>emulador</strong> que lo corre en una caja y te reporta su comportamiento, sin tocar tu Windows (<strong>conocimiento externo</strong>):</p>
+<ul><li><strong><code>scdbg</code></strong> (basado en libemu) o <strong>blobrunner + debugger en la VM</strong>: emulan el blob y listan <strong>qué APIs resolvió y llamó</strong>.</li><li>Vos leés el <strong>reporte</strong> y deducís la intención: si llama a algo como <code>WinExec</code>/<code>CreateProcess</code>, ejecuta un programa; si descarga y corre, es un <em>downloader</em>; si reserva memoria y escribe en otro proceso, es inyección.</li></ul>
+<p>No hace falta entender byte a byte cómo se autoresuelve: te quedás con el <strong>qué hace</strong> que reporta el emulador.</p>
+<h2 id="c2-describir-el-tráfico">C2: describir el tráfico</h2>
+<p><strong>C2</strong> (<em>command and control</em>) es cómo una muestra habla con el atacante. En el laboratorio de <a href="02-opt-malware-dinamico.html">2.22</a>, con <strong>red simulada</strong> (INetSim/FakeNet) y Wireshark, <strong>describís</strong> el canal sin darle salida real:</p>
+<ul><li><strong>Beacon:</strong> conexiones periódicas a un dominio/IP (cada N segundos).</li><li><strong>Protocolo:</strong> HTTP(S) con User-Agent raro, DNS con subdominios largos (indicio de <em>DNS tunneling</em>), o un puerto TCP fijo.</li><li><strong>Datos:</strong> muchas veces base64 o XOR sobre el contenido (lo reconocés con <a href="04-cripto.html">4.2 criptografía</a>).</li></ul>
+<p>El entregable es una <strong>descripción + IOCs de red</strong> (dominios, IPs, patrón del beacon), no una réplica del canal.</p>
+<h2 id="ejemplo-cómo-se-lee-el-reporte-de-un-emulador">Ejemplo: cómo se lee el reporte de un emulador</h2>
+<p><em>(Ejemplo <strong>ilustrativo</strong>: salida resumida de un emulador tipo <code>scdbg</code>, no un blob real.)</em></p>
+<pre><code class="lenguaje-text">scdbg sobre blob_demo.bin (emulado, NO ejecutado en el host):
+  APIs resueltas/llamadas:
+    LoadLibraryA("wininet.dll")
+    InternetOpenA / InternetOpenUrlA  → http://descarga.ejemplo-demo.test/p.bin
+    CreateFileA("%TEMP%\p.bin")  → WriteFile
+    WinExec("%TEMP%\p.bin")
+  Lectura: es un DOWNLOADER → baja p.bin y lo ejecuta.
+  IOCs: descarga.ejemplo-demo.test ; %TEMP%\p.bin</code></pre>
+<p>Con solo <strong>leer qué APIs resolvió</strong> el emulador, clasificás el shellcode (downloader) y sacás los IOCs, sin analizar su mecánica interna ni ejecutarlo en tu sistema.</p>
+<h2 id="práctica">Práctica</h2>
+<p>En tu VM aislada, con un <strong>blob de curso</strong> (o un programa benigno que simule el comportamiento):</p>
+<ol><li>Comprobá si el blob tiene envoltura PE; tratá la ausencia de cabecera/imports solo como un indicio y usá el contexto y el análisis como evidencia adicional.</li><li>Pasalo por <strong><code>scdbg</code></strong> (o un emulador equivalente) y leé qué APIs resuelve.</li><li>Clasificalo: ¿ejecuta, descarga, inyecta? Justificá con las APIs del reporte.</li><li>Si hay red, describí el beacon en el laboratorio simulado y anotá los IOCs.</li></ol>
+<h2 id="preguntas-de-repaso">Preguntas de repaso</h2>
+<details class="qa"><summary>¿Qué distingue a un shellcode de un <code>.exe</code> normal?</summary><div class="respuesta"><p>No tiene envoltura <strong>PE</strong> (cabecera, secciones ni IAT PE): es código suelto dentro de un buffer, recurso o tráfico. Eso no permite concluir por sí solo cómo obtiene funciones; puede depender de un cargador, no usar APIs o resolverlas durante la ejecución.</p></div></details>
+<details class="qa"><summary>¿Cómo ves qué hace un shellcode sin ejecutarlo en tu máquina?</summary><div class="respuesta"><p>Con un <strong>emulador</strong> (<code>scdbg</code>/libemu, o blobrunner en la VM): corre el blob en una caja y reporta las <strong>APIs que resuelve y llama</strong>; vos leés ese reporte para clasificarlo.</p></div></details>
+<details class="qa"><summary>Si el reporte muestra <code>InternetOpenUrlA</code> + <code>CreateFile</code> + <code>WinExec</code>, ¿qué es?</summary><div class="respuesta"><p>Un <strong>downloader</strong>: baja un archivo y lo ejecuta. La combinación de APIs delata la intención.</p></div></details>
+<details class="qa"><summary>¿Qué es un beacon de C2 y cómo lo describís?</summary><div class="respuesta"><p>Conexiones <strong>periódicas</strong> de la muestra hacia su servidor. Lo describís por el <strong>patrón</strong> (cada N segundos), el protocolo (HTTP/DNS) y el dominio/IP, usando la red simulada; no replicás el canal.</p></div></details>
+<details class="qa"><summary>¿Cuál es el límite de esta lección?</summary><div class="respuesta"><p><strong>Reconocer y clasificar</strong>. No se enseña a escribir shellcode ni a montar un C2; el trabajo se queda en análisis defensivo e IOCs.</p></div></details>
+<aside class="callout nota"><p class="callout-titulo">Puerta de salida (optativa)</p><p>Podés: (1) explicar por qué la ausencia de PE/IAT no basta para demostrar que un blob es shellcode ni cómo resuelve funciones; (2) usar un emulador para observar y clasificar comportamiento; (3) describir un beacon de C2 en el laboratorio simulado; (4) entregar IOCs de red. Siempre en análisis, nunca en construcción.</p></aside>
+<h2 id="fuentes-de-esta-lección">Fuentes de esta lección</h2>
+<ul><li><a class="fuente" href="../../CLS_Guia/_trabajo/extraido_ida/40-INTRODUCCION%20AL%20REVERSING%20CON%20IDA%20PRO%20DESDE%20CERO.txt">Curso IDA, tute 40</a> — menciona shellcode en contexto de exploiting (y que técnicas viejas pueden no andar en Win10).</li><li><a href="02-opt-malware-dinamico.html">Malware dinámico defensivo</a> (2.22) — el laboratorio aislado y la red simulada donde se observa el C2.</li><li><a href="04-cripto.html">Reconocer criptografía y encoding</a> (4.2) — base64/XOR en el tráfico y los payloads.</li></ul>
+<aside class="callout nota"><p class="callout-titulo">Capas de esta lección</p><p><strong>Contenido observado en CLS:</strong> la mención de shellcode del tute 40. <strong>Conocimiento externo:</strong> la identificación de código sin envoltura PE, aclarando que la ausencia de IAT no demuestra por sí sola resolución dinámica, los emuladores (<code>scdbg</code>/libemu) y el modelo de C2 (beacon, protocolo, IOCs). <strong>Recomendación editorial:</strong> el enfoque estricto de reconocer-y-clasificar, el ejemplo ilustrativo de salida de emulador y el límite de no construir.</p></aside>
+</main>
+<footer class="pie">
+  <p>Material educativo y defensivo. Las prácticas se limitan a programas propios, software abierto o crackmes diseñados para aprender. No se enseña a eludir licencias, DRM ni controles de acceso.</p>
+  <p><a href="../00_EMPEZAR_AQUI.html">Inicio</a> · <a href="../guia/etapa-0.html">Etapas</a> · <a href="../fuentes_y_limites.html">Fuentes y límites</a> · <a href="../registro_de_cobertura.csv">Registro de cobertura</a></p>
+</footer>
+</body>
+</html>

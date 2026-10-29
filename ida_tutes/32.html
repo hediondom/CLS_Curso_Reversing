@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tute 32 · WinDbg + IDA — Curso IDA</title>
+<meta name="description" content="Tutorial ilustrado del tute 32 del Curso IDA desde cero: WinDbg + IDA.">
+<link rel="stylesheet" href="../guia/estilo.css">
+</head>
+<body>
+<a class="salto" href="#contenido">Saltar al contenido</a>
+<header class="cabecera">
+  <div class="marca"><a href="../00_EMPEZAR_AQUI.html">CLS · Curso de reversing</a> <span class="edicion">edición 5 · 27/10/2026</span></div>
+  <nav class="principal" aria-label="Navegación principal">
+    <a href="../00_EMPEZAR_AQUI.html">Inicio</a>
+    <a href="../guia/index.html">Curso</a>
+    <a href="../fichas/index.html">Fichas</a>
+    <a href="../glosario.html">Glosario</a>
+    <a href="../preguntas_y_respuestas.html">Repaso</a>
+  </nav>
+</header>
+<main id="contenido">
+<p class="migas"><a href="../ida-tutes.html">← Índice de los 69 tutes de IDA</a></p>
+<h1>Tute 32 · WinDbg + IDA</h1>
+<p class="meta-tute"><strong>⏱ 4 min de lectura</strong> · 775 palabras · 24 capturas · grupo: Vulnerabilidades y exploiting en user-mode (VLC/CVE, DEP, Mona, canary/SEH, shellcode, heap)</p>
+<aside class="callout nota"><p class="callout-titulo">Qué enseña</p><p>Instalar y manejar WinDbg desde la interfaz de IDA.</p></aside>
+<p><em>se conecta con:</em> <a href="../guia/05-vulnerabilidades.html">Vulnerabilidades (defensivo)</a></p>
+<aside class="callout aviso"><p class="callout-titulo">Material observado, no reescrito</p><p>Es el texto y las capturas del <code>.docx</code> original del curso, solo presentados como tutorial. Puede tener erratas de origen. El autor del curso es Ricardo Narvaja.</p></aside>
+<hr>
+<p>INTRODUCCIÓN AL REVERSING CON IDA PRO DESDE CERO PARTE 32.</p>
+<p>WINDBG MAS IDA.</p>
+<p>Preparando Windbg para trabajar con IDA.</p>
+<p>Una de las cosas que nos faltan instalar es Windbg, que puede ser manejado desde la interfase de IDA y que es un gran debugger, quizás le falta comodidad ya que es casi todo comandos tipo consola y se complica un poco de manejar, pero podemos utilizar la gran interfase que tiene IDA, con Windbg debuggeando detrás, muy útil cuando se desea debuggear kernel, o tener una buena información del estado del heap en bugs tipo heap overflow o use after free que veremos más adelante.</p>
+<p>Hay muchas formas de instalar el WINDBG, lamentablemente varían y tendrán que probar la que a ustedes les va, como yo estoy en Windows 10 fui a la pagina de Microsoft para bajar el Windows 10 SDK.</p>
+<figure><img loading="lazy" src="img/32/1.png" alt="Captura 1 del tute 32"></figure>
+<p>Allí me baje el instalador y cuando me da las opciones solo elegí que instale las DEBUGGING TOOLS FOR WINDOWS.</p>
+<figure><img loading="lazy" src="img/32/2.png" alt="Captura 2 del tute 32"></figure>
+<p>Desmarcando las otras opciones instalará el Windbg, como cada Windows tiene su SDK, podrán hacer lo mismo en otros Windows, y instalar el que corresponde a su sistema, al menos en este caso sabemos que va bien.</p>
+<p>Luego debo ir a la carpeta cfg dentro de la instalación del IDA y buscar IDA.CFG.</p>
+<figure><img loading="lazy" src="img/32/3.png" alt="Captura 3 del tute 32"></figure>
+<p>Edito ese archivo y le tengo que poner el path en DBGTOOLS a donde está instalado el windbg x86, en mi caso se encuentra en.</p>
+<figure><img loading="lazy" src="img/32/4.png" alt="Captura 4 del tute 32"></figure>
+<p>Así que en el archivo IDA.CFG busco DBGTOOLS.</p>
+<figure><img loading="lazy" src="img/32/5.png" alt="Captura 5 del tute 32"></figure>
+<p>Y le agrego el path exacto, agregando la doble barra \\ en vez de la barra simple para separar las carpetas, deje comentado el path original que traía justo arriba.</p>
+<figure><img loading="lazy" src="img/32/6.png" alt="Captura 6 del tute 32"></figure>
+<p>Abro cualquier ejecutable, y le pongo un BREAKPOINT para que pare y cambio el debugger a Windbg.</p>
+<figure><img loading="lazy" src="img/32/7.png" alt="Captura 7 del tute 32"></figure>
+<p>Luego veremos si quedo bien, arrancamos el ejecutable, si nos dice que no encuentra el WINDBG deberán revisar el path, o algo fallo en la instalación, lo cual puede pasar, creo que la única forma de ver el problema es mirar con Process Monitor que archivos busca al arrancar y donde, para ver lo que falla.</p>
+<figure><img loading="lazy" src="img/32/8.png" alt="Captura 8 del tute 32"></figure>
+<p>Allí paró tal cual fuera el Win32 local debugger de IDA, pero vemos que abajo donde esta normalmente la barra de Python nos aparece WINDBG (sino aparece investiguen y manden como lo solucionaron para agregarlo aquí en el tutorial), ademas clickeando en la palabra WINDBG puedo cambiar a la barra de Python si necesito.</p>
+<p>COMANDOS DE WINDBG.</p>
+<p>Esto quiere decir que la cosa va bien, que quedo bien instalado, podemos utilizar la GUI de IDA y a la vez comandos de windbg, probemos algunos.</p>
+<figure><img loading="lazy" src="img/32/9.png" alt="Captura 9 del tute 32"></figure>
+<figure><img loading="lazy" src="img/32/10.png" alt="Captura 10 del tute 32"></figure>
+<p>Funciono puedo ver la lista de módulos en la barra de Windbg, obviamente también en la de IDA.</p>
+<figure><img loading="lazy" src="img/32/11.png" alt="Captura 11 del tute 32"></figure>
+<p>También debemos configurar los símbolos para el WINDBG, vemos que si hacemos</p>
+<p>.reload</p>
+<p>Me da error con los mismos al no estar configurado donde guardarlos.</p>
+<figure><img loading="lazy" src="img/32/12.png" alt="Captura 12 del tute 32"></figure>
+<p>CONFIGURANDO LOS SIMBOLOS PARA WINDBG.</p>
+<p>Creemos una carpeta en C para los símbolos, obviamente IDA tiene que arrancar como administrador sino no podrá escribir allí.</p>
+<p>En las ENVIRONMENT VARIABLES o VARIABLES DE ENTORNO de Windows agregaremos _NT_SYMBOL_PATH.</p>
+<figure><img loading="lazy" src="img/32/13.png" alt="Captura 13 del tute 32"></figure>
+<figure><img loading="lazy" src="img/32/14.png" alt="Captura 14 del tute 32"></figure>
+<p>Y como valores ponemos por ejemplo.</p>
+<figure><img loading="lazy" src="img/32/15.png" alt="Captura 15 del tute 32"></figure>
+<p>Allí pondre el path a la carpeta que cree donde se bajara los símbolos, en mi caso sera la carpeta symbols en C.</p>
+<figure><img loading="lazy" src="img/32/16.png" alt="Captura 16 del tute 32"></figure>
+<p>Reinicio la maquina o al menos el explorador de Windows (el proceso explorer.exe matándolo y arrancándolo desde la barra de procesos)</p>
+<p>Y ahora cuando arranco de nuevo el IDA y arranco a debuggear con el windbg, ya vemos que se empieza a tratar de bajar los símbolos muestra ventanas de downloading y al finalizar con lm, vemos que aparece el path que pusimos y dentro de la carpeta de los símbolos están los pdb.</p>
+<figure><img loading="lazy" src="img/32/17.png" alt="Captura 17 del tute 32"></figure>
+<figure><img loading="lazy" src="img/32/18.png" alt="Captura 18 del tute 32"></figure>
+<p>Ya lo tenemos configurado para trabajar.</p>
+<figure><img loading="lazy" src="img/32/19.png" alt="Captura 19 del tute 32"></figure>
+<p>Con x podemos ver la lista de funciones de kernel32 por ejemplo si queremos podemos usar comodines.</p>
+<figure><img loading="lazy" src="img/32/20.png" alt="Captura 20 del tute 32"></figure>
+<p>Las que empiezan por He.</p>
+<p>Por supuesto también en IDA, en la lista de módulos puedo hacer click derecho LOAD SYMBOLS de algún modulo.</p>
+<figure><img loading="lazy" src="img/32/21.png" alt="Captura 21 del tute 32"></figure>
+<p>Y también los tendré en la interfase del IDA.</p>
+<p>Tengo la posibilidad de poner breakpoints desde la interfase de IDA como lo hacemos normalmente con F2 y desde la barra de windbg los que lo manejara el mismo.</p>
+<figure><img loading="lazy" src="img/32/22.png" alt="Captura 22 del tute 32"></figure>
+<p>Si hago BL para listar los breakpoints del windbg.</p>
+<figure><img loading="lazy" src="img/32/23.png" alt="Captura 23 del tute 32"></figure>
+<figure><img loading="lazy" src="img/32/24.png" alt="Captura 24 del tute 32"></figure>
+<p>Vemos que en windbg se listan todos los breakpoints, mientras que en el listado de IDA solo aparecerán los de IDA aunque siempre parara en todos.</p>
+<p>Bueno por ahora lo dejaremos aquí es importante que vayan preparando la instalación para que funcione bien a veces hay problemas con eso, así que en la siguiente parte seguiremos adelante.</p>
+<p>Hasta la parte 33.</p>
+<p>Ricardo Narvaja</p>
+</main>
+<footer class="pie">
+  <p>Material educativo y defensivo. Las prácticas se limitan a programas propios, software abierto o crackmes diseñados para aprender. No se enseña a eludir licencias, DRM ni controles de acceso.</p>
+  <p><a href="../00_EMPEZAR_AQUI.html">Inicio</a> · <a href="../guia/etapa-0.html">Etapas</a> · <a href="../fuentes_y_limites.html">Fuentes y límites</a> · <a href="../registro_de_cobertura.csv">Registro de cobertura</a></p>
+</footer>
+<script>
+(function(){
+  function abrir(src){
+    var o=document.createElement('div'); o.className='lightbox-ov';
+    var i=document.createElement('img'); i.src=src; o.appendChild(i);
+    function cerrar(){o.remove(); document.removeEventListener('keydown', onkey);}
+    function onkey(e){ if(e.key==='Escape') cerrar(); }
+    o.addEventListener('click', cerrar);
+    document.addEventListener('keydown', onkey);
+    document.body.appendChild(o);
+  }
+  document.addEventListener('DOMContentLoaded', function(){
+    document.querySelectorAll('figure img, main img').forEach(function(img){
+      img.style.cursor='zoom-in';
+      img.addEventListener('click', function(){ abrir(img.currentSrc||img.src); });
+    });
+  });
+})();
+</script>
+</body>
+</html>

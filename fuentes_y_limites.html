@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Fuentes y límites</title>
+<meta name="description" content="Criterios, cobertura, exclusiones y limitaciones de esta edición.">
+<link rel="stylesheet" href="guia/estilo.css">
+</head>
+<body>
+<a class="salto" href="#contenido">Saltar al contenido</a>
+<header class="cabecera">
+  <div class="marca"><a href="00_EMPEZAR_AQUI.html">CLS · Curso de reversing</a> <span class="edicion">edición 5 · 27/10/2026</span></div>
+  <nav class="principal" aria-label="Navegación principal">
+    <a href="00_EMPEZAR_AQUI.html">Inicio</a>
+    <a href="guia/index.html">Curso</a>
+    <a href="materiales.html">Materiales</a>
+    <a href="fichas/index.html">Fichas</a>
+    <a href="glosario.html">Glosario</a>
+    <a href="preguntas_y_respuestas.html">Repaso</a>
+    <a href="buscar.html">Buscar</a>
+  </nav>
+</header>
+<main id="contenido">
+<h1 id="fuentes-y-límites-de-esta-edición">Fuentes y límites de esta edición</h1>
+<p><strong>Edición 5. Fecha de cierre de esta tanda: 27 de octubre de 2026.</strong></p>
+<p>Este documento explica de dónde sale el material del curso, qué se revisó de verdad, qué quedó pendiente, qué se corrigió respecto de las ediciones anteriores y qué decisiones editoriales se tomaron. Está pensado para que otra persona —u otra sesión de trabajo— pueda continuar sin empezar de cero.</p>
+<h2 id="0-alcance-solo-windows-refuerzo-externo">0. Alcance: solo Windows + refuerzo externo</h2>
+<p>Esta edición cubre <strong>únicamente reversing de Windows</strong> (binarios PE, x86/x64). Linux/ELF, macOS/Mach-O, Android (APK/DEX) y arquitecturas como ARM/AArch64 quedan <strong>fuera de alcance</strong> por decisión editorial (ver <code>guia/05-fuera-de-alcance.html</code>).</p>
+<p>Además del material del grupo CLS, el curso incorpora un <strong>refuerzo/actualización de conocimiento externo</strong> para tapar temas que CLS no cubría pero que son necesarios en Windows hoy: <strong>punto flotante y SSE</strong> (<code>guia/02-flotante.html</code>), <strong>optimizaciones del compilador</strong> (<code>guia/02-optimizaciones.html</code>), <strong>reconocer criptografía y encoding</strong> (<code>guia/04-cripto.html</code>), el <strong>taller de herramientas actual</strong> (dentro de <code>guia/02-herramientas.html</code>) y <strong>dónde seguir practicando</strong> (en el mapa del curso). Esas lecciones están marcadas como <em>conocimiento externo (agregado por esta edición)</em> y no se presentan como material observado de CLS.</p>
+<h2 id="1-qué-es-esta-edición">1. Qué es esta edición</h2>
+<p>Un curso completo en <code>CLS_Guia</code>, solo Windows, con:</p>
+<ul><li>Lecciones HTML en siete etapas numeradas: <strong>0–4 son el recorrido obligatorio</strong>; <strong>5 y 6 son ramas optativas</strong>. La rama optativa 2D y la extensión Hyper-V son materiales complementarios, fuera de la aprobación obligatoria.</li><li>Fichas de recursos con estado de revisión.</li><li>Glosario, preguntas y respuestas, mapa y registro de cobertura, seguimiento.</li><li>Este documento de fuentes y límites.</li></ul>
+<p>Los borradores anteriores se conservaron en <code>CLS_Guia/_backup_2026-10-26/</code>. No se movió, renombró ni sobrescribió ningún archivo fuente, exportación, inventario o transcripción fuera de <code>CLS_Guia</code>.</p>
+<h2 id="2-mapa-real-del-corpus">2. Mapa real del corpus</h2>
+<p>Los conteos se obtuvieron del disco el 26/10/2026:</p>
+<div class="tabla"><table>
+<thead><tr>
+<th>Carpeta</th>
+<th>Archivos</th>
+<th>Tamaño</th>
+<th>Qué es</th>
+</tr></thead><tbody>
+<tr><td><code>telegram/</code></td><td>4.949</td><td>72,0 GB</td><td>Exportaciones del chat + un RAR de Themida</td></tr>
+<tr><td><code>CLS_fuentes_externas/</code></td><td>3.460</td><td>17,2 GB</td><td>Clones de GitHub, MEGA y links del chat</td></tr>
+<tr><td><code>CLS_videos_extraidos/</code></td><td>254</td><td>14,6 GB</td><td>Videos ya extraídos</td></tr>
+<tr><td><code>CLS_resultados_intermedios/</code></td><td>1.368</td><td>100,3 MB</td><td>Chat unido, inventarios, transcripciones, mapas</td></tr>
+<tr><td><code>exportacion_sesion/</code></td><td>6</td><td>25,2 MB</td><td>Conversación de una sesión anterior</td></tr>
+<tr><td><code>zips_anteriores/</code></td><td>11</td><td>7,2 MB</td><td>Resultados históricos</td></tr>
+<tr><td><code>descargas_sueltas/</code></td><td>1</td><td>1,5 MB</td><td>Documento de IDA Pro</td></tr>
+<tr><td><code>CLS_Guia/</code></td><td>paquete</td><td>—</td><td>Este curso</td></tr>
+</tbody></table></div>
+<p>Dentro de <code>CLS_fuentes_externas</code>:</p>
+<div class="tabla"><table>
+<thead><tr>
+<th>Colección</th>
+<th>Archivos</th>
+<th>Tamaño</th>
+<th>Estado</th>
+</tr></thead><tbody>
+<tr><td><code>github/apuromafo_Crackslatinos/</code></td><td>2.457</td><td>7,9 GB</td><td>Parcial: títulos y algunos documentos</td></tr>
+<tr><td><code>github/SceneRE_CrackSLatinoS/</code></td><td>66</td><td>0,4 MB</td><td>Revisado: son iframes</td></tr>
+<tr><td><code>mega_OTROS/</code></td><td>901</td><td>2,4 GB</td><td>Solo mapa de carpetas</td></tr>
+<tr><td><code>links_chat/</code></td><td>32</td><td>6,8 GB</td><td>Solo listado</td></tr>
+</tbody></table></div>
+<h2 id="3-inventarios-cuál-es-vigente-y-por-qué">3. Inventarios: cuál es vigente y por qué</h2>
+<p>Hay tres artefactos que parecen inventarios y <strong>no miden lo mismo</strong>:</p>
+<div class="tabla"><table>
+<thead><tr>
+<th>Artefacto</th>
+<th>Fecha</th>
+<th>Cifra</th>
+<th>Qué mide</th>
+<th>Estado</th>
+</tr></thead><tbody>
+<tr><td><code>inventario_limpio/CLS_inventario_limpio.csv</code></td><td>26/10/2026</td><td>8.154 filas</td><td>Una fila por archivo en disco, con SHA-256</td><td><strong>Vigente</strong></td></tr>
+<tr><td><code>CLS_resultados/inventario_completo.csv</code></td><td>24/10/2026</td><td>6.499 filas</td><td>Solo referencias del <code>result.json</code>, sin binarios</td><td>Histórico</td></tr>
+<tr><td><code>CLS_plan_estudio.docx</code></td><td>sesión previa</td><td>100.713 mensajes, 2.638 referencias, 3.861 enlaces</td><td>Exportación incompleta, rutas <code>D:\CLS</code>, sin medios</td><td>Histórico y superado</td></tr>
+</tbody></table></div>
+<p>No se suman esas cifras. El inventario vigente tiene 8.154 archivos; el chat unido tiene 100.791 mensajes (2016-01-18 a 2026-10-26). El plan histórico decía 100.713 mensajes porque trabajaba sobre otra exportación y sin los medios.</p>
+<p>Estados del inventario vigente: <code>util</code> 6.705, <code>util (trae binarios: solo VM)</code> 453, <code>practica (solo VM)</code> 66, <code>cuarentena</code> 202, <code>excluido (comercial/warez)</code> 46, <code>duplicado</code> 321, <code>descartado (miniatura)</code> 361.</p>
+<p><strong><code>util</code> no significa seguro, bueno ni vigente.</strong> Es una clasificación de catálogo. Las recomendaciones del curso se basan en el contenido leído, no en ese estado.</p>
+<h2 id="4-método-de-trabajo-por-tandas">4. Método de trabajo por tandas</h2>
+<ol><li>Se leyeron los <code>LEEME</code>, resúmenes, mapas, índices y CSV de inventario.</li><li>Se compararon versiones (inventario limpio vs histórico, plan de estudio vs estado actual).</li><li>Se procesaron transcripciones por lotes: lectura completa de los capítulos centrales y digest con citas para los secundarios.</li><li>Se verificaron timestamps contra los <code>.srt</code> hermanos.</li><li>Se extrajo texto de documentos <code>.docx</code> seleccionados (IDA Pro y plan de estudio) sin modificar los originales.</li><li>No se ejecutó ningún binario, no se extrajo ningún comprimido y no se abrió ningún adjunto del chat.</li><li>Se escribió el curso y se validaron los enlaces relativos contra el disco.</li></ol>
+<p>El detalle por lote está en <code>registro_de_cobertura.csv</code>; el cruce tema ↔ recurso ↔ archivo está en <code>mapa_de_cobertura.csv</code>, que se edita a mano y se valida con <code>_trabajo/mapa.py</code> (ese script ya no lo regenera).</p>
+<h2 id="5-qué-se-revisó-de-verdad">5. Qué se revisó de verdad</h2>
+<h3 id="5-1-reversing-desde-cero-ricardo-narvaja-y-solid">5.1 Reversing desde cero (Ricardo Narvaja y Solid)</h3>
+<p>47 capítulos, 96 archivos <code>.txt</code>/<code>.srt</code>, 28,6 h según <code>_progreso.csv</code>.</p>
+<p>Leídos completos o digeridos con citas: <strong>29 capítulos</strong>.</p>
+<ul><li>Leídos por el editor: 01, 02, 03, 04, 05, 07, 11, 14, 15, 18.</li><li>Digeridos por subagentes con citas verificadas: 06, 08, 09, 12, 15b, 16b, 21, 22, 24, 26, 26b, 28, 29b, 30, 35, 36, 37, 38, 39.</li></ul>
+<p>Estado al 27/10/2026 (la fuente fechada y autoritativa es <a href="registro_de_cobertura.csv"><code>registro_de_cobertura.csv</code></a>): <strong>42 de 47 capítulos citados</strong> (38 en 2A + ofuscación 26/30, TLS 38 y MFC 39 integrados en el bloque 2B) y <strong>5 excluidos por criterio</strong> (13, 17, 27, 29, 31: desempaquetado de protectores comerciales). No quedan capítulos pendientes. Las listas de arriba pueden no estar al día capítulo por capítulo; el registro manda.</p>
+<h3 id="5-2-videos-y-material-adicional-cayetano-de-juan-úbeda">5.2 Videos y material adicional (Cayetano de Juan Úbeda)</h3>
+<p>40 videos, 22,5 h. Se identificaron dos cursos:</p>
+<ul><li><strong>Videos 1–22:</strong> «Lenguaje ensamblador con MASM32 para Windows». 13,6 h.</li><li><strong>Videos 23–40:</strong> «Introducción a reversing con OllyDbg». 9,7 h.</li></ul>
+<p>Se leyeron encabezados y pasajes de los 40; completos los cortos (12, 22, 23, 33, 34, 39, 40) y pasajes extensos de 8, 20, 24, 35, 36, 37, 38.</p>
+<h3 id="5-3-python-iso-video-tutes">5.3 Python ISO video tutes</h3>
+<p>55 transcripciones (165 segmentos), 12,7 h. Se leyeron 20 completas y 2 parciales; 33 solo por encabezado.</p>
+<p><strong>Hallazgo:</strong> no es un curso de Python. Es un curso de lógica y fundamentos de programación con pseudocódigo y ejemplos en Basic, Pascal y C. No contiene código Python ejecutable. El autor anuncia una segunda parte con Python que no está en la carpeta.</p>
+<h3 id="5-4-documentos">5.4 Documentos</h3>
+<ul><li><code>descargas_sueltas/INTRODUCCIÓN AL REVERSING CON IDA PRO DESDE CERO.docx</code>: texto extraído (7.620 caracteres) y leído. Es la parte 1 de una serie de 2016.</li><li><code>CLS_resultados_intermedios/CLS_plan_estudio.docx</code>: texto extraído (6.714 caracteres) y leído. Es un plan histórico basado en una exportación incompleta.</li><li><code>IDA DESDE CERO</code>: 69 <code>.docx</code> + 47 PDF. Se extrajo el <strong>texto + 3.278 capturas</strong> de los 69 <code>.docx</code> y se armaron <strong>69 páginas-tutorial ilustradas</strong> (<code>ida_tutes/</code>, índice en <code>ida-tutes.html</code>); los <strong>tutes 1–28 se integraron en las lecciones</strong> y los 29–48 se resumieron en clave defensiva en Vulnerabilidades. Los 47 PDF y el <code>.rar</code> <strong>no</strong> se extrajeron; los tutes 49–69 (kernel) quedan indexados, fuera del recorrido.</li></ul>
+<h3 id="5-5-chat-telegram-y-comprimidos">5.5 Chat, Telegram y comprimidos</h3>
+<ul><li><code>CLS_chat_unido.json</code> (100.791 mensajes): metadatos, totales y muestras; <strong>no</strong> lectura mensaje por mensaje.</li><li>Transcripciones de Telegram: 179 videos (76,5 h) y 357 audios (2,7 h). Se <strong>tamizaron 523 por tema</strong> (heurística por palabras clave); con lo técnico se armaron <strong>5 juntadas ilustradas</strong> (fotogramas + transcripción, <code>juntadas/</code>) y <strong>99 audios en hilos</strong> con reproductor (<code>audios/</code>). No es lectura completa de cada archivo.</li><li><code>_comprimidos.csv</code>: 79.808 entradas listadas; <strong>no se extrajo</strong> ningún comprimido.</li><li><code>_hashes.csv</code>: 8.154 hashes SHA-256.</li><li>Imágenes: 3.235 en el inventario (más 385 miniaturas descartadas). <strong>No se hizo OCR ni inspección visual</strong>; no se usan como fuente de contenido.</li><li>Documentos: 567 en el inventario (PDF, DOC, DOCX, TXT). Se extrajeron y leyeron los <strong>69 <code>.docx</code> del Curso IDA</strong> más dos <code>.docx</code> sueltos (IDA Pro y plan de estudio); el resto queda pendiente.</li><li>Audios: 357 mensajes de voz. <strong>No se escucharon</strong>; las transcripciones existen y los candidatos técnicos se tamizaron y agruparon en hilos, pero no se leyeron todas.</li></ul>
+<h3 id="5-6-ficciones-y-correcciones">5.6 Ficciones y correcciones</h3>
+<ul><li>Las páginas de SceneRE son <strong>iframes de YouTube</strong>, no texto didáctico. El borrador anterior las citaba como si enseñaran.</li><li>El video «Reverse engineering con Ricardo Narvaja» no es un tutorial: aproximadamente la primera hora es música/intro de stream y desde ~01:01 hay una conversación sobre la profesión.</li><li>El video 37 ejecuta malware (Shelter) y monta un reverse shell en VMs. Es un caso observado, no una práctica recomendada.</li><li>El video 36 inyecta una puerta trasera de Metasploit en una calculadora dentro de una VM. Tampoco es una práctica de esta guía.</li><li>El documento de IDA Pro recomienda descargar IDA Pro 6.8 "desde Google" con una contraseña. <strong>No se reproduce</strong>: se usa IDA Free o Ghidra.</li><li><code>Teorias_Numeradas</code> tiene 2.023 títulos; muchos apuntan a prácticas sobre software comercial o protectores. No se usa como curso ni se abre.</li></ul>
+<h2 id="6-discrepancias-y-afirmaciones-dudosas">6. Discrepancias y afirmaciones dudosas</h2>
+<div class="tabla"><table>
+<thead><tr>
+<th>Fuente</th>
+<th>Lo que dice</th>
+<th>Lo que corresponde</th>
+</tr></thead><tbody>
+<tr><td>Cap. 01, ~00:22:33</td><td>"el byte más significativo es el de la derecha"</td><td>En little-endian, el byte <strong>menos</strong> significativo va primero</td></tr>
+<tr><td>Cap. 03, ~00:17:00</td><td>Rangos de WORD confundidos</td><td>BYTE −128..127; WORD −32.768..32.767; DWORD −2.147.483.648..2.147.483.647</td></tr>
+<tr><td>Cap. 07, ~00:06:00</td><td>"cuatro breakpoints por proceso"</td><td>Son cuatro por <strong>hilo</strong> (<code>DR0</code>–<code>DR3</code> en el contexto del hilo)</td></tr>
+<tr><td>Cap. 09, ~00:08:53</td><td>"JC es igual a JE"</td><td><code>JE</code> = <code>JZ</code>; <code>JC</code> = <code>JB</code> (carry)</td></tr>
+<tr><td>Cap. 14, ~00:01:00</td><td>Buscar IDA Pro "por internet"</td><td>Usar IDA Free, Ghidra o licencia educativa</td></tr>
+<tr><td>Docx IDA 2016</td><td>Descargar IDA Pro 6.8 con contraseña</td><td>No se sigue; usar software con licencia</td></tr>
+<tr><td>Plan de estudio</td><td>Rutas <code>D:\CLS</code>, 100.713 mensajes, sin medios</td><td>Las rutas se actualizaron al árbol local del proyecto y a su inventario vigente</td></tr>
+<tr><td>Video 37</td><td>Ejecuta malware "para ver qué hace"</td><td>Caso observado; la práctica de esta guía es estática y defensiva</td></tr>
+</tbody></table></div>
+<p>Cuando el audio se equivoca en un mnemónico o un número, la lección lo marca y enseña el valor correcto. No se copian errores del ASR.</p>
+<h2 id="7-criterios-de-inclusión-y-exclusión">7. Criterios de inclusión y exclusión</h2>
+<h3 id="se-incluye">Se incluye</h3>
+<ul><li>Material en español, progresivo, con ejemplos y ejercicios.</li><li>Programas propios, software abierto o crackmes diseñados para aprender.</li><li>Análisis estático y dinámico en laboratorio aislado.</li><li>Contexto histórico cuando ayuda a entender (OllyDbg, MASM32, Python 2).</li><li>Contenido defensivo sobre malware, vulnerabilidades y mitigaciones.</li></ul>
+<h3 id="se-excluye">Se excluye</h3>
+<ul><li>Eludir licencias, DRM, autenticación o controles de acceso.</li><li>Producir cracks, keygens o parches para software comercial.</li><li>Desempaquetar protectores comerciales (Themida, WinLicense, ACProtect) como práctica.</li><li>Ejecutar adjuntos del chat, muestras en cuarentena o instaladores desconocidos.</li><li>Presentar títulos o contenedores como si fueran contenido leído.</li><li>Sumar cifras de inventarios incompatibles.</li></ul>
+<p>Los estados <code>cuarentena</code>, <code>excluido</code>, <code>descartado</code> y <code>duplicado</code> se respetan. No se convierten en tareas.</p>
+<h2 id="8-seguridad-y-legalidad">8. Seguridad y legalidad</h2>
+<p>El curso es educativo, defensivo y para uso autorizado:</p>
+<ul><li>Las prácticas de reversing se hacen con programas propios o crackmes.</li><li>El malware se estudia en estático; la ejecución dinámica queda fuera de alcance.</li><li>Las vulnerabilidades se practican en programas propios o laboratorios diseñados para eso.</li><li>La divulgación de una vulnerabilidad es privada y coordinada.</li><li>No se distribuyen claves, contraseñas ni instrucciones para abrir material protegido.</li><li>No se copiaron binarios al paquete de estudio.</li></ul>
+<h2 id="9-convenciones-de-rutas-y-enlaces">9. Convenciones de rutas y enlaces</h2>
+<ul><li>En las páginas HTML, los enlaces a fuentes son relativos a la página y apuntan a la raíz del proyecto con <code>../</code> o <code>../../</code>.</li><li>En los CSV, las rutas son relativas a la <strong>raíz local del proyecto</strong>.</li><li>Los nombres con espacios o acentos se codifican en la URL (<code>%20</code>, <code>%C3%A1</code>).</li><li>Los enlaces se verificaron contra el disco con un script; los que no existen se marcan como pendientes.</li><li><strong>Los recursos se vinculan, no se incluyen.</strong> El paquete contiene HTML, CSV, el PDF, las páginas-tutorial ilustradas de IDA con sus capturas y los textos extraídos en <code>_trabajo/extraido_ida/</code>; los videos, binarios y comprimidos <strong>se vinculan</strong>, no se copian.</li><li>Los recursos externos (URLs) no se incluyen como enlaces vivos si no se verificaron; en ese caso se indica el título y se deja constancia.</li></ul>
+<h2 id="10-qué-se-construyó-ediciones-4-5-y-qué-falta">10. Qué se construyó (ediciones 4–5) y qué falta</h2>
+<p>Lo de las ediciones anteriores ya está hecho: los 38 capítulos citados, los 69 documentos de IDA extraídos/ilustrados/integrados, <code>Teorias_Numeradas</code> clasificado por título (426 educativos / 1.591 cracking) y las transcripciones de Telegram tamizadas (juntadas + audios).</p>
+<h3 id="10-1-edición-4-etapa-2b-windows-intermedio-hecho">10.1 Edición 4 — Etapa 2B · Windows intermedio (HECHO)</h3>
+<p>La "capa intermedia" que faltaba se construyó como <strong>bloque 2B</strong> dentro de la Etapa 2 (sin renumerar las etapas), con 7 lecciones nuevas, cada una con ejemplo, práctica, repaso, puerta de salida, fuentes y etiquetas:</p>
+<ul><li><strong>2.10 Ofuscación nativa</strong> (caps. 26 y 30) · <strong>2.11 TLS callbacks</strong> (cap. 38) · <strong>2.12 MFC</strong> (cap. 39).</li><li><strong>2.13 Huella de compilador</strong> (MSVC/MinGW/Delphi/VB6/MFC) · <strong>2.14 PE fino</strong> (Rich header, recursos, delay-load, <code>.pdata</code>, debug/PDB, Load Config).</li><li><strong>2.15 Taxonomía anti-análisis</strong> (caps. 22 y 24; reconocer, no evadir) · <strong>2.16 Ghidra/Cutter</strong> (recorrido equivalente al de IDA; conocimiento externo).</li></ul>
+<p><strong>Dos límites declarados del bloque 2B:</strong> (a) las fuentes citan la <strong>ruta local</strong> del capítulo (vía el enlace a la transcripción) pero <strong>no el timestamp exacto</strong> dentro del video, como sí hacen las lecciones de 2A; (b) los <strong>ejemplos paso a paso de 2B son ilustrativos</strong> —bytes, direcciones y listados construidos para mostrar la técnica—, no volcados de un binario puntual del corpus. Está marcado así en cada lección.</p>
+<h3 id="10-2-edición-5-etapa-2c-windows-avanzado-hecho">10.2 Edición 5 — Etapa 2C · Windows avanzado (HECHO)</h3>
+<p>El núcleo avanzado se construyó como bloque <strong>2C</strong> dentro de la Etapa 2 (sin renumerar las etapas):</p>
+<ul><li><strong>2.17 Packers didácticos</strong> (UPX/OEP/dump/IAT sobre binarios propios) · <strong>2.18 C++ profundo</strong> (RTTI, SSO, STL, excepciones) · <strong>2.19 WinDbg, TTD y heap</strong> · <strong>2.20 Patch diffing y CVE</strong> · <strong>2.21 Scripting de debugger</strong>.</li><li><strong>Rutas optativas</strong> (fuera de la puerta obligatoria, con sus propios prerrequisitos): <strong>2.22</strong> Malware dinámico defensivo, <strong>2.23</strong> Shellcode/red/C2 (solo reconocer y clasificar), <strong>2.24</strong> Fuzzing y análisis simbólico.</li></ul>
+<h3 id="10-3-edición-5-2d-windows-internals-y-etapa-6-kernel-drivers-completado">10.3 Edición 5 — 2D · Windows internals y Etapa 6 · Kernel/drivers (COMPLETADO)</h3>
+<p>Se añadieron <strong>13 lecciones optativas 2D</strong>, recomendadas después de 2C, y una extensión conceptual separada sobre Hyper-V. La estimación editorial se ajustó a <strong>45–60 h</strong> y, en las revisiones del 28/10/2026, primero a <strong>50–65 h</strong> (2D.6, 2D.8 y 2D.9 sumaron unas diez páginas y pasos de práctica) y después a <strong>55–70 h</strong> (2D.10–2D.13 sumaron unas once páginas y pasos de práctica); no está medida con alumnos y no se presenta como duración probada. La Etapa 6 pasó de 40–60 h a <strong>45–65 h</strong>: entre las dos revisiones sus seis lecciones sumaron unas veinte páginas y pasos de lectura guiada (bugchecks, inventario de minifilters, estado de VBS/HVCI). 2.18 también se amplió, pero lo agregado entraba en el rango que 2C tenía entonces (~25–35 h).</p>
+<ul><li>2D.1–2D.5: objetos/tokens, memoria/loader, Registro, servicios y Task Scheduler.</li><li>2D.6–2D.13: COM, activación COM, DCOM/RPC, WMI, IPC, excepciones, ETW e integrador.</li><li>La <strong>Etapa 6</strong> añade seis lecciones optativas de kernel y drivers. Requiere C, assembly, memoria/sincronización, WinDbg y solo las lecciones 2D pertinentes (2D.1, 2D.2 y 2D.11); 2C es recomendada, no requisito. Estimación inicial: <strong>45–65 h</strong>, posiblemente más según experiencia previa.</li><li>Hyper-V queda como extensión optativa separada, sin requisito para 2D ni Etapa 6.</li></ul>
+<p>La ampliación es principalmente <strong>conocimiento externo</strong> basado en documentación primaria de Microsoft Learn/WDK; los ejemplos están marcados como ilustrativos. No se cargó un driver ni se verificaron los laboratorios en una VM. El laboratorio KMDF propuesto limita el IOCTL a devolver una estructura fija; no incluye lectura/escritura arbitraria de memoria. Las prácticas de kernel exigen VM descartable con snapshot y nunca recomiendan modificar protecciones del host.</p>
+<h3 id="10-4-revisión-del-28-10-2026-temas-del-núcleo-de-reversing-2b-2c-y-4-1">10.4 Revisión del 28/10/2026 — temas del núcleo de reversing (2B, 2C y 4.1)</h3>
+<p>Para que quien termine el recorrido encuentre explicados los temas que más aparecen al analizar binarios reales, se ampliaron lecciones existentes, sin etapas ni ramas nuevas y sin renumerar:</p>
+<ul><li><strong>Temas que faltaban:</strong> resolución dinámica de APIs, API hashing, API sets y capa nativa <code>ntdll</code>/<code>syscall</code> (2.14); cadenas UTF-16, con longitud, en el stack y cifradas, y patrones de colecciones de datos (lección de IDA); rutinas de descifrado y aplanamiento del flujo (2.10); Go, Rust y Delphi (2.13); reconstrucción de un formato de archivo propio (4.1); trazas condicionales e instrumentación con Frida (2.21).</li><li><strong>Lecciones finas ampliadas:</strong> 2.15 (<code>CheckRemoteDebuggerPresent</code>, <code>ProcessDebugPort</code>, tiempos, <code>CPUID</code>, tabla de documentación), 2.16 (tipos y estructuras, scripting, headless, Version Tracking), 2.17 (OEP en x64, señales genéricas, por qué falla un dump) y 2.20 (cómo empareja un differ, ruido, símbolos públicos).</li><li><strong>Estimaciones:</strong> el PDF pasó de 371 a 395 páginas. 2B sumó unas once páginas y nueve pasos de práctica que piden compilar programas propios (APIs dinámicas, cadenas cifradas, flujo aplanado, Go/Rust, chequeos anti-debug, estructuras y scripts en Ghidra): pasa de <strong>~20 h</strong> a <strong>~25 h</strong>. 2C sumó unas ocho páginas y seis pasos (UPX de 64 bits, entropía, diff con ruido de compilación, Version Tracking, trazas y Frida): pasa de <strong>~25–35 h</strong> a <strong>~30–40 h</strong>. La lección 4.1 sumó dos páginas y un ejercicio de formato propio con lector en Python: pasa de 4 h a 6 h y la Etapa 4 de <strong>12–16 h</strong> a <strong>14–18 h</strong>. La lección de IDA (2A) creció dos páginas y dos pasos que entran en su rango de 32–40 h. Ninguna estimación está medida con alumnos.</li><li><strong>Fuentes:</strong> documentación de Microsoft Learn, Go, Rust, Ghidra, x64dbg, Frida, BinDiff, UPX y Python, comprobada en esta revisión. Lo de Delphi (convención <code>register</code>, firma <code>TPF0</code>, cabecera de los <code>string</code>) queda como conocimiento externo sin enlace, porque la documentación de Embarcadero no respondió durante la verificación.</li><li><strong>Siguen fuera, y así lo dice cada lección:</strong> ofuscación por máquina virtual y desofuscación simbólica, tipos de Go y <em>traits</em> de Rust, p-code de VB6, neutralizar anti-análisis, packers multicapa y protectores comerciales, extensiones de Ghidra y SLEIGH, diff de parches completos de Windows, Stalker de Frida, DynamoRIO/Pin y protocolos de terceros.</li></ul>
+<p>Ningún ejemplo nuevo se compiló ni se ejecutó: están marcados como <strong>ilustrativos</strong> y las prácticas nuevas no están verificadas.</p>
+<h3 id="10-5-pendiente-futuro">10.5 Pendiente / futuro</h3>
+<ul><li><strong>Laboratorios reproducibles:</strong> compilar los binarios de práctica propios y publicar versiones de herramientas, archivos y hashes/salidas esperadas. Los ejemplos de 2B, 2C, 2D y Etapa 6 están marcados como <strong>ilustrativos</strong> cuando no hay ejecución verificada.</li><li>Continúan fuera del recorrido Windows: exploiting comercial, Android, Linux/ELF, macOS y ARM.</li></ul>
+<p>Opcional (no bloquea el cierre): sumar <strong>capturas propias</strong> a los ejemplos trabajados de 2B, que hoy son ejemplos <strong>ilustrativos escritos</strong> (bytes y direcciones), sin capturas.</p>
+<p>Análisis detallado con evidencia (de otra sesión de trabajo, revisado por esta edición): <a href="ANALISIS_TEMAS_FALTANTES.md"><code>ANALISIS_TEMAS_FALTANTES.md</code></a>.</p>
+<h2 id="11-limitaciones-de-esta-edición">11. Limitaciones de esta edición</h2>
+<ul><li>La cobertura es <strong>parcial y declarada</strong>: no se leyó todo el corpus.</li><li>Las duraciones de video provienen de <code>_progreso.csv</code> o de la suma de subtítulos; las de las lecciones son estimaciones editoriales.</li><li>Las citas de audio pueden tener errores de ASR; se marcan cuando se detectan.</li><li>No se verificó el contenido de los comprimidos ni de los binarios.</li><li>No se probaron los ejercicios en todas las versiones de Windows, IDA, x64dbg o .NET.</li><li>Las herramientas cambian: los atajos y menús pueden diferir de los descritos.</li><li>El curso no reemplaza una formación formal ni una autorización para analizar sistemas ajenos.</li></ul>
+<h2 id="12-atribución">12. Atribución</h2>
+<ul><li><strong>Reversing desde cero:</strong> Ricardo Narvaja y Solid.</li><li><strong>MASM32 y OllyDbg:</strong> Cayetano de Juan Úbeda.</li><li><strong>Lógica de programación:</strong> Daniel Bermúdez, basado en el libro de Omar Iván Trejos Buriticá.</li><li><strong>Introducción al reversing con IDA Pro:</strong> Ricardo Narvaja (2016).</li><li><strong>Comunidad CLS:</strong> inventarios, chat, transcripciones y catalogación.</li></ul>
+<p>Esta guía es una obra derivada con fines educativos. No está afiliada a CLS ni a los autores. Los errores de interpretación y las decisiones editoriales son responsabilidad de esta edición.</p>
+<h2 id="13-verificación-rápida">13. Verificación rápida</h2>
+<p>Para comprobar que el paquete está completo:</p>
+<pre><code class="lenguaje-powershell"># Contar lecciones y fichas
+(Get-ChildItem .\guia -Filter *.html).Count
+(Get-ChildItem .\fichas -Filter *.html).Count
+
+# Verificar que la portada y los índices existen
+Test-Path .\00_EMPEZAR_AQUI.html
+Test-Path .\guia\index.html
+Test-Path .\fichas\index.html</code></pre>
+<p>Los enlaces relativos se verifican con la herramienta de build de esta edición (<code>verificar_enlaces.py</code>, dentro de <code>_trabajo/</code>, que <strong>no</strong> viaja en el paquete compartido); la última corrida dio 0 enlaces rotos. El resultado y las incidencias se registran en la sección de estado de la portada y en <code>registro_de_cobertura.csv</code>.</p>
+</main>
+<footer class="pie">
+  <p>Material educativo y defensivo. Las prácticas se limitan a programas propios, software abierto o crackmes diseñados para aprender. No se enseña a eludir licencias, DRM ni controles de acceso.</p>
+  <p><a href="00_EMPEZAR_AQUI.html">Inicio</a> · <a href="guia/etapa-0.html">Etapas</a> · <a href="fuentes_y_limites.html">Fuentes y límites</a> · <a href="registro_de_cobertura.csv">Registro de cobertura</a></p>
+</footer>
+</body>
+</html>

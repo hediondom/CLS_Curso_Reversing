@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tute 9 · Práctica: crackme HOLA_REVERSER — Curso IDA</title>
+<meta name="description" content="Tutorial ilustrado del tute 9 del Curso IDA desde cero: Práctica: crackme HOLA_REVERSER.">
+<link rel="stylesheet" href="../guia/estilo.css">
+</head>
+<body>
+<a class="salto" href="#contenido">Saltar al contenido</a>
+<header class="cabecera">
+  <div class="marca"><a href="../00_EMPEZAR_AQUI.html">CLS · Curso de reversing</a> <span class="edicion">edición 5 · 27/10/2026</span></div>
+  <nav class="principal" aria-label="Navegación principal">
+    <a href="../00_EMPEZAR_AQUI.html">Inicio</a>
+    <a href="../guia/index.html">Curso</a>
+    <a href="../fichas/index.html">Fichas</a>
+    <a href="../glosario.html">Glosario</a>
+    <a href="../preguntas_y_respuestas.html">Repaso</a>
+  </nav>
+</header>
+<main id="contenido">
+<p class="migas"><a href="../ida-tutes.html">← Índice de los 69 tutes de IDA</a></p>
+<h1>Tute 9 · Práctica: crackme HOLA_REVERSER</h1>
+<p class="meta-tute"><strong>⏱ 9 min de lectura</strong> · 1.626 palabras · 38 capturas · grupo: Base de IDA, assembly y primeras prácticas</p>
+<aside class="callout nota"><p class="callout-titulo">Qué enseña</p><p>Primer análisis estático guiado de un crackme propio.</p></aside>
+<p><em>▶ video afín (mismo autor, en x64dbg):</em> <a href="../videos.html">«15 Ejercicio 2 - Análisis estático»</a> · <em>se conecta con:</em> <a href="../guia/02-herramientas.html">Herramientas</a> · <a href="../guia/02-ida.html">IDA</a> · <a href="../guia/02-instrucciones.html">Instrucciones</a> · <a href="../guia/02-flujo.html">Flujo</a> · <a href="../guia/02-debugger.html">Debugger</a> · <a href="../guia/01-numeros.html">Números</a></p>
+<aside class="callout aviso"><p class="callout-titulo">Material observado, no reescrito</p><p>Es el texto y las capturas del <code>.docx</code> original del curso, solo presentados como tutorial. Puede tener erratas de origen. El autor del curso es Ricardo Narvaja.</p></aside>
+<hr>
+<p>INTRODUCCIÓN AL REVERSING CON IDA PRO DESDE CERO PARTE 9.</p>
+<p>PRACTICA CON CRACKME HOLA_REVERSER.</p>
+<p>Estamos viendo poco a poco como manejarnos en el LOADER, dejamos algunas cositas pendientes para más adelante que se necesita ver en un DEBUGGER por ejemplo como cambian los flags con ciertas instrucciones.</p>
+<p>Vamos a ir practicando ejemplitos muy sencillos en este caso es un pequeño crackme ultra simple que compile en VISUAL STUDIO 2015 para practicar. Obviamente para que corra tendrán que tener la última versión de las VISUAL STUDIO 2015 C++ runtimes.</p>
+<p>https://www.microsoft.com/es-ar/download/details.aspx?id=48145</p>
+<p>Los paquetes de Visual C++ Redistributable instalan los componentes de tiempo de ejecución que se necesitan para ejecutar aplicaciones de C++ compiladas con Visual Studio 2015.</p>
+<p>Se bajan el idioma de su sistema operativo lo instalan y listo.</p>
+<p>Adjunto va el ejecutable que cree que se llama HOLA_REVERSER.exe y que corre de Windows 7 en adelante.</p>
+<figure><img loading="lazy" src="img/9/1.png" alt="Captura 1 del tute 9"></figure>
+<p>Al tipear un numero me dirá si soy buen o mal reverser, jeje.</p>
+<figure><img loading="lazy" src="img/9/2.png" alt="Captura 2 del tute 9"></figure>
+<p>Vemos que es un código ultra sencillo, si lo abro en IDA en el LOADER solamente.</p>
+<p>En mi caso (NO EN EL SUYO) la función main aparece entre las funciones, la puedo buscar con CTRL +F allí en esa pestaña, o donde tenga abierta la pestaña funciones, pero eso ocurre porque como yo compile el programa al hacerlo el VISUAL STUDIO crea un archivo pdb de símbolos el cual IDA detecta y carga los nombres de las funciones y variables que yo puse, vemos que en el mío al igual que en mi código fuente, me aparece main, más abajo printf, veremos qué pasa en el de ustedes.</p>
+<figure><img loading="lazy" src="img/9/3.png" alt="Captura 3 del tute 9"></figure>
+<p>Bueno en el de ustedes como no tiene símbolos no aparece el main, lo cual es el escenario mas probable pues nadie distribuye un programa con símbolos.</p>
+<figure><img loading="lazy" src="img/9/4.png" alt="Captura 4 del tute 9"></figure>
+<p>Normalmente tendremos símbolos para los modulos de sistema, no los que son propietarios de algún programa, salvo casos muy raros, en este caso este engendro es de mi autoría, por eso yo tengo los símbolos, pero lo analizaremos sin símbolos como cualquier hijo de vecino, jeje.</p>
+<p>Vemos que acá al no tener símbolos</p>
+<figure><img loading="lazy" src="img/9/5.png" alt="Captura 5 del tute 9"></figure>
+<p>Estamos como un poco más pelados de información, pero bueno podemos mirar las strings a ver que hay.</p>
+<figure><img loading="lazy" src="img/9/6.png" alt="Captura 6 del tute 9"></figure>
+<p>Tenemos las strings a la vista, las que usaba para decirnos que nos equivocamos al poner el numerito.</p>
+<p>Podemos hacer doble click en “Pone un numerito\n”</p>
+<figure><img loading="lazy" src="img/9/7.png" alt="Captura 7 del tute 9"></figure>
+<p>Allí vemos que 0x402108 es la dirección de la string, al lado de la dirección vemos el TAG que le pone a la misma siempre empieza con la letra “a” por ser una string ASCII y el resto tiene que ver con la misma string, para que sea fácil de reconocer en este caso el tag es aPoneUnNumerito luego db porque es una cadena de bytes</p>
+<p>A la string que como antes si la pasamos a bytes con D vemos los mismos.</p>
+<figure><img loading="lazy" src="img/9/8.png" alt="Captura 8 del tute 9"></figure>
+<p>Ya ahora que nos aseguramos volvemos a crear la string con la tecla A.</p>
+<figure><img loading="lazy" src="img/9/9.png" alt="Captura 9 del tute 9"></figure>
+<p>Pasando el mouse por la flechita de la referencia vemos de donde es llamada, pero más cómodo es apretar la X para ver la lista de referencias e ir allí.</p>
+<figure><img loading="lazy" src="img/9/10.png" alt="Captura 10 del tute 9"></figure>
+<p>Bueno estamos en la función principal acá no se llama main, aunque el nombre del buffer que es bastante genérico le puso Buf.</p>
+<figure><img loading="lazy" src="img/9/11.png" alt="Captura 11 del tute 9"></figure>
+<p>Se supone que no conocemos el código fuente, pero si lo veo</p>
+<figure><img loading="lazy" src="img/9/12.png" alt="Captura 12 del tute 9"></figure>
+<p>Me doy cuenta que de las variables que cree, algunas las optimizo como por ejemplo cookie y max que las reemplazo por constantes y dejo solo el buffer que en mi código era de 120 bytes decimal.</p>
+<p>Un buffer es un espacio de memoria reservado para guardar datos, en este caso reserve 120 bytes.</p>
+<p>¿Como podemos saber en IDA el largo de un buffer del stack si no tenemos el código fuente?</p>
+<figure><img loading="lazy" src="img/9/13.png" alt="Captura 13 del tute 9"></figure>
+<p>Allí vemos en la parte superior de la función la lista de variables y argumentos, haciendo doble click en cualquiera nos llevara a la vista estática del stack en la cual se ven las posiciones de las variables, buffers argumentos etc en forma estática y la distancia que hay entre ellas.</p>
+<figure><img loading="lazy" src="img/9/14.png" alt="Captura 14 del tute 9"></figure>
+<p>Allí vemos Buf pero está definida como byte db (IDA al no tener los símbolos no puede detectar el buffer) para cambiarla a array de caracteres o buffer, hacemos click derecho en la palabra Buf y elegimos la opción Array.</p>
+<figure><img loading="lazy" src="img/9/15.png" alt="Captura 15 del tute 9"></figure>
+<p>Allí vemos que se fija hasta la siguiente variable o lo que haya más abajo en el stack, detecta 120 decimal de largo y el array element es el largo de cada campo como es 1 es un array de caracteres o bytes y mide 120*1 o sea 120.</p>
+<p>Si acepto.</p>
+<figure><img loading="lazy" src="img/9/16.png" alt="Captura 16 del tute 9"></figure>
+<p>Veo el buffer de 120 bytes que coincide con mi código fuente, aunque el compilador podría hacerlo más grande, mientras que sea como mínimo 120 está bien, en este caso son iguales. DUP significa duplicar (realmente seria multiplicar) 120 veces el carácter ? porque no está definido el valor aun, es un buffer estático vacío.</p>
+<figure><img loading="lazy" src="img/9/17.png" alt="Captura 17 del tute 9"></figure>
+<p>Ya aclararemos más adelante la vista del stack estática, pero debajo de Buf hay una variable dword (dw) llamada var_4</p>
+<p>S y R son el EBP guardado de la función padre de esta la que la llamo y el RETURN ADRESS como habíamos visto al entrar en la función primero se pasaban con PUSH los argumentos, luego se usaba un CALL para entrar en la función que guardaba el RETURN ADRESS o dirección de retorno en el stack, y arriba de S van las variables.</p>
+<p>VARIABLES</p>
+<p>…</p>
+<p>…</p>
+<p>S (stored ebp -generalmente viene del PUSH EBP que es la primera instrucción de la función)</p>
+<p>R (return address)</p>
+<p>ARGUMENTOS</p>
+<p>O sea que como los argumentos se pushean al stack antes del CALL que pone el return address, quedaran debajo del mismo, y luego arriba del return address viene el STORED EBP que se genera por el PUSH EBP que generalmente es la primera instrucción de la función y luego arriba se deja espacio para las variables locales, ya lo veremos con más detalle.</p>
+<p>Si hago X para ver de donde es llamada la función</p>
+<figure><img loading="lazy" src="img/9/18.png" alt="Captura 18 del tute 9"></figure>
+<figure><img loading="lazy" src="img/9/19.png" alt="Captura 19 del tute 9"></figure>
+<p>Y voy allí veo que hay unos PUSH que pasan argumentos a la función que cuando trabajo con SIMBOLOS los vio y aquí no, faltan los tres argumentos debajo, aquí está la imagen con símbolos.</p>
+<figure><img loading="lazy" src="img/9/20.png" alt="Captura 20 del tute 9"></figure>
+<p>IDA detecto que nunca son usados, son los argumentos argc, argv y envp, que son argumentos por default en el main pero como nunca hubo ninguna referencia ni uso dentro de la función, IDA los elimino para aclarar el panorama.</p>
+<figure><img loading="lazy" src="img/9/21.png" alt="Captura 21 del tute 9"></figure>
+<p>Además, en mi código ni siquiera lo había pasado como argumentos del main, así que todo bien es una función sin argumentos.</p>
+<p>Cuando queremos ver en qué lugares se accede a una variable, la marcamos y apretamos X.</p>
+<figure><img loading="lazy" src="img/9/22.png" alt="Captura 22 del tute 9"></figure>
+<p>Vemos que var_4 se usa en dos lugares es para el que no sabe, una cookie que no la programe yo, es de protección contra stack overflows, la guarda al inicio de la función y la chequea antes de salir de la función, por ahora le ponemos de nombre COOKIE_DE_SEGURIDAD o CANARY.</p>
+<figure><img loading="lazy" src="img/9/23.png" alt="Captura 23 del tute 9"></figure>
+<p>Vemos que cuando imprime las strings llama a un CALL que seguro termina yendo a printf para imprimir las strings.</p>
+<figure><img loading="lazy" src="img/9/24.png" alt="Captura 24 del tute 9"></figure>
+<p>Vemos que en la versión con símbolos lo detecto directamente como printf</p>
+<figure><img loading="lazy" src="img/9/25.png" alt="Captura 25 del tute 9"></figure>
+<p>Pero igual si miramos dentro del CALL y sabiendo que los argumentos son las strings que termina imprimiendo por consola deducimos que es printf.</p>
+<figure><img loading="lazy" src="img/9/26.png" alt="Captura 26 del tute 9"></figure>
+<p>Vemos dentro de la función que termina en vfprintf, así que es eso la renombramos.</p>
+<figure><img loading="lazy" src="img/9/27.png" alt="Captura 27 del tute 9"></figure>
+<p>Nos queda solo el Buf de 120 bytes, veamos que hace con el.</p>
+<p>Vemos que se lo pasa a get_s que es una función que recibe lo que tipeamos en una consola.</p>
+<figure><img loading="lazy" src="img/9/28.png" alt="Captura 28 del tute 9"></figure>
+<p>Vemos que tiene dos argumentos el puntero al buffer y el size máximo que nos permite tipear, veamos en nuestro caso.</p>
+<figure><img loading="lazy" src="img/9/29.png" alt="Captura 29 del tute 9"></figure>
+<p>Habíamos dicho que el LEA hallaba la dirección de una variable, en este caso es la dirección del buffer Buf que se lo pasa con un PUSH EAX, y luego un PUSH 0x14 que pasa el máximo que permito tipear en la consola.</p>
+<figure><img loading="lazy" src="img/9/30.png" alt="Captura 30 del tute 9"></figure>
+<p>Vemos en mi código fuente lo mismo el llamado a get_s con dos argumentos el buf y el máximo que yo la había usado una variable max que valía 20, pero el compilador directamente para ahorrar espacio le puso 20 decimal o sea 0x14 a ese argumento ya que no se usa nunca más.</p>
+<p>Por lo tanto, sin ejecutar ya sé que en el buffer tengo los caracteres que tipeo por consola.</p>
+<p>Después el mismo puntero al buffer se pasa como argumento a la función atoi.</p>
+<figure><img loading="lazy" src="img/9/31.png" alt="Captura 31 del tute 9"></figure>
+<p>Que hace la misma.</p>
+<figure><img loading="lazy" src="img/9/32.png" alt="Captura 32 del tute 9"></figure>
+<p>Convierte la cadena en un entero y si no puede porque desborda el máximo posible, da error devolviendo cero si no lo puede convertir, también si se sobrepasa los negativos da diferentes errores, pero la idea es que lo que se tipee lo convertirá a un número si tipea 41424344 lo convertirá en ese decimal, que como en assembler trabajamos con hexadecimales lo devolverá en valor HEXEADECIMAL en EAX.</p>
+<figure><img loading="lazy" src="img/9/33.png" alt="Captura 33 del tute 9"></figure>
+<figure><img loading="lazy" src="img/9/34.png" alt="Captura 34 del tute 9"></figure>
+<p>Vemos que el valor devuelto en EAX se pasa a ESI y luego de imprimir la string original que se tipeo, compara el valor de ESI con 0x124578.</p>
+<p>Así que como lo que se tipea se interpreta como cadena de números decimales, que se devuelve como hexadecimal y se compara contra esa constante, pasándole el valor decimal de esa constante debería funcionar ya que luego si esa igualdad es válida.</p>
+<figure><img loading="lazy" src="img/9/35.png" alt="Captura 35 del tute 9"></figure>
+<p>Vemos que si la comparación no es igual (JNZ) me lleva a BAD REVERSER y si son iguales a GOOD REVERSER, probemos en la consola de Python a ver qué valor decimal es 0x124578.</p>
+<figure><img loading="lazy" src="img/9/36.png" alt="Captura 36 del tute 9"></figure>
+<p>Tipeemos ese valor al ejecutar el crackme</p>
+<figure><img loading="lazy" src="img/9/37.png" alt="Captura 37 del tute 9"></figure>
+<figure><img loading="lazy" src="img/9/38.png" alt="Captura 38 del tute 9"></figure>
+<p>Bueno este es un ejemplo sencillito de reversing estático, para ir ambientándonos con el LOADER.</p>
+<p>Hasta la parte 10</p>
+<p>Ricardo Narvaja</p>
+</main>
+<footer class="pie">
+  <p>Material educativo y defensivo. Las prácticas se limitan a programas propios, software abierto o crackmes diseñados para aprender. No se enseña a eludir licencias, DRM ni controles de acceso.</p>
+  <p><a href="../00_EMPEZAR_AQUI.html">Inicio</a> · <a href="../guia/etapa-0.html">Etapas</a> · <a href="../fuentes_y_limites.html">Fuentes y límites</a> · <a href="../registro_de_cobertura.csv">Registro de cobertura</a></p>
+</footer>
+<script>
+(function(){
+  function abrir(src){
+    var o=document.createElement('div'); o.className='lightbox-ov';
+    var i=document.createElement('img'); i.src=src; o.appendChild(i);
+    function cerrar(){o.remove(); document.removeEventListener('keydown', onkey);}
+    function onkey(e){ if(e.key==='Escape') cerrar(); }
+    o.addEventListener('click', cerrar);
+    document.addEventListener('keydown', onkey);
+    document.body.appendChild(o);
+  }
+  document.addEventListener('DOMContentLoaded', function(){
+    document.querySelectorAll('figure img, main img').forEach(function(img){
+      img.style.cursor='zoom-in';
+      img.addEventListener('click', function(){ abrir(img.currentSrc||img.src); });
+    });
+  });
+})();
+</script>
+</body>
+</html>

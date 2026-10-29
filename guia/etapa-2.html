@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Etapa 2 · Introducción al reversing</title>
+<meta name="description" content="Leer assembly x86/x64, seguir el flujo y usar debugger y desensamblador con criterio. Se divide en 2A (base, 2.1–2.9), 2B (Windows intermedio, 2.10–2.16: ofuscación, TLS, MFC, huella, PE fino, anti-análisis, Ghidra) y 2C (Windows avanzado, 2.17+: packers didácticos, C++ profundo, WinDbg/heap, patch diffing, scripting). Las rutas de malware dinámico, shellcode/C2 y fuzzing quedan como optativas, fuera de la puerta obligatoria.">
+<link rel="stylesheet" href="../guia/estilo.css">
+</head>
+<body>
+<a class="salto" href="#contenido">Saltar al contenido</a>
+<header class="cabecera">
+  <div class="marca"><a href="../00_EMPEZAR_AQUI.html">CLS · Curso de reversing</a> <span class="edicion">edición 5 · 27/10/2026</span></div>
+  <nav class="principal" aria-label="Navegación principal">
+    <a href="../00_EMPEZAR_AQUI.html">Inicio</a>
+    <a href="../guia/index.html">Curso</a>
+    <a href="../materiales.html">Materiales</a>
+    <a href="../fichas/index.html">Fichas</a>
+    <a href="../glosario.html">Glosario</a>
+    <a href="../preguntas_y_respuestas.html">Repaso</a>
+    <a href="../buscar.html">Buscar</a>
+  </nav>
+</header>
+<main id="contenido">
+<nav class="migas" aria-label="Ubicación"><a href="../00_EMPEZAR_AQUI.html">Inicio</a><span aria-hidden="true">›</span><a href="../guia/index.html">Curso</a><span aria-hidden="true">›</span><span>Etapa 2 · Introducción al reversing</span></nav><h1 id="etapa-2-introducción-al-reversing">Etapa 2 · Introducción al reversing</h1>
+<aside class="callout nota"><p class="callout-titulo">Objetivo medible</p><p>Leer assembly x86/x64, seguir el flujo y usar debugger y desensamblador con criterio. Se divide en 2A (base, 2.1–2.9), 2B (Windows intermedio, 2.10–2.16: ofuscación, TLS, MFC, huella, PE fino, anti-análisis, Ghidra) y 2C (Windows avanzado, 2.17+: packers didácticos, C++ profundo, WinDbg/heap, patch diffing, scripting). Las rutas de malware dinámico, shellcode/C2 y fuzzing quedan como optativas, fuera de la puerta obligatoria.</p></aside>
+<p><strong>Prerrequisitos:</strong> Etapa 1. <strong>Duración estimada:</strong> 32 a 40 h (2A) + ~25 h (2B) + ~30–40 h (2C avanzado). Es una estimación de esta guía, derivada de la suma de las lecciones; no es una duración declarada por CLS.</p>
+<h2 id="lecciones">Lecciones</h2>
+<div class="tabla"><table>
+<thead><tr>
+<th>#</th>
+<th>Lección</th>
+<th>Qué aprendés</th>
+</tr></thead><tbody>
+<tr><td>2.1</td><td><a href="02-registros.html">Registros, subregistros y flags</a></td><td>Registros, solapamiento y flags ZF/SF/CF/OF.</td></tr>
+<tr><td>2.2</td><td><a href="02-instrucciones.html">Instrucciones: mover, calcular y manipular bits</a></td><td>MOV, LEA, aritmética, lógica, shifts y cadenas.</td></tr>
+<tr><td>2.3</td><td><a href="02-flotante.html">Punto flotante y SSE: los registros xmm</a></td><td>x87, SSE escalar (movsd/addsd/ucomisd) e IEEE 754.</td></tr>
+<tr><td>2.4</td><td><a href="02-flujo.html">Flujo: comparar, saltar y repetir</a></td><td>CMP/TEST, Jcc, CMOVcc, bucles y tablas de salto.</td></tr>
+<tr><td>2.5</td><td><a href="02-llamadas.html">Llamadas, convenciones y marcos de función</a></td><td>CALL/RET, cdecl/stdcall/fastcall y x64.</td></tr>
+<tr><td>2.6</td><td><a href="02-debugger.html">El debugger: x64dbg de punta a punta</a></td><td>Interfaz, F7/F8/F9, breakpoints y parcheo ético.</td></tr>
+<tr><td>2.7</td><td><a href="02-ida.html">IDA y el análisis estático</a></td><td>Strings, xrefs, grafo, rebase y decompilador.</td></tr>
+<tr><td>2.8</td><td><a href="02-optimizaciones.html">Cómo cambia el código con optimizaciones</a></td><td>Inlining, strength reduction, división por constante y tail calls.</td></tr>
+<tr><td>2.9</td><td><a href="02-herramientas.html">Herramientas: del OllyDbg histórico al taller actual</a></td><td>Qué usar para cada tarea y qué está discontinuado.</td></tr>
+<tr><td>2.10</td><td><a href="02-ofuscacion.html">Ofuscación nativa: leer lo que no quiere ser leído</a></td><td>Secciones invertidas, basura, saltos al medio y strings ocultas; hallar el bloque real.</td></tr>
+<tr><td>2.11</td><td><a href="02-tls.html">TLS: código que corre antes de main</a></td><td>Directorio TLS, AddressOfCallBacks y callbacks previos al entry point.</td></tr>
+<tr><td>2.12</td><td><a href="02-mfc.html">MFC: llegar al handler cuando todo pasa por clases</a></td><td>Reconocer MFC y alcanzar el handler de un control por el message map.</td></tr>
+<tr><td>2.13</td><td><a href="02-huella-compilador.html">Huella de compilador: saber con qué se hizo</a></td><td>MSVC, MinGW, Delphi, VB6 y MFC por imports, strings y runtime.</td></tr>
+<tr><td>2.14</td><td><a href="02-pe-fino.html">PE fino: los directorios que cuentan la historia</a></td><td>Rich header, recursos, delay-load, .pdata, debug/PDB y Load Config.</td></tr>
+<tr><td>2.15</td><td><a href="02-anti-analisis.html">Taxonomía anti-análisis: reconocer, no evadir</a></td><td>Anti-debug, anti-VM, anti-disassembly y anti-dump: detectarlos.</td></tr>
+<tr><td>2.16</td><td><a href="02-ghidra.html">Ghidra (y Cutter): la alternativa libre, con práctica</a></td><td>El recorrido de IDA replicado en Ghidra: autoanálisis, strings, tipos y decompilador.</td></tr>
+<tr><td>2.17</td><td><a href="02-packers.html">Packers didácticos: UPX, stub, OEP, dump e IAT</a></td><td>Desempaquetado didáctico de UPX sobre binarios propios; llegar al OEP y reconstruir la IAT.</td></tr>
+<tr><td>2.18</td><td><a href="02-cpp-profundo.html">C++ profundo: RTTI, vtables, STL y excepciones</a></td><td>RTTI, std::string con SSO, contenedores STL y manejo de excepciones.</td></tr>
+<tr><td>2.19</td><td><a href="02-windbg-heap.html">WinDbg, TTD y heap</a></td><td>WinDbg, time-travel debugging y diagnóstico de heap (Page Heap, LFH).</td></tr>
+<tr><td>2.20</td><td><a href="02-patch-diffing.html">Patch diffing y CVE: leer qué cambió</a></td><td>BinDiff/Diaphora: comparar dos versiones y leer qué arregló un parche (defensivo).</td></tr>
+<tr><td>2.21</td><td><a href="02-scripting-debugger.html">Scripting de debugger: automatizar y dejar evidencia</a></td><td>Automatizar x64dbg (breakpoints, logs) y guardar evidencia; OllyScript como legado.</td></tr>
+<tr><td>2.22</td><td><a href="02-opt-malware-dinamico.html">(optativa) Malware dinámico defensivo</a></td><td>Laboratorio aislado, red simulada, observación de comportamiento e IOCs.</td></tr>
+<tr><td>2.23</td><td><a href="02-opt-shellcode-c2.html">(optativa) Shellcode, red y C2: reconocer y describir</a></td><td>Identificar shellcode y describir tráfico de C2; análisis y clasificación, no construcción.</td></tr>
+<tr><td>2.24</td><td><a href="02-opt-fuzzing.html">(optativa) Fuzzing y análisis simbólico</a></td><td>Fuzzear un parser/crackme propio y usar ejecución simbólica para hallar condiciones.</td></tr>
+</tbody></table></div>
+<h2 id="recursos-de-cls-para-esta-etapa">Recursos de CLS para esta etapa</h2>
+<ul><li><a href="../2d.html">Etapa 2 · Rama optativa 2D — Windows internals (después de 2C)</a></li><li><a href="../fichas/reversing-desde-cero.html">Reversing desde cero (tronco principal)</a></li><li><a href="../fichas/ida-desde-cero.html">Curso IDA desde cero (69 documentos)</a></li><li><a href="../fichas/ollydbg-cayetano.html">Curso de OllyDbg (Videos 23–40)</a></li><li><a href="../fichas/ida-pro-docx.html">Introducción al reversing con IDA Pro (docx)</a></li></ul>
+<h2 id="evaluación-de-salida">Evaluación de salida</h2>
+<ul><li><strong>2A</strong> · Explicar qué hace un bloque de 10 instrucciones y qué flags cambia.</li><li><strong>2A</strong> · Reconstruir un if/else y un bucle a partir del listado.</li><li><strong>2A</strong> · Poner los tres tipos de breakpoint y justificar cuál usar.</li><li><strong>2A</strong> · Sincronizar IDA y x64dbg por base o por file offset.</li><li><strong>2B</strong> · Reconocer tres señales de ofuscación y hallar el bloque real sin NOPear a ciegas.</li><li><strong>2B</strong> · Encontrar un TLS callback en el PE y demostrar que corre antes de <code>main</code>.</li><li><strong>2B</strong> · Llegar al handler de un control en un binario MFC por una API de texto y el call stack.</li><li><strong>2B</strong> · Identificar el compilador de un binario y navegar los directorios finos del PE (Rich header, Load Config, debug/PDB).</li><li><strong>2B</strong> · Clasificar una técnica anti-análisis y detectarla, y leer el mismo binario en IDA y en Ghidra.</li><li><strong>2C</strong> · Desempaquetar un UPX propio: llegar al OEP, dumpear, reconstruir la IAT y validar con <code>upx -d</code>.</li><li><strong>2C</strong> · Reconocer RTTI, <code>std::string</code> (SSO), un <code>std::vector</code> y un <code>try/catch</code> en un binario C++ propio.</li><li><strong>2C</strong> · Diagnosticar un bug de heap propio con WinDbg/Page Heap y leer, con un differ, qué cambió un parche.</li><li><strong>2C</strong> · Automatizar una tarea de análisis con un script de x64dbg y guardar la evidencia.</li></ul>
+<aside class="callout practica"><p class="callout-titulo">Entregable de la etapa</p><p>Un archivo en tu bitácora con: lecciones completadas, ejercicios resueltos, dudas abiertas y evidencia (capturas, valores, hashes). Sin evidencia no se considera aprobada.</p></aside>
+<h2 id="errores-frecuentes">Errores frecuentes</h2>
+<ul><li>Confundir F7 con F8 y creer que F8 no ejecuta la función.</li><li>Leer un salto al revés (pensar que el salto es la condición verdadera).</li><li>Usar una copia ilegal de IDA Pro.</li><li>Parchear software ajeno para saltar una licencia.</li></ul>
+<h2 id="qué-no-entra-en-esta-etapa">Qué no entra en esta etapa</h2>
+<p>Los temas que no tienen material revisado o que exceden el marco se listan en <a href="05-fuera-de-alcance.html">Kernel y otros territorios</a>. No los uses como atajo: cada rama tiene prerrequisitos.</p>
+<aside class="callout nota"><p class="callout-titulo">Volver</p><p><a href="index.html">Mapa del curso</a> · <a href="../00_EMPEZAR_AQUI.html">Inicio</a></p></aside>
+</main>
+<footer class="pie">
+  <p>Material educativo y defensivo. Las prácticas se limitan a programas propios, software abierto o crackmes diseñados para aprender. No se enseña a eludir licencias, DRM ni controles de acceso.</p>
+  <p><a href="../00_EMPEZAR_AQUI.html">Inicio</a> · <a href="../guia/etapa-0.html">Etapas</a> · <a href="../fuentes_y_limites.html">Fuentes y límites</a> · <a href="../registro_de_cobertura.csv">Registro de cobertura</a></p>
+</footer>
+</body>
+</html>

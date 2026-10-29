@@ -1,0 +1,244 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tute 56 · HackSys vulnerable driver — Curso IDA</title>
+<meta name="description" content="Tutorial ilustrado del tute 56 del Curso IDA desde cero: HackSys vulnerable driver.">
+<link rel="stylesheet" href="../guia/estilo.css">
+</head>
+<body>
+<a class="salto" href="#contenido">Saltar al contenido</a>
+<header class="cabecera">
+  <div class="marca"><a href="../00_EMPEZAR_AQUI.html">CLS · Curso de reversing</a> <span class="edicion">edición 5 · 27/10/2026</span></div>
+  <nav class="principal" aria-label="Navegación principal">
+    <a href="../00_EMPEZAR_AQUI.html">Inicio</a>
+    <a href="../guia/index.html">Curso</a>
+    <a href="../fichas/index.html">Fichas</a>
+    <a href="../glosario.html">Glosario</a>
+    <a href="../preguntas_y_respuestas.html">Repaso</a>
+  </nav>
+</header>
+<main id="contenido">
+<p class="migas"><a href="../ida-tutes.html">← Índice de los 69 tutes de IDA</a></p>
+<h1>Tute 56 · HackSys vulnerable driver</h1>
+<p class="meta-tute"><strong>⏱ 9 min de lectura</strong> · 1.703 palabras · 43 capturas · grupo: Kernel de Windows y temas avanzados (drivers, HackSys/HEVD, SSDT/syscalls, VA→física)</p>
+<aside class="callout nota"><p class="callout-titulo">Qué enseña</p><p>Driver con vulnerabilidades didácticas (HEVD) para estudiarlas.</p></aside>
+<p><em>se conecta con:</em> <a href="../guia/05-fuera-de-alcance.html">Fuera de alcance</a></p>
+<aside class="callout aviso"><p class="callout-titulo">Material observado, no reescrito</p><p>Es el texto y las capturas del <code>.docx</code> original del curso, solo presentados como tutorial. Puede tener erratas de origen. El autor del curso es Ricardo Narvaja.</p></aside>
+<hr>
+<p>56-INTRODUCCION AL REVERSING CON IDA PRO - KERNEL EXPLOITATION.</p>
+<p>HACKSYS VULNERABLE DRIVER.</p>
+<p>Vamos a ver ahora un driver que esta programado con diferentes vulnerabilidades para entender como explotarlas, como siempre por ahora usaremos un Windows 7 sp1 sin ningún parche de seguridad, sabemos que allí funcionara todo, luego iremos viendo que cambios hay más adelante y que otras posibilidades existen en los nuevos sistemas, pero vamos paso a paso.</p>
+<p>Tenemos un driver compilado con los símbolos por ahora que tiene la posibilidad de explotarlo de casi todas las formas posibles, está hecho para practicar.</p>
+<p>https://github.com/hacksysteam/HackSysExtremeVulnerableDriver</p>
+<p>Vulnerabilities Implemented</p>
+<p>Double Fetch</p>
+<p>Pool Overflow</p>
+<p>Use After Free</p>
+<p>Type Confusion</p>
+<p>Stack Overflow</p>
+<p>Integer Overflow</p>
+<p>Stack Overflow GS</p>
+<p>Arbitrary Overwrite</p>
+<p>Null Pointer Dereference</p>
+<p>Uninitialized Heap Variable</p>
+<p>Uninitialized Stack Variable</p>
+<p>Insecure Kernel Resource Access</p>
+<p>Empezaremos poco a poco primero con el análisis del stack overflow.</p>
+<p>Por supuesto hay que copiar el driver a la maquina target y cargarlo con el OSR DRIVER LOADER.</p>
+<p>Lo copiamos con su idb a una carpeta local y lo abrimos en IDA para ir analizando.</p>
+<p>Bueno como ya sabemos acá tenemos símbolos, eso nos facilita mucho las cosas, pero igual lo primero que debemos buscar y que casi siempre es reconocido con o sin símbolos es la estructura _DRIVER_OBJECT que se pasa como argumento al DriverEntry.</p>
+<p>En este caso no hay demasiado problema</p>
+<figure><img loading="lazy" src="img/56/1.png" alt="Captura 1 del tute 56"></figure>
+<p>Acá está bien a la vista el punto de entrada y sus argumentos están bien detectados.</p>
+<p>Vemos que usa como en los ejemplos anteriores la api RtlInitUnicodeString para inicializar las estructuras</p>
+<figure><img loading="lazy" src="img/56/2.png" alt="Captura 2 del tute 56"></figure>
+<p>Recordemos que el primer argumento era un puntero a la estructura UNICODE_STRING, alli vemos PUNICODE_STRING o sea puntero a estructura UNICODE_STRING.</p>
+<figure><img loading="lazy" src="img/56/3.png" alt="Captura 3 del tute 56"></figure>
+<p>O sea, es un buffer donde guardara el largo en un word, el máximo largo en otro campo del tipo word y copiara el puntero a la string unicode que le pasamos como source a continuación en el tercer campo.</p>
+<figure><img loading="lazy" src="img/56/4.png" alt="Captura 4 del tute 56"></figure>
+<p>Primero inicializa a cero la variable DosDeviceName que también es del tipo UNICODE_STRING.</p>
+<figure><img loading="lazy" src="img/56/5.png" alt="Captura 5 del tute 56"></figure>
+<p>Pone a cero el campo Length moviendo AX que vale 0 alli, y luego STOSD copia el valor de EAX o sea pone a cero la direccion donde apunta EDI o sea en el campo MaximumLenght y luego otro STOSW copia AX o sea cero en los dos bytes siguientes o sea poniendo 6 bytes a cero inicializa los dos campos restantes de la estructura que ocupan 6 bytes (1 WORD y un DWORD)</p>
+<p>El compilador solo inicializa la variable DosDeviceName la otra que se llama DeviceName no la pone a cero, la usa directamente.</p>
+<figure><img loading="lazy" src="img/56/6.png" alt="Captura 6 del tute 56"></figure>
+<p>O sea que DeviceName es la string esa convertida a tipo estructura UNICODE_STRING, o sea que en los tres campos estará el largo, el máximo largo y el puntero que le pasamos a la string source se copiara al tercer campo.</p>
+<figure><img loading="lazy" src="img/56/7.png" alt="Captura 7 del tute 56"></figure>
+<p>En mi maquina esta en 0x0016938, ese offset lo copiara al tercer campo de la estructura.</p>
+<figure><img loading="lazy" src="img/56/8.png" alt="Captura 8 del tute 56"></figure>
+<p>En DosDeviceName armara la otra UNICODE_STRING usando como source la esa otra string.</p>
+<p>Despues viene la llamada a IoCreateDevice, recordemos que había que crear un Device Object para poder comunicarse desde los programas en modo user.</p>
+<figure><img loading="lazy" src="img/56/9.png" alt="Captura 9 del tute 56"></figure>
+<figure><img loading="lazy" src="img/56/10.png" alt="Captura 10 del tute 56"></figure>
+<p>Esto estará casi siempre cerca del punto de entrada en la mayoría de los drivers que interactúan con programas en modo user.</p>
+<figure><img loading="lazy" src="img/56/11.png" alt="Captura 11 del tute 56"></figure>
+<p>El último argumento es el puntero a la nueva estructura creada DEVICE_OBJECT.</p>
+<figure><img loading="lazy" src="img/56/12.png" alt="Captura 12 del tute 56"></figure>
+<p>Vemos que si el resultado de crear el Device es negativo lo cual se chequea en ese salto condicional signed, va a los bloques naranjas de error y se borra el Device Object con IoDeleteDevice.</p>
+<figure><img loading="lazy" src="img/56/13.png" alt="Captura 13 del tute 56"></figure>
+<p>Luego va a inicializar a partir de ESI + 38 como ESI apunta a DriverObject apretando T, puedo ver que campo es (sino esta DRIVER_OBJECT ir a LOCAL TYPES y sincronizarlo)</p>
+<figure><img loading="lazy" src="img/56/14.png" alt="Captura 14 del tute 56"></figure>
+<figure><img loading="lazy" src="img/56/15.png" alt="Captura 15 del tute 56"></figure>
+<p>O sea es el puntero a la estructura MajorFunction que recordamos es una tablita de punteros que según la posición, me llevaran a diferentes funciones según el caso, recordemos que por ejemplo.</p>
+<figure><img loading="lazy" src="img/56/16.png" alt="Captura 16 del tute 56"></figure>
+<p>El primer puntero o sea el que esta en la posición 0 es IRP_MJ_CREATE y sera donde saltara cuando utilice CreateFile para abrir el handle del Device, el segundo puntero o sea el valor 0x1 estará en la posición 4 ya que son DWORDs y asi sucesivamente, quiere decir que inversamente si yo tengo un campo de esta estructura por su offset para saber que puntero es deberé dividir por cuatro, en el ejemplo que usábamos en los drivers anteriores recordamos que</p>
+<figure><img loading="lazy" src="img/56/17.png" alt="Captura 17 del tute 56"></figure>
+<p>Eso corresponde a 0x38/4 o sea</p>
+<p>Python&gt;hex(0x38/4)</p>
+<p>0xe</p>
+<figure><img loading="lazy" src="img/56/18.png" alt="Captura 18 del tute 56"></figure>
+<p>Que este 0xe era IRP_MJ_DEVICE_CONTROL cuando le pasábamos un IOCTL desde user, ese puntero lo pisábamos con un Dispatch para que según que IOCTL sea, se ejecute diferentes acciones mediante un switch por ejemplo.</p>
+<p>En el caso actual vemos que inicializa a partir de un puntero al inicio de la tablita MajorFunction, copia el valor de EAX al cual le mueve un offset de una función que se llama _Irp_NotImplementedHandlers, y eso lo copia 0x1c veces que pasa a ECX, que es la cantidad de punteros a inicializar.</p>
+<figure><img loading="lazy" src="img/56/19.png" alt="Captura 19 del tute 56"></figure>
+<p>O sea que al principio toda la tablita la inicializa con este puntero que aparentemente no haría nada ya veremos, aparenta ser como un caso por default.</p>
+<figure><img loading="lazy" src="img/56/20.png" alt="Captura 20 del tute 56"></figure>
+<p>Como EDX tenia el puntero al inicio de MajorFunction su contenido es la posición 0 o sea</p>
+<p>+#define IRP_MJ_CREATE                     0x00</p>
+<p>+#define IRP_MJ_CREATE_NAMED_PIPE          0x01</p>
+<p>+#define IRP_MJ_CLOSE                      0x02</p>
+<p>+#define IRP_MJ_READ                       0x03</p>
+<p>+#define IRP_MJ_WRITE                      0x04</p>
+<p>+#define IRP_MJ_QUERY_INFORMATION          0x05</p>
+<p>+#define IRP_MJ_SET_INFORMATION            0x06</p>
+<p>+#define IRP_MJ_QUERY_EA                   0x07</p>
+<p>+#define IRP_MJ_SET_EA                     0x08</p>
+<p>+#define IRP_MJ_FLUSH_BUFFERS              0x09</p>
+<p>+#define IRP_MJ_QUERY_VOLUME_INFORMATION   0x0a</p>
+<p>+#define IRP_MJ_SET_VOLUME_INFORMATION     0x0b</p>
+<p>+#define IRP_MJ_DIRECTORY_CONTROL          0x0c</p>
+<p>+#define IRP_MJ_FILE_SYSTEM_CONTROL        0x0d</p>
+<p>+#define IRP_MJ_DEVICE_CONTROL             0x0e</p>
+<p>+#define IRP_MJ_INTERNAL_DEVICE_CONTROL    0x0f</p>
+<p>+#define IRP_MJ_SCSI                       0x0f</p>
+<p>+#define IRP_MJ_SHUTDOWN                   0x10</p>
+<p>+#define IRP_MJ_LOCK_CONTROL               0x11</p>
+<p>+#define IRP_MJ_CLEANUP                    0x12</p>
+<p>+#define IRP_MJ_CREATE_MAILSLOT            0x13</p>
+<p>+#define IRP_MJ_QUERY_SECURITY             0x14</p>
+<p>+#define IRP_MJ_SET_SECURITY               0x15</p>
+<p>+#define IRP_MJ_POWER                      0x16</p>
+<p>+#define IRP_MJ_SYSTEM_CONTROL             0x17</p>
+<p>+#define IRP_MJ_DEVICE_CHANGE              0x18</p>
+<p>+#define IRP_MJ_QUERY_QUOTA                0x19</p>
+<p>+#define IRP_MJ_SET_QUOTA                  0x1a</p>
+<p>+#define IRP_MJ_PNP                        0x1b</p>
+<p>+#define IRP_MJ_PNP_POWER                  0x1b</p>
+<p>+#define IRP_MJ_MAXIMUM_FUNCTION           0x1b</p>
+<p>Crearemos una estructura MajorFunction</p>
+<p>struct __MajorFunction{</p>
+<p>unsigned int _MJ_CREATE;</p>
+<p>unsigned int _MJ_CREATE_NAMED_PIPE;</p>
+<p>unsigned int _MJ_CLOSE;</p>
+<p>unsigned int _MJ_READ;</p>
+<p>unsigned int _MJ_WRITE;</p>
+<p>unsigned int _MJ_QUERY_INFORMATION;</p>
+<p>unsigned int _MJ_SET_INFORMATION;</p>
+<p>unsigned int _MJ_QUERY_EA;</p>
+<p>unsigned int _MJ_SET_EA;</p>
+<p>unsigned int _MJ_FLUSH_BUFFERS;</p>
+<p>unsigned int _MJ_QUERY_VOLUME_INFORMATION;</p>
+<p>unsigned int _MJ_SET_VOLUME_INFORMATION;</p>
+<p>unsigned int _MJ_DIRECTORY_CONTROL;</p>
+<p>unsigned int _MJ_FILE_SYSTEM_CONTROL;</p>
+<p>unsigned int _MJ_DEVICE_CONTROL;</p>
+<p>unsigned int _MJ_INTERNAL_DEVICE_CONTROL;</p>
+<p>unsigned int _MJ_SCSI;</p>
+<p>unsigned int _MJ_SHUTDOWN;</p>
+<p>unsigned int _MJ_LOCK_CONTROL;</p>
+<p>unsigned int _MJ_CLEANUP;</p>
+<p>unsigned int _MJ_CREATE_MAILSLOT;</p>
+<p>unsigned int _MJ_QUERY_SECURITY;</p>
+<p>unsigned int _MJ_SET_SECURITY;</p>
+<p>unsigned int _MJ_POWER;</p>
+<p>unsigned int _MJ_SYSTEM_CONTROL;</p>
+<p>unsigned int _MJ_DEVICE_CHANGE;</p>
+<p>unsigned int _MJ_QUERY_QUOTA;</p>
+<p>unsigned int _MJ_SET_QUOTA;</p>
+<p>unsigned int _MJ_PNP;</p>
+<p>unsigned int _MJ_PNP_POWER;</p>
+<p>unsigned int _MJ_MAXIMUM_FUNCTION;</p>
+<p>};</p>
+<p>Se que son punteros pero para nuestro uso unsigned int funcionara, el tema es que el local types, usando INSERT no me la toma, asi que ahí mismo exporte , le agregue la estructura y la volví a cargar con FILE-LOAD FILE-PARSE C HEADER FILE y asi la tomo.</p>
+<figure><img loading="lazy" src="img/56/21.png" alt="Captura 21 del tute 56"></figure>
+<p>La agregue en el .h</p>
+<figure><img loading="lazy" src="img/56/22.png" alt="Captura 22 del tute 56"></figure>
+<p>La cuestión que ahora si aparece</p>
+<figure><img loading="lazy" src="img/56/23.png" alt="Captura 23 del tute 56"></figure>
+<p>Me dejara editar dentro de la estructura DRIVER_OBJECT, el tipo de MajorFunction en LocalTipes?</p>
+<figure><img loading="lazy" src="img/56/24.png" alt="Captura 24 del tute 56"></figure>
+<p>Vemos que le cambie la definición del campo MajorFunction, dentro de la estructura DRIVER_OBJECT para que sea del tipo __MajorFunction que definí.</p>
+<figure><img loading="lazy" src="img/56/25.png" alt="Captura 25 del tute 56"></figure>
+<figure><img loading="lazy" src="img/56/26.png" alt="Captura 26 del tute 56"></figure>
+<p>Vemos que ahora si quedan definidos los campos con sus nombres de cada puntero.</p>
+<p>Cuando hacemos T no se puede elegir la estructura Driver_Object porque EDX apunta a MajorFunction asi que elijo esta ultima.</p>
+<figure><img loading="lazy" src="img/56/27.png" alt="Captura 27 del tute 56"></figure>
+<figure><img loading="lazy" src="img/56/28.png" alt="Captura 28 del tute 56"></figure>
+<p>Ahora quedo mas lindo, esta bien determinado las funciones que usaran_MJ_CREATE, _MJ_CLOSE, _MJ_DEVICE_CONTROL y la que se llamara al detener el driver DriverUnload.</p>
+<p>Obviamente cuando desde user hagamos CreateFile llamara a la función que pisa el campo _MJ_CREATE cuando pasemos un IOCTL a DeviceIoControl, llamara a _MJ_DEVICE_CONTROL, cuando se llame a CloseHandle, llamara a la que pisa _MJ_CLOSE y cuando se detenga la que pisa DriverUnload.</p>
+<p>Miremos un poco la función que se llamara cuando se le pasen los IOCTL.</p>
+<p>Sincronizamos la estructura IRP desde LOCAL TYPES</p>
+<p>Como vimos en la parte 53 el campo 60 de IRP apunta a una estructura _IO_STACK_LOCATION que si figura en IDA aquí pasa lo mismo.</p>
+<figure><img loading="lazy" src="img/56/29.png" alt="Captura 29 del tute 56"></figure>
+<p>ESI aquí apunta a _IO_STACK_LOCATION, asi que todo lo que sea ESI+xxx sera un campo de dicha estructura, despues de sincronizarla desde LOCAL TYPES.</p>
+<p>Recordemos que _IO_STACK_LOCATION tiene varias opciones elegiré la correspondiente a IoControlCode.</p>
+<figure><img loading="lazy" src="img/56/30.png" alt="Captura 30 del tute 56"></figure>
+<p>Vemos que según el IOCTL el switch nos envía a diferentes bloques, y que los mismos están marcados con el tipo de vulnerabilidad que tiene cada camino.</p>
+<figure><img loading="lazy" src="img/56/31.png" alt="Captura 31 del tute 56"></figure>
+<figure><img loading="lazy" src="img/56/32.png" alt="Captura 32 del tute 56"></figure>
+<p>Alli hay una que dice STACKOVERFLOW, asi que no hay que matarse mucho jeje.</p>
+<figure><img loading="lazy" src="img/56/33.png" alt="Captura 33 del tute 56"></figure>
+<p>Vemos que los dos argumentos que le pasa en EDI la estructura IRP y en ESI ahí dice IRPSP que es el nombre de la variable del tipo _IO_STACK_LOCATION que estaba en ESI.</p>
+<figure><img loading="lazy" src="img/56/34.png" alt="Captura 34 del tute 56"></figure>
+<figure><img loading="lazy" src="img/56/35.png" alt="Captura 35 del tute 56"></figure>
+<p>Es un puntero a un buffer de entrada, también en la misma subestructura esta el IoControlCode y el largo del Buffer de entrada y de salida, supuestamente estos valores se los pasare yo, veamos que hace con ellos.</p>
+<figure><img loading="lazy" src="img/56/36.png" alt="Captura 36 del tute 56"></figure>
+<p>Vemos que ese size y ese buffer los pasa a la función _TriggerStackOverflow.</p>
+<figure><img loading="lazy" src="img/56/37.png" alt="Captura 37 del tute 56"></figure>
+<p>Vemos que pone a cero con ESI el primer DWORD del buffer KernelBuffer y luego con memset pone a cero desde el siguiente DWORD ya que le suma 4 a KernelBuffer, el size 0x7fc.</p>
+<figure><img loading="lazy" src="img/56/38.png" alt="Captura 38 del tute 56"></figure>
+<p>Dicho buffer tiene de largo 512 decimal por 4 ya que es un array de DWORD (dd) asi que el largo total en decimal es</p>
+<p>512 * 4</p>
+<p>Out[64]: 2048</p>
+<p>En HEXA es</p>
+<p>hex(2048)</p>
+<p>Out[65]: '0x800'</p>
+<p>Por eso al poner el primer DWORD a cero y luego los 0x7fc restantes, realmente pone todo el buffer de 0x800 a cero. (0x7fc+4=0x800)</p>
+<p>Luego llama a ProbeForRead que chequea si el buffer de entrada en user esta alineado y esta en el espacio de user.</p>
+<figure><img loading="lazy" src="img/56/39.png" alt="Captura 39 del tute 56"></figure>
+<figure><img loading="lazy" src="img/56/40.png" alt="Captura 40 del tute 56"></figure>
+<p>Luego imprime los punteros de los buffers y sus sizes.</p>
+<figure><img loading="lazy" src="img/56/41.png" alt="Captura 41 del tute 56"></figure>
+<p>Aquí vemos claramente el stack overflow, ya que usa el size que yo le paso como dato para copiar desde el buffer de entrada en user, al buffer en kernel que es el destination.</p>
+<figure><img loading="lazy" src="img/56/42.png" alt="Captura 42 del tute 56"></figure>
+<figure><img loading="lazy" src="img/56/43.png" alt="Captura 43 del tute 56"></figure>
+<p>Ahí vemos que al imprimir el size del buffer de kernel, usa el que esta en ESI que es la constante 0x800, pero al hacer el memcpy, usa el argumento size que le paso yo, sin ningún tipo de chequeo lo cual producirá un stack overflow y como aquí no se ve cookie ni nada se podrá desbordar fácilmente.</p>
+<p>En ala parte siguiente haremos el script con la explotación aqui terminamos el análisis.</p>
+<p>Hasta la parte siguiente</p>
+<p>Ricardo Narvaja</p>
+</main>
+<footer class="pie">
+  <p>Material educativo y defensivo. Las prácticas se limitan a programas propios, software abierto o crackmes diseñados para aprender. No se enseña a eludir licencias, DRM ni controles de acceso.</p>
+  <p><a href="../00_EMPEZAR_AQUI.html">Inicio</a> · <a href="../guia/etapa-0.html">Etapas</a> · <a href="../fuentes_y_limites.html">Fuentes y límites</a> · <a href="../registro_de_cobertura.csv">Registro de cobertura</a></p>
+</footer>
+<script>
+(function(){
+  function abrir(src){
+    var o=document.createElement('div'); o.className='lightbox-ov';
+    var i=document.createElement('img'); i.src=src; o.appendChild(i);
+    function cerrar(){o.remove(); document.removeEventListener('keydown', onkey);}
+    function onkey(e){ if(e.key==='Escape') cerrar(); }
+    o.addEventListener('click', cerrar);
+    document.addEventListener('keydown', onkey);
+    document.body.appendChild(o);
+  }
+  document.addEventListener('DOMContentLoaded', function(){
+    document.querySelectorAll('figure img, main img').forEach(function(img){
+      img.style.cursor='zoom-in';
+      img.addEventListener('click', function(){ abrir(img.currentSrc||img.src); });
+    });
+  });
+})();
+</script>
+</body>
+</html>

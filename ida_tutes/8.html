@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tute 8 · Trabajar en el loader — Curso IDA</title>
+<meta name="description" content="Tutorial ilustrado del tute 8 del Curso IDA desde cero: Trabajar en el loader.">
+<link rel="stylesheet" href="../guia/estilo.css">
+</head>
+<body>
+<a class="salto" href="#contenido">Saltar al contenido</a>
+<header class="cabecera">
+  <div class="marca"><a href="../00_EMPEZAR_AQUI.html">CLS · Curso de reversing</a> <span class="edicion">edición 5 · 27/10/2026</span></div>
+  <nav class="principal" aria-label="Navegación principal">
+    <a href="../00_EMPEZAR_AQUI.html">Inicio</a>
+    <a href="../guia/index.html">Curso</a>
+    <a href="../fichas/index.html">Fichas</a>
+    <a href="../glosario.html">Glosario</a>
+    <a href="../preguntas_y_respuestas.html">Repaso</a>
+  </nav>
+</header>
+<main id="contenido">
+<p class="migas"><a href="../ida-tutes.html">← Índice de los 69 tutes de IDA</a></p>
+<h1>Tute 8 · Trabajar en el loader</h1>
+<p class="meta-tute"><strong>⏱ 10 min de lectura</strong> · 1.834 palabras · 41 capturas · grupo: Base de IDA, assembly y primeras prácticas</p>
+<aside class="callout nota"><p class="callout-titulo">Qué enseña</p><p>Método de reversing estático: comentar y renombrar para entender sin ejecutar.</p></aside>
+<p><em>▶ video afín (mismo autor, en x64dbg):</em> <a href="../videos.html">«15 Ejercicio 2 - Análisis estático»</a> · <em>se conecta con:</em> <a href="../guia/02-herramientas.html">Herramientas</a> · <a href="../guia/02-ida.html">IDA</a> · <a href="../guia/02-instrucciones.html">Instrucciones</a> · <a href="../guia/02-flujo.html">Flujo</a> · <a href="../guia/02-debugger.html">Debugger</a> · <a href="../guia/01-numeros.html">Números</a></p>
+<aside class="callout aviso"><p class="callout-titulo">Material observado, no reescrito</p><p>Es el texto y las capturas del <code>.docx</code> original del curso, solo presentados como tutorial. Puede tener erratas de origen. El autor del curso es Ricardo Narvaja.</p></aside>
+<hr>
+<p>INTRODUCCIÓN AL REVERSING CON IDA PRO DESDE CERO PARTE 8.</p>
+<p>EL LOADER</p>
+<p>Ya hemos visto a vuelo de pájaro las principales instrucciones ahora sigamos con el LOADER.</p>
+<p>La forma de trabajar cuando uno no tiene mucha practica con reversing estático es ir comentando y renombrando algunas pocas cosas que podemos darnos cuenta y la mayor parte del trabajo hacerlo debuggeando. A medida que uno va teniendo más practica con el reversing estático puede lograr más y más reversing casi sin debuggear o a veces sin debuggear.</p>
+<p>Normalmente y dado lo extenso de los programas, uno no los va a reversear completamente sino una o varias funciones de alguna zona que necesita entender para algún propósito.</p>
+<p>IDA es una herramienta que nos proporciona la posibilidad que interactuemos de forma de obtener los mejores resultados de reversing como ninguna tool, pero dependerá el resultado de la capacidad de reversing del que la usa.</p>
+<p>La famosa frase “No es culpa de la flecha sino del indio”, aquí se aplica completamente es necesario practicar y mejorar en el uso del IDA, si fallamos o no obtenemos un buen resultado debemos mejorar nuestro nivel y practicar más y más, no es una herramienta sencilla y tiene miles y miles de posibilidades lo cual hace que todos los días podamos aprender cosas nuevas cuando la usamos.</p>
+<p>Vamos a comenzar a mirar estáticamente el CRACKME DE CRUEHEAD no importa si llegamos hasta la solución o si es necesario finalmente terminarlo cuando lleguemos a la parte de DEBUGGER, lo importante es acostumbrarse a jugar con el LOADER e ir mejorando nuestra confianza con el mismo.</p>
+<p>Si vamos a VIEW-OPEN SUBVIEW-SEGMENTS veremos los segmentos que carga el LOADER en forma automática.</p>
+<p>Vemos que por ejemplo el HEADER que estaría en 0x400000 antes de las secciones, no está cargado ya que en las opciones cuando carga por primera vez al dar todo OK carga automáticamente solo algunas secciones del ejecutable sin el HEADER.</p>
+<figure><img loading="lazy" src="img/8/1.png" alt="Captura 1 del tute 8"></figure>
+<p>Vemos que luego del NOMBRE de la sección, están las direcciones de inicio START y final de la misma END, luego las columnas RWX me dicen si tiene inicialmente permiso de lectura o READ(R), de escritura o WRITE(W) y de ejecución(X).</p>
+<p>Luego vemos dos columnas con los nombres D y L que corresponden a DEBUGGER y LOADER, vemos que la de DEBUGGER esta vacía pues se llama cuando cargamos el programa en modo DEBUGGER y nos muestra los segmentos cargados en el mismo y L nos muestra los que carga el LOADER y luego algunas otras columnas mas no tan importantes.</p>
+<p>En este caso no tiene mayor importancia cargar el header, ya vimos en la parte anterior que cuando renombramos una instrucción y le pusimos un salto a 0x400000 nos la marco en rojo como una dirección que no está cargada en el LOADER.</p>
+<p>Si quisiera cargar el HEADER lo vuelvo a abrir el CRACKME.exe</p>
+<figure><img loading="lazy" src="img/8/2.png" alt="Captura 2 del tute 8"></figure>
+<p>Le pongo que sobrescriba o OVERWRITE todo el análisis anterior y me haga uno nuevo.</p>
+<figure><img loading="lazy" src="img/8/3.png" alt="Captura 3 del tute 8"></figure>
+<p>Le pongo la tilde a MANUEL LOAD y al dar OK</p>
+<figure><img loading="lazy" src="img/8/4.png" alt="Captura 4 del tute 8"></figure>
+<p>Me pregunta si quiero manualmente cambiar la BASE de donde se cargará el ejecutable le doy OK con el valor que trae.</p>
+<figure><img loading="lazy" src="img/8/5.png" alt="Captura 5 del tute 8"></figure>
+<p>Y me preguntara manualmente uno por uno que segmentos quiero cargar a todos le doy YES.</p>
+<figure><img loading="lazy" src="img/8/6.png" alt="Captura 6 del tute 8"></figure>
+<p>Y ahí tengo cargado en el LOADER todas las secciones incluso el HEADER y varias más de DATOS.</p>
+<p>Esto normalmente no es necesario hacerlo, pero es bueno tenerlo en cuenta.</p>
+<p>Ahora guardare un SNAPSHOT con FILE-TAKE DATABASE SNAPSHOT y cambiare un salto a JMP 0x400000 como antes.</p>
+<figure><img loading="lazy" src="img/8/7.png" alt="Captura 7 del tute 8"></figure>
+<figure><img loading="lazy" src="img/8/8.png" alt="Captura 8 del tute 8"></figure>
+<p>Vemos que ya no sale la dirección 0x400000 en rojo y nos pone allí que es la ImageBase, incluso podemos ir a ver allí clikeando en el nombre ImageBase.</p>
+<figure><img loading="lazy" src="img/8/9.png" alt="Captura 9 del tute 8"></figure>
+<p>Allí vemos entonces el header en 0x400000 con su tag ImageBase y el contenido que es detectado como header y mostrado con sus campos.</p>
+<p>Bueno volvamos el snapshot anterior antes de romper todo con VIEW-DATABASE SNAPSHOT MANAGER y le damos a RESTORE.</p>
+<figure><img loading="lazy" src="img/8/10.png" alt="Captura 10 del tute 8"></figure>
+<p>Por supuesto en todo ejercicio de cracking o reversing las strings cumplen un papel primordial para guiarnos a zonas importantes, si las hay nos pueden ayudar, veamos en VIEW-OPEN SUBVIEW-STRING que vemos.</p>
+<figure><img loading="lazy" src="img/8/11.png" alt="Captura 11 del tute 8"></figure>
+<p>Ahora como hay más secciones, hay más strings detectadas que antes, igual si corremos suelto el crackme.exe fuera de IDA vemos en el HELP hay una opción REGISTER y nos pide un user y pass y si ponemos cualquiera, nos sale el cartel NO LUCK THERE, MATE!.</p>
+<figure><img loading="lazy" src="img/8/12.png" alt="Captura 12 del tute 8"></figure>
+<p>Buscamos esa string en el IDA en la lista.</p>
+<figure><img loading="lazy" src="img/8/13.png" alt="Captura 13 del tute 8"></figure>
+<p>Si hacemos doble click en la string</p>
+<figure><img loading="lazy" src="img/8/14.png" alt="Captura 14 del tute 8"></figure>
+<p>Vemos 0x402169 cuyo contenido es la string esa, sabemos que si apretamos D en la dirección esta se verán los bytes sueltos de la string.</p>
+<figure><img loading="lazy" src="img/8/15.png" alt="Captura 15 del tute 8"></figure>
+<p>Y si, apretemos A en la dirección así vuelve como antes y apretó X para ver las dos referencias que muestra a la derecha con más comodidad.</p>
+<figure><img loading="lazy" src="img/8/16.png" alt="Captura 16 del tute 8"></figure>
+<p>Vemos que desde dos funciones diferentes es llamada dicha string, una es sub_401362 y la otra es sub_40137E y que ambas están más arriba de la dirección donde estamos por eso en la columna DIRECTION nos muestra en ambas UP.</p>
+<p>Sabemos que son dos funciones diferentes porque ida nos muestra las direcciones de las referencias como función más XXXX y si fueran en la misma función debería cambiar el XXXX pero mantenerse la misma primera parte aquí ambos sub_ son distintos por eso diferentes funciones.</p>
+<figure><img loading="lazy" src="img/8/17.png" alt="Captura 17 del tute 8"></figure>
+<p>Esta es la primera referencia y abajo la segunda.</p>
+<figure><img loading="lazy" src="img/8/18.png" alt="Captura 18 del tute 8"></figure>
+<p>Tenemos las zonas donde nos tirara el cartel malo cuando ponemos user y password equivocados,  como vamos a tratar de llegar lo más lejos posible sin debuggear si alguien quiere ayudarse por ahora y chequearlo en OLLYDBG debuggeando no hay problema pueden poner un breakpoint en ambas direcciones y ver si para cuando ponemos una clave que no es correcta, por ahora ayudarse en los comienzos suele ser útil, la idea es poco a poco necesitar cada vez menos de esas ayudas a medida que nos afianzamos con IDA, igualmente podríamos poner un breakpoint en ambos bloques aquí en IDA y ver si para de la misma forma usando el DEBUGGER de IDA pero para ir transicionando creo que mejor eso dejarlo para más adelante.</p>
+<p>Tomemos la primera de las dos referencias</p>
+<figure><img loading="lazy" src="img/8/19.png" alt="Captura 19 del tute 8"></figure>
+<p>Vemos que es un llamado a la api MessageBox que es la que saca esos cartelitos como el de NO LUCK THERE MATE y le está pasando como argumento las strings NO LUCK para el título de la ventanita y NO LUCK THERE MATE como el texto de la misma.</p>
+<p>Vemos que en la otra referencia es exactamente igual, quiere decir que el cartel de chico malo se puede disparar desde dos lugares diferentes posiblemente evaluando diferentes cosas, y para que salga el cartel de chico bueno habrá que evitar ambas.</p>
+<figure><img loading="lazy" src="img/8/20.png" alt="Captura 20 del tute 8"></figure>
+<p>Si vemos las referencias a 0x401362 con la X, vemos un solo lugar antes de ir allí renombremos la función 0x401362 con un nombre que nos diga algo de lo que hace, por ejemplo CARTEL_ERROR.</p>
+<figure><img loading="lazy" src="img/8/21.png" alt="Captura 21 del tute 8"></figure>
+<p>Apretando la N en la dirección ahí escribimos nuestro nuevo nombre.</p>
+<figure><img loading="lazy" src="img/8/22.png" alt="Captura 22 del tute 8"></figure>
+<p>Ahora si vayamos a la referencia.</p>
+<figure><img loading="lazy" src="img/8/23.png" alt="Captura 23 del tute 8"></figure>
+<p>Allí vemos el bloque que nos lleva a CARTEL_ERROR y antes una decisión que toma el programa, antes que nada, como yo al reversear quiero ver las cosas de un solo golpe de vista a los bloques de error o malos, los pinto de algo parecido al rojo para que resalten.</p>
+<figure><img loading="lazy" src="img/8/24.png" alt="Captura 24 del tute 8"></figure>
+<p>Allí está el icono para cambiar el color, muchos dirán esto no es necesario, pero en funciones complejas tener las cosas resaltadas es muy importante.</p>
+<figure><img loading="lazy" src="img/8/25.png" alt="Captura 25 del tute 8"></figure>
+<p>Y allí hay un salto condicional por ahora como recién comenzamos no evaluaremos porque salta a un bloque o al otro, pero miremos dentro del bloque de 0x40124c entrando a ese call 0x40134d con ENTER.</p>
+<figure><img loading="lazy" src="img/8/26.png" alt="Captura 26 del tute 8"></figure>
+<p>Allí vemos unas posibles strings de chico bueno que también estaban en la lista de strings, pero como el cartel de error que aparecía, nos daba la string de error, creíamos que era mejor empezar por ahí pues esta podía ser una string falsa de chico bueno, pero como vemos que el programa decide venir aquí o a la zona de chico malo, vemos que es muy posible que sea la correcta.</p>
+<p>A esta función la renombramos como CARTEL_BUENO.</p>
+<figure><img loading="lazy" src="img/8/27.png" alt="Captura 27 del tute 8"></figure>
+<p>En la referencia pintamos el bloque que nos lleva aquí de verde.</p>
+<figure><img loading="lazy" src="img/8/28.png" alt="Captura 28 del tute 8"></figure>
+<p>Y también como vamos a trabajar por otras partes del programa para poder volver fácilmente aquí, nos ubicamos en el JZ de 0x401243 y vamos a JUMP-MARK POSITION y le ponemos un nombre que nos guie como DECISION_FINAL.</p>
+<figure><img loading="lazy" src="img/8/29.png" alt="Captura 29 del tute 8"></figure>
+<p>Vemos que entonces en JUMP-JUMP TO MARKED POSITION nos aparece la lista de marcas que hicimos y podemos ir a la que queramos por si nos perdemos en el programa.</p>
+<p>Quiere decir que teóricamente si parcheáramos ese JZ y lo cambiáramos por un JNZ aun siendo invalido nos llevaría a GOOD WORK, siempre y cuando el anterior cartel de error no nos tire fuera veamos.</p>
+<figure><img loading="lazy" src="img/8/30.png" alt="Captura 30 del tute 8"></figure>
+<p>Lo cambio con el KEYPATCH.</p>
+<figure><img loading="lazy" src="img/8/31.png" alt="Captura 31 del tute 8"></figure>
+<p>Y guardo los cambios con APPLY PATCH TO INPUT FILE.</p>
+<figure><img loading="lazy" src="img/8/32.png" alt="Captura 32 del tute 8"></figure>
+<figure><img loading="lazy" src="img/8/33.png" alt="Captura 33 del tute 8"></figure>
+<p>Vemos que lo parcheamos, pero en qué caso saldrá el otro cartel de error que falta parchear.</p>
+<figure><img loading="lazy" src="img/8/34.png" alt="Captura 34 del tute 8"></figure>
+<p>Si ponemos esto vemos que salen los dos primero el cartel de error y luego el de chico bueno, veamos si podemos parchear el otro cartel de error.</p>
+<figure><img loading="lazy" src="img/8/35.png" alt="Captura 35 del tute 8"></figure>
+<p>Vemos ahí el otro cartel de error que lo pinte de rojo más adelante analizaremos completamente este crackme pero es obvio que compara contra 41 que es la A en ASCII y si es más bajo (JB) te tira al error, así que si vemos que yo en el ultimo intento puse números en vez de letras en mi nombre, obviamente los números tienen caracteres ASCII mas bajos que 41 (cero es 30, uno es 31, etc) por lo tanto cuando detecta que en el nombre hay números te saca el cartel de error, así que parchearemos esto (aquí no podemos cambiar JB por JNB porque si no nos tirara el error al poner las letras en el nombre ya que se invertirá).</p>
+<p>Si con la barra espaciadora lo quitamos de modo grafico</p>
+<figure><img loading="lazy" src="img/8/36.png" alt="Captura 36 del tute 8"></figure>
+<p>Vemos que saltara para llegar al cartel de error, la línea punteada a la izquierda me muestra el salto, así que si lo nopeo no saltara y seguirá con la próxima instrucción sin venir aquí.</p>
+<p>Volviendo al gráfico.</p>
+<figure><img loading="lazy" src="img/8/37.png" alt="Captura 37 del tute 8"></figure>
+<p>Vemos que rellenará con 90 hasta la siguiente instrucción así que no se romperá, creo jeje.</p>
+<p>Quedo bien, pero los bloques se me desordenaron y me quedo feo a la vista, así que hago click derecho-LAYOUT GRAPH y lo acomodara.</p>
+<figure><img loading="lazy" src="img/8/38.png" alt="Captura 38 del tute 8"></figure>
+<p>Vemos que allí están los nops y el bloque de error me quedo aislado y no se puede llegar allí mas.</p>
+<p>Guardo los cambios de la misma forma que antes.</p>
+<figure><img loading="lazy" src="img/8/39.png" alt="Captura 39 del tute 8"></figure>
+<p>Vemos si ahora acepta cualquier cosa.</p>
+<figure><img loading="lazy" src="img/8/40.png" alt="Captura 40 del tute 8"></figure>
+<figure><img loading="lazy" src="img/8/41.png" alt="Captura 41 del tute 8"></figure>
+<p>Bueno este es un inicio obviamente solo parcheamos para ir tomando contacto con el reversing estático más adelante veremos cómo reversearlo completo y hacer un keygen pero eso será unos capítulos más adelante por ahora vamos despacio y vemos esto.</p>
+<p>Hasta la parte 9</p>
+<p>Ricardo Narvaja</p>
+</main>
+<footer class="pie">
+  <p>Material educativo y defensivo. Las prácticas se limitan a programas propios, software abierto o crackmes diseñados para aprender. No se enseña a eludir licencias, DRM ni controles de acceso.</p>
+  <p><a href="../00_EMPEZAR_AQUI.html">Inicio</a> · <a href="../guia/etapa-0.html">Etapas</a> · <a href="../fuentes_y_limites.html">Fuentes y límites</a> · <a href="../registro_de_cobertura.csv">Registro de cobertura</a></p>
+</footer>
+<script>
+(function(){
+  function abrir(src){
+    var o=document.createElement('div'); o.className='lightbox-ov';
+    var i=document.createElement('img'); i.src=src; o.appendChild(i);
+    function cerrar(){o.remove(); document.removeEventListener('keydown', onkey);}
+    function onkey(e){ if(e.key==='Escape') cerrar(); }
+    o.addEventListener('click', cerrar);
+    document.addEventListener('keydown', onkey);
+    document.body.appendChild(o);
+  }
+  document.addEventListener('DOMContentLoaded', function(){
+    document.querySelectorAll('figure img, main img').forEach(function(img){
+      img.style.cursor='zoom-in';
+      img.addEventListener('click', function(){ abrir(img.currentSrc||img.src); });
+    });
+  });
+})();
+</script>
+</body>
+</html>

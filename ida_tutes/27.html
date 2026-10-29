@@ -1,0 +1,286 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tute 27 · Solución IDA_STRUCT — Curso IDA</title>
+<meta name="description" content="Tutorial ilustrado del tute 27 del Curso IDA desde cero: Solución IDA_STRUCT.">
+<link rel="stylesheet" href="../guia/estilo.css">
+</head>
+<body>
+<a class="salto" href="#contenido">Saltar al contenido</a>
+<header class="cabecera">
+  <div class="marca"><a href="../00_EMPEZAR_AQUI.html">CLS · Curso de reversing</a> <span class="edicion">edición 5 · 27/10/2026</span></div>
+  <nav class="principal" aria-label="Navegación principal">
+    <a href="../00_EMPEZAR_AQUI.html">Inicio</a>
+    <a href="../guia/index.html">Curso</a>
+    <a href="../fichas/index.html">Fichas</a>
+    <a href="../glosario.html">Glosario</a>
+    <a href="../preguntas_y_respuestas.html">Repaso</a>
+  </nav>
+</header>
+<main id="contenido">
+<p class="migas"><a href="../ida-tutes.html">← Índice de los 69 tutes de IDA</a></p>
+<h1>Tute 27 · Solución IDA_STRUCT</h1>
+<p class="meta-tute"><strong>⏱ 13 min de lectura</strong> · 2.280 palabras · 100 capturas · grupo: Estructuras en IDA</p>
+<aside class="callout nota"><p class="callout-titulo">Qué enseña</p><p>Resolver el ejercicio de estructuras con símbolos.</p></aside>
+<p><em>▶ video afín (mismo autor, en x64dbg):</em> <a href="../videos.html">«23 Ejercicio con Estructuras (con símbolos)»</a> · <em>se conecta con:</em> <a href="../guia/02-ida.html">IDA</a> · <a href="../guia/01-memoria.html">Memoria</a></p>
+<aside class="callout aviso"><p class="callout-titulo">Material observado, no reescrito</p><p>Es el texto y las capturas del <code>.docx</code> original del curso, solo presentados como tutorial. Puede tener erratas de origen. El autor del curso es Ricardo Narvaja.</p></aside>
+<hr>
+<p>INTRODUCCIÓN AL REVERSING CON IDA PRO DESDE CERO PARTE 27</p>
+<p>SOLUCIONANDO IDA_STRUCT.7z.</p>
+<p>Solucionaremos el ejercicio que dejamos para resolver en la parte anterior llamado IDA_STRUCT.7z.</p>
+<p>El ejecutable se llama ConsoleApplication4.exe y en la misma carpeta están los símbolos</p>
+<p>ConsoleApplication4.pdb.</p>
+<p>Cuando arranca y les dice que tratará de hallar los símbolos, podrán apuntar a ese archivo y cargarlos con lo cual se aclara un poco, pero yo para resolverlo, borrare o renombrare el archivo pdb así se carga sin símbolos, lo cual es lo que normalmente encontraremos, aunque es más complejo, es más real.</p>
+<figure><img loading="lazy" src="img/27/1.png" alt="Captura 1 del tute 27"></figure>
+<p>Obviamente al no tener símbolos no detectara el main, podemos llegar al mismo como es una aplicación de consola buscando los argv o argc o sino más genérico, mirando las strings.</p>
+<p>Si lo ejecutamos alguna vez, vemos que lo primero que hace es pedirnos que ingresemos un número, allí se ven las strings lo mismo que las que parecen ser las de chico bueno y chico malo.</p>
+<figure><img loading="lazy" src="img/27/2.png" alt="Captura 2 del tute 27"></figure>
+<p>Haciendo click en la string Please enter your number….</p>
+<figure><img loading="lazy" src="img/27/3.png" alt="Captura 3 del tute 27"></figure>
+<p>Allí vemos que tiene referencias pasando el mouse por la flechita, o apretando X en la dirección.</p>
+<figure><img loading="lazy" src="img/27/4.png" alt="Captura 4 del tute 27"></figure>
+<figure><img loading="lazy" src="img/27/5.png" alt="Captura 5 del tute 27"></figure>
+<p>Vayamos allí.</p>
+<figure><img loading="lazy" src="img/27/6.png" alt="Captura 6 del tute 27"></figure>
+<p>Vemos que estamos en una función, vemos la string por ahí y el llamado a imprimir la misma, como no tenemos símbolos, no nos dice que es 0x401220 es printf, si miramos dentro de la misma.</p>
+<figure><img loading="lazy" src="img/27/7.png" alt="Captura 7 del tute 27"></figure>
+<p>Puede uno mirar dentro y vemos que hay varias funciones.</p>
+<figure><img loading="lazy" src="img/27/8.png" alt="Captura 8 del tute 27"></figure>
+<figure><img loading="lazy" src="img/27/9.png" alt="Captura 9 del tute 27"></figure>
+<p>PROXIMITY VIEW.</p>
+<p>En el proximity view que se entra apretando la tecla - y se sale apretando +, vemos que 0x401220 llama a esas mismas tres funciones, pero tanto 0x401000 como acrt_iob_func son funciones que hacen algo y vuelven, no siguen hacia otras funciones hijas.</p>
+<figure><img loading="lazy" src="img/27/10.png" alt="Captura 10 del tute 27"></figure>
+<p>Allí donde están las flechas que agregue, se ve que no sigue hacia otras funciones, la única que sigue es 0x4010f0 que llama a dos funciones y una es vfprintf, y de allí luego vuelve, no hay más hacia abajo.</p>
+<p>Eso se puede ver también en el listado si miro dentro de cada función voy a ver lo mismo.</p>
+<p>Vemos que 0x401000 no sigue solo hace una pavada y vuelve.</p>
+<figure><img loading="lazy" src="img/27/11.png" alt="Captura 11 del tute 27"></figure>
+<figure><img loading="lazy" src="img/27/12.png" alt="Captura 12 del tute 27"></figure>
+<p>Y _acrt_iob_func es una api así que no seguirá, solo inicializará stdout para luego imprimir.</p>
+<figure><img loading="lazy" src="img/27/13.png" alt="Captura 13 del tute 27"></figure>
+<p>O sea que pasándole el argumento 1 como en nuestro caso, inicializará stdout.</p>
+<figure><img loading="lazy" src="img/27/14.png" alt="Captura 14 del tute 27"></figure>
+<p>Y la tercera función que llama .</p>
+<figure><img loading="lazy" src="img/27/15.png" alt="Captura 15 del tute 27"></figure>
+<p>Termina llamando a vfprintf, o sea terminamos viendo lo mismo que en el proximity view pero tardamos más.</p>
+<figure><img loading="lazy" src="img/27/16.png" alt="Captura 16 del tute 27"></figure>
+<p>Así que renombramos 0x401220 como printf.</p>
+<figure><img loading="lazy" src="img/27/17.png" alt="Captura 17 del tute 27"></figure>
+<p>Yo las que terminan siendo una api como en este caso printf las pinto de celeste cada uno lo hará a su gusto.</p>
+<figure><img loading="lazy" src="img/27/18.png" alt="Captura 18 del tute 27"></figure>
+<p>La siguiente función de 0x40109D es seguramente scanf si entramos y vemos el proximity view.</p>
+<figure><img loading="lazy" src="img/27/19.png" alt="Captura 19 del tute 27"></figure>
+<p>Allí sigue hago click para que se despliegue.</p>
+<figure><img loading="lazy" src="img/27/20.png" alt="Captura 20 del tute 27"></figure>
+<p>Vemos que es scanf.</p>
+<figure><img loading="lazy" src="img/27/21.png" alt="Captura 21 del tute 27"></figure>
+<p>Y en este caso la función _acrt_iob_func con el argumento 0 inicializa stdin.</p>
+<figure><img loading="lazy" src="img/27/22.png" alt="Captura 22 del tute 27"></figure>
+<p>Así que renombramos a scanf.</p>
+<figure><img loading="lazy" src="img/27/23.png" alt="Captura 23 del tute 27"></figure>
+<figure><img loading="lazy" src="img/27/24.png" alt="Captura 24 del tute 27"></figure>
+<p>Vemos algo que es posiblemente una estructura pues cuando se pasa como argumento una dirección y luego se recupera y se le suma offsets para acceder a los campos en cada lugar que se la usa, es posiblemente la dirección de una estructura.</p>
+<p>Veamos las referencias de esta función</p>
+<figure><img loading="lazy" src="img/27/25.png" alt="Captura 25 del tute 27"></figure>
+<p>Vemos que hay dos lugares si miro allí.</p>
+<figure><img loading="lazy" src="img/27/26.png" alt="Captura 26 del tute 27"></figure>
+<p>Veo que el argumento en ambos casos es una dirección, lo cual da la idea de estructuras.</p>
+<p>Como son dos direcciones diferentes da la impresión que fueran dos estructuras del mismo tipo, comenzaremos creando una sola, sin saber el tamaño, sin saber los campos ni nada, los iremos reverseando poco a poco.</p>
+<p>Vemos que el máximo offset que encuentro hasta ahora es 0x14, así que creare una estructura de ese largo, si llega a ser más grande la agrandaré.</p>
+<figure><img loading="lazy" src="img/27/27.png" alt="Captura 27 del tute 27"></figure>
+<p>Así que voy a la pestaña structures, es una de las opciones para crearla, la otra seria ir a LOCAL TYPES y crearla como código en C, lo haremos por ahora aquí.</p>
+<p>Es un poco molesto y poco intuitivo realmente, pero bueno cuando estamos en el lugar donde está definida podemos hacer CREATE STRUCT FROM SELECTION, normalmente la crearemos en alguna función donde no está definida sin saber nada.</p>
+<p>Obviamente sé que si analizo la representación del stack del main podría usar  CREATE STRUCT FROM SELECTION alli y se me facilitaría la vida, pero tomemos el peor caso, que estemos en una función de un programa muy grande y que estamos lejísimo de donde fue definida, así que tenemos que arreglarlos como podemos.</p>
+<figure><img loading="lazy" src="img/27/28.png" alt="Captura 28 del tute 27"></figure>
+<p>Allí vemos que para crear una estructura hay que apretar la tecla INS, lo hacemos.</p>
+<figure><img loading="lazy" src="img/27/29.png" alt="Captura 29 del tute 27"></figure>
+<p>Le puedo poner el nombre que quiera, le pondré MyStruct.</p>
+<figure><img loading="lazy" src="img/27/30.png" alt="Captura 30 del tute 27"></figure>
+<p>Allí se creó con size 0, ahora haré un truco para cuando aún no conozco los campos ni nada y le quiero dar un size, primero apreto D en la palabra ends, para agregar un sólo campo.</p>
+<figure><img loading="lazy" src="img/27/31.png" alt="Captura 31 del tute 27"></figure>
+<p>Allí le agrego un campo de 1 byte de largo DB, si volvería a apretar D cambiaria cada vez a word DW y luego a DWORD DD.</p>
+<p>Pero aquí como no sabemos, lo dejamos así y hacemos click derecho en la estructura.</p>
+<figure><img loading="lazy" src="img/27/32.png" alt="Captura 32 del tute 27"></figure>
+<p>Ya que he visto un campo en 0x14.</p>
+<figure><img loading="lazy" src="img/27/33.png" alt="Captura 33 del tute 27"></figure>
+<p>Así que como para llenarlo a ese campo con un dword, necesita 4 bytes más,  la creare de 0x18, le agregare 0x17 al byte que tenía.</p>
+<figure><img loading="lazy" src="img/27/34.png" alt="Captura 34 del tute 27"></figure>
+<figure><img loading="lazy" src="img/27/35.png" alt="Captura 35 del tute 27"></figure>
+<p>Veo que me quedo con size 0x18 por ahora lo dejaremos así, de necesitar lo agrandamos.</p>
+<p>Como esta función es llamada dos veces, la primera con la dirección de una primera estructura tipo MyStruct que llamaremos arbitrariamente pepe y la segunda con la dirección de una segunda estructura del mismo tipo MyStruct que llamaremos juan, dentro de la función le pondremos un nombre genérico que sirva para ambos casos.</p>
+<p>En el código fuente esto se ve así, para aclarar dos variables de tipo MyStruct una llamada pepe otra llamada juan, ambas se le pasa su dirección como argumento a las funciones.</p>
+<figure><img loading="lazy" src="img/27/36.png" alt="Captura 36 del tute 27"></figure>
+<figure><img loading="lazy" src="img/27/37.png" alt="Captura 37 del tute 27"></figure>
+<p>Como la misma función tendrá primero la dirección de la primera estructura o pepe en el arg0 y la segunda vez que se lo llama tendrá la dirección de la estructura juan, le pondré un nombre genérico para ambas por ejemplo _struct.</p>
+<p>Si decompilo la función con F5 veo que no está bien</p>
+<figure><img loading="lazy" src="img/27/38.png" alt="Captura 38 del tute 27"></figure>
+<p>Veo que la definición de la variable es un simple int y no como en el código original como la dirección de una estructura, podré arreglarlo aquí.</p>
+<figure><img loading="lazy" src="img/27/39.png" alt="Captura 39 del tute 27"></figure>
+<p>Me sale para elegir la dirección de qué estructura es y aquí elegiremos del tipo MyStruct.</p>
+<figure><img loading="lazy" src="img/27/40.png" alt="Captura 40 del tute 27"></figure>
+<p>Obviamente Buf es pepe y allí obtiene su dirección y la pasa como argumento, veamos Buf en la representación del stack.</p>
+<p>Como la estructura no es necesario crearla porque ya existe, solo tengo que decirle que Buf es del tipo MyStruct, para eso ALT mas Q en Buf.</p>
+<figure><img loading="lazy" src="img/27/41.png" alt="Captura 41 del tute 27"></figure>
+<p>y le asignara a Buf el tipo MyStruct si pusimos de menos el tamaño quedaran afuera algunos campos pero después se podrá agrandar MyStruct y se corregirá solo aquí.(si no se rompe jeje)</p>
+<figure><img loading="lazy" src="img/27/42.png" alt="Captura 42 del tute 27"></figure>
+<p>Renombramos Buf a pepe.</p>
+<p>Vemos allí que se pasa la dirección de pepe y en la segunda llamada se pasa la dirección de var_44 que también será la otra variable juan del tipo MyStruct, así que vamos a la representación del stack y en var_44 hacemos tambien ALT + Q.</p>
+<figure><img loading="lazy" src="img/27/43.png" alt="Captura 43 del tute 27"></figure>
+<p>Ya tenemos las dos estructuras del tipo MyStruct.</p>
+<p>Vuelvo a la función</p>
+<figure><img loading="lazy" src="img/27/44.png" alt="Captura 44 del tute 27"></figure>
+<figure><img loading="lazy" src="img/27/45.png" alt="Captura 45 del tute 27"></figure>
+<p>Vemos que el campo en 0x10 es un dword donde recibe el valor de scanf, así que vamos a MyStruct y en 0x10 apretamos la D hasta que quede del tipo DWORD DD.</p>
+<figure><img loading="lazy" src="img/27/46.png" alt="Captura 46 del tute 27"></figure>
+<figure><img loading="lazy" src="img/27/47.png" alt="Captura 47 del tute 27"></figure>
+<p>Lo renombrare a número.</p>
+<figure><img loading="lazy" src="img/27/48.png" alt="Captura 48 del tute 27"></figure>
+<p>La otra entrada es el campo de 0x14 que se usa en el loop para quitar el 0A le pondré c.</p>
+<figure><img loading="lazy" src="img/27/49.png" alt="Captura 49 del tute 27"></figure>
+<p>Vayamos al 0x14 de MyStruct y apretemos D hasta que sea un DWORD y pongámosle el nombre c .</p>
+<figure><img loading="lazy" src="img/27/50.png" alt="Captura 50 del tute 27"></figure>
+<figure><img loading="lazy" src="img/27/51.png" alt="Captura 51 del tute 27"></figure>
+<p>Allí apretamos T y ya queda.</p>
+<p>Por último renombrare la función a enter.</p>
+<figure><img loading="lazy" src="img/27/52.png" alt="Captura 52 del tute 27"></figure>
+<p>Vemos que las tres primeras funciones las llama pasándole pepe y las tres siguientes le pasa juan.</p>
+<p>Veamos la siguiente función.</p>
+<figure><img loading="lazy" src="img/27/53.png" alt="Captura 53 del tute 27"></figure>
+<p>También es llamada por ambas estructuras así que se puede al igual que en la anterior, apretando F5.</p>
+<figure><img loading="lazy" src="img/27/54.png" alt="Captura 54 del tute 27"></figure>
+<p>Ahí en la variable _struct hago click derecho CONVERT TO STRUCT *.</p>
+<figure><img loading="lazy" src="img/27/55.png" alt="Captura 55 del tute 27"></figure>
+<p>Ahora si es la dirección de una estructura MyStruct y al igual que antes veremos los campos, apretando T donde corresponde.</p>
+<figure><img loading="lazy" src="img/27/56.png" alt="Captura 56 del tute 27"></figure>
+<p>Allí vemos que compara el número que pasamos contra 0x10 y como la comparación es con signo, cualquier numero negativo podrá pasarlo como por ejemplo 0xffffffff que es -1 el cual es menor que 0x10.</p>
+<figure><img loading="lazy" src="img/27/57.png" alt="Captura 57 del tute 27"></figure>
+<p>Luego utiliza como size del gets_s el número que le pasamos, y el otro argumento, debe ser un buffer que se encuentra al inicio de la estructura pues usa la dirección de inicio de la misma.</p>
+<p>Voy a MyStruct y en 0x0 apreto D una vez para que se cree un campo de un solo byte.</p>
+<figure><img loading="lazy" src="img/27/58.png" alt="Captura 58 del tute 27"></figure>
+<p>Y allí hago click derecho array.</p>
+<figure><img loading="lazy" src="img/27/59.png" alt="Captura 59 del tute 27"></figure>
+<p>El largo del buffer será 16 lo acepto.</p>
+<p>Y lo renombro a Buffer</p>
+<figure><img loading="lazy" src="img/27/60.png" alt="Captura 60 del tute 27"></figure>
+<p>Allí quedo de largo 16 decimal.</p>
+<p>Sigamos reverseando.</p>
+<figure><img loading="lazy" src="img/27/61.png" alt="Captura 61 del tute 27"></figure>
+<p>La cuestión es que con gets_s el buffer podrá ser overflodeado, ya que el chequeo deja pasar valores negativos que cuando se usan como size, se tomarán como valores unsigned, y serán grandes,</p>
+<p>Si por ejemplo pasamos 0xffffffff en la comparación será -1 porque se toma signed y será menor que 0x10, pero al usarlo cómo size será el valor positivo 0xffffffff lo cual permite que pasemos la cantidad de caracteres que queremos en el gets_s al buffer y lo overflodeemos.</p>
+<p>Así que podríamos renombrar la función como check o get lo que queramos que sea representativo de lo que hace la función, le pondremos check para que coincida.</p>
+<figure><img loading="lazy" src="img/27/62.png" alt="Captura 62 del tute 27"></figure>
+<p>Me queda la tercera función el argumento es el mismo así que repito el procedimiento, apreto F5 y cambio el tipo de argumento.</p>
+<figure><img loading="lazy" src="img/27/63.png" alt="Captura 63 del tute 27"></figure>
+<p>Sigo trabajando.</p>
+<figure><img loading="lazy" src="img/27/64.png" alt="Captura 64 del tute 27"></figure>
+<p>Vemos que hay un campo más ya que está tratando de comparar el [EAX+0x18], lo cual no tenemos definido pues el último campo nuestro de MyStruct es 0x14 lo agregaremos.</p>
+<figure><img loading="lazy" src="img/27/65.png" alt="Captura 65 del tute 27"></figure>
+<p>Nos ponemos en la palabra ends y apretamos D hasta que se crea un nuevo campo DD DWORD.</p>
+<figure><img loading="lazy" src="img/27/66.png" alt="Captura 66 del tute 27"></figure>
+<p>Lo renombro a cookie.</p>
+<figure><img loading="lazy" src="img/27/67.png" alt="Captura 67 del tute 27"></figure>
+<p>Vuelvo a la función y apreto T.</p>
+<figure><img loading="lazy" src="img/27/68.png" alt="Captura 68 del tute 27"></figure>
+<p>Vemos que hay otro campo más este es de un solo byte.</p>
+<figure><img loading="lazy" src="img/27/69.png" alt="Captura 69 del tute 27"></figure>
+<p>Así que volvemos a MyStruct y en ends apretamos D una vez y nos quedará un campo de un byte.</p>
+<figure><img loading="lazy" src="img/27/70.png" alt="Captura 70 del tute 27"></figure>
+<p>Lo renombre a flag para que coincida.</p>
+<p>Volviendo a la función.</p>
+<figure><img loading="lazy" src="img/27/71.png" alt="Captura 71 del tute 27"></figure>
+<p>Sí cookie es igual a 0x99989796 luego pondrá flag de esa estructura a 1.</p>
+<figure><img loading="lazy" src="img/27/72.png" alt="Captura 72 del tute 27"></figure>
+<p>Si por algún cambio que no se propagó bien se rompen las variables del main y no hicimos snapshot como me pasó a mí.</p>
+<figure><img loading="lazy" src="img/27/73.png" alt="Captura 73 del tute 27"></figure>
+<p>Voy al inicio de la función rota, y apreto U</p>
+<figure><img loading="lazy" src="img/27/74.png" alt="Captura 74 del tute 27"></figure>
+<p>Acepto y quedara asi</p>
+<figure><img loading="lazy" src="img/27/75.png" alt="Captura 75 del tute 27"></figure>
+<p>Luego en el mismo inicio apreto C.</p>
+<figure><img loading="lazy" src="img/27/76.png" alt="Captura 76 del tute 27"></figure>
+<p>Y luego click derecho CREATE FUNCTION.</p>
+<figure><img loading="lazy" src="img/27/77.png" alt="Captura 77 del tute 27"></figure>
+<p>Ahora si quedo bien.</p>
+<p>Viendo la representación del stack.</p>
+<figure><img loading="lazy" src="img/27/78.png" alt="Captura 78 del tute 27"></figure>
+<p>Vemos que después de cada estructura quedan tres bytes vacíos porque el último campo era uno de un solo byte y no hay más nada.</p>
+<p>Solo quedaron mal los nombres de las estructuras, pero los cambiare como en el código fuente a pepe y juan.</p>
+<figure><img loading="lazy" src="img/27/79.png" alt="Captura 79 del tute 27"></figure>
+<figure><img loading="lazy" src="img/27/80.png" alt="Captura 80 del tute 27"></figure>
+<p>Vemos que con juan hará lo mismo en enter y check que hizo con pepe, pero tiene una tercera función diferente, veamos que hace.</p>
+<figure><img loading="lazy" src="img/27/81.png" alt="Captura 81 del tute 27"></figure>
+<p>Al apretar T en los campos, vemos que es similar a la función “desicion”, solo que la constante con que compara la cookie de juan es diferente en este caso 0x33343536.</p>
+<p>O sea que la cookie de pepe debe valer 0x99989796 y la de juan debe valer 0x33343536 con eso ambos flags de cada estructura estarán a 1.</p>
+<figure><img loading="lazy" src="img/27/82.png" alt="Captura 82 del tute 27"></figure>
+<p>Vemos que para que llegue al chico bueno ambos flags deben ser 1.</p>
+<p>Este ejercicio tiene muchas soluciones porque como la estructura juan está más arriba en el stack.</p>
+<figure><img loading="lazy" src="img/27/83.png" alt="Captura 83 del tute 27"></figure>
+<p>Al hacer su gets_s podríamos pisar todos los flags para que queden a 1 y de esa forma, con un solo overflow, poder pasar los chequeos, también se puede hacer en forma individual, pisando en cada gets_s el flag y no es necesario pisar la cookie con el valor correcto, porque pisamos directamente el flag sin esperar que compare la cookie para que cambie el mismo.</p>
+<p>Para pisar el flag tengo 16 bytes decimal, más 3 dwords o sea 12,</p>
+<p>seria</p>
+<p>16 + 12=28 bytes.</p>
+<figure><img loading="lazy" src="img/27/84.png" alt="Captura 84 del tute 27"></figure>
+<p>Seria</p>
+<p>fruta= 28* “A” + “\x01”</p>
+<figure><img loading="lazy" src="img/27/85.png" alt="Captura 85 del tute 27"></figure>
+<p>Por supuesto a cada una de las estructuras hay que pasarle el -1 o el valor negativo que pase el check contra 0x10, y luego la fruta.</p>
+<figure><img loading="lazy" src="img/27/86.png" alt="Captura 86 del tute 27"></figure>
+<p>Si debugeamos un poco, vemos el -1 que entra en el campo número de pepe.</p>
+<figure><img loading="lazy" src="img/27/87.png" alt="Captura 87 del tute 27"></figure>
+<figure><img loading="lazy" src="img/27/88.png" alt="Captura 88 del tute 27"></figure>
+<p>Pasa el chequeo y llega al gets_s y allí lee la fruta.</p>
+<figure><img loading="lazy" src="img/27/89.png" alt="Captura 89 del tute 27"></figure>
+<p>Allí veo la dirección de pepe en mi máquina, luego de pasar por el gets_s si voy allí.</p>
+<figure><img loading="lazy" src="img/27/90.png" alt="Captura 90 del tute 27"></figure>
+<p>Allí veo la fruta que le envíe, si quiero convertir en estructura.</p>
+<p>Apreto ALT mas Q</p>
+<figure><img loading="lazy" src="img/27/91.png" alt="Captura 91 del tute 27"></figure>
+<p>Elijo MyStruct.</p>
+<figure><img loading="lazy" src="img/27/92.png" alt="Captura 92 del tute 27"></figure>
+<p>Veo los campos y que flag está ya pisado a 1 por el overflow, sin pasar por las otras funciones, sigo traceando.</p>
+<figure><img loading="lazy" src="img/27/93.png" alt="Captura 93 del tute 27"></figure>
+<p>Vemos que compara cookie contra 0x99989796 y como no es igual no modifica el flag pero el mismo ya está a 1, así que no me importa.</p>
+<p>Se repetirá el mismo proceso y llegamos a desicion2.</p>
+<figure><img loading="lazy" src="img/27/94.png" alt="Captura 94 del tute 27"></figure>
+<p>Entro traceando con F7.</p>
+<figure><img loading="lazy" src="img/27/95.png" alt="Captura 95 del tute 27"></figure>
+<p>EAX tiene el inicio de la estructura Juan veámosla.</p>
+<figure><img loading="lazy" src="img/27/96.png" alt="Captura 96 del tute 27"></figure>
+<p>Allí también hago ALT mas Q para cambiarlo a estructura y elijo MyStruct.</p>
+<figure><img loading="lazy" src="img/27/97.png" alt="Captura 97 del tute 27"></figure>
+<p>Lo mismo que antes el flag estará a 1, la comparación con la cookie no será igual pero continuo pues el flag ya está bien.</p>
+<figure><img loading="lazy" src="img/27/98.png" alt="Captura 98 del tute 27"></figure>
+<p>pepe.flag vale 1 está bien sigo.</p>
+<figure><img loading="lazy" src="img/27/99.png" alt="Captura 99 del tute 27"></figure>
+<p>juan.flag también esta correcto, así que llego al cartel de chico bueno.</p>
+<figure><img loading="lazy" src="img/27/100.png" alt="Captura 100 del tute 27"></figure>
+<p>Y listo ya está solucionado.</p>
+<p>Nos vemos en la parte 28</p>
+<p>Ricardo Narvaja</p>
+</main>
+<footer class="pie">
+  <p>Material educativo y defensivo. Las prácticas se limitan a programas propios, software abierto o crackmes diseñados para aprender. No se enseña a eludir licencias, DRM ni controles de acceso.</p>
+  <p><a href="../00_EMPEZAR_AQUI.html">Inicio</a> · <a href="../guia/etapa-0.html">Etapas</a> · <a href="../fuentes_y_limites.html">Fuentes y límites</a> · <a href="../registro_de_cobertura.csv">Registro de cobertura</a></p>
+</footer>
+<script>
+(function(){
+  function abrir(src){
+    var o=document.createElement('div'); o.className='lightbox-ov';
+    var i=document.createElement('img'); i.src=src; o.appendChild(i);
+    function cerrar(){o.remove(); document.removeEventListener('keydown', onkey);}
+    function onkey(e){ if(e.key==='Escape') cerrar(); }
+    o.addEventListener('click', cerrar);
+    document.addEventListener('keydown', onkey);
+    document.body.appendChild(o);
+  }
+  document.addEventListener('DOMContentLoaded', function(){
+    document.querySelectorAll('figure img, main img').forEach(function(img){
+      img.style.cursor='zoom-in';
+      img.addEventListener('click', function(){ abrir(img.currentSrc||img.src); });
+    });
+  });
+})();
+</script>
+</body>
+</html>

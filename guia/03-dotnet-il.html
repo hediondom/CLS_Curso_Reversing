@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Etapa 3 · Leer IL y comparar fuente, IL y decompilación</title>
+<meta name="description" content="Un método propio paso a paso: qué hace cada instrucción IL, cómo se ve la pila de evaluación y qué reconstruye el decompilador.">
+<link rel="stylesheet" href="../guia/estilo.css">
+</head>
+<body>
+<a class="salto" href="#contenido">Saltar al contenido</a>
+<header class="cabecera">
+  <div class="marca"><a href="../00_EMPEZAR_AQUI.html">CLS · Curso de reversing</a> <span class="edicion">edición 5 · 27/10/2026</span></div>
+  <nav class="principal" aria-label="Navegación principal">
+    <a href="../00_EMPEZAR_AQUI.html">Inicio</a>
+    <a href="../guia/index.html">Curso</a>
+    <a href="../materiales.html">Materiales</a>
+    <a href="../fichas/index.html">Fichas</a>
+    <a href="../glosario.html">Glosario</a>
+    <a href="../preguntas_y_respuestas.html">Repaso</a>
+    <a href="../buscar.html">Buscar</a>
+  </nav>
+</header>
+<main id="contenido">
+<nav class="migas" aria-label="Ubicación"><a href="../00_EMPEZAR_AQUI.html">Inicio</a><span aria-hidden="true">›</span><a href="../guia/index.html">Curso</a><span aria-hidden="true">›</span><span>Etapa 3 · .NET como primera victoria</span></nav><h1 id="leer-il-y-comparar-fuente-il-y-decompilación">Leer IL y comparar fuente, IL y decompilación</h1>
+<aside class="callout nota"><p class="callout-titulo">Objetivo de la lección</p><p>Al terminar vas a poder leer el IL de un método sencillo, seguir la pila de evaluación instrucción por instrucción y comparar tres vistas del mismo código: la fuente que escribiste, el IL que generó el compilador y lo que reconstruye el decompilador.</p></aside>
+<p><strong>Prerrequisitos:</strong> runtime y ensamblados .NET. <strong>Duración sugerida:</strong> 4 horas. Estimación aproximada.</p>
+<h2 id="il-es-una-máquina-de-pila">IL es una máquina de pila</h2>
+<p>A diferencia del assembly x86, que usa registros, el IL es una <strong>máquina de pila</strong>: las instrucciones empujan valores a una pila de evaluación y las operaciones los sacan, calculan y empujan el resultado.</p>
+<pre><code class="lenguaje-text">ldarg.0        -&gt; push a
+ldarg.1        -&gt; push b
+add            -&gt; pop b, pop a, push (a+b)</code></pre>
+<p>Eso hace que el IL sea más fácil de leer que el assembly nativo: no hay que seguir registros, solo la pila. El precio es que hay muchas instrucciones <code>ld*</code>/<code>st*</code>.</p>
+<h2 id="el-método-de-ejemplo">El método de ejemplo</h2>
+<p>Escribí este método en una clase de consola:</p>
+<pre><code class="lenguaje-csharp">static bool Check(int a, int b)
+{
+    if (a &gt; 50 || b &lt; 50)
+        return false;
+    return (a + b) * 4 == 480;
+}</code></pre>
+<p>Compilalo en <strong>Debug</strong> (sin optimizaciones) y abrilo en ILSpy. El IL va a ser parecido a este (los offsets exactos cambian según el compilador y la versión):</p>
+<pre><code class="lenguaje-il">.method private hidebysig static bool Check(int32 a, int32 b) cil managed
+{
+    .maxstack 2
+
+    ldarg.0
+    ldc.i4.s 50
+    cgt
+    brtrue.s L_false
+
+    ldarg.1
+    ldc.i4.s 50
+    clt
+    brtrue.s L_false
+
+    ldarg.0
+    ldarg.1
+    add
+    ldc.i4.2
+    shl
+    ldc.i4 480
+    ceq
+    ret
+
+L_false:
+    ldc.i4.0
+    ret
+}</code></pre>
+<h2 id="lectura-línea-por-línea">Lectura línea por línea</h2>
+<div class="tabla"><table>
+<thead><tr>
+<th>IL</th>
+<th>Qué hace</th>
+<th>Pila después</th>
+</tr></thead><tbody>
+<tr><td><code>ldarg.0</code></td><td>Empuja el primer argumento (<code>a</code>)</td><td><code>[a]</code></td></tr>
+<tr><td><code>ldc.i4.s 50</code></td><td>Empuja la constante 50</td><td><code>[a, 50]</code></td></tr>
+<tr><td><code>cgt</code></td><td>Compara: ¿<code>a &gt; 50</code>? Empuja 1 o 0</td><td><code>[a&gt;50]</code></td></tr>
+<tr><td><code>brtrue.s L_false</code></td><td>Si el tope es distinto de 0, salta a <code>L_false</code></td><td><code>[]</code></td></tr>
+<tr><td><code>ldarg.1</code></td><td>Empuja <code>b</code></td><td><code>[b]</code></td></tr>
+<tr><td><code>ldc.i4.s 50</code></td><td>Empuja 50</td><td><code>[b, 50]</code></td></tr>
+<tr><td><code>clt</code></td><td>¿<code>b &lt; 50</code>? Empuja 1 o 0</td><td><code>[b&lt;50]</code></td></tr>
+<tr><td><code>brtrue.s L_false</code></td><td>Si es verdadero, salta a <code>L_false</code></td><td><code>[]</code></td></tr>
+<tr><td><code>ldarg.0</code></td><td>Empuja <code>a</code></td><td><code>[a]</code></td></tr>
+<tr><td><code>ldarg.1</code></td><td>Empuja <code>b</code></td><td><code>[a, b]</code></td></tr>
+<tr><td><code>add</code></td><td>Suma</td><td><code>[a+b]</code></td></tr>
+<tr><td><code>ldc.i4.2</code></td><td>Empuja 2</td><td><code>[a+b, 2]</code></td></tr>
+<tr><td><code>shl</code></td><td>Desplaza a la izquierda 2 bits (×4)</td><td><code>[(a+b)*4]</code></td></tr>
+<tr><td><code>ldc.i4 480</code></td><td>Empuja 480</td><td><code>[(a+b)*4, 480]</code></td></tr>
+<tr><td><code>ceq</code></td><td>¿Son iguales? Empuja 1 o 0</td><td><code>[resultado]</code></td></tr>
+<tr><td><code>ret</code></td><td>Devuelve el tope</td><td><code>[]</code></td></tr>
+<tr><td><code>L_false: ldc.i4.0</code></td><td>Empuja 0 (false)</td><td><code>[0]</code></td></tr>
+<tr><td><code>ret</code></td><td>Devuelve 0</td><td><code>[]</code></td></tr>
+</tbody></table></div>
+<p><strong>Comprobación con <code>a = 40</code>, <code>b = 80</code>:</strong></p>
+<ol><li><code>40 &gt; 50</code> → 0. No salta.</li><li><code>80 &lt; 50</code> → 0. No salta.</li><li><code>40 + 80 = 120</code>.</li><li><code>120 &lt;&lt; 2 = 480</code>.</li><li><code>480 == 480</code> → 1 (<code>true</code>).</li></ol>
+<p>El método devuelve <code>true</code>. Con <code>a = 60</code>, el primer <code>cgt</code> da 1 y salta a <code>L_false</code>: devuelve <code>false</code> sin evaluar el resto.</p>
+<aside class="callout nota"><p class="callout-titulo"><code>cgt</code>, <code>clt</code>, <code>ceq</code></p><p>Son las comparaciones de IL: <em>compare greater than</em>, <em>compare less than</em>, <em>compare equal</em>. Empujan 1 si la condición se cumple y 0 si no. No modifican flags como <code>CMP</code>; el resultado es un valor en la pila.</p></aside>
+<h2 id="las-tres-vistas-del-mismo-método">Las tres vistas del mismo método</h2>
+<p><strong>Fuente (lo que escribiste):</strong></p>
+<pre><code class="lenguaje-csharp">if (a &gt; 50 || b &lt; 50)
+    return false;
+return (a + b) * 4 == 480;</code></pre>
+<p><strong>IL (lo que generó el compilador):</strong> el listado de arriba, con <code>brtrue</code> y una etiqueta <code>L_false</code>.</p>
+<p><strong>Decompilación (lo que reconstruye ILSpy):</strong></p>
+<pre><code class="lenguaje-csharp">private static bool Check(int a, int b)
+{
+    if (a &lt;= 50 &amp;&amp; b &gt;= 50)
+    {
+        return (a + b) * 4 == 480;
+    }
+    return false;
+}</code></pre>
+<p>Las tres son equivalentes, pero <strong>no son iguales</strong>. El decompilador invirtió la condición (<code>a &gt; 50 || b &lt; 50</code> se convirtió en <code>a &lt;= 50 &amp;&amp; b &gt;= 50</code> por De Morgan), movió el <code>return false</code> al final y agregó llaves. Eso es normal: reconstruye una lógica equivalente, no el texto original.</p>
+<p>Cuando analices un binario ajeno, no esperes "el código fuente". Esperá <strong>una versión legible y equivalente</strong>, que puede diferir en estilo, nombres y estructura.</p>
+<h2 id="metadatos-dónde-están-los-nombres">Metadatos: dónde están los nombres</h2>
+<p>En ILSpy, además del código, podés ver:</p>
+<ul><li><strong>Assembly</strong>: nombre, versión, cultura, referencias (<code>System.Runtime</code>, <code>System.Console</code>).</li><li><strong>Namespace</strong> y <strong>Type</strong>: <code>HolaNet.Program</code>.</li><li><strong>Method</strong>: nombre, firma, atributos (<code>private</code>, <code>static</code>).</li><li><strong>Tokens</strong>: identificadores numéricos que el runtime usa para referenciar tipos y métodos (por ejemplo, un <code>MethodDef</code> con su token). No los necesitás para leer, pero explican por qué el decompilador puede reconstruir las referencias.</li></ul>
+<p>Si el binario está ofuscado, los nombres pueden ser <code>\u0001</code>, <code>A</code>, <code>B</code>, <code>method_0</code>. La estructura sigue ahí; lo que se pierde es la legibilidad.</p>
+<h2 id="debug-vs-release">Debug vs Release</h2>
+<p>Compilá el mismo método en Release y compará:</p>
+<ul><li>En Debug, las variables locales y los puntos de secuencia están pensados para depurar; el IL es más "literal".</li><li>En Release, el compilador puede inline-ar métodos chicos, reordenar, eliminar variables y simplificar condiciones.</li><li>Las líneas y nombres de variables locales pueden desaparecer si no hay PDB.</li></ul>
+<p>Para aprender, usá Debug. Para analizar un binario real, asumí Release y no te sorprendas si el decompilador muestra un código más raro.</p>
+<h2 id="ofuscación-qué-cambia-y-qué-no">Ofuscación: qué cambia y qué no</h2>
+<div class="tabla"><table>
+<thead><tr>
+<th>Técnica</th>
+<th>Qué hace</th>
+<th>Cómo se reconoce</th>
+</tr></thead><tbody>
+<tr><td>Renombrado</td><td>Cambia nombres por símbolos ilegibles</td><td><code>\u0001</code>, <code>A</code>, <code>method_0</code></td></tr>
+<tr><td>Cifrado de strings</td><td>Guarda las cadenas cifradas y las descifra en runtime</td><td>Strings ausentes o ilegibles; llamadas a un método de descifrado</td></tr>
+<tr><td>Flujo falso</td><td>Agrega saltos y bloques que nunca se ejecutan</td><td>Grafos con muchos bloques muertos</td></tr>
+<tr><td>State machine</td><td>Convierte métodos en una máquina de estados</td><td><code>switch</code> sobre un estado, <code>MoveNext</code></td></tr>
+</tbody></table></div>
+<p>El decompilador sigue siendo útil, pero hay que <strong>verificar</strong>. Una condición reconstruida puede ser incorrecta si el flujo está ofuscado. La regla es la misma que en nativo: contrastar estático con dinámico, sobre un programa propio o autorizado.</p>
+<h2 id="práctica">Práctica</h2>
+<ol><li>Compilá el método <code>Check</code> en Debug y en Release. Pegá las dos versiones de IL y marcá tres diferencias.</li><li>Escribí un método con un <code>for</code> que sume 1..10. Encontrá en el IL el salto que vuelve al inicio del bucle.</li><li>Escribí una propiedad <code>public int Edad { get; set; }</code> y buscá el getter y el setter en ILSpy. ¿Qué métodos genera el compilador?</li><li>Escribí un método <code>async</code> que espere un segundo e imprima algo. Buscá la máquina de estados que genera el compilador. No hace falta entenderla entera: identificá <code>MoveNext</code>.</li><li>Compará la decompilación con tu fuente. Marcá al menos una diferencia de estilo y explicá por qué es equivalente.</li><li>Escribí en tu bitácora: qué método analizaste, qué IL te sorprendió y qué parte no entendés todavía.</li></ol>
+<h2 id="preguntas-de-repaso">Preguntas de repaso</h2>
+<p><strong>1. ¿IL usa registros?</strong> No. Es una máquina de pila: las instrucciones empujan y sacan valores de una pila de evaluación.</p>
+<p><strong>2. ¿Qué hace <code>cgt</code>?</strong> Compara los dos valores del tope: empuja 1 si el primero es mayor que el segundo, 0 si no.</p>
+<p><strong>3. ¿Por qué el decompilador muestra una condición distinta de la fuente?</strong> Porque reconstruye una lógica equivalente a partir del IL. Puede aplicar De Morgan, reordenar retornos o simplificar expresiones.</p>
+<p><strong>4. ¿Qué se pierde en Release?</strong> Variables locales, líneas y algunas simplificaciones que el compilador aplica. Los nombres de tipos y métodos se conservan, salvo ofuscación.</p>
+<p><strong>5. ¿Qué hace <code>shl</code> en el IL?</strong> Desplaza a la izquierda la cantidad de bits indicada. <code>shl 2</code> equivale a multiplicar por 4.</p>
+<p><strong>6. ¿La ofuscación impide analizar un binario .NET?</strong> No. Lo hace más difícil. El IL y los metadatos siguen ahí; hay que verificar la reconstrucción con ejecución controlada.</p>
+<h2 id="antes-de-avanzar">Antes de avanzar</h2>
+<p>Tenés que poder:</p>
+<ul><li>Leer un método IL de 20 instrucciones y decir qué devuelve.</li><li>Seguir la pila de evaluación con un valor concreto.</li><li>Comparar fuente, IL y decompilación y explicar una diferencia.</li><li>Reconocer señales de ofuscación.</li></ul>
+<aside class="callout nota"><p class="callout-titulo">Puerta de salida de la Etapa 3</p><p>Si podés compilar tu propio método, leer su IL y explicar qué hace el decompilador, terminaste .NET. La Etapa 4 es el método de análisis completo, con informe.</p></aside>
+<h2 id="fuentes-de-esta-lección">Fuentes de esta lección</h2>
+<ul><li><a class="fuente" href="../../CLS_resultados_intermedios/transcripciones/extraidos/Videos%20y%20material%20adicional%20Ingenieria%20Inversa/Videos_Video38_Video38.txt">Videos y material adicional, Video 38</a> — MSIL y por qué el código intermedio requiere otras herramientas.</li><li><a class="fuente" href="../../CLS_resultados_intermedios/transcripciones/extraidos/Videos%20y%20material%20adicional%20Ingenieria%20Inversa/Videos_Video40_Video40.txt">Videos y material adicional, Video 40</a> — .NET Reflector y reconstrucción de un formulario VB.NET.</li><li><a class="fuente" href="../../CLS_resultados_intermedios/teorias_numeradas_por_etapa.csv">teorias_numeradas_por_etapa.csv</a> — títulos .NET/dnSpy <strong>pendientes de revisar</strong>.</li></ul>
+<aside class="callout nota"><p class="callout-titulo">Capas de esta lección</p><p><strong>Contenido observado en CLS:</strong> el video 38 (MSIL) y el video 40 (decompilación VB.NET). <strong>Conocimiento externo:</strong> conjunto de instrucciones IL, pila de evaluación y comportamiento de los decompiladores. <strong>Recomendación editorial:</strong> el método <code>Check</code>, la tabla línea por línea y los ejercicios.</p></aside>
+</main>
+<footer class="pie">
+  <p>Material educativo y defensivo. Las prácticas se limitan a programas propios, software abierto o crackmes diseñados para aprender. No se enseña a eludir licencias, DRM ni controles de acceso.</p>
+  <p><a href="../00_EMPEZAR_AQUI.html">Inicio</a> · <a href="../guia/etapa-0.html">Etapas</a> · <a href="../fuentes_y_limites.html">Fuentes y límites</a> · <a href="../registro_de_cobertura.csv">Registro de cobertura</a></p>
+</footer>
+</body>
+</html>

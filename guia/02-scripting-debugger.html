@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>2.21 · Scripting de debugger: automatizar y dejar evidencia</title>
+<meta name="description" content="Automatizar tareas repetidas en x64dbg (breakpoints, logs, trazas condicionales) y guardar evidencia; instrumentación dinámica con Frida; OllyDbg/OllyScript como legado a reconocer y adaptar.">
+<link rel="stylesheet" href="../guia/estilo.css">
+</head>
+<body>
+<a class="salto" href="#contenido">Saltar al contenido</a>
+<header class="cabecera">
+  <div class="marca"><a href="../00_EMPEZAR_AQUI.html">CLS · Curso de reversing</a> <span class="edicion">edición 5 · 27/10/2026</span></div>
+  <nav class="principal" aria-label="Navegación principal">
+    <a href="../00_EMPEZAR_AQUI.html">Inicio</a>
+    <a href="../guia/index.html">Curso</a>
+    <a href="../materiales.html">Materiales</a>
+    <a href="../fichas/index.html">Fichas</a>
+    <a href="../glosario.html">Glosario</a>
+    <a href="../preguntas_y_respuestas.html">Repaso</a>
+    <a href="../buscar.html">Buscar</a>
+  </nav>
+</header>
+<main id="contenido">
+<nav class="migas" aria-label="Ubicación"><a href="../00_EMPEZAR_AQUI.html">Inicio</a><span aria-hidden="true">›</span><a href="../guia/index.html">Curso</a><span aria-hidden="true">›</span><span>Etapa 2 · Windows avanzado (2C)</span></nav><h1 id="scripting-de-debugger-automatizar-y-dejar-evidencia">Scripting de debugger: automatizar y dejar evidencia</h1>
+<aside class="callout nota"><p class="callout-titulo">Objetivo de la lección</p><p>Dejar de repetir a mano la misma secuencia en el debugger: <strong>automatizarla con un script</strong> de x64dbg y que ese script <strong>guarde evidencia</strong> reproducible. Reconocer y adaptar un <strong>OllyScript</strong> antiguo. <strong>Prerrequisitos:</strong> debugger (2.6). <em>Contexto recomendado (no bloqueante):</em> método de análisis (4.1) y automatización con IDAPython (5.3) — útiles como referencia, pero 2C no exige haber hecho las etapas 4 o 5.</p></aside>
+<h2 id="por-qué-scriptear-el-debugger">Por qué scriptear el debugger</h2>
+<p>Cuando una tarea se repite —poner el mismo breakpoint, leer el mismo registro, anotar el mismo valor en cada corrida— conviene <strong>automatizarla</strong>: es más rápido, no te equivocás y queda <strong>reproducible</strong> (cualquiera corre el script y obtiene lo mismo). Es el mismo espíritu que viste con <strong>IDAPython</strong> en la <a href="05-automatizacion.html">automatización de la Etapa 5</a>, pero del lado <strong>dinámico</strong>: en vez de recorrer el binario estático, manejás la ejecución.</p>
+<h2 id="x64dbg-el-lenguaje-de-scripts">x64dbg: el lenguaje de scripts</h2>
+<p>x64dbg trae una pestaña <strong>Script</strong> con un lenguaje de comandos simple (<strong>conocimiento externo</strong>). Los que más vas a usar:</p>
+<div class="tabla"><table>
+<thead><tr>
+<th>Comando</th>
+<th>Qué hace</th>
+</tr></thead><tbody>
+<tr><td><code>bp dir</code> / <code>bphws dir, "r"</code></td><td>breakpoint de software / de hardware</td></tr>
+<tr><td><code>SetBreakpointLog dir, "..."</code></td><td>texto que se escribe al log cuando se dispara ese bp</td></tr>
+<tr><td><code>SetBreakpointCondition dir, 0</code></td><td><em>break-condition</em> 0 = el bp <strong>loggea pero no pausa</strong></td></tr>
+<tr><td><code>run</code> / <code>erun</code></td><td>correr hasta el bp / correr pasando excepciones</td></tr>
+<tr><td><code>log "texto {reg}"</code></td><td>escribir en el log (con formato de registros/memoria)</td></tr>
+<tr><td><code>$resultado = [rsp+8]</code></td><td>variables del script, leer memoria</td></tr>
+</tbody></table></div>
+<p>El formato de <code>log</code> permite volcar memoria y registros: <code>{utf16@rcx}</code> imprime el string Unicode <strong>cuya dirección está en <code>RCX</code></strong>. Ojo con los corchetes: <code>@rcx</code> usa el <strong>valor del registro</strong> como dirección; <code>@[rcx]</code> haría una <strong>lectura de más</strong> (tomaría lo que hay <em>en</em> <code>RCX</code> como dirección). Con un breakpoint que <strong>loggea sin pausar</strong> armás una <strong>traza</strong> automática.</p>
+<h2 id="ejemplo-paso-a-paso-loggear-cada-archivo-que-abre-el-programa">Ejemplo paso a paso: loggear cada archivo que abre el programa</h2>
+<p><em>(Ejemplo <strong>ilustrativo</strong>: script de x64dbg para registrar llamadas y guardar evidencia.)</em></p>
+<pre><code class="lenguaje-text">// script.txt — correr desde la pestaña Script de x64dbg
+bp CreateFileW                                            // breakpoint en la API
+SetBreakpointLog CreateFileW, "[CreateFileW] {utf16@rcx}" // qué loggear al dispararse
+SetBreakpointCondition CreateFileW, 0                     // 0 = loggea pero NO pausa
+run                                                       // una sola vez; todo queda en el log
+
+// el log queda con algo como:
+// [CreateFileW] C:\Users\...\config.ini
+// [CreateFileW] C:\Users\...\datos.bin</code></pre>
+<p>Cada vez que el programa llama a <code>CreateFileW</code>, el breakpoint <strong>loggea el nombre del archivo</strong> (el primer argumento, en <code>RCX</code>) y <strong>continúa solo</strong>, porque la <em>break-condition</em> es 0. Esa es la forma recomendada: no metas <code>run</code> dentro de un comando de breakpoint (x64dbg lo desaconseja por inestable); dejá que el bp loggee y no pause. Al final copiás el <strong>log</strong> como evidencia (Etapa 4): un registro reproducible de qué archivos tocó, sin frenar a mano en cada llamada.</p>
+<h2 id="trazas-condicionales-registrar-cada-instrucción-que-cumple-algo">Trazas condicionales: registrar cada instrucción que cumple algo</h2>
+<p>Un breakpoint con log te dice <strong>cuándo</strong> se llamó a algo. A veces la pregunta es otra: "¿por qué camino pasó entre este punto y aquel?" o "¿en qué instrucción <code>RAX</code> tomó este valor?". Para eso x64dbg tiene <strong>trazas condicionales</strong> (menú <em>Debug</em>: <em>Trace into until condition</em> / <em>Trace over until condition</em>): el debugger ejecuta paso a paso por vos y en cada instrucción evalúa expresiones (<strong>conocimiento externo</strong>, documentación de x64dbg):</p>
+<div class="tabla"><table>
+<thead><tr>
+<th>Campo</th>
+<th>Qué hace</th>
+<th>Valor por defecto</th>
+</tr></thead><tbody>
+<tr><td><em>Break condition</em></td><td>Si da 1, la traza se detiene</td><td><code>0</code> (no se detiene por condición)</td></tr>
+<tr><td><em>Log text</em></td><td>Texto con formato que se escribe al log</td><td>vacío</td></tr>
+<tr><td><em>Log condition</em></td><td>Si da 1, se escribe el <em>log text</em></td><td><code>1</code> (siempre)</td></tr>
+<tr><td><em>Command text</em> / <em>condition</em></td><td>Comando que se ejecuta cuando la condición da 1</td><td>la condición por defecto es la <em>break condition</em></td></tr>
+</tbody></table></div>
+<p>El log de la traza se puede mandar a un archivo (desde el diálogo o con el comando <code>TraceSetLogFile</code>), y ese archivo es la evidencia.</p>
+<p><em>(Ejemplo <strong>ilustrativo</strong>, no ejecutado en esta edición: valores de los campos para una traza "trace over" desde el inicio de una función de verificación.)</em></p>
+<pre><code class="lenguaje-text">Break condition:  cip == 0x140001290        // fin de la función: ahí se detiene
+Log text:         {p:cip} {i:cip}  rax={rax}
+Log condition:    1                         // loggear todas las instrucciones</code></pre>
+<p>El resultado es la lista de instrucciones <strong>realmente ejecutadas</strong>, con el valor de <code>RAX</code> en cada una. Comparar dos trazas (una con entrada válida y otra con inválida) muestra exactamente <strong>dónde se separan los caminos</strong>, que es el dato que buscabas en el método de la Etapa 4. Dos precauciones: una traza paso a paso es <strong>mucho más lenta</strong> que la ejecución normal, así que acotala entre dos direcciones y usá <em>trace over</em> para no meterte en las APIs; y el archivo crece rápido, así que logueá solo lo que vas a leer.</p>
+<h2 id="instrumentación-dinámica-frida">Instrumentación dinámica: Frida</h2>
+<p>Un debugger detiene el proceso (o lo traza instrucción por instrucción). La <strong>instrumentación dinámica</strong> hace otra cosa: <strong>inyecta código propio</strong> en el proceso para que se ejecute al entrar y salir de las funciones que te interesan, sin pausar. <strong>Frida</strong> es la herramienta libre más difundida de este tipo (<strong>conocimiento externo</strong>): inyecta un motor de JavaScript en el proceso y te da una API para enganchar funciones.</p>
+<p>La pieza central es <code>Interceptor.attach(target, callbacks)</code>: <code>target</code> es la dirección de la función y <code>callbacks</code> tiene <code>onEnter(args)</code>, que recibe los argumentos, y <code>onLeave(retval)</code>, que recibe el valor de retorno. La dirección de una función exportada se obtiene con <code>Process.getModuleByName(nombre).getExportByName(funcion)</code>.</p>
+<p><em>(Ejemplo <strong>ilustrativo</strong>, no ejecutado en esta edición: el mismo registro de <code>CreateFileW</code> del ejemplo de x64dbg, ahora con Frida.)</em></p>
+<pre><code class="lenguaje-js">// agente.js: registrar qué archivos abre el programa y qué handle recibe
+const f = Process.getModuleByName('kernel32.dll').getExportByName('CreateFileW');
+Interceptor.attach(f, {
+  onEnter(args) {
+    this.nombre = args[0].readUtf16String();   // primer argumento: LPCWSTR
+  },
+  onLeave(retval) {
+    console.log('[CreateFileW] ' + this.nombre + ' -&gt; ' + retval);
+  }
+});</code></pre>
+<p>Se carga con la herramienta de línea de comandos de Frida al lanzar <strong>tu programa</strong> dentro de la VM. Comparado con el script de x64dbg, ganás el valor de retorno en la misma línea (<code>this</code> guarda datos entre <code>onEnter</code> y <code>onLeave</code>) y la posibilidad de procesar los datos en JavaScript; perdés la vista de registros y memoria que da el debugger.</p>
+<div class="tabla"><table>
+<thead><tr>
+<th>Herramienta</th>
+<th>Cuándo conviene</th>
+<th>Costo</th>
+</tr></thead><tbody>
+<tr><td>Breakpoint con log (x64dbg)</td><td>Saber cuándo y con qué argumentos se llama a algo</td><td>Bajo; pausa interna en cada disparo</td></tr>
+<tr><td>Traza condicional (x64dbg)</td><td>Ver el camino exacto entre dos puntos</td><td>Muy lento; acotarlo</td></tr>
+<tr><td>Instrumentación (Frida)</td><td>Registrar entradas y salidas de muchas funciones, procesar datos al vuelo</td><td>Inyecta código: modifica el proceso</td></tr>
+<tr><td>TTD (<a href="02-windbg-heap.html">2.19</a>)</td><td>Grabar una ejecución y recorrerla hacia atrás</td><td>Archivos grandes; solo WinDbg</td></tr>
+</tbody></table></div>
+<aside class="callout aviso"><p class="callout-titulo">Instrumentar modifica el proceso</p><p>Frida inyecta una biblioteca y reescribe el inicio de las funciones enganchadas. Usala solo sobre <strong>programas propios o didácticos, en la VM</strong>. Un programa con controles anti-análisis (<a href="02-anti-analisis.html">2.15</a>) puede notar la inyección y comportarse distinto, y eso es un dato para documentar, no algo para evadir. No la uses sobre software de terceros, juegos en línea ni procesos protegidos del sistema.</p></aside>
+<h2 id="ollydbg-como-legado">OllyDbg como legado</h2>
+<p><strong>OllyDbg</strong> (el de los videos 23–40 del curso, ver <a href="02-herramientas.html">2.9 Herramientas</a>) tiene su propio <strong>OllyScript</strong> (<code>.txt</code> con comandos como <code>bp</code>, <code>run</code>, <code>log</code>, <code>cmp</code>, <code>jne</code>). Es de 32 bits y está discontinuado, pero vas a <strong>encontrar scripts viejos</strong> de OllyScript en material de la escena. El objetivo acá no es escribir OllyScript nuevo, sino <strong>reconocer</strong> qué hace uno antiguo y, si hace falta, <strong>adaptar</strong> su lógica a x64dbg. En <code>Teorias_Numeradas</code> hay varios títulos sobre scripting de OllyDbg/x64dbg (material por título, no revisado; ver <a href="../teorias.html">índice</a>).</p>
+<h2 id="práctica">Práctica</h2>
+<p>En tu VM, con un <strong>crackme propio o didáctico</strong> (ver <a href="../practicas.html">Banco de prácticas</a>):</p>
+<ol><li>Elegí una tarea repetitiva (p. ej. loggear cada <code>strcmp</code>/<code>CreateFileW</code>, o leer un registro en un punto).</li><li>Escribí un script de x64dbg que la haga sola y escriba al <strong>log</strong>.</li><li>Corré el script y <strong>guardá el log</strong> como evidencia.</li><li>Tomá un OllyScript viejo (si conseguís uno) y escribí en dos líneas qué hace y cómo se traduciría a x64dbg.</li><li>Sobre tu crackme propio, hacé una traza condicional <em>trace over</em> de la función de verificación con una entrada válida y otra inválida, mandando el log a archivo. Compará los dos archivos y señalá la primera instrucción donde se separan.</li><li>Si instalás Frida en la VM, registrá con un agente las llamadas a <code>CreateFileW</code> (o a la comparación de cadenas) de tu programa propio y compará la salida con la del script de x64dbg.</li></ol>
+<h2 id="preguntas-de-repaso">Preguntas de repaso</h2>
+<details class="qa"><summary>¿Por qué scriptear una tarea del debugger en vez de hacerla a mano?</summary><div class="respuesta"><p>Porque es más rápido, evita errores de repetición y queda <strong>reproducible</strong>: el script documenta exactamente qué se hizo y cualquiera obtiene el mismo resultado.</p></div></details>
+<details class="qa"><summary>¿Cómo hacés que un breakpoint loggee sin pausar la ejecución?</summary><div class="respuesta"><p>Le ponés un <strong>texto de log</strong> (<code>SetBreakpointLog</code>) y la <strong>break-condition en 0</strong> (<code>SetBreakpointCondition dir, 0</code>): el bp escribe al log cada vez que se dispara y continúa solo. Es lo recomendado; meter <code>run</code> dentro de un comando de breakpoint es inestable.</p></div></details>
+<details class="qa"><summary>¿Cómo loggeás el nombre de archivo en una llamada a <code>CreateFileW</code>?</summary><div class="respuesta"><p>Con el formato de memoria del log: el primer argumento (<code>RCX</code> en x64) tiene la <strong>dirección</strong> del nombre; <code>{utf16@rcx}</code> vuelca ese string Unicode al log. (Con <code>@[rcx]</code> harías una lectura de más.)</p></div></details>
+<details class="qa"><summary>¿Qué te da una traza condicional que no te da un breakpoint con log?</summary><div class="respuesta"><p>El <strong>camino completo</strong> de instrucciones ejecutadas entre dos puntos, con los valores que pidas en cada una. Comparando dos trazas ves dónde se separan los caminos. A cambio es muy lenta, por eso se acota.</p></div></details>
+<details class="qa"><summary>En Frida, ¿para qué sirven <code>onEnter</code> y <code>onLeave</code>?</summary><div class="respuesta"><p><code>onEnter(args)</code> corre al entrar a la función y recibe los argumentos; <code>onLeave(retval)</code> corre al salir y recibe el valor de retorno. Con <code>this</code> se guardan datos de la entrada para usarlos a la salida.</p></div></details>
+<details class="qa"><summary>¿Por qué instrumentar con Frida no es "solo mirar"?</summary><div class="respuesta"><p>Porque inyecta una biblioteca y modifica el inicio de las funciones enganchadas: el proceso cambia y un programa con controles anti-análisis puede notarlo. Por eso se usa sobre programas propios en la VM y se documenta.</p></div></details>
+<details class="qa"><summary>¿Qué relación tiene esto con IDAPython (5.3)?</summary><div class="respuesta"><p>Es la misma idea de <strong>automatizar</strong>, pero en dinámico: IDAPython recorre el binario estático; el script de x64dbg maneja la <strong>ejecución</strong> (breakpoints, registros, memoria en vivo).</p></div></details>
+<details class="qa"><summary>¿Qué hacés con un OllyScript antiguo?</summary><div class="respuesta"><p>Lo <strong>reconocés y adaptás</strong>: entendés su lógica (bp, run, comparaciones) y la traducís a x64dbg. No conviene escribir OllyScript nuevo (OllyDbg está discontinuado y es de 32 bits).</p></div></details>
+<aside class="callout nota"><p class="callout-titulo">Puerta de salida</p><p>Podés: (1) escribir un script de x64dbg que automatice una tarea y escriba al log; (2) hacer que un breakpoint loggee sin pausar (log + break-condition 0); (3) guardar el log como evidencia reproducible; (4) reconocer un OllyScript y explicar cómo adaptarlo; (5) acotar una traza condicional y comparar dos trazas; (6) explicar qué hace un agente de Frida con <code>Interceptor.attach</code> y qué cambia en el proceso. <strong>Con esto cerrás el núcleo del bloque 2C.</strong></p></aside>
+<aside class="callout nota"><p class="callout-titulo">Lo que queda fuera</p><p><em>Stalker</em> (el trazador de Frida) y la reescritura de funciones con <code>Interceptor.replace</code>, los marcos de instrumentación binaria como DynamoRIO o Intel Pin y el uso de Frida en Android o iOS. La lección enseña a registrar evidencia sin cambiar la lógica del programa.</p></aside>
+<h2 id="fuentes-de-esta-lección">Fuentes de esta lección</h2>
+<ul><li><a href="05-automatizacion.html">Automatización con IDAPython</a> (5.3) — el paralelo estático del scripting; misma idea de automatizar y reproducir.</li><li><a href="02-herramientas.html">Herramientas</a> (2.9) — OllyDbg en su contexto histórico (videos 23–40).</li><li><a href="../teorias.html">Teorias_Numeradas</a> — títulos sobre scripting de x64dbg/OllyDbg (material por título, no revisado).</li><li>x64dbg (conocimiento externo): <a href="https://help.x64dbg.com/en/latest/introduction/ConditionalBreakpoint.html" rel="noopener" target="_blank">Conditional Breakpoint</a> y <a href="https://help.x64dbg.com/en/latest/introduction/ConditionalTracing.html" rel="noopener" target="_blank">Conditional Tracing</a> — campos de condición, log y comando; <code>TraceSetLogFile</code>.</li><li>Frida (conocimiento externo): <a href="https://frida.re/docs/home/" rel="noopener" target="_blank">documentación</a> y <a href="https://frida.re/docs/javascript-api/" rel="noopener" target="_blank">JavaScript API</a> — <code>Interceptor.attach</code>, <code>onEnter</code>/<code>onLeave</code>, <code>Process.getModuleByName</code>, <code>getExportByName</code>, <code>readUtf16String</code>.</li></ul>
+<aside class="callout nota"><p class="callout-titulo">Capas de esta lección</p><p><strong>Contenido observado en CLS:</strong> OllyDbg en los videos del curso y la automatización con IDAPython de la Etapa 5; títulos de scripting en <code>Teorias_Numeradas</code>. <strong>Conocimiento externo:</strong> el lenguaje de scripts de x64dbg (<code>SetBreakpointLog</code>, <code>SetBreakpointCondition</code>, <code>log</code>, formatos de memoria), las trazas condicionales, Frida y OllyScript. <strong>Recomendación editorial:</strong> los ejemplos ilustrativos (script, campos de traza, agente de Frida; ninguno ejecutado en esta edición), la tabla de herramientas y la práctica de guardar evidencia (sin laboratorio compilado con hashes en esta edición).</p></aside>
+</main>
+<footer class="pie">
+  <p>Material educativo y defensivo. Las prácticas se limitan a programas propios, software abierto o crackmes diseñados para aprender. No se enseña a eludir licencias, DRM ni controles de acceso.</p>
+  <p><a href="../00_EMPEZAR_AQUI.html">Inicio</a> · <a href="../guia/etapa-0.html">Etapas</a> · <a href="../fuentes_y_limites.html">Fuentes y límites</a> · <a href="../registro_de_cobertura.csv">Registro de cobertura</a></p>
+</footer>
+</body>
+</html>

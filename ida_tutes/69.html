@@ -1,0 +1,203 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tute 69 · VA → física a mano (64-bit) — Curso IDA</title>
+<meta name="description" content="Tutorial ilustrado del tute 69 del Curso IDA desde cero: VA → física a mano (64-bit).">
+<link rel="stylesheet" href="../guia/estilo.css">
+</head>
+<body>
+<a class="salto" href="#contenido">Saltar al contenido</a>
+<header class="cabecera">
+  <div class="marca"><a href="../00_EMPEZAR_AQUI.html">CLS · Curso de reversing</a> <span class="edicion">edición 5 · 27/10/2026</span></div>
+  <nav class="principal" aria-label="Navegación principal">
+    <a href="../00_EMPEZAR_AQUI.html">Inicio</a>
+    <a href="../guia/index.html">Curso</a>
+    <a href="../fichas/index.html">Fichas</a>
+    <a href="../glosario.html">Glosario</a>
+    <a href="../preguntas_y_respuestas.html">Repaso</a>
+  </nav>
+</header>
+<main id="contenido">
+<p class="migas"><a href="../ida-tutes.html">← Índice de los 69 tutes de IDA</a></p>
+<h1>Tute 69 · VA → física a mano (64-bit)</h1>
+<p class="meta-tute"><strong>⏱ 6 min de lectura</strong> · 1.101 palabras · 26 capturas · grupo: Kernel de Windows y temas avanzados (drivers, HackSys/HEVD, SSDT/syscalls, VA→física)</p>
+<aside class="callout nota"><p class="callout-titulo">Qué enseña</p><p>Traducir una dirección virtual a física manualmente.</p></aside>
+<p><em>se conecta con:</em> <a href="../guia/05-fuera-de-alcance.html">Fuera de alcance</a></p>
+<aside class="callout aviso"><p class="callout-titulo">Material observado, no reescrito</p><p>Es el texto y las capturas del <code>.docx</code> original del curso, solo presentados como tutorial. Puede tener erratas de origen. El autor del curso es Ricardo Narvaja.</p></aside>
+<hr>
+<p>Convertir dirección virtual a física a mano en 64 bits.</p>
+<p>La idea es a partir de una dirección virtual,  hallar la dirección física correspondiente manualmente.</p>
+<p>Esto lo tuve que hacer porque a veces el windbg falla al usar los comandos !PTE o !VTOP que son los que se necesitan para hallar la dirección física y hay que hacerlo a mano.</p>
+<p>Como vemos una dirección en 64 bits si la pasamos a binario, se puede subdividir en grupos de bits de la siguiente forma.</p>
+<figure><img loading="lazy" src="img/69/1.png" alt="Captura 1 del tute 69"></figure>
+<p>Correspondiendo a offset de las tablas.</p>
+<figure><img loading="lazy" src="img/69/2.png" alt="Captura 2 del tute 69"></figure>
+<p>Spliteamos la dirección virtual, pasamos la dirección a binario.</p>
+<p>Así que necesitamos splitear los bits de 0 a 11, luego de 12 a 20, luego de 21 a 29, luego de 30 a 38 y de 39 a 47.</p>
+<p>Corresponderán a los siguientes offset.</p>
+<p>PML4 entre 47 y 39</p>
+<p>PDPTE entre 38 y 30</p>
+<p>PDE entre 29 y 21</p>
+<p>PTE entre 20 y 12</p>
+<p>OFFSET entre 11 y 0</p>
+<p>Podemos splitear en python solo que hay que poner los índices negativos para que cuente desde el último bit, y sumarle (-1) al primero</p>
+<p>bin(a)[-48:-39]</p>
+<p>bin(a)[-39:-30]</p>
+<p>bin(a)[-30:-21]</p>
+<p>bin(a)[-21:-12]</p>
+<p>bin(a)[-12:]</p>
+<figure><img loading="lazy" src="img/69/3.png" alt="Captura 3 del tute 69"></figure>
+<p>Si a cada comando le aplicamos int(x, 2) nos da el valor decimal directamente de cada offset.</p>
+<p>Así que los valores decimales se hallan con.</p>
+<p>int(bin(a)[-48:-39],2)</p>
+<p>int(bin(a)[-39:-30],2)</p>
+<p>int(bin(a)[-30:-21],2)</p>
+<p>int(bin(a)[-21:-12],2)</p>
+<p>int(bin(a)[-12:],2)</p>
+<p>Uso este script de python 3</p>
+<p>https://drive.google.com/file/d/1daWTPrwUedneD7768becg8kBhFrj0k0K/view?usp=drivesdk</p>
+<p>Por ejemplo tratare de pasar manualmente este dirección virtual 0xffffce0329620080</p>
+<p>PML4=0x19c</p>
+<p>PDPTE=0xc</p>
+<p>PDE=0x14b</p>
+<p>PTE=0x20</p>
+<p>OFFSET=0x80</p>
+<p>Haré un ejemplo para llevarlo a la práctica, por supuesto hay que estar debuggeando kernel, suponemos que tienen configurado el entorno para hacerlo, de esta forma podremos leer los valores necesarios y switchear al contexto del proceso al cual pertenece esa dirección virtual, no explicaremos en detalle eso solo pondremos los comandos.</p>
+<p>Listamos los procesos</p>
+<p>!process 0 0</p>
+<p>.reload /f</p>
+<p>Switchearemos al proceso al cual pertenece la dirección virtual a la cual queremos averiguar su dirección física correspondiente, puedo elegir cualquier proceso de la lista, para el ejemplo elijo SKYPE, pueden elegir cualquiera el método es similar.</p>
+<figure><img loading="lazy" src="img/69/4.png" alt="Captura 4 del tute 69"></figure>
+<p>Switcheo al contexto de ese proceso.</p>
+<p>.process /i ffffc58df1c5f080</p>
+<p>Cuando para, apreto G y ya estare en el contexto verifiquemos.</p>
+<figure><img loading="lazy" src="img/69/5.png" alt="Captura 5 del tute 69"></figure>
+<p>Podemos hacerlo con cualquier dirección válida del proceso, trataremos de buscar la dirección física de la dirección del EPROCESS (podría ser cualquier otra dirección válida)</p>
+<p>kd&gt; !process -1 0</p>
+<p>PROCESS ffffc58df1c5f080</p>
+<p>SessionId: 1  Cid: 1694    Peb: 58c052e000  ParentCid: 03d4</p>
+<p>DirBase: 133c97002  ObjectTable: ffffb180ae26fd40  HandleCount: &lt;Data Not Accessible&gt;</p>
+<p>Image: SkypeApp.exe</p>
+<p>Trataremos de pasar esa dirección virtual ffffc58df1c5f080 a física, veamos su contenido</p>
+<figure><img loading="lazy" src="img/69/6.png" alt="Captura 6 del tute 69"></figure>
+<p>Alli vemos el contenido, lo guardamos para verificar que la dirección física hallada sea la misma, ya que tendrá el mismo contenido.</p>
+<p>Bueno empecemos usemos el script para obtener los offset.</p>
+<figure><img loading="lazy" src="img/69/7.png" alt="Captura 7 del tute 69"></figure>
+<p>PML4=0x18b</p>
+<p>PDPTE=0x37</p>
+<p>PDE=0x18e</p>
+<p>PTE=0x5f</p>
+<p>OFFSET=0x80</p>
+<p>Como vemos en la imagen de las tablas todo parte del CR3 que tiene la base de la tabla PML4 o PML4E es lo mismo.</p>
+<figure><img loading="lazy" src="img/69/8.png" alt="Captura 8 del tute 69"></figure>
+<figure><img loading="lazy" src="img/69/9.png" alt="Captura 9 del tute 69"></figure>
+<p>Ese valor de CR3 es el mismo que nos muestra DirBase del proceso donde se encuentra esta dirección virtual (sirve para cualquier dirección virtual de ese proceso)</p>
+<figure><img loading="lazy" src="img/69/10.png" alt="Captura 10 del tute 69"></figure>
+<p>Así que dicha dirección, es la dirección física de la base de la tabla PML4  (les pondre numeral adelante a las direcciones físicas, para diferenciarlas de las direcciones virtuales).</p>
+<p>PML4=# 0x133c97002</p>
+<figure><img loading="lazy" src="img/69/11.png" alt="Captura 11 del tute 69"></figure>
+<p>Como vemos estamos en la base de la tabla PML4E para hallar la dirección dentro de la tabla debo usar el offset que en realidad es el número de entrada dentro de la misma, y multiplicarla por 8 ya que cada entrada es un puntero de 8 bytes.</p>
+<figure><img loading="lazy" src="img/69/12.png" alt="Captura 12 del tute 69"></figure>
+<p>Estamos en la flecha de abajo, con la base de la tabla PML4, queremos llegar a la flecha de arriba que es la dirección cuyo contenido apunta a la siguiente tabla.</p>
+<p>Según nos indicó el script sería:</p>
+<p>PML4=0x18b</p>
+<p>PDPTE=0x37</p>
+<p>PDE=0x18e</p>
+<p>PTE=0x5f</p>
+<p>OFFSET=0x80</p>
+<p>Como dijimos para llegar a la dirección, debemos multiplicar por 8 y sumarlo a la base.</p>
+<p>BASE + 8 * OFFSET= 0x133c97002  + (0x8 * 0x18b)</p>
+<p>hex(0x133c97002  + (0x8 * 0x18b))</p>
+<p>'0x133c97c5aL'</p>
+<p>Esa es la dirección física dentro de la tabla PML4 en cuyo contenido está el puntero a la otra tabla.</p>
+<figure><img loading="lazy" src="img/69/13.png" alt="Captura 13 del tute 69"></figure>
+<p>Veamos que hay en esa dirección (para mostrar el contenido de una dirección física en windbg debemos anteponer ! al comando)</p>
+<figure><img loading="lazy" src="img/69/14.png" alt="Captura 14 del tute 69"></figure>
+<p>El 0a superior se descarta y #03a36863 es apunta a siguiente tabla, cada vez que hallamos la base de la siguiente tabla con este método debemos poner a 0 los 12 bits inferiores de la dirección que hallamos.</p>
+<p>hex(0x03a36863 &amp; 0xFFFFFF000)</p>
+<p>'0x3a36000L'</p>
+<p>Ahora si, hallamos la dirección física de la base de la siguiente tabla PDPTE.</p>
+<p>PDPTE=#0x3a36000</p>
+<figure><img loading="lazy" src="img/69/15.png" alt="Captura 15 del tute 69"></figure>
+<p>Aplicamos el mismo mecanismo a esa base le sumamos el siguiente offset del script por 8.</p>
+<p>PML4=0x18b</p>
+<p>PDPTE=0x37</p>
+<p>PDE=0x18e</p>
+<p>PTE=0x5f</p>
+<p>OFFSET=0x80</p>
+<p>Así que la dirección dentro de la tabla PDPTE en cuyo contenido está el puntero que apunta a la tabla siguiente sería :</p>
+<p>hex(0x3a36000 + (8 * 0x37))</p>
+<p>hex(0x3a36000 + (8 * 0x37))</p>
+<p>'0x3a361b8'</p>
+<p>Esa es la dirección dentro de la tabla PDPTE, veamos su contenido.</p>
+<figure><img loading="lazy" src="img/69/16.png" alt="Captura 16 del tute 69"></figure>
+<p>Como la vez anterior el 0a se descarta y le ponemos los 12 bits bajos a cero nos da.</p>
+<p>hex(0x03a39863 &amp; 0xFFFFFF000)</p>
+<p>'0x3a39000L'</p>
+<figure><img loading="lazy" src="img/69/17.png" alt="Captura 17 del tute 69"></figure>
+<p>Seguimos escalando ya llegamos a la PDE.</p>
+<p>PDE= #0x3a39000</p>
+<p>PML4=0x18b</p>
+<p>PDPTE=0x37</p>
+<p>PDE=0x18e</p>
+<p>PTE=0x5f</p>
+<p>OFFSET=0x80</p>
+<p>Otra vez a la base de la PDE le sumamos 8*0x18e.</p>
+<p>hex(0x3a39000 + (8 * 0x18e))</p>
+<p>'0x3a39c70'</p>
+<p>Veamos el contenido.</p>
+<figure><img loading="lazy" src="img/69/18.png" alt="Captura 18 del tute 69"></figure>
+<p>Le quitamos el byte superior y al resto le ponemos a cero los 12 bits inferiores.</p>
+<p>hex(0x12fa008e3  &amp; 0xFFFFFF000)</p>
+<p>'0x12fa00000L'</p>
+<p>Esa es la base de la siguiente tabla PTE</p>
+<p>PTE=#0x12fa00000</p>
+<figure><img loading="lazy" src="img/69/19.png" alt="Captura 19 del tute 69"></figure>
+<p>Una vez llegamos a la base de PTE, dicha dirección es la base de la página física de la dirección que busco, solo hay que reemplazar los últimos 5 bytes por los de la dirección original</p>
+<p>Virtual address original = ffffc58df1c5f080</p>
+<p>Dirección fisica =0x12fa5f080</p>
+<figure><img loading="lazy" src="img/69/20.png" alt="Captura 20 del tute 69"></figure>
+<p>Lo logramos recordemos los que nos mostraba vtop.</p>
+<figure><img loading="lazy" src="img/69/21.png" alt="Captura 21 del tute 69"></figure>
+<p>No ayuda mucho veamos !PTE</p>
+<figure><img loading="lazy" src="img/69/22.png" alt="Captura 22 del tute 69"></figure>
+<p>Tampoco</p>
+<p>Por eso conocer el método de hallarlo a mano sirve.</p>
+<p>Vemos que en realidad después de hallar la base de PTE</p>
+<figure><img loading="lazy" src="img/69/23.png" alt="Captura 23 del tute 69"></figure>
+<figure><img loading="lazy" src="img/69/24.png" alt="Captura 24 del tute 69"></figure>
+<p>No hay que seguir pivoteando ya teniendo la base de PTE, el 0x5f y 0x80 que nos muestra el script en realidad son los últimos 5 bytes de la dirección que hay que sumarle a la base de PTE para hallar la dirección final.</p>
+<p>Algunos compañeros me dijeron que a ellos le funciona con la última versión de WINDBG PREVIEW, pues a mi no.</p>
+<figure><img loading="lazy" src="img/69/25.png" alt="Captura 25 del tute 69"></figure>
+<figure><img loading="lazy" src="img/69/26.png" alt="Captura 26 del tute 69"></figure>
+<p>Bueno espero que a alguien le sirva, a mi me sirve porque maniana me olvide de todo así queda escrito jeje y si a alguien le funcionan los comandos de WINDBG mejor, se evita el trabajo, pero igual saber como se hace no viene mal.</p>
+<p>9/5/2020</p>
+<p>Ricardo Narvaja</p>
+</main>
+<footer class="pie">
+  <p>Material educativo y defensivo. Las prácticas se limitan a programas propios, software abierto o crackmes diseñados para aprender. No se enseña a eludir licencias, DRM ni controles de acceso.</p>
+  <p><a href="../00_EMPEZAR_AQUI.html">Inicio</a> · <a href="../guia/etapa-0.html">Etapas</a> · <a href="../fuentes_y_limites.html">Fuentes y límites</a> · <a href="../registro_de_cobertura.csv">Registro de cobertura</a></p>
+</footer>
+<script>
+(function(){
+  function abrir(src){
+    var o=document.createElement('div'); o.className='lightbox-ov';
+    var i=document.createElement('img'); i.src=src; o.appendChild(i);
+    function cerrar(){o.remove(); document.removeEventListener('keydown', onkey);}
+    function onkey(e){ if(e.key==='Escape') cerrar(); }
+    o.addEventListener('click', cerrar);
+    document.addEventListener('keydown', onkey);
+    document.body.appendChild(o);
+  }
+  document.addEventListener('DOMContentLoaded', function(){
+    document.querySelectorAll('figure img, main img').forEach(function(img){
+      img.style.cursor='zoom-in';
+      img.addEventListener('click', function(){ abrir(img.currentSrc||img.src); });
+    });
+  });
+})();
+</script>
+</body>
+</html>

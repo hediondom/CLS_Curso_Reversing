@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Etapa 2 · Registros, subregistros y flags</title>
+<meta name="description" content="Los registros del procesador x86/x64, cómo se solapan y cómo los flags resumen el resultado de una operación.">
+<link rel="stylesheet" href="../guia/estilo.css">
+</head>
+<body>
+<a class="salto" href="#contenido">Saltar al contenido</a>
+<header class="cabecera">
+  <div class="marca"><a href="../00_EMPEZAR_AQUI.html">CLS · Curso de reversing</a> <span class="edicion">edición 5 · 27/10/2026</span></div>
+  <nav class="principal" aria-label="Navegación principal">
+    <a href="../00_EMPEZAR_AQUI.html">Inicio</a>
+    <a href="../guia/index.html">Curso</a>
+    <a href="../materiales.html">Materiales</a>
+    <a href="../fichas/index.html">Fichas</a>
+    <a href="../glosario.html">Glosario</a>
+    <a href="../preguntas_y_respuestas.html">Repaso</a>
+    <a href="../buscar.html">Buscar</a>
+  </nav>
+</header>
+<main id="contenido">
+<nav class="migas" aria-label="Ubicación"><a href="../00_EMPEZAR_AQUI.html">Inicio</a><span aria-hidden="true">›</span><a href="../guia/index.html">Curso</a><span aria-hidden="true">›</span><span>Etapa 2 · Introducción al reversing</span></nav><h1 id="registros-subregistros-y-flags">Registros, subregistros y flags</h1>
+<aside class="callout nota"><p class="callout-titulo">Objetivo de la lección</p><p>Al terminar vas a poder nombrar los registros de propósito general y su función típica, descomponer un registro de 32 bits en sus partes de 16 y 8 bits, y explicar qué flag se activa en una suma o resta concreta.</p></aside>
+<p><strong>Prerrequisitos:</strong> Etapa 1 completa. <strong>Duración sugerida:</strong> 3 horas. Estimación aproximada.</p>
+<h2 id="qué-es-un-registro">Qué es un registro</h2>
+<p>Un <strong>registro</strong> es una porción de memoria pequeña y muy rápida que está dentro del procesador. Se usa para operar con los datos que la CPU necesita en el momento. En 32 bits cada registro mide 4 bytes (32 bits); en 64 bits, 8 bytes (64 bits).</p>
+<p>El capítulo 03 lo define así: "una porción de memoria pequeña, ultra rápida, que forma parte del procesador y que sirve para intercambiar datos" (<a class="fuente" href="../../CLS_resultados_intermedios/transcripciones/extraidos/Reversing%20desde%20cero%20%28Ricardo%20y%20Solid%29/Ricardo%20Narvaja%20y%20Solid%20-%20Reversing%20desde%20cero_03%20Registros%2C%20Flags%20y%20N%C3%BAmeros_03%20Registros%2C%20Flags%20y%20N%C3%BAmeros.txt">Reversing desde cero, cap. 03</a>, 00:00:30).</p>
+<h2 id="los-registros-de-propósito-general">Los registros de propósito general</h2>
+<div class="tabla"><table>
+<thead><tr>
+<th>Registro 32</th>
+<th>Registro 64</th>
+<th>Nombre</th>
+<th>Uso típico</th>
+</tr></thead><tbody>
+<tr><td><code>EAX</code></td><td><code>RAX</code></td><td>Acumulador</td><td>Resultado de funciones y operaciones</td></tr>
+<tr><td><code>EBX</code></td><td><code>RBX</code></td><td>Base</td><td>Datos generales; a veces puntero a datos</td></tr>
+<tr><td><code>ECX</code></td><td><code>RCX</code></td><td>Contador</td><td>Bucles, <code>rep</code>, shifts variables</td></tr>
+<tr><td><code>EDX</code></td><td><code>RDX</code></td><td>Datos</td><td>Parte alta de multiplicaciones/divisiones; E/S</td></tr>
+<tr><td><code>ESI</code></td><td><code>RSI</code></td><td>Source index</td><td>Origen en copias de memoria</td></tr>
+<tr><td><code>EDI</code></td><td><code>RDI</code></td><td>Destination index</td><td>Destino en copias de memoria</td></tr>
+<tr><td><code>ESP</code></td><td><code>RSP</code></td><td>Stack pointer</td><td>Cima del stack</td></tr>
+<tr><td><code>EBP</code></td><td><code>RBP</code></td><td>Base pointer</td><td>Base del marco de la función</td></tr>
+</tbody></table></div>
+<p>Además, <code>EIP</code>/<code>RIP</code> es el <strong>instruction pointer</strong>: apunta a la instrucción que se va a ejecutar. No se modifica con <code>mov</code>; lo cambia el flujo (saltos, llamadas, retornos).</p>
+<p>El capítulo 03 asigna funciones concretas: <code>EAX</code> guarda el resultado de las funciones, <code>ECX</code> actúa como contador en bucles y operaciones repetitivas, <code>ESI</code>/<code>EDI</code> se usan para copiar bloques de memoria, <code>ESP</code> apunta a la cima del stack y <code>EBP</code> a la base del marco (00:01:00–00:03:00). Son convenciones, no reglas absolutas: un compilador puede usar <code>EAX</code> para cualquier cosa.</p>
+<h2 id="subregistros-el-mismo-espacio-distintos-tamaños">Subregistros: el mismo espacio, distintos tamaños</h2>
+<p>Un registro de 32 bits se puede leer como uno de 16 o como dos de 8. No son registros separados: son <strong>ventanas</strong> sobre el mismo espacio.</p>
+<p>Para <code>EAX</code>:</p>
+<pre><code class="lenguaje-text">63                                 32 31              16 15       8 7        0
++------------------------------------+------------------+-----------+----------+
+|              (solo en RAX)         |       EAX        |    AX     |          |
++------------------------------------+------------------+-----------+----------+
+                                                          AH          AL</code></pre>
+<p>Ejemplo con <code>EAX = 0x008FFB18</code>:</p>
+<div class="tabla"><table>
+<thead><tr>
+<th>Vista</th>
+<th>Valor</th>
+<th>Tamaño</th>
+</tr></thead><tbody>
+<tr><td><code>EAX</code></td><td><code>0x008FFB18</code></td><td>32 bits</td></tr>
+<tr><td><code>AX</code></td><td><code>0xFB18</code></td><td>16 bits (los dos bytes bajos)</td></tr>
+<tr><td><code>AH</code></td><td><code>0xFB</code></td><td>8 bits (byte alto de <code>AX</code>)</td></tr>
+<tr><td><code>AL</code></td><td><code>0x18</code></td><td>8 bits (byte bajo de <code>AX</code>)</td></tr>
+</tbody></table></div>
+<p>Esto se aplica a <code>EAX</code>, <code>EBX</code>, <code>ECX</code> y <code>EDX</code>. <code>ESI</code>, <code>EDI</code>, <code>EBP</code> y <code>ESP</code> tienen versión de 16 bits (<code>SI</code>, <code>DI</code>, <code>BP</code>, <code>SP</code>) pero no se dividen en dos de 8. El capítulo 03 lo explica con este mismo ejemplo (00:04:30–00:09:00).</p>
+<p>En 64 bits, <code>RAX</code> contiene a <code>EAX</code>, que contiene a <code>AX</code>, que contiene a <code>AL</code>/<code>AH</code>. Además hay ocho registros nuevos, <code>R8</code> a <code>R15</code>, con subregistros <code>R8D</code> (32), <code>R8W</code> (16) y <code>R8B</code> (8).</p>
+<aside class="callout aviso"><p class="callout-titulo">Escribir en la parte baja no borra la alta (con matices)</p><p>En x86, escribir en <code>AL</code> no cambia el resto de <code>RAX</code>. Pero en x64, escribir en <code>EAX</code> <strong>sí borra los 32 bits altos de <code>RAX</code></strong>. Es una diferencia que sorprende cuando comparás el código de 32 y 64 bits. Para el análisis inicial, alcanza con saber que los tamaños se solapan y que el debugger te muestra cada vista.</p></aside>
+<h2 id="flags-el-resumen-de-la-última-operación">Flags: el resumen de la última operación</h2>
+<p>Los <strong>flags</strong> son bits de estado que se activan según el resultado de una operación. No son registros de datos: son banderas. Los cuatro que importan en el uso diario:</p>
+<div class="tabla"><table>
+<thead><tr>
+<th>Flag</th>
+<th>Nombre</th>
+<th>Se activa cuando...</th>
+</tr></thead><tbody>
+<tr><td><code>ZF</code></td><td>Zero flag</td><td>El resultado es cero</td></tr>
+<tr><td><code>SF</code></td><td>Sign flag</td><td>El resultado es negativo (bit más alto en 1)</td></tr>
+<tr><td><code>CF</code></td><td>Carry flag</td><td>Hubo acarreo/desborde en una operación <strong>sin signo</strong></td></tr>
+<tr><td><code>OF</code></td><td>Overflow flag</td><td>Hubo desborde en una operación <strong>con signo</strong></td></tr>
+</tbody></table></div>
+<p>Hay más (<code>PF</code> de paridad, <code>AF</code> auxiliar, <code>DF</code> de dirección), pero casi nunca los mirás al reversear.</p>
+<h3 id="ejemplo-1-zf">Ejemplo 1: <code>ZF</code></h3>
+<pre><code class="lenguaje-asm">mov eax, 3
+sub eax, 3      ; resultado 0 -&gt; ZF = 1</code></pre>
+<p>Si en cambio hacés <code>mov eax, 0</code>, el flag <code>ZF</code> <strong>no</strong> se activa: <code>mov</code> no es una operación aritmética y no actualiza los flags. El capítulo 04 lo muestra explícitamente (<a class="fuente" href="../../CLS_resultados_intermedios/transcripciones/extraidos/Reversing%20desde%20cero%20%28Ricardo%20y%20Solid%29/Ricardo%20Narvaja%20y%20Solid%20-%20Reversing%20desde%20cero_04%20Instrucciones%202_04%20Instrucciones%202.txt">Reversing desde cero, cap. 04</a>, 00:00:30–00:02:00).</p>
+<h3 id="ejemplo-2-cf">Ejemplo 2: <code>CF</code></h3>
+<pre><code class="lenguaje-asm">mov eax, 0xFFFFFFFF   ; máximo sin signo
+add eax, 5            ; resultado 4, con acarreo</code></pre>
+<p>El resultado "real" (4.294.967.300) no entra en 32 bits. El procesador guarda <code>4</code> y activa <code>CF</code>. Para valores sin signo, eso es un desborde (cap. 04, 00:05:00–00:06:00).</p>
+<h3 id="ejemplo-3-of-y-sf">Ejemplo 3: <code>OF</code> y <code>SF</code></h3>
+<pre><code class="lenguaje-asm">mov eax, 0x7FFFFFFF   ; máximo positivo con signo
+add eax, 1            ; pasa a 0x80000000</code></pre>
+<p>El resultado cambió de positivo a negativo: para valores con signo es un desborde, así que se activa <code>OF</code>. Además, como el bit más alto quedó en 1, se activa <code>SF</code> (cap. 04, 00:07:30–00:09:00).</p>
+<p>Lo importante: <strong>el mismo resultado activa flags distintos según cómo lo interpretes</strong>. <code>0x80000000</code> es un número enorme sin signo y un número negativo con signo. Los flags no deciden por vos; reflejan ambas lecturas.</p>
+<h2 id="multiplicación-y-división-registros-dobles">Multiplicación y división: registros dobles</h2>
+<p><code>MUL</code> y <code>DIV</code> usan <code>EDX:EAX</code> como un registro de 64 bits:</p>
+<ul><li><code>MUL operando</code>: multiplica <code>EAX</code> por el operando y guarda el resultado en <code>EDX:EAX</code>.</li><li><code>DIV operando</code>: divide <code>EDX:EAX</code> por el operando; cociente en <code>EAX</code>, resto en <code>EDX</code>.</li></ul>
+<p>Ejemplo del capítulo 04: <code>EAX = 4</code>, <code>EBX = 2</code>, <code>MUL EBX</code> deja <code>EAX = 8</code> y <code>EDX = 0</code>. Si el resultado no entra en 32 bits, la parte alta aparece en <code>EDX</code> (00:13:00–00:17:00).</p>
+<p><code>IMUL</code>/<code>IDIV</code> son las versiones con signo. La mecánica es la misma; cambia la interpretación de los bits.</p>
+<h2 id="práctica">Práctica</h2>
+<ol><li>Completá la tabla para <code>EBX = 0x11223344</code>:</li></ol>
+<div class="tabla"><table>
+<thead><tr>
+<th>Vista</th>
+<th>Valor</th>
+</tr></thead><tbody>
+<tr><td><code>EBX</code></td><td></td></tr>
+<tr><td><code>BX</code></td><td></td></tr>
+<tr><td><code>BH</code></td><td></td></tr>
+<tr><td><code>BL</code></td><td></td></tr>
+</tbody></table></div>
+<ol><li>¿Qué flag se activa en cada caso?</li></ol>
+<ul><li><code>sub eax, eax</code></li><li><code>add eax, 1</code> con <code>EAX = 0xFFFFFFFF</code></li><li><code>add eax, 1</code> con <code>EAX = 0x7FFFFFFF</code></li><li><code>mov eax, 0</code></li></ul>
+<ol><li>Escribí en x64dbg <code>mov eax, 0x7FFFFFFF</code> y <code>add eax, 1</code>. Anotá <code>ZF</code>, <code>SF</code>, <code>CF</code> y <code>OF</code> antes y después.</li><li>Explicá por qué <code>mov</code> no cambia los flags y <code>add</code> sí.</li><li>¿Qué registro usarías para contar las vueltas de un bucle? ¿Por qué no <code>ESP</code>?</li></ol>
+<h2 id="preguntas-de-repaso">Preguntas de repaso</h2>
+<p><strong>1. ¿<code>AX</code> es un registro distinto de <code>EAX</code>?</strong> No. Es la parte baja de 16 bits de <code>EAX</code>. Escribir en <code>AX</code> modifica los dos bytes bajos de <code>EAX</code> y deja los altos intactos.</p>
+<p><strong>2. ¿Qué diferencia hay entre <code>CF</code> y <code>OF</code>?</strong> <code>CF</code> indica desborde en una interpretación sin signo; <code>OF</code>, en una interpretación con signo. El mismo resultado puede activar uno, otro o ambos.</p>
+<p><strong>3. ¿<code>EIP</code> se puede cambiar con <code>mov</code>?</strong> No directamente. Se cambia con instrucciones de control de flujo (<code>jmp</code>, <code>call</code>, <code>ret</code>, <code>jcc</code>) o con el debugger (por ejemplo, "set new origin here").</p>
+<p><strong>4. ¿Para qué sirve <code>EDX</code> en una división?</strong> Para la parte alta del dividendo y para el resto. <code>DIV</code> divide <code>EDX:EAX</code> por el operando y deja el cociente en <code>EAX</code> y el resto en <code>EDX</code>.</p>
+<p><strong>5. ¿Por qué <code>mov eax, 0</code> no activa <code>ZF</code>?</strong> Porque <code>mov</code> es una transferencia de datos, no una operación aritmética. Los flags se actualizan con instrucciones como <code>add</code>, <code>sub</code>, <code>cmp</code>, <code>test</code>, <code>and</code>, etc.</p>
+<h2 id="antes-de-avanzar">Antes de avanzar</h2>
+<p>Tenés que poder:</p>
+<ul><li>Nombrar los ocho registros de propósito general y su función típica.</li><li>Descomponer <code>EAX</code> en <code>AX</code>, <code>AH</code> y <code>AL</code> con un ejemplo.</li><li>Explicar <code>ZF</code>, <code>SF</code>, <code>CF</code> y <code>OF</code> con un caso cada uno.</li><li>Decir qué registros usa <code>MUL</code>/<code>DIV</code> para el resultado.</li></ul>
+<aside class="callout nota"><p class="callout-titulo">Puerta de salida</p><p>Si podés predecir los flags de una operación antes de ejecutarla, estás listo para las instrucciones. Si no, practicá con la calculadora del debugger y papel.</p></aside>
+<h2 id="fuentes-de-esta-lección">Fuentes de esta lección</h2>
+<ul><li><a class="fuente" href="../../CLS_resultados_intermedios/transcripciones/extraidos/Reversing%20desde%20cero%20%28Ricardo%20y%20Solid%29/Ricardo%20Narvaja%20y%20Solid%20-%20Reversing%20desde%20cero_03%20Registros%2C%20Flags%20y%20N%C3%BAmeros_03%20Registros%2C%20Flags%20y%20N%C3%BAmeros.txt">Reversing desde cero, cap. 03</a> — registros, subregistros, flags y números con signo.</li><li><a class="fuente" href="../../CLS_resultados_intermedios/transcripciones/extraidos/Reversing%20desde%20cero%20%28Ricardo%20y%20Solid%29/Ricardo%20Narvaja%20y%20Solid%20-%20Reversing%20desde%20cero_04%20Instrucciones%202_04%20Instrucciones%202.txt">Reversing desde cero, cap. 04</a> — ejemplos de <code>ZF</code>, <code>CF</code>, <code>OF</code>, <code>SF</code>, <code>MUL</code> y <code>DIV</code>.</li><li><a class="fuente" href="../../CLS_resultados_intermedios/transcripciones/extraidos/Videos%20y%20material%20adicional%20Ingenieria%20Inversa/Videos_Video5_Video5.txt">Videos y material adicional, Video 5</a> — registros de 32 bits y prefijo <code>E</code> en el curso de MASM32.</li></ul>
+<aside class="callout nota"><p class="callout-titulo">Capas de esta lección</p><p><strong>Contenido observado en CLS:</strong> la definición de registro, el ejemplo <code>EAX = 0x008FFB18</code> y los ejemplos de flags de los capítulos 03 y 04. <strong>Conocimiento externo:</strong> la tabla de registros de 64 bits y la semántica exacta de <code>CF</code>/<code>OF</code>. <strong>Recomendación editorial:</strong> los ejercicios y la advertencia sobre el borrado de la parte alta en x64.</p></aside>
+</main>
+<footer class="pie">
+  <p>Material educativo y defensivo. Las prácticas se limitan a programas propios, software abierto o crackmes diseñados para aprender. No se enseña a eludir licencias, DRM ni controles de acceso.</p>
+  <p><a href="../00_EMPEZAR_AQUI.html">Inicio</a> · <a href="../guia/etapa-0.html">Etapas</a> · <a href="../fuentes_y_limites.html">Fuentes y límites</a> · <a href="../registro_de_cobertura.csv">Registro de cobertura</a></p>
+</footer>
+</body>
+</html>

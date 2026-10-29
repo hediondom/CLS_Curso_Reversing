@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Etapa 1 · C y Python mínimos para analizar</title>
+<meta name="description" content="El subconjunto de C y Python que necesitás para escribir programas de práctica y herramientas pequeñas, con una advertencia sobre el material de CLS.">
+<link rel="stylesheet" href="../guia/estilo.css">
+</head>
+<body>
+<a class="salto" href="#contenido">Saltar al contenido</a>
+<header class="cabecera">
+  <div class="marca"><a href="../00_EMPEZAR_AQUI.html">CLS · Curso de reversing</a> <span class="edicion">edición 5 · 27/10/2026</span></div>
+  <nav class="principal" aria-label="Navegación principal">
+    <a href="../00_EMPEZAR_AQUI.html">Inicio</a>
+    <a href="../guia/index.html">Curso</a>
+    <a href="../materiales.html">Materiales</a>
+    <a href="../fichas/index.html">Fichas</a>
+    <a href="../glosario.html">Glosario</a>
+    <a href="../preguntas_y_respuestas.html">Repaso</a>
+    <a href="../buscar.html">Buscar</a>
+  </nav>
+</header>
+<main id="contenido">
+<nav class="migas" aria-label="Ubicación"><a href="../00_EMPEZAR_AQUI.html">Inicio</a><span aria-hidden="true">›</span><a href="../guia/index.html">Curso</a><span aria-hidden="true">›</span><span>Etapa 1 · Fundamentos</span></nav><h1 id="c-y-python-mínimos-para-analizar">C y Python mínimos para analizar</h1>
+<aside class="callout nota"><p class="callout-titulo">Objetivo de la lección</p><p>Al terminar vas a poder leer y escribir programas chicos en C (variables, condiciones, bucles, funciones, punteros) y en Python (tipos, listas, funciones, archivos binarios), compilarlos, ejecutarlos en el laboratorio y usarlos como conejillos de indias para el debugger.</p></aside>
+<p><strong>Prerrequisitos:</strong> Etapa 0 y las lecciones anteriores de la Etapa 1. <strong>Duración sugerida:</strong> 6 a 8 horas. Estimación aproximada.</p>
+<h2 id="una-advertencia-honesta-sobre-el-material-de-cls">Una advertencia honesta sobre el material de CLS</h2>
+<p>La carpeta <code>Python ISO video tutes</code> parece un curso de Python, pero <strong>no lo es</strong>. Las 55 transcripciones son un curso de <strong>lógica y fundamentos de programación</strong> dictado por Daniel Bermúdez, basado en pseudocódigo y con ejemplos en Basic, Pascal y C. En las transcripciones no hay una sola línea de Python ejecutable: ni <code>import</code>, ni <code>print(...)</code>, ni <code>raw_input</code>. El propio autor anuncia una segunda parte con Python "puro" que <strong>no está en la carpeta</strong>. El material cita Python 2.5.1 como versión vigente en abril de 2007 y usa <code>print hola</code> como sentencia, sintaxis que Python 3 ya no acepta.</p>
+<p>Eso no lo vuelve inútil. Lo que sí enseña —algoritmos, secuencia, decisión, ciclos, arreglos, matrices y funciones— es exactamente el prerequisito mental para programar. Pero si venías a aprender Python con estos videos, no lo vas a lograr. Para Python moderno, esta guía usa conocimiento externo y prácticas propias, y lo marca como tal.</p>
+<aside class="callout aviso"><p class="callout-titulo">Estado en el catálogo</p><p>El material está listado en <a class="fuente" href="../../CLS_resultados_intermedios/transcripciones/extraidos/Python%20ISO%20video%20tutes/Videotutoriales_QueesPython_QueesPython.txt">Python ISO video tutes</a> y en <a class="fuente" href="../../CLS_resultados_intermedios/mapa_carpetas_etapas.csv">mapa_carpetas_etapas.csv</a> como apoyo a la Etapa 1. La ficha completa, con lo que se leyó y lo que falta, está en <a class="fuente" href="../../CLS_Guia/fichas/python-iso.html">ficha de Python ISO</a>.</p></aside>
+<h2 id="cómo-aprender-python-de-verdad-recursos-externos">Cómo aprender Python de verdad (recursos externos)</h2>
+<p>Como el corpus CLS no enseña Python moderno, esta guía completa el camino con <strong>cursos y tutoriales externos</strong>. No son material del grupo; son <strong>recomendación editorial</strong>, gratuitos o con parte gratuita, y actuales. Verificá siempre el enlace antes de usarlo.</p>
+<div class="tabla"><table>
+<thead><tr>
+<th>Recurso</th>
+<th>Qué es</th>
+<th>Para quién</th>
+</tr></thead><tbody>
+<tr><td><strong>El Tutorial de Python (oficial)</strong> — <a href="https://docs.python.org/3/tutorial/" rel="noopener" target="_blank">docs.python.org/3/tutorial</a></td><td>La referencia gratuita y al día; Python 3</td><td>Base sólida, consulta permanente</td></tr>
+<tr><td><strong>Automate the Boring Stuff</strong> (Al Sweigart) — <a href="https://automatetheboringstuff.com/" rel="noopener" target="_blank">automatetheboringstuff.com</a></td><td>Libro gratuito online, muy práctico, pensado para Windows</td><td>Quien nunca programó y quiere resultados rápidos</td></tr>
+<tr><td><strong>Real Python</strong> — <a href="https://realpython.com/" rel="noopener" target="_blank">realpython.com</a></td><td>Tutoriales por tema (archivos, bytes, struct, módulos)</td><td>Afianzar temas puntuales</td></tr>
+<tr><td><strong>Python Crash Course</strong> (Eric Matthes)</td><td>Libro de pago, proyecto guiado</td><td>Quien prefiere un recorrido ordenado</td></tr>
+<tr><td><strong>freeCodeCamp — Python (YouTube)</strong></td><td>Curso en video gratuito</td><td>Quien aprende mejor mirando</td></tr>
+</tbody></table></div>
+<p><strong>La ruta mínima que necesitás para esta guía</strong> (no hace falta dominar todo Python): tipos y variables → <code>str</code> vs <code>bytes</code> → listas y diccionarios → <code>if</code>/<code>for</code>/<code>while</code> → funciones y módulos (<code>import</code>) → leer y escribir archivos <strong>binarios</strong> → el módulo <code>struct</code> para desempaquetar enteros. Con eso ya podés escribir las herramientas que usa el resto del curso.</p>
+<aside class="callout nota"><p class="callout-titulo">El puente con el curso de lógica de CLS</p><p>Lo que el "Python ISO" de CLS sí te deja —secuencia, decisión, ciclos, arreglos, funciones— es el prerrequisito mental. Si lo mirás, usalo para <strong>la lógica</strong>, y aprendé la <strong>sintaxis de Python 3</strong> con los recursos de arriba. Es la combinación que te lleva al siguiente tema: scripts que leen binarios.</p></aside>
+<h2 id="el-subconjunto-de-c-que-vas-a-leer-en-un-debugger">El subconjunto de C que vas a leer en un debugger</h2>
+<p>No necesitás ser experto en C. Necesitás reconocer cinco construcciones:</p>
+<ol><li><strong>Variables y tipos:</strong> <code>int</code>, <code>char</code>, <code>unsigned</code>, punteros (<code>int *p</code>).</li><li><strong>Condiciones:</strong> <code>if</code>, <code>else</code>, <code>switch</code>.</li><li><strong>Bucles:</strong> <code>for</code>, <code>while</code>.</li><li><strong>Funciones:</strong> parámetros, valor de retorno, variables locales.</li><li><strong>Punteros y arrays:</strong> <code>&amp;x</code> (dirección de), <code>*p</code> (contenido de), <code>a[i]</code>.</li></ol>
+<h3 id="ejemplo-paso-a-paso-el-programa-del-capítulo-15">Ejemplo paso a paso: el programa del capítulo 15</h3>
+<p>El capítulo 15 analiza un crackme de práctica que pide dos números. La lógica que Ricardo deduce del listado es:</p>
+<ul><li>el primer número tiene que ser <strong>menor o igual</strong> que <code>0x32</code> (50 decimal);</li><li>el segundo tiene que ser <strong>mayor o igual</strong> que <code>0x32</code>;</li><li>la suma de los dos, multiplicada por 4, tiene que dar <code>0x1E0</code> (480 decimal).</li></ul>
+<p>Un programa equivalente, escrito por vos, es este:</p>
+<pre><code class="lenguaje-c">#include &lt;stdio.h&gt;
+
+int main(void) {
+    int a, b;
+    printf("Primer valor: ");
+    if (scanf("%d", &amp;a) != 1) return 1;
+    printf("Segundo valor: ");
+    if (scanf("%d", &amp;b) != 1) return 1;
+
+    if (a &gt; 50 || b &lt; 50) {
+        puts("No cumple las condiciones");
+        return 0;
+    }
+    if ((a + b) * 4 == 480) {
+        puts("Correcto");
+    } else {
+        puts("Incorrecto");
+    }
+    return 0;
+}</code></pre>
+<p><strong>Cómo se lee, línea por línea:</strong></p>
+<ul><li><code>int a, b;</code> reserva dos enteros en el stack.</li><li><code>scanf("%d", &amp;a)</code> lee un decimal y lo guarda en la dirección de <code>a</code>. El <code>&amp;</code> es la dirección; sin él, la función no podría modificar la variable.</li><li><code>a &gt; 50 || b &lt; 50</code> usa <code>||</code> (OR lógico): si cualquiera de las dos condiciones se cumple, rechaza.</li><li><code>(a + b) * 4 == 480</code> reproduce la comparación del binario. Con <code>a = 40</code> y <code>b = 80</code>, da <code>(120) * 4 = 480</code>, así que imprime <code>Correcto</code>.</li></ul>
+<p><strong>Compilación</strong> (en el guest, con MinGW o Visual Studio):</p>
+<pre><code class="lenguaje-bash">gcc -O0 -g -o check.exe check.c</code></pre>
+<p><code>-O0</code> desactiva optimizaciones para que el assembly sea fácil de seguir; <code>-g</code> agrega información de depuración. En Visual Studio, compilá en modo Debug.</p>
+<p><strong>Qué mirar en el debugger:</strong> el <code>if (a &gt; 50 || b &lt; 50)</code> se convierte en dos comparaciones y saltos; el <code>(a+b)*4</code> se convierte en un <code>add</code> seguido de un <code>shl eax, 2</code> (desplazar dos bits a la izquierda es multiplicar por 4). Eso conecta directo con la lección de instrucciones.</p>
+<h2 id="el-subconjunto-de-python-que-vas-a-usar-como-herramienta">El subconjunto de Python que vas a usar como herramienta</h2>
+<p>Python no compila a un <code>.exe</code> nativo (en el sentido clásico), así que no es el lenguaje que vas a ver en un debugger de Windows. Es la <strong>navaja suiza</strong> para procesar archivos, calcular hashes, parsear cabeceras y automatizar tareas.</p>
+<h3 id="ejemplo-leer-los-primeros-bytes-de-un-ejecutable">Ejemplo: leer los primeros bytes de un ejecutable</h3>
+<pre><code class="lenguaje-python">from pathlib import Path
+
+data = Path("check.exe").read_bytes()
+print("Tamaño:", len(data))
+print("Primeros dos bytes:", data[:2])          # b'MZ'
+print("Primeros 16 bytes:", data[:16].hex(" "))</code></pre>
+<p>Salida esperada (los valores exactos dependen del compilador):</p>
+<pre><code class="lenguaje-text">Tamaño: 53248
+Primeros dos bytes: b'MZ'
+Primeros 16 bytes: 4d 5a 90 00 03 00 00 00 04 00 00 00 ff ff 00 00</code></pre>
+<p><code>read_bytes()</code> devuelve un objeto <code>bytes</code>: una secuencia inmutable de valores entre 0 y 255. <code>data[:2]</code> toma los dos primeros; <code>.hex(" ")</code> los muestra en hexadecimal separados por espacios. No hace falta instalar nada.</p>
+<h3 id="ejemplo-calcular-un-sha-256">Ejemplo: calcular un SHA-256</h3>
+<pre><code class="lenguaje-python">import hashlib
+from pathlib import Path
+
+datos = Path("check.exe").read_bytes()
+print(hashlib.sha256(datos).hexdigest())</code></pre>
+<p>Ese hash es el mismo que devuelve <code>Get-FileHash</code> en PowerShell. Sirve para la bitácora de la Etapa 0.</p>
+<h3 id="ejemplo-desempaquetar-un-entero-con-struct">Ejemplo: desempaquetar un entero con <code>struct</code></h3>
+<p>Los bytes sueltos no alcanzan: para leer una cabecera hay que interpretar grupos de bytes como números. Eso lo hace el módulo <code>struct</code>. En un PE, en el offset <code>0x3C</code> hay un entero de 4 bytes (little-endian) que apunta a dónde empieza la firma <code>PE\0\0</code>:</p>
+<pre><code class="lenguaje-python">import struct
+from pathlib import Path
+
+data = Path("check.exe").read_bytes()
+(pe_off,) = struct.unpack_from("&lt;I", data, 0x3C)   # "&lt;I" = entero de 4 bytes, little-endian
+print("La cabecera PE empieza en:", hex(pe_off))
+print("Firma en ese offset:", data[pe_off:pe_off+4])  # b'PE\x00\x00'</code></pre>
+<p><code>struct.unpack_from("&lt;I", data, 0x3C)</code> lee 4 bytes desde el offset <code>0x3C</code> y los arma como un entero sin signo (<code>I</code>) en little-endian (<code>&lt;</code>). Esto conecta directo con la lección de PE: lo que ahí leés a mano, acá lo automatizás.</p>
+<h3 id="ejemplo-el-mismo-cálculo-del-crackme-en-python">Ejemplo: el mismo cálculo del crackme, en Python</h3>
+<pre><code class="lenguaje-python">a = int(input("Primer valor: "))
+b = int(input("Segundo valor: "))
+if a &lt;= 50 and b &gt;= 50 and (a + b) * 4 == 480:
+    print("Correcto")
+else:
+    print("Incorrecto")</code></pre>
+<p>Compará las dos versiones: en C el <code>scanf</code> recibe una dirección; en Python <code>input()</code> devuelve un string y <code>int()</code> lo convierte. En C la condición se escribe con <code>||</code> y <code>&amp;&amp;</code>; en Python, con <code>or</code> y <code>and</code>. La lógica es la misma.</p>
+<aside class="callout nota"><p class="callout-titulo">Python 2 vs Python 3</p><p>Si encontrás material viejo con <code>print "hola"</code> o <code>raw_input</code>, es Python 2. Hoy se usa Python 3: <code>print("hola")</code>, <code>input()</code>, divisiones con <code>/</code> que devuelven float y <code>//</code> para entero. El curso de CLS es de esa época; no copies esa sintaxis.</p></aside>
+<h2 id="hacia-dónde-sigue-este-camino">Hacia dónde sigue este camino</h2>
+<p>No hace falta parsear cada cabecera a mano con <code>struct</code>: hay librerías que ya lo hacen. El camino natural desde acá es:</p>
+<ol><li><strong><code>pefile</code></strong> — lee cabeceras PE, secciones e imports de un ejecutable de Windows con unas pocas líneas.</li><li><strong><code>capstone</code></strong> — desensambla bytes a instrucciones x86/x64 desde Python.</li><li><strong>IDAPython / Ghidra scripting</strong> — automatizar el análisis dentro del desensamblador.</li></ol>
+<p>Esos tres se desarrollan, con ejemplos, en la rama de <a href="05-automatizacion.html">automatización</a> de la Etapa 5. Lo de esta lección —<code>bytes</code>, <code>hex</code>, <code>struct</code>, archivos— es la base que te deja usarlos sin que sean magia.</p>
+<h2 id="práctica">Práctica</h2>
+<ol><li>Compilá el programa <code>check.c</code> y probalo con <code>40 80</code>, <code>50 50</code>, <code>51 80</code> y <code>40 79</code>. Anotá qué imprime cada caso.</li><li>Abrilo en x64dbg, poné un breakpoint en <code>main</code> y seguí con F8 hasta la comparación. Anotá en qué instrucción se convierte <code>(a+b)*4</code>.</li><li>Escribí un programa en C que pida una palabra y la compare con <code>"clase"</code> usando <code>strcmp</code>. Compilalo y encontralo en el debugger.</li><li>Escribí un script en Python que recorra una carpeta, calcule el SHA-256 de cada archivo y escriba un CSV con <code>ruta,hash</code>. Usalo sobre tu carpeta de prácticas.</li><li>Modificá el script para que lea la cabecera PE y muestre <code>ImageBase</code> y <code>AddressOfEntryPoint</code> (podés reutilizar el de la lección de PE). Usá <code>struct.unpack_from</code> sobre los offsets correctos.</li><li>Instalá <code>pefile</code> (<code>pip install pefile</code>) y obtené los mismos valores con la librería (<code>pe.OPTIONAL_HEADER.ImageBase</code>, <code>pe.OPTIONAL_HEADER.AddressOfEntryPoint</code>). Compará con tu versión a mano: ¿coinciden? Así ves qué te ahorra la librería.</li><li>Hacé el Tutorial oficial de Python (secciones 3 a 7) o los primeros capítulos de <em>Automate the Boring Stuff</em>, y rehacé el script del item 4 sin mirar el ejemplo.</li></ol>
+<h2 id="preguntas-de-repaso">Preguntas de repaso</h2>
+<p><strong>1. ¿Por qué <code>scanf</code> necesita <code>&amp;a</code> y <code>printf</code> no?</strong> Porque <code>scanf</code> tiene que <strong>escribir</strong> en la variable, y para eso necesita su dirección. <code>printf</code> solo lee el valor.</p>
+<p><strong>2. ¿Qué diferencia hay entre <code>int</code> y <code>unsigned int</code>?</strong> El rango y la interpretación. <code>int</code> usa complemento a dos y incluye negativos; <code>unsigned int</code> solo representa valores no negativos y puede llegar al doble del máximo positivo.</p>
+<p><strong>3. ¿Por qué <code>x &lt;&lt; 2</code> equivale a multiplicar por 4?</strong> Porque cada desplazamiento a la izquierda multiplica por 2. Dos desplazamientos multiplican por 4. Es la operación que usa el compilador para optimizar multiplicaciones por potencias de dos.</p>
+<p><strong>4. ¿Python sirve para analizar un <code>.exe</code>?</strong> Sí, como herramienta: leer bytes, parsear cabeceras, calcular hashes, automatizar. No es el lenguaje del binario que analizás, salvo que el programa esté hecho en Python y empaquetado con un generador de ejecutables.</p>
+<p><strong>5. ¿El curso de Python de CLS enseña Python?</strong> No. Enseña lógica de programación con pseudocódigo y ejemplos en Basic, Pascal y C. Es útil como base, pero no reemplaza un curso de Python.</p>
+<h2 id="antes-de-avanzar">Antes de avanzar</h2>
+<p>Tenés que poder:</p>
+<ul><li>Leer un programa en C de 20 líneas y decir qué hace.</li><li>Escribir, compilar y ejecutar un programa propio en C.</li><li>Leer y escribir un archivo binario en Python y calcular su hash.</li><li>Explicar por qué el material de Python de CLS no es un curso de Python.</li></ul>
+<aside class="callout nota"><p class="callout-titulo">Puerta de salida de la Etapa 1</p><p>Con esto terminás los fundamentos. Si podés escribir tus propios binarios, ya tenés con qué practicar todo lo que sigue sin depender de software ajeno.</p></aside>
+<h2 id="fuentes-de-esta-lección">Fuentes de esta lección</h2>
+<ul><li><a class="fuente" href="../../CLS_resultados_intermedios/transcripciones/extraidos/Python%20ISO%20video%20tutes/Videotutoriales_FundamentosdeProgramacion_FundamentosdeProgramacion.txt">Python ISO video tutes, Fundamentos de programación</a> — qué es programar, intérprete vs compilador, <code>print</code> en Python 2.</li><li><a class="fuente" href="../../CLS_resultados_intermedios/transcripciones/extraidos/Python%20ISO%20video%20tutes/Videotutoriales_QueesPython_QueesPython.txt">Python ISO video tutes, Qué es Python</a> — presentación del curso y versión de la época.</li><li><a class="fuente" href="../../CLS_resultados_intermedios/transcripciones/extraidos/Python%20ISO%20video%20tutes/Videotutoriales_Arreglos1_Arreglos1.txt">Python ISO video tutes, Arreglos</a> — ejemplo del tipo de contenido real de la colección.</li><li><a class="fuente" href="../../CLS_resultados_intermedios/transcripciones/extraidos/Reversing%20desde%20cero%20%28Ricardo%20y%20Solid%29/Ricardo%20Narvaja%20y%20Solid%20-%20Reversing%20desde%20cero_15%20Ejercicio%202%20-%20An%C3%A1lisis%20est%C3%A1tico_15%20Ejercicio%202%20-%20An%C3%A1lisis%20est%C3%A1tico.txt">Reversing desde cero, cap. 15</a> — lógica del programa de práctica y comparación con <code>0x32</code>/<code>0x1E0</code>.</li><li><a class="fuente" href="../../CLS_fuentes_externas/github/apuromafo_Crackslatinos/C%20Y%20REVERSING">C Y REVERSING (contenedor)</a> — material de C del proyecto, <strong>pendiente de revisar</strong>: solo se verificó su existencia y sus dos archivos <code>.rar</code>.</li></ul>
+<aside class="callout nota"><p class="callout-titulo">Capas de esta lección</p><p><strong>Contenido observado en CLS:</strong> la lógica del programa del capítulo 15 y el contenido real de las transcripciones de Python ISO. <strong>Conocimiento externo:</strong> sintaxis de C y Python 3, compilación, hash, <code>struct</code>, y los recursos de aprendizaje externos (Tutorial oficial, Automate the Boring Stuff, Real Python, etc.). <strong>Recomendación editorial:</strong> los programas de práctica, la corrección sobre el curso de Python de CLS y la ruta de Python hacia <code>pefile</code>/<code>capstone</code>.</p></aside>
+</main>
+<footer class="pie">
+  <p>Material educativo y defensivo. Las prácticas se limitan a programas propios, software abierto o crackmes diseñados para aprender. No se enseña a eludir licencias, DRM ni controles de acceso.</p>
+  <p><a href="../00_EMPEZAR_AQUI.html">Inicio</a> · <a href="../guia/etapa-0.html">Etapas</a> · <a href="../fuentes_y_limites.html">Fuentes y límites</a> · <a href="../registro_de_cobertura.csv">Registro de cobertura</a></p>
+</footer>
+</body>
+</html>

@@ -1,0 +1,257 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tute 13 · Plugins de IDA — Curso IDA</title>
+<meta name="description" content="Tutorial ilustrado del tute 13 del Curso IDA desde cero: Plugins de IDA.">
+<link rel="stylesheet" href="../guia/estilo.css">
+</head>
+<body>
+<a class="salto" href="#contenido">Saltar al contenido</a>
+<header class="cabecera">
+  <div class="marca"><a href="../00_EMPEZAR_AQUI.html">CLS · Curso de reversing</a> <span class="edicion">edición 5 · 27/10/2026</span></div>
+  <nav class="principal" aria-label="Navegación principal">
+    <a href="../00_EMPEZAR_AQUI.html">Inicio</a>
+    <a href="../guia/index.html">Curso</a>
+    <a href="../fichas/index.html">Fichas</a>
+    <a href="../glosario.html">Glosario</a>
+    <a href="../preguntas_y_respuestas.html">Repaso</a>
+  </nav>
+</header>
+<main id="contenido">
+<p class="migas"><a href="../ida-tutes.html">← Índice de los 69 tutes de IDA</a></p>
+<h1>Tute 13 · Plugins de IDA</h1>
+<p class="meta-tute"><strong>⏱ 11 min de lectura</strong> · 1.996 palabras · 22 capturas · grupo: Base de IDA, assembly y primeras prácticas</p>
+<aside class="callout nota"><p class="callout-titulo">Qué enseña</p><p>Plugins útiles y cómo se usan (nota de compatibilidad 6.8/7.x).</p></aside>
+<p><em>se conecta con:</em> <a href="../guia/02-herramientas.html">Herramientas</a> · <a href="../guia/02-ida.html">IDA</a> · <a href="../guia/02-instrucciones.html">Instrucciones</a> · <a href="../guia/02-flujo.html">Flujo</a> · <a href="../guia/02-debugger.html">Debugger</a> · <a href="../guia/01-numeros.html">Números</a></p>
+<aside class="callout aviso"><p class="callout-titulo">Material observado, no reescrito</p><p>Es el texto y las capturas del <code>.docx</code> original del curso, solo presentados como tutorial. Puede tener erratas de origen. El autor del curso es Ricardo Narvaja.</p></aside>
+<hr>
+<p>INTRODUCCIÓN AL REVERSING CON IDA PRO DESDE CERO PARTE 13</p>
+<p>PLUGINS INTERESANTES</p>
+<p>NOTA: Algunos de estos plugin han sido actualizados y no funcionan ya bien en la versión 6.8. Sino los pueden instalar, al menos lean como se usan para si alguna vez usan la versión 7.x saben que existen y de que se tratan. Tampoco es que no se pueda usar IDA sin ellos, solo traen un poco más de comodidad en alguna que otra tarea, pero nada que no se pueda hacer sin tenerlos.</p>
+<p>IPYIDA</p>
+<p>Antes de continuar con ejercicios profundizando el uso del IDA haremos esta parte 13 que será relajada, para conocer un plugin que es bastante cómodo y que nos da la posibilidad de manejarnos mejor con Python, que la barrita que trae incluida y fue sugerida por Shaddy al cual le agradezco pues es muy interesante.</p>
+<p>El plugin en cuestión se llama IpyIDA y se instala solo copiando y pegando esta línea en la barra de Python.</p>
+<p>import urllib2; exec urllib2.urlopen('https://github.com/eset/ipyida/raw/stable/install_from_ida.py').read()</p>
+<p>Eso es un comando de una sola línea que se puede copiar y pegar desde aquí, por si se corrompe algo el mismo se encuentra en este link.</p>
+<p>https://github.com/eset/ipyida</p>
+<figure><img loading="lazy" src="img/13/1.png" alt="Captura 1 del tute 13"></figure>
+<p>Eso hará que se instale automáticamente en un par de minutos estará listo no le den importancia a mensajes de advertencia de versión de Python funcionara igualmente. (Al final del capítulo recopilé algún que otro problema que tuve al instalarlo en otras máquinas, si alguien tiene algún problema ver allí)</p>
+<p>A mi luego de instalarse y arrancarse desde EDIT-PLUGINS-IpyIDA me apareció en una ventanita inferior con poco lugar para escribir, pero arrastrándola puse acomodarla como pestaña lo cual da más lugar y comodidad.</p>
+<p>Es bueno aclarar que aunque tenemos Python en nuestra maquina instalado por IDA, si queremos correr un script de Python puro muchas veces debemos hacerlo fuera de IDA, tanto la barra como la posibilidad de correr scripts de Python dentro de IDA son normalmente para scripts para usar las funciones internas de IDA, o sea IDAPYTHON, lo cual no funciona fuera de IDA.</p>
+<p>Igual en el Python incluido en el IDA muchas cosas funcionan igual que en el de fuera, pero alguna que otra no, y es bueno aclarar que eso puede pasar.</p>
+<p>O sea el Python interno de IDA se asemeja al OLLYDBG script, para poder scriptear el funcionamiento del IDA, más que para scripts puros de Python que se ejecutan en forma más compatible fuera de IDA.</p>
+<p>IPYTHON</p>
+<figure><img loading="lazy" src="img/13/2.png" alt="Captura 2 del tute 13"></figure>
+<p>Obviamente es mucho más poderosa que la barrita de Python si apretamos la tecla ? para ver la referencia rápida.</p>
+<p>IPython -- An enhanced Interactive Python</p>
+<p>=========================================</p>
+<p>IPython offers a combination of convenient shell features, special commands</p>
+<p>and a history mechanism for both input (command history) and output (results</p>
+<p>caching, similar to Mathematica). It is intended to be a fully compatible</p>
+<p>replacement for the standard Python interpreter, while offering vastly</p>
+<p>improved functionality and flexibility.</p>
+<p>At your system command line, type 'ipython -h' to see the command line</p>
+<p>options available. This document only describes interactive features.</p>
+<p>MAIN FEATURES</p>
+<p>-------------</p>
+<p>* Access to the standard Python help. As of Python 2.1, a help system is</p>
+<p>available with access to object docstrings and the Python manuals. Simply</p>
+<p>type 'help' (no quotes) to access it.</p>
+<p>* Magic commands: type %magic for information on the magic subsystem.</p>
+<p>* System command aliases, via the %alias command or the configuration file(s).</p>
+<p>* Dynamic object information:</p>
+<p>Typing ?word or word? prints detailed information about an object. If</p>
+<p>certain strings in the object are too long (docstrings, code, etc.) they get</p>
+<p>snipped in the center for brevity.</p>
+<p>Typing ??word or word?? gives access to the full information without</p>
+<p>snipping long strings. Long strings are sent to the screen through the less</p>
+<p>pager if longer than the screen, printed otherwise.</p>
+<p>The ?/?? system gives access to the full source code for any object (if</p>
+<p>available), shows function prototypes and other useful information.</p>
+<p>If you just want to see an object's docstring, type '%pdoc object' (without</p>
+<p>quotes, and without % if you have automagic on).</p>
+<p>* Completion in the local namespace, by typing TAB at the prompt.</p>
+<p>At any time, hitting tab will complete any available python commands or</p>
+<p>variable names, and show you a list of the possible completions if there's</p>
+<p>no unambiguous one. It will also complete filenames in the current directory.</p>
+<p>This feature requires the readline and rlcomplete modules, so it won't work</p>
+<p>if your Python lacks readline support (such as under Windows).</p>
+<p>* Search previous command history in two ways (also requires readline):</p>
+<p>- Start typing, and then use Ctrl-p (previous,up) and Ctrl-n (next,down) to</p>
+<p>search through only the history items that match what you've typed so</p>
+<p>far. If you use Ctrl-p/Ctrl-n at a blank prompt, they just behave like</p>
+<p>normal arrow keys.</p>
+<p>- Hit Ctrl-r: opens a search prompt. Begin typing and the system searches</p>
+<p>your history for lines that match what you've typed so far, completing as</p>
+<p>much as it can.</p>
+<p>- %hist: search history by index (this does *not* require readline).</p>
+<p>* Persistent command history across sessions.</p>
+<p>* Logging of input with the ability to save and restore a working session.</p>
+<p>* System escape with !. Typing !ls will run 'ls' in the current directory.</p>
+<p>* The reload command does a 'deep' reload of a module: changes made to the</p>
+<p>module since you imported will actually be available without having to exit.</p>
+<p>* Verbose and colored exception traceback printouts. See the magic xmode and</p>
+<p>xcolor functions for details (just type %magic).</p>
+<p>* Input caching system:</p>
+<p>IPython offers numbered prompts (In/Out) with input and output caching. All</p>
+<p>input is saved and can be retrieved as variables (besides the usual arrow</p>
+<p>key recall).</p>
+<p>The following GLOBAL variables always exist (so don't overwrite them!):</p>
+<p>_i: stores previous input.</p>
+<p>_ii: next previous.</p>
+<p>_iii: next-next previous.</p>
+<p>_ih : a list of all input _ih[n] is the input from line n.</p>
+<p>Additionally, global variables named _i&lt;n&gt; are dynamically created (&lt;n&gt;</p>
+<p>being the prompt counter), such that _i&lt;n&gt; == _ih[&lt;n&gt;]</p>
+<p>For example, what you typed at prompt 14 is available as _i14 and _ih[14].</p>
+<p>You can create macros which contain multiple input lines from this history,</p>
+<p>for later re-execution, with the %macro function.</p>
+<p>The history function %hist allows you to see any part of your input history</p>
+<p>by printing a range of the _i variables. Note that inputs which contain</p>
+<p>magic functions (%) appear in the history with a prepended comment. This is</p>
+<p>because they aren't really valid Python code, so you can't exec them.</p>
+<p>* Output caching system:</p>
+<p>For output that is returned from actions, a system similar to the input</p>
+<p>cache exists but using _ instead of _i. Only actions that produce a result</p>
+<p>(NOT assignments, for example) are cached. If you are familiar with</p>
+<p>Mathematica, IPython's _ variables behave exactly like Mathematica's %</p>
+<p>variables.</p>
+<p>The following GLOBAL variables always exist (so don't overwrite them!):</p>
+<p>_ (one underscore): previous output.</p>
+<p>__ (two underscores): next previous.</p>
+<p>___ (three underscores): next-next previous.</p>
+<p>Global variables named _&lt;n&gt; are dynamically created (&lt;n&gt; being the prompt</p>
+<p>counter), such that the result of output &lt;n&gt; is always available as _&lt;n&gt;.</p>
+<p>Finally, a global dictionary named _oh exists with entries for all lines</p>
+<p>which generated output.</p>
+<p>* Directory history:</p>
+<p>Your history of visited directories is kept in the global list _dh, and the</p>
+<p>magic %cd command can be used to go to any entry in that list.</p>
+<p>* Auto-parentheses and auto-quotes (adapted from Nathan Gray's LazyPython)</p>
+<p>1. Auto-parentheses</p>
+<p>Callable objects (i.e. functions, methods, etc) can be invoked like</p>
+<p>this (notice the commas between the arguments)::</p>
+<p>In [1]: callable_ob arg1, arg2, arg3</p>
+<pre class='asm'>and the input will be translated to this::</pre>
+<p>callable_ob(arg1, arg2, arg3)</p>
+<p>This feature is off by default (in rare cases it can produce</p>
+<p>undesirable side-effects), but you can activate it at the command-line</p>
+<p>by starting IPython with `--autocall 1`, set it permanently in your</p>
+<p>configuration file, or turn on at runtime with `%autocall 1`.</p>
+<p>You can force auto-parentheses by using '/' as the first character</p>
+<p>of a line. For example::</p>
+<p>In [1]: /globals # becomes 'globals()'</p>
+<p>Note that the '/' MUST be the first character on the line! This</p>
+<p>won't work::</p>
+<p>In [2]: print /globals # syntax error</p>
+<p>In most cases the automatic algorithm should work, so you should</p>
+<p>rarely need to explicitly invoke /. One notable exception is if you</p>
+<p>are trying to call a function with a list of tuples as arguments (the</p>
+<p>parenthesis will confuse IPython)::</p>
+<p>In [1]: zip (1,2,3),(4,5,6) # won't work</p>
+<p>but this will work::</p>
+<p>In [2]: /zip (1,2,3),(4,5,6)</p>
+<p>------&gt; zip ((1,2,3),(4,5,6))</p>
+<p>Out[2]= [(1, 4), (2, 5), (3, 6)]</p>
+<p>IPython tells you that it has altered your command line by</p>
+<p>displaying the new command line preceded by --&gt;. e.g.::</p>
+<p>In [18]: callable list</p>
+<p>-------&gt; callable (list)</p>
+<p>2. Auto-Quoting</p>
+<p>You can force auto-quoting of a function's arguments by using ',' as</p>
+<p>the first character of a line. For example::</p>
+<p>In [1]: ,my_function /home/me # becomes my_function("/home/me")</p>
+<p>If you use ';' instead, the whole argument is quoted as a single</p>
+<p>string (while ',' splits on whitespace)::</p>
+<p>In [2]: ,my_function a b c # becomes my_function("a","b","c")</p>
+<p>In [3]: ;my_function a b c # becomes my_function("a b c")</p>
+<p>Note that the ',' MUST be the first character on the line! This</p>
+<p>won't work::</p>
+<p>In [4]: x = ,my_function /home/me # syntax error</p>
+<p>________________________________________________________________________</p>
+<p>Bueno obviamente tiene muchas posibilidades, quito lo que mostro recientemente con ESC.</p>
+<p>La opción de autocompletar con la tecla TAB que no tiene la barra de Python incluida, es de agradecerse.</p>
+<p>Vemos que si tipeo imp y TAB me autocompleta import y si le soy TAB de nuevo.</p>
+<figure><img loading="lazy" src="img/13/3.png" alt="Captura 3 del tute 13"></figure>
+<p>Me salen las posibilidades de importar que puedo navegar para arriba y abajo con las flechas y quitar con ESC.</p>
+<figure><img loading="lazy" src="img/13/4.png" alt="Captura 4 del tute 13"></figure>
+<p>Al poner el signo de pregunta una vez, me da una rápida información y si lo pongo dos veces me muestra el código tarda un ratito más esto.</p>
+<figure><img loading="lazy" src="img/13/5.png" alt="Captura 5 del tute 13"></figure>
+<p>Cuando termino con ESC vuelvo donde estaba.</p>
+<p>También con la flecha para arriba y abajo puedo ir a los comandos anteriores que use.</p>
+<p>%hist muestra los comandos históricos que use.</p>
+<figure><img loading="lazy" src="img/13/6.png" alt="Captura 6 del tute 13"></figure>
+<p>%edit abre un notepad</p>
+<p>Y %edit x-y abrirá un notepad con las líneas en ese rango.</p>
+<figure><img loading="lazy" src="img/13/7.png" alt="Captura 7 del tute 13"></figure>
+<p>%history -n le agrega los números de línea para saber bien si necesitamos abrir un rango para armar un script con edit.</p>
+<figure><img loading="lazy" src="img/13/8.png" alt="Captura 8 del tute 13"></figure>
+<p>Obviamente IPython es bastante potente y tiene miles de comandos los cuales pueden hallarse completos aquí.</p>
+<p>http://ipython.org/ipython-doc/3/index.html</p>
+<p>Haremos un par de ejemplitos simples con las api de incluidas de IDApython usando este nuevo plugin.</p>
+<figure><img loading="lazy" src="img/13/9.png" alt="Captura 9 del tute 13"></figure>
+<p>La dirección actual del cursor</p>
+<figure><img loading="lazy" src="img/13/10.png" alt="Captura 10 del tute 13"></figure>
+<p>Si hago un script y lo guardo.</p>
+<figure><img loading="lazy" src="img/13/11.png" alt="Captura 11 del tute 13"></figure>
+<p>Si ejecutamos el script desde el menú de IDA, FILE-SCRIPT FILE funcionara.</p>
+<figure><img loading="lazy" src="img/13/12.png" alt="Captura 12 del tute 13"></figure>
+<p>También el comando de idc.GetDisasm(ea) nos dará la instrucción en donde está ubicado el cursor.</p>
+<figure><img loading="lazy" src="img/13/13.png" alt="Captura 13 del tute 13"></figure>
+<p>Si cambio el cursor a otra instrucción deberé hallar de nuevo ea</p>
+<figure><img loading="lazy" src="img/13/14.png" alt="Captura 14 del tute 13"></figure>
+<p>Con idc.GetOpnd puedo obtener el primer o segundo operando de la instrucción.</p>
+<figure><img loading="lazy" src="img/13/15.png" alt="Captura 15 del tute 13"></figure>
+<p>El nombre de la función actual.</p>
+<figure><img loading="lazy" src="img/13/16.png" alt="Captura 16 del tute 13"></figure>
+<p>El nombre de todas las funciones del segmento.</p>
+<figure><img loading="lazy" src="img/13/17.png" alt="Captura 17 del tute 13"></figure>
+<p>Las instrucciones de la función.</p>
+<figure><img loading="lazy" src="img/13/18.png" alt="Captura 18 del tute 13"></figure>
+<p>Las referencias a la función si ponemos el mismo en el inicio de una función que tenga referencias y volvemos a hallar el ea.</p>
+<figure><img loading="lazy" src="img/13/19.png" alt="Captura 19 del tute 13"></figure>
+<p>Veo la referencia.</p>
+<figure><img loading="lazy" src="img/13/20.png" alt="Captura 20 del tute 13"></figure>
+<figure><img loading="lazy" src="img/13/21.png" alt="Captura 21 del tute 13"></figure>
+<p>El plugin nos da mucha comodidad y IDApython tiene miles de instrucciones que sirven para poner breakpoints, loggear, arrancar el debugger etc.</p>
+<p>Bueno una parte de descanso nos vemos en la 14</p>
+<p>Ricardo Narvaja</p>
+<p>PROBLEMAS AL INSTALAR</p>
+<p>Suele haber problemas de instalación si tenemos instalado previamente pip en Python, eso se puede verificar fácilmente in IDA tipeando antes de instalar en la barra de Python.</p>
+<p>import pip</p>
+<p>Si no devuelve error es que ya tienen instalado pip y fallara al instalar lo que deben hacer es abrir una consola de Windows y tipear.</p>
+<p>python -m pip uninstall pip setuptools</p>
+<p>y reiniciar IDA con eso podrán instalar el plugin correctamente.</p>
+<p>Si al reiniciar no arranca nuevamente, es que deben bajarse de la página y copiar  a mano ipyida_plugin_stub.py en la carpeta plugins de IDA.</p>
+<p>https://github.com/eset/ipyida</p>
+<figure><img loading="lazy" src="img/13/22.png" alt="Captura 22 del tute 13"></figure>
+<p>Ahora si hasta la próxima.</p>
+<p>Ricardo Narvaja</p>
+</main>
+<footer class="pie">
+  <p>Material educativo y defensivo. Las prácticas se limitan a programas propios, software abierto o crackmes diseñados para aprender. No se enseña a eludir licencias, DRM ni controles de acceso.</p>
+  <p><a href="../00_EMPEZAR_AQUI.html">Inicio</a> · <a href="../guia/etapa-0.html">Etapas</a> · <a href="../fuentes_y_limites.html">Fuentes y límites</a> · <a href="../registro_de_cobertura.csv">Registro de cobertura</a></p>
+</footer>
+<script>
+(function(){
+  function abrir(src){
+    var o=document.createElement('div'); o.className='lightbox-ov';
+    var i=document.createElement('img'); i.src=src; o.appendChild(i);
+    function cerrar(){o.remove(); document.removeEventListener('keydown', onkey);}
+    function onkey(e){ if(e.key==='Escape') cerrar(); }
+    o.addEventListener('click', cerrar);
+    document.addEventListener('keydown', onkey);
+    document.body.appendChild(o);
+  }
+  document.addEventListener('DOMContentLoaded', function(){
+    document.querySelectorAll('figure img, main img').forEach(function(img){
+      img.style.cursor='zoom-in';
+      img.addEventListener('click', function(){ abrir(img.currentSrc||img.src); });
+    });
+  });
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Etapa 2 · Instrucciones: mover, calcular y manipular bits</title>
+<meta name="description" content="El repertorio mínimo de instrucciones x86/x64, con ejemplos numéricos explicados paso a paso.">
+<link rel="stylesheet" href="../guia/estilo.css">
+</head>
+<body>
+<a class="salto" href="#contenido">Saltar al contenido</a>
+<header class="cabecera">
+  <div class="marca"><a href="../00_EMPEZAR_AQUI.html">CLS · Curso de reversing</a> <span class="edicion">edición 5 · 27/10/2026</span></div>
+  <nav class="principal" aria-label="Navegación principal">
+    <a href="../00_EMPEZAR_AQUI.html">Inicio</a>
+    <a href="../guia/index.html">Curso</a>
+    <a href="../materiales.html">Materiales</a>
+    <a href="../fichas/index.html">Fichas</a>
+    <a href="../glosario.html">Glosario</a>
+    <a href="../preguntas_y_respuestas.html">Repaso</a>
+    <a href="../buscar.html">Buscar</a>
+  </nav>
+</header>
+<main id="contenido">
+<nav class="migas" aria-label="Ubicación"><a href="../00_EMPEZAR_AQUI.html">Inicio</a><span aria-hidden="true">›</span><a href="../guia/index.html">Curso</a><span aria-hidden="true">›</span><span>Etapa 2 · Introducción al reversing</span></nav><h1 id="instrucciones-mover-calcular-y-manipular-bits">Instrucciones: mover, calcular y manipular bits</h1>
+<aside class="callout nota"><p class="callout-titulo">Objetivo de la lección</p><p>Al terminar vas a poder leer un bloque de instrucciones y decir qué valor queda en cada registro, distinguiendo transferencias, operaciones aritméticas, lógicas, desplazamientos y accesos a memoria.</p></aside>
+<p><strong>Prerrequisitos:</strong> registros y flags. <strong>Duración sugerida:</strong> 5 horas. Estimación aproximada.</p>
+<h2 id="cómo-se-lee-una-instrucción">Cómo se lee una instrucción</h2>
+<p>Casi todas las instrucciones tienen la forma:</p>
+<pre><code class="lenguaje-asm">MNEMÓNICO destino, fuente</code></pre>
+<p>La operación se calcula con los dos operandos y el resultado se guarda en el <strong>destino</strong> (el primero). <code>mov eax, ebx</code> copia <code>EBX</code> en <code>EAX</code>; <code>add eax, ebx</code> suma y guarda en <code>EAX</code>.</p>
+<p>Los corchetes significan "el contenido de esta dirección":</p>
+<pre><code class="lenguaje-asm">mov eax, 0x401000      ; EAX = el número 0x401000
+mov eax, [0x401000]    ; EAX = lo que hay en la dirección 0x401000</code></pre>
+<p>Esa diferencia es la que separa un puntero de un valor. El capítulo 02 la explica al mover un valor desde memoria a <code>EAX</code>: los bytes <code>36 00 00 38</code> en la dirección se convierten en <code>0x38000036</code> en el registro (<a class="fuente" href="../../CLS_resultados_intermedios/transcripciones/extraidos/Reversing%20desde%20cero%20%28Ricardo%20y%20Solid%29/Ricardo%20Narvaja%20y%20Solid%20-%20Reversing%20desde%20cero_02%20Instrucciones%201_02%20Instrucciones%201.txt">Reversing desde cero, cap. 02</a>, 00:07:00–00:08:00).</p>
+<h2 id="transferencias">Transferencias</h2>
+<h3 id="mov"><code>MOV</code></h3>
+<pre><code class="lenguaje-asm">mov eax, 5          ; inmediato -&gt; registro
+mov eax, ebx        ; registro -&gt; registro
+mov eax, [0x403000] ; memoria -&gt; registro
+mov [0x403000], eax ; registro -&gt; memoria</code></pre>
+<p>No modifica flags. No se puede <code>mov</code> de memoria a memoria: hay que pasar por un registro.</p>
+<h3 id="lea"><code>LEA</code></h3>
+<p><code>LEA</code> (<em>load effective address</em>) calcula una dirección y la guarda, <strong>sin leer memoria</strong>:</p>
+<pre><code class="lenguaje-asm">lea eax, [ebx + ecx*4 + 8]</code></pre>
+<p>Si <code>EBX = 0x1000</code> y <code>ECX = 2</code>, <code>EAX = 0x1000 + 8 + 8 = 0x1010</code>. No importa qué haya en <code>0x1010</code>: no se lee. Se usa para aritmética de punteros y, de paso, como una multiplicación rápida. El capítulo 12 lo muestra en la práctica (<a class="fuente" href="../../CLS_resultados_intermedios/transcripciones/extraidos/Reversing%20desde%20cero%20%28Ricardo%20y%20Solid%29/Ricardo%20Narvaja%20y%20Solid%20-%20Reversing%20desde%20cero_12%20Practica%20de%20Instrucciones_12%20Practica%20de%20Instrucciones.txt">Reversing desde cero, cap. 12</a>, 00:08:07).</p>
+<h3 id="movsx-y-movzx"><code>MOVSX</code> y <code>MOVZX</code></h3>
+<p>Copian un valor más chico a un registro más grande, rellenando los bits altos:</p>
+<pre><code class="lenguaje-asm">; AX = 0x8384
+movsx eax, ax   ; EAX = 0xFFFF8384  (rellena con el bit de signo)
+movzx eax, ax   ; EAX = 0x00008384  (rellena con ceros)</code></pre>
+<p><code>MOVSX</code> interpreta el origen como con signo; <code>MOVZX</code>, como sin signo. En el capítulo 12, <code>0x8384</code> es mayor que <code>0x7FFF</code>, así que como <code>WORD</code> con signo es negativo y <code>MOVSX</code> rellena con <code>FF</code> (00:07:21–00:08:00).</p>
+<h3 id="xchg"><code>XCHG</code></h3>
+<p>Intercambia los dos operandos. No hay destino ni fuente: los dos cambian.</p>
+<pre><code class="lenguaje-asm">; EAX = 0x20, EBX = 0x40
+xchg eax, ebx
+; EAX = 0x40, EBX = 0x20</code></pre>
+<aside class="callout nota"><p class="callout-titulo">En el Curso IDA: editar una instrucción (y qué pasa después)</p><p>El Curso IDA edita estas instrucciones desde <strong>Edit → Patch Program → Assemble</strong> sobre el crackme de Cruehead. Un detalle útil: si la instrucción nueva ocupa <strong>menos</strong> bytes que la vieja, el byte que sobra queda mostrado como <strong>dato</strong> (<code>db 0xC0</code>) y la función aparece "corrupta"; se lo reemplaza con un <strong><code>NOP</code></strong> (<code>0x90</code>, relleno que no hace nada) para que vuelva a verse como código. <code>LEA</code>, acá arriba, el curso la usa justamente para obtener la dirección de variables y argumentos (<a href="../ida_tutes/4.html">Curso IDA · tute 4, Transferencia</a> y <a href="../ida_tutes/5.html">tute 5, <code>LEA</code></a>).</p></aside>
+<h2 id="aritmética">Aritmética</h2>
+<h3 id="add-y-sub"><code>ADD</code> y <code>SUB</code></h3>
+<pre><code class="lenguaje-asm">add eax, ebx    ; EAX = EAX + EBX
+sub eax, 4      ; EAX = EAX - 4</code></pre>
+<p>Actualizan <code>ZF</code>, <code>SF</code>, <code>CF</code> y <code>OF</code>. El capítulo 02 las practica con registros y memoria (00:10:00–00:18:00).</p>
+<h3 id="inc-y-dec"><code>INC</code> y <code>DEC</code></h3>
+<p>Suman o restan 1. Son más cortas que <code>add eax, 1</code> y <strong>no modifican <code>CF</code></strong> (sí <code>ZF</code>, <code>SF</code>, <code>OF</code>). En el capítulo 06 se ve <code>INC EAX</code> con <code>EAX = 0xFFFFFFFF</code> (pasa a 0) y <code>DEC EAX</code> con <code>EAX = 1</code> (queda 0 y activa <code>ZF</code>) (<a class="fuente" href="../../CLS_resultados_intermedios/transcripciones/extraidos/Reversing%20desde%20cero%20%28Ricardo%20y%20Solid%29/Ricardo%20Narvaja%20y%20Solid%20-%20Reversing%20desde%20cero_06%20Instrucciones%203_06%20Instrucciones%203.txt">Reversing desde cero, cap. 06</a>, 00:20:03–00:21:00).</p>
+<h3 id="mul-imul-div-idiv"><code>MUL</code>, <code>IMUL</code>, <code>DIV</code>, <code>IDIV</code></h3>
+<p>Ya las vimos en registros. Para 32 bits: <code>MUL</code> usa <code>EDX:EAX</code>; <code>DIV</code> divide <code>EDX:EAX</code>. <code>IMUL</code>/<code>IDIV</code> son las versiones con signo. En 64 bits, <code>RDX:RAX</code>.</p>
+<h2 id="lógica-de-bits">Lógica de bits</h2>
+<div class="tabla"><table>
+<thead><tr>
+<th>Instrucción</th>
+<th>Qué hace</th>
+<th>Ejemplo (8 bits)</th>
+</tr></thead><tbody>
+<tr><td><code>AND</code></td><td>1 solo si ambos bits son 1</td><td><code>0x11 &amp; 0x0F = 0x01</code></td></tr>
+<tr><td><code>OR</code></td><td>1 si alguno es 1</td><td><code>0x11 OR 0x0F = 0x1F</code></td></tr>
+<tr><td><code>XOR</code></td><td>1 si son distintos</td><td><code>0x11 ^ 0x0F = 0x1E</code></td></tr>
+<tr><td><code>NOT</code></td><td>Invierte todos los bits</td><td><code>~0x11 = 0xEE</code> (8 bits) o <code>0xFFFFFFEE</code> (32)</td></tr>
+</tbody></table></div>
+<p>El capítulo 08 las explica con tablas de verdad y las verifica en el debugger (<a class="fuente" href="../../CLS_resultados_intermedios/transcripciones/extraidos/Reversing%20desde%20cero%20%28Ricardo%20y%20Solid%29/Ricardo%20Narvaja%20y%20Solid%20-%20Reversing%20desde%20cero_08%20Instrucciones%204_08%20Instrucciones%204.txt">Reversing desde cero, cap. 08</a>, 00:07:00–00:17:00).</p>
+<p><code>XOR EAX, EAX</code> es la forma idiomática de poner un registro en cero: ocupa 2 bytes y activa <code>ZF</code>. <code>MOV EAX, 0</code> ocupa 5 bytes y no toca flags. Esa diferencia de tamaño es la que hace que los compiladores prefieran <code>XOR</code>.</p>
+<h3 id="desplazamientos">Desplazamientos</h3>
+<pre><code class="lenguaje-asm">shl eax, 1    ; desplaza 1 bit a la izquierda = multiplicar por 2
+shr eax, 1    ; desplaza 1 bit a la derecha  = dividir por 2 (sin signo)
+sar eax, 1    ; desplazamiento aritmético (conserva el signo)
+rol eax, 4    ; rota a la izquierda: el bit que sale entra por la derecha
+ror eax, 4    ; rota a la derecha</code></pre>
+<p>Con <code>EAX = 0x11</code>:</p>
+<pre><code class="lenguaje-text">shl eax, 2   -&gt; 0x44     (0x11 * 4)
+shr eax, 2   -&gt; 0x04     (0x11 / 4, parte entera)</code></pre>
+<p><code>SHL</code>/<code>SHR</code> <strong>pierden</strong> los bits que salen; <code>ROL</code>/<code>ROR</code> los reinyectan por el otro extremo. El capítulo 08 lo muestra con <code>0x11 &lt;&lt; 2 = 0x44</code> y <code>0x44 &gt;&gt; 2 = 0x11</code> (00:24:33–00:28:11).</p>
+<h2 id="comparar-sin-restar-cmp-y-test">Comparar sin restar: <code>CMP</code> y <code>TEST</code></h2>
+<p><code>CMP a, b</code> hace <code>a - b</code>, actualiza flags y <strong>descarta el resultado</strong>. <code>TEST a, b</code> hace <code>a AND b</code>, actualiza flags y también descarta el resultado.</p>
+<pre><code class="lenguaje-asm">cmp eax, 4      ; ¿EAX == 4?  -&gt; ZF=1 si son iguales
+test eax, eax   ; ¿EAX == 0?  -&gt; ZF=1 si es cero</code></pre>
+<p><code>TEST EAX, EAX</code> es la forma habitual de preguntar "¿este registro es cero?" sin modificar nada. El capítulo 09 lo explica y lo usa con <code>JZ</code> (<a class="fuente" href="../../CLS_resultados_intermedios/transcripciones/extraidos/Reversing%20desde%20cero%20%28Ricardo%20y%20Solid%29/Ricardo%20Narvaja%20y%20Solid%20-%20Reversing%20desde%20cero_09%20Instrucciones%205_09%20Instrucciones%205.txt">Reversing desde cero, cap. 09</a>, 00:31:32–00:33:00).</p>
+<h2 id="pila-y-cadenas">Pila y cadenas</h2>
+<pre><code class="lenguaje-asm">push eax        ; ESP -= 4 ; [ESP] = EAX
+pop  ebx        ; EBX = [ESP] ; ESP += 4
+pushad          ; guarda EAX, ECX, EDX, EBX, ESP, EBP, ESI, EDI (32 bytes)
+popad           ; los restaura</code></pre>
+<p><code>PUSHAD</code>/<code>POPAD</code> se usan para preservar registros alrededor de una llamada. Dato fino: <code>POPAD</code> <strong>no</strong> restaura <code>ESP</code>, aunque <code>PUSHAD</code> lo haya guardado (cap. 12, 00:21:07).</p>
+<p>Las instrucciones de cadena operan sobre <code>ESI</code> (origen) y <code>EDI</code> (destino):</p>
+<pre><code class="lenguaje-asm">rep movsb      ; copia ECX bytes de [ESI] a [EDI]
+repe cmpsb     ; compara [ESI] y [EDI] mientras sean iguales
+lodsb          ; AL = [ESI]; ESI++
+stosb          ; [EDI] = AL; EDI++
+repne scasb    ; busca AL en [EDI] mientras no lo encuentre</code></pre>
+<p>El capítulo 12 las recorre con un ejemplo concreto: <code>ESI</code> apunta a <code>"core"</code> (<code>0x402012</code>), <code>EDI</code> a <code>"core security"</code> (<code>0x402031</code>) y <code>REPNE SCASB</code> busca el byte <code>0x65</code> (<code>'e'</code>) (00:37:11–00:38:30).</p>
+<h2 id="ejemplo-paso-a-paso-un-bloque-completo">Ejemplo paso a paso: un bloque completo</h2>
+<pre><code class="lenguaje-asm">mov  eax, 0x11
+mov  ecx, 0x0F
+xor  eax, ecx
+and  eax, 0x1F
+shl  eax, 2
+mov  ebx, eax
+sub  ebx, 0x44</code></pre>
+<div class="tabla"><table>
+<thead><tr>
+<th>Paso</th>
+<th>Instrucción</th>
+<th>EAX</th>
+<th>EBX</th>
+<th>Flags relevantes</th>
+</tr></thead><tbody>
+<tr><td>1</td><td><code>mov eax, 0x11</code></td><td><code>0x11</code></td><td>?</td><td>sin cambio</td></tr>
+<tr><td>2</td><td><code>mov ecx, 0x0F</code></td><td><code>0x11</code></td><td>?</td><td>sin cambio</td></tr>
+<tr><td>3</td><td><code>xor eax, ecx</code></td><td><code>0x1E</code></td><td>?</td><td><code>ZF=0</code>, <code>SF=0</code></td></tr>
+<tr><td>4</td><td><code>and eax, 0x1F</code></td><td><code>0x1E</code></td><td>?</td><td><code>ZF=0</code></td></tr>
+<tr><td>5</td><td><code>shl eax, 2</code></td><td><code>0x78</code></td><td>?</td><td><code>CF</code> = último bit que salió</td></tr>
+<tr><td>6</td><td><code>mov ebx, eax</code></td><td><code>0x78</code></td><td><code>0x78</code></td><td>sin cambio</td></tr>
+<tr><td>7</td><td><code>sub ebx, 0x44</code></td><td><code>0x78</code></td><td><code>0x34</code></td><td><code>ZF=0</code>, <code>SF=0</code>, <code>CF=0</code></td></tr>
+</tbody></table></div>
+<p>Comprobación: <code>0x11 ^ 0x0F = 0x1E</code>; <code>0x1E &amp; 0x1F = 0x1E</code>; <code>0x1E &lt;&lt; 2 = 0x78</code>; <code>0x78 - 0x44 = 0x34</code>. Todos los valores entran en 8 bits, así que no hay acarreo.</p>
+<h2 id="práctica">Práctica</h2>
+<ol><li>Ejecutá el bloque anterior en x64dbg y completá la tabla con los valores reales.</li><li>Cambiá <code>mov eax, 0x11</code> por <code>mov eax, 0xFFFFFFFF</code> y predecí qué pasa en cada paso.</li><li>Escribí una secuencia de tres instrucciones que deje <code>EAX = 0</code> sin usar <code>mov</code>.</li><li>¿Qué diferencia hay entre <code>mov eax, [ebx]</code> y <code>lea eax, [ebx]</code>?</li><li>Traducí a assembly: <code>if (x == 0) return;</code> con <code>x</code> en <code>EAX</code>.</li><li>Explicá por qué <code>INC</code> no sirve para detectar acarreo sin signo.</li></ol>
+<h2 id="preguntas-de-repaso">Preguntas de repaso</h2>
+<p><strong>1. ¿Qué significa que el resultado se guarda en el primer operando?</strong> Que en <code>add eax, ebx</code> el resultado queda en <code>EAX</code>, no en <code>EBX</code>. El segundo operando se lee pero no se modifica.</p>
+<p><strong>2. ¿<code>LEA</code> lee memoria?</strong> No. Calcula la dirección efectiva de la expresión entre corchetes y la guarda. Es aritmética de punteros.</p>
+<p><strong>3. ¿Qué hace <code>XOR EAX, EAX</code> y por qué se usa?</strong> Pone <code>EAX</code> en cero, ocupa menos bytes que <code>MOV EAX, 0</code> y actualiza flags. Es la forma idiomática de limpiar un registro.</p>
+<p><strong>4. ¿Cuál es la diferencia entre <code>SHL</code> y <code>ROL</code>?</strong> <code>SHL</code> desplaza y descarta el bit que sale; <code>ROL</code> lo reinyecta por el otro extremo. <code>SHL</code> equivale a multiplicar por 2; <code>ROL</code> no es una multiplicación.</p>
+<p><strong>5. ¿<code>CMP</code> guarda el resultado de la resta?</strong> No. Solo actualiza flags. Los operandos quedan intactos.</p>
+<p><strong>6. ¿Por qué <code>TEST EAX, EAX</code> es útil?</strong> Porque activa <code>ZF</code> si <code>EAX</code> es cero, sin modificar el registro. Es la forma estándar de comprobar un valor nulo.</p>
+<h2 id="antes-de-avanzar">Antes de avanzar</h2>
+<p>Tenés que poder:</p>
+<ul><li>Leer un bloque de 10 instrucciones y calcular el valor final de los registros.</li><li>Distinguir <code>mov</code> de <code>lea</code> y <code>mov</code> de <code>movsx</code>/<code>movzx</code>.</li><li>Explicar qué flags cambian <code>add</code>, <code>sub</code>, <code>inc</code>, <code>and</code>, <code>shl</code> y <code>cmp</code>.</li><li>Reconocer las instrucciones de cadena y su relación con <code>ESI</code>/<code>EDI</code>.</li></ul>
+<aside class="callout nota"><p class="callout-titulo">Puerta de salida</p><p>Si podés resolver el bloque del ejemplo sin ejecutarlo y después verificarlo en el debugger, estás listo para el flujo de control.</p></aside>
+<h2 id="fuentes-de-esta-lección">Fuentes de esta lección</h2>
+<ul><li><a class="fuente" href="../../CLS_resultados_intermedios/transcripciones/extraidos/Reversing%20desde%20cero%20%28Ricardo%20y%20Solid%29/Ricardo%20Narvaja%20y%20Solid%20-%20Reversing%20desde%20cero_02%20Instrucciones%201_02%20Instrucciones%201.txt">Reversing desde cero, cap. 02</a> — <code>MOV</code>, <code>XCHG</code>, <code>ADD</code>, <code>SUB</code>, memoria y corchetes.</li><li><a class="fuente" href="../../CLS_resultados_intermedios/transcripciones/extraidos/Reversing%20desde%20cero%20%28Ricardo%20y%20Solid%29/Ricardo%20Narvaja%20y%20Solid%20-%20Reversing%20desde%20cero_04%20Instrucciones%202_04%20Instrucciones%202.txt">Reversing desde cero, cap. 04</a> — flags, <code>MUL</code> y <code>DIV</code>.</li><li><a class="fuente" href="../../CLS_resultados_intermedios/transcripciones/extraidos/Reversing%20desde%20cero%20%28Ricardo%20y%20Solid%29/Ricardo%20Narvaja%20y%20Solid%20-%20Reversing%20desde%20cero_06%20Instrucciones%203_06%20Instrucciones%203.txt">Reversing desde cero, cap. 06</a> — <code>CALL</code>, <code>RET</code>, <code>JMP</code>, <code>PUSH</code>/<code>POP</code>, <code>INC</code>/<code>DEC</code>.</li><li><a class="fuente" href="../../CLS_resultados_intermedios/transcripciones/extraidos/Reversing%20desde%20cero%20%28Ricardo%20y%20Solid%29/Ricardo%20Narvaja%20y%20Solid%20-%20Reversing%20desde%20cero_08%20Instrucciones%204_08%20Instrucciones%204.txt">Reversing desde cero, cap. 08</a> — lógicas y desplazamientos.</li><li><a class="fuente" href="../../CLS_resultados_intermedios/transcripciones/extraidos/Reversing%20desde%20cero%20%28Ricardo%20y%20Solid%29/Ricardo%20Narvaja%20y%20Solid%20-%20Reversing%20desde%20cero_09%20Instrucciones%205_09%20Instrucciones%205.txt">Reversing desde cero, cap. 09</a> — <code>CMP</code>, <code>TEST</code>, <code>LEAVE</code>.</li><li><a class="fuente" href="../../CLS_resultados_intermedios/transcripciones/extraidos/Reversing%20desde%20cero%20%28Ricardo%20y%20Solid%29/Ricardo%20Narvaja%20y%20Solid%20-%20Reversing%20desde%20cero_12%20Practica%20de%20Instrucciones_12%20Practica%20de%20Instrucciones.txt">Reversing desde cero, cap. 12</a> — práctica con <code>MOVSX</code>/<code>MOVZX</code>, <code>LEA</code>, <code>LOOP</code> y cadenas.</li><li><a href="../ida_tutes/4.html">Curso IDA · tutes 4–6</a> — las mismas instrucciones en IDA: editar con <em>Assemble</em>, el byte sobrante como <code>db</code> y el relleno <code>NOP</code>; <code>LEA</code> para direcciones; regla de <code>ADD</code> (no se permiten dos operandos en memoria a la vez).</li></ul>
+<aside class="callout nota"><p class="callout-titulo">Capas de esta lección</p><p><strong>Contenido observado en CLS:</strong> los valores de los ejemplos (<code>0x11</code>, <code>0x0F</code>, <code>0x44</code>, <code>0x8384</code>, <code>"core"</code>) y la secuencia de instrucciones de los capítulos 02 a 12. <strong>Conocimiento externo:</strong> la tabla de operaciones y la semántica precisa de cada flag. <strong>Recomendación editorial:</strong> el bloque integrador y los ejercicios.</p></aside>
+</main>
+<footer class="pie">
+  <p>Material educativo y defensivo. Las prácticas se limitan a programas propios, software abierto o crackmes diseñados para aprender. No se enseña a eludir licencias, DRM ni controles de acceso.</p>
+  <p><a href="../00_EMPEZAR_AQUI.html">Inicio</a> · <a href="../guia/etapa-0.html">Etapas</a> · <a href="../fuentes_y_limites.html">Fuentes y límites</a> · <a href="../registro_de_cobertura.csv">Registro de cobertura</a></p>
+</footer>
+</body>
+</html>

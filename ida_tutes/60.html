@@ -1,0 +1,259 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tute 60 · HAL en kernel — Curso IDA</title>
+<meta name="description" content="Tutorial ilustrado del tute 60 del Curso IDA desde cero: HAL en kernel.">
+<link rel="stylesheet" href="../guia/estilo.css">
+</head>
+<body>
+<a class="salto" href="#contenido">Saltar al contenido</a>
+<header class="cabecera">
+  <div class="marca"><a href="../00_EMPEZAR_AQUI.html">CLS · Curso de reversing</a> <span class="edicion">edición 5 · 27/10/2026</span></div>
+  <nav class="principal" aria-label="Navegación principal">
+    <a href="../00_EMPEZAR_AQUI.html">Inicio</a>
+    <a href="../guia/index.html">Curso</a>
+    <a href="../fichas/index.html">Fichas</a>
+    <a href="../glosario.html">Glosario</a>
+    <a href="../preguntas_y_respuestas.html">Repaso</a>
+  </nav>
+</header>
+<main id="contenido">
+<p class="migas"><a href="../ida-tutes.html">← Índice de los 69 tutes de IDA</a></p>
+<h1>Tute 60 · HAL en kernel</h1>
+<p class="meta-tute"><strong>⏱ 13 min de lectura</strong> · 2.413 palabras · 74 capturas · grupo: Kernel de Windows y temas avanzados (drivers, HackSys/HEVD, SSDT/syscalls, VA→física)</p>
+<aside class="callout nota"><p class="callout-titulo">Qué enseña</p><p>Script en Python basado en el código C del driver vulnerable.</p></aside>
+<p><em>se conecta con:</em> <a href="../guia/05-fuera-de-alcance.html">Fuera de alcance</a></p>
+<aside class="callout aviso"><p class="callout-titulo">Material observado, no reescrito</p><p>Es el texto y las capturas del <code>.docx</code> original del curso, solo presentados como tutorial. Puede tener erratas de origen. El autor del curso es Ricardo Narvaja.</p></aside>
+<hr>
+<p>INTRODUCCION AL REVERSING CON IDA PRO DESDE CERO PARTE 60</p>
+<p>USANDO HAL EN KERNEL.</p>
+<p>Antes de empezar a explicar el script en Python aclaremos que esta basado en el código en C que está en la página del driver vulnerable.</p>
+<p>https://github.com/hacksysteam/HackSysExtremeVulnerableDriver/tree/master/Exploit</p>
+<p>Igual el método es bastante antiguo, lo usamos en mi trabajo bastante hace rato, aunque no usamos ctypes, por lo cual, si hay algún error al usar ctypes, sepan disculpar no es lo que uso cotidianamente.</p>
+<p>Veremos el script que como dijimos por ahora solo funciona en w7 de 32 bits, no en maquinas de 64 bits mas adelante lo miraremos en una maquina de 64 bits para adaptarlo al caso.</p>
+<p>CTYPES</p>
+<figure><img loading="lazy" src="img/60/1.png" alt="Captura 1 del tute 60"></figure>
+<p>Después de los imports necesarios entre los cuales esta ctypes, algunas constantes que necesitamos, clases y funciones, mas abajo empieza el código principal aquí.</p>
+<figure><img loading="lazy" src="img/60/2.png" alt="Captura 2 del tute 60"></figure>
+<p>Tenemos el shellcode que es parecido al de el stack overflow solo cambia el ret, aquí es RETN solo, en el otro era RETN 8, como dijimos aquí no pisamos un return address. Pero si uno tracea ve que para que retorne del CALL que salta a ejecutar nuestro código se necesita un RETN, ya lo veremos cuando lo traceemos.</p>
+<p>Luego usamos CreateFile como en el caso anterior para abrir el driver y obtener el handle al mismo.</p>
+<figure><img loading="lazy" src="img/60/3.png" alt="Captura 3 del tute 60"></figure>
+<p>Por supuesto uno debe ir probando paso a paso cada cosa que va haciendo para ver si falla, lo cual si ocurre, sera posiblemente por algún argumento mal pasado.</p>
+<figure><img loading="lazy" src="img/60/4.png" alt="Captura 4 del tute 60"></figure>
+<p>Las constantes necesarias están definidas al inicio.</p>
+<p>Es de mencionar que si en vez de importar</p>
+<p>import ctypes</p>
+<p>Lo hacemos asi</p>
+<p>from ctypes import *</p>
+<p>Nos ahorraremos de tipear ctypes muchísimas veces ya que por ejemplo escribiríamos.</p>
+<p>sizeof(c_int)</p>
+<p>En vez de</p>
+<p>ctypes.sizeof(ctypes.c_int)</p>
+<p>Asi que lo cambie hice un replace de ctypes. por nada y agregue el nuevo import y quedara mas sencillo.</p>
+<figure><img loading="lazy" src="img/60/5.png" alt="Captura 5 del tute 60"></figure>
+<figure><img loading="lazy" src="img/60/6.png" alt="Captura 6 del tute 60"></figure>
+<p>Ahora si, sigamos.</p>
+<p>En el exploit original hay dos llamadas que aquí reemplazamos por otra cosa, era asi</p>
+<figure><img loading="lazy" src="img/60/7.png" alt="Captura 7 del tute 60"></figure>
+<p>Hay una llamada a GetProcessHeap que nos da un handle para llamar a HeapAlloc y allocar un size determinado.</p>
+<figure><img loading="lazy" src="img/60/8.png" alt="Captura 8 del tute 60"></figure>
+<p>El problema es que en C hay un casteo ya que hay una estructura definida y se castea el puntero que devuelve HeapAlloc a que sea del tipo de esa estructura.</p>
+<p>Esto es parte del código en C</p>
+<figure><img loading="lazy" src="img/60/9.png" alt="Captura 9 del tute 60"></figure>
+<p>Ese tipo es un puntero a una estructura definida.</p>
+<figure><img loading="lazy" src="img/60/10.png" alt="Captura 10 del tute 60"></figure>
+<p>Esta definido el tipo de estructura _WRITE_WHAT_WHERE y el puntero a la misma, obviamente no tengo la menor idea de como castear el resultado de HeapAlloc a una estructura en ctypes, quizás haya algún método mas sencillo, yo lo que use finalmente fue.</p>
+<p>Definir la estructura en ctypes como una clase que hereda del tipo Structure.</p>
+<figure><img loading="lazy" src="img/60/11.png" alt="Captura 11 del tute 60"></figure>
+<p>Vemos que se define una clase que hereda de Structure, en C eran dos campos tipo puntero a un ULONG y acá para respetar el largo al menos en 32 bits les puse que cada campo es del tipo c_void_p. que es un puntero a un void.</p>
+<figure><img loading="lazy" src="img/60/12.png" alt="Captura 12 del tute 60"></figure>
+<p>Es un puntero a algo nos servirá para nuestro caso.</p>
+<p>En ctypes entonces para crear lo que es C seria una variable del tipo estructura, aquí se realiza una instancia a la clase esa.</p>
+<figure><img loading="lazy" src="img/60/13.png" alt="Captura 13 del tute 60"></figure>
+<p>De esta forma al igual que en C, usando la instancia se podrán manejar los campos</p>
+<figure><img loading="lazy" src="img/60/14.png" alt="Captura 14 del tute 60"></figure>
+<p>Y leer y guardar valores allí.</p>
+<figure><img loading="lazy" src="img/60/15.png" alt="Captura 15 del tute 60"></figure>
+<p>Vemos que en la consola de Python si ejecuto definición de la clase, luego hago una instancia de la misma, puedo leer y escribir valores en los campos sin problemas.</p>
+<p>Luego va a tratar de obtener la direccion de la tabla HAL dentro de una función propia llamada GetHalDispatchTable, veamos que hace.</p>
+<figure><img loading="lazy" src="img/60/16.png" alt="Captura 16 del tute 60"></figure>
+<figure><img loading="lazy" src="img/60/17.png" alt="Captura 17 del tute 60"></figure>
+<p>Vemos que usando GetModuleHandleA o LoadLibrary saca la imagebase de ntdll y luego la direccion de la función importada NtQuerySystemInformation usando GetProcAddress.</p>
+<p>Bueno acá viene la parte de la película en que muere el protagonista vamos con calma jeje.</p>
+<figure><img loading="lazy" src="img/60/18.png" alt="Captura 18 del tute 60"></figure>
+<p>NtQuerySystemInformation</p>
+<p>NtQuerySystemInformation es una api muy versátil para pedir info acerca de módulos, procesos, etc.</p>
+<figure><img loading="lazy" src="img/60/19.png" alt="Captura 19 del tute 60"></figure>
+<p>Alli nos dice que el buffer para la info que devolverá normalmente debe ser muy grande y no sabemos cuanto sera su largo.</p>
+<p>Asi que llamamos dos veces a la api, la primera le pasamos 0 en lugar del buffer y 0 size y eso nos debería devolver en el cuarto argumento que es un puntero al size correcto, el largo que realmente necesita tener, entonces con ese size creamos un buffer y llamamos nuevamente pasándole este buffer y ahí nos devolverá correctamente la info.</p>
+<figure><img loading="lazy" src="img/60/20.png" alt="Captura 20 del tute 60"></figure>
+<p>El argumento u es un LONG y usando ctypes.byref se le pasa un puntero a ese valor, alli escribirá el size correcto que debería tener el buffer, para que no falle la api.</p>
+<p>Vemos que en la segunda vez que llamamos a la api, tenemos creado un buffer con el size que guardo en u que lo hallamos con u.value</p>
+<p>buf=create_string_buffer(u.value)</p>
+<p>Creamos ese buffer con la función de ctypes create_string_buffer pasándole el size hallado y llamamos por segunda vez a la misma api, ahora con el buffer de size correcto, y el mismo size en u.value.</p>
+<figure><img loading="lazy" src="img/60/21.png" alt="Captura 21 del tute 60"></figure>
+<p>El problema es que ese buffer no nos permitirá manejar el resultado que es del tipo estructura veamos el código en C.</p>
+<figure><img loading="lazy" src="img/60/22.png" alt="Captura 22 del tute 60"></figure>
+<p>Vemos la mismas dos llamadas a la api, la primera pasándole 0 al buffer y su size y devolviendo el size necesario en ReturnLenght.</p>
+<p>Vemos que crea el buffer con HeapAlloc y que lo castea a un puntero a una estructura definida, alli guardara la información pero no solo eso, sino que podrá manejar los campos de dicha estructura.</p>
+<figure><img loading="lazy" src="img/60/23.png" alt="Captura 23 del tute 60"></figure>
+<p>Allí vemos como usa los campos más adelante, así que si nosotros creamos el buffer y no hacemos algo más, nos guardara toda esa información en nuestro buffer en bruto, y no podremos trabajar con los campos como el, habrá que buscar los offset de cada campo que necesitemos a mano y tratar de leer cada uno por su offset lo cual es muy molesto.</p>
+<p>Encima si miramos la estructura a la cual casteo</p>
+<figure><img loading="lazy" src="img/60/24.png" alt="Captura 24 del tute 60"></figure>
+<p>SYSTEM_MODULE_INFORMATION_ENTRY</p>
+<p>Vemos alli resaltado que tiene dos campos el primero Count es un ULONG y el segundo es un campo Module que es del tipo de otra estructura alli llamada  _SYSTEM_MODULE_INFORMATION_ENTRY</p>
+<p>Eso no seria tanto problema solo que el [1] al lado de Module significa que es un Array de estructuras de tamaño variable y que tendrá tantas estructuras según el campo 1 Count, o sea que sera un Array de largo.</p>
+<p>Count *  _SYSTEM_MODULE_INFORMATION_ENTRY</p>
+<p>Un array de estructuras de largo Count, que ni sabemos cuanto vale.</p>
+<p>Aquí realmente si no sos un poco pillo moriste antes de nacer jeje, asi que veamos como se soluciona.</p>
+<figure><img loading="lazy" src="img/60/25.png" alt="Captura 25 del tute 60"></figure>
+<p>Allí vemos la definición de las dos estructuras la superior es fija y se define tal cual en C con sus tipos pasados a ctypes.</p>
+<p>La segunda en vez de definirse como una clase se define como una función que puede ser llamada con el argumento del size, dentro esta la clase definida donde con ese valor se crea un array de estructuras del tipo _SYSTEM_MODULE_INFORMATION_ENTRY para crearla en runtime.</p>
+<p>wintypes.ARRAY (_SYSTEM_MODULE_INFORMATION_ENTRY,nsize))]</p>
+<p>De esa forma cuando averigüemos el valor del size llamaremos a la función pasándole ese valor, creara el array de estructuras con el size correcto, y devolverá el el return la clase creada con ese size.</p>
+<figure><img loading="lazy" src="img/60/26.png" alt="Captura 26 del tute 60"></figure>
+<figure><img loading="lazy" src="img/60/27.png" alt="Captura 27 del tute 60"></figure>
+<p>Luego se crea la instancia a ese clase, sera mas grande que el buffer necesario .Eso es porque usamos el size total del buffer para crear el Array, por lo cual esta instancia sera mucho mas grande que el buffer necesario, no importa.</p>
+<figure><img loading="lazy" src="img/60/28.png" alt="Captura 28 del tute 60"></figure>
+<p>Vemos que el buffer real esta creado con el size correcto., lo cual hará que la api copie correctamente en el mismo la información de todos los módulos.</p>
+<p>Luego con memmove</p>
+<figure><img loading="lazy" src="img/60/29.png" alt="Captura 29 del tute 60"></figure>
+<p>Copiamos lo que leímos del buffer a la instancia que es mas grande asi que no habrá problemas, también el campo Count tendremos la cantidad real de estructuras que hay en el array asi que no importa que haya reservadas de mas y estén vacías ya que trabajaremos solo con la cantidad real que nos devolvió la api.</p>
+<p>O sea que en resumidas cuentas yo cree una instancia con un array que seguro tiene un numero mas grande de estructuras, y luego usare la cantidad correcta de las mismas que es menor a la que reserve.</p>
+<figure><img loading="lazy" src="img/60/30.png" alt="Captura 30 del tute 60"></figure>
+<p>Vemos que el saca la base y el nombre del primer modulo que esta en la posición 0 del array.</p>
+<figure><img loading="lazy" src="img/60/31.png" alt="Captura 31 del tute 60"></figure>
+<p>Modules[0] sera la estructura para el primer modulo, Modules[1] para el segundo etc.</p>
+<p>Eso nos da la imagebase en kernel de ntkrnlpa.exe y su nombre quizás podría chequearse que si no es este modulo, siga buscando en el array hasta que lo halle, pero aparentemente siempre es el primero.</p>
+<figure><img loading="lazy" src="img/60/32.png" alt="Captura 32 del tute 60"></figure>
+<figure><img loading="lazy" src="img/60/33.png" alt="Captura 33 del tute 60"></figure>
+<p>Vemos que tuve que extraer el nombre ya que nos devuelve el path completo.</p>
+<figure><img loading="lazy" src="img/60/34.png" alt="Captura 34 del tute 60"></figure>
+<p>Vemos que a la misma librería que esta en kernel la carga en user usando LoadLibrary.</p>
+<p>Como HalDispatchTable es una función exportada saca su direccion en user que pillin.</p>
+<figure><img loading="lazy" src="img/60/35.png" alt="Captura 35 del tute 60"></figure>
+<p>Luego resta la base en user con la direccion de la función en user y saca el offset que valdrá para kernel también ya que es la misma librería.</p>
+<figure><img loading="lazy" src="img/60/36.png" alt="Captura 36 del tute 60"></figure>
+<p>Y luego le suma ese offset a la base que habíamos hallado de la misma librería en kernel con lo cual ya tenemos la direccion de la tabla en kernel.</p>
+<figure><img loading="lazy" src="img/60/37.png" alt="Captura 37 del tute 60"></figure>
+<p>Luego devuelve la direccion de la tabla HAL en kernel buscada.</p>
+<figure><img loading="lazy" src="img/60/38.png" alt="Captura 38 del tute 60"></figure>
+<p>Una vez que vuelve le suma 4 que es el largo de un puntero en 32 bits (en 64 bits sumaria 8) ya que como recordamos era la tabla mas 4 el lugar donde debemos escribir en 32 bits.</p>
+<p>Recordemos esto</p>
+<figure><img loading="lazy" src="img/60/39.png" alt="Captura 39 del tute 60"></figure>
+<p>Asi que ya podemos escribir ahí usando la vulnerabilidad que nos permite escribir donde queremos.</p>
+<figure><img loading="lazy" src="img/60/40.png" alt="Captura 40 del tute 60"></figure>
+<p>Voy a preparar la estructura que le voy a pasar.</p>
+<p>El tenia la estructura</p>
+<figure><img loading="lazy" src="img/60/41.png" alt="Captura 41 del tute 60"></figure>
+<p>Y yo había creado la clase y instanciado alli.</p>
+<p>class _WRITE_WHAT_WHERE(Structure):    _fields_ = [('What', c_void_p),            ('Where', c_void_p)]</p>
+<p>WriteWhatWhere_inst=_WRITE_WHAT_WHERE()</p>
+<figure><img loading="lazy" src="img/60/42.png" alt="Captura 42 del tute 60"></figure>
+<p>Vemos que creo un buffer de largo 2 punteros y los copio en la instancia que es del mismo largo.(no es necesario esto, pero no importa)</p>
+<figure><img loading="lazy" src="img/60/43.png" alt="Captura 43 del tute 60"></figure>
+<p>Le doy permiso de ejecución a la direccion donde esta guardada mi shellcode que la hallo con addressof otra función de ctypes.</p>
+<figure><img loading="lazy" src="img/60/44.png" alt="Captura 44 del tute 60"></figure>
+<p>Como el What debe haber un puntero a un puntero a nuestro código uso de nuevo addressof.</p>
+<p>En Where va la direccion donde va a escribir que es el puntero a la HalDispacthTable mas 4.</p>
+<p>Luego llamo a DeviceIoControl</p>
+<figure><img loading="lazy" src="img/60/45.png" alt="Captura 45 del tute 60"></figure>
+<p>Alli le paso el puntero a la estructura y el tamaño de la misma, lo cual escribirá donde queremos ya lo debuggearemos y al final llamo a NtQueryIntervalProfile para saltar a ejecutar.</p>
+<figure><img loading="lazy" src="img/60/46.png" alt="Captura 46 del tute 60"></figure>
+<p>Que era la api que desde user permitía llegar al CALL INDIRECTO que saltara a nuestro shellcode.</p>
+<p>Debuggemos un poco remotamente el kernel para ver lo que ocurre.</p>
+<figure><img loading="lazy" src="img/60/47.png" alt="Captura 47 del tute 60"></figure>
+<p>Le pondremos un breakpoint alli, cuando lee el buffer que le envié, la cual es la estructura WriteWhatWhere_inst.</p>
+<figure><img loading="lazy" src="img/60/48.png" alt="Captura 48 del tute 60"></figure>
+<p>Le agregue un raw_input para que pare antes de llamar a DeviceIoControl.</p>
+<p>Arranco el driver con OSRLOADER y ejecuto el script.</p>
+<figure><img loading="lazy" src="img/60/49.png" alt="Captura 49 del tute 60"></figure>
+<p>Alli veo las direcciones en mi maquina, dentro de la estructura esta el What en 0x1420378 en mi caso y el Where que seria la tabla HalDispatchTable mas 4 esta en 0x8277a3bc.</p>
+<p>Atacheo el IDA.</p>
+<figure><img loading="lazy" src="img/60/50.png" alt="Captura 50 del tute 60"></figure>
+<p>Cuando para, al tracear veo que en ECX en mi caso esta la direccion de la estructura completa o sea 0x1420328 si miro alli.</p>
+<p>Alli vemos el What y el Where mismo que imprimimos antes.</p>
+<figure><img loading="lazy" src="img/60/51.png" alt="Captura 51 del tute 60"></figure>
+<p>Acá como estamos en kernel si queremos verlo como dword al apretar la D nos va a decir que no pertenece la memoria a ningún segmento, que creemos uno.</p>
+<figure><img loading="lazy" src="img/60/52.png" alt="Captura 52 del tute 60"></figure>
+<p>Podemos buscar la direccion justa del segmento en windbg pero con poner una direccion anterior funcionara.</p>
+<figure><img loading="lazy" src="img/60/53.png" alt="Captura 53 del tute 60"></figure>
+<p>Una dirección anterior que termine en ceros anterior el final lo dejamos en 0xffffffff lo arreglara IDA con eso ya podemos cambiar a DWORD.</p>
+<p>Si creo la estructura en IDA</p>
+<figure><img loading="lazy" src="img/60/54.png" alt="Captura 54 del tute 60"></figure>
+<p>Puedo asignarla en el primer campo alli CON ALT mas Q.</p>
+<figure><img loading="lazy" src="img/60/55.png" alt="Captura 55 del tute 60"></figure>
+<p>Allí esta la estructura y coincide con lo que imprimió el What es el primer campo y vale 0x1420378 y el Where es el segundo campo y vale 0x8277a3bc en mi caso.</p>
+<p>Sabiamos también que el What era un puntero a un puntero a nuestro shellcode veamos.</p>
+<p>En mi caso apunta alli</p>
+<figure><img loading="lazy" src="img/60/56.png" alt="Captura 56 del tute 60"></figure>
+<p>Y esto apunta a</p>
+<figure><img loading="lazy" src="img/60/57.png" alt="Captura 57 del tute 60"></figure>
+<p>Alli vemos nuestro shellcode.</p>
+<p>Después de crear un segmento pues esta dirección es menor que el inicio del anterior apreto C</p>
+<figure><img loading="lazy" src="img/60/58.png" alt="Captura 58 del tute 60"></figure>
+<p>Y alli esta el código asi que ahora traceemos desde el lugar donde estábamos.</p>
+<figure><img loading="lazy" src="img/60/59.png" alt="Captura 59 del tute 60"></figure>
+<p>Llego aquí donde mueve a ESI la direccion de la estructura.</p>
+<figure><img loading="lazy" src="img/60/60.png" alt="Captura 60 del tute 60"></figure>
+<p>Mueve a EDI el What y a EBX el Where y los imprime.</p>
+<p>Llega alli</p>
+<figure><img loading="lazy" src="img/60/61.png" alt="Captura 61 del tute 60"></figure>
+<p>Como EDI era un puntero a un puntero a mi shellcode al hallar el contenido EAX es solo un puntero a mi shellcode.</p>
+<p>Y lo escribe en el contenido de EBX en la tabla HalDispatchTable mas 4.</p>
+<figure><img loading="lazy" src="img/60/62.png" alt="Captura 62 del tute 60"></figure>
+<figure><img loading="lazy" src="img/60/63.png" alt="Captura 63 del tute 60"></figure>
+<p>Pisara ese valor, realmente para que el sistema quede estable despues de ejecutar nuestro shellcode deberiamos agregar un código que halle de nuevo este valor y lo restaure alli, por si el sistema llama nuevamente y no se produzca un BSOD pero no lo haremos aquí.</p>
+<figure><img loading="lazy" src="img/60/64.png" alt="Captura 64 del tute 60"></figure>
+<p>Vemos que ahora que lo pisamos quedo apuntando a nuestro shellcode</p>
+<figure><img loading="lazy" src="img/60/65.png" alt="Captura 65 del tute 60"></figure>
+<p>Podemos poner un breakpoint al inicio de nuestro shellcode</p>
+<p>Vemos que al darle RUN parara</p>
+<figure><img loading="lazy" src="img/60/66.png" alt="Captura 66 del tute 60"></figure>
+<p>Eso es porque llamamos desde nuestro script a</p>
+<p>windll.ntdll.NtQueryIntervalProfile(0x1337, byref(Interval))</p>
+<p>Vemos que el return address nos marca adonde debe volver y que fue llamado de ese call.</p>
+<figure><img loading="lazy" src="img/60/67.png" alt="Captura 67 del tute 60"></figure>
+<p>Que es el mismo que vimos antes y que llegamos al pisar esa tabla</p>
+<figure><img loading="lazy" src="img/60/68.png" alt="Captura 68 del tute 60"></figure>
+<p>Si cargamos los simbolos con .reload /f y esperamos un rato que se descongele IDA, luego con k veremos el call stack completo desde user y veremos que fue llamado desde la api NtQueryIntervalProfile o ZwQueryIntervalProfile que es lo mismo.</p>
+<figure><img loading="lazy" src="img/60/69.png" alt="Captura 69 del tute 60"></figure>
+<figure><img loading="lazy" src="img/60/70.png" alt="Captura 70 del tute 60"></figure>
+<p>La cuestión es que llegamos al shellcode y como antes robara el Token de System y veamos si al llegar al RET vuelve bien.</p>
+<figure><img loading="lazy" src="img/60/71.png" alt="Captura 71 del tute 60"></figure>
+<figure><img loading="lazy" src="img/60/72.png" alt="Captura 72 del tute 60"></figure>
+<p>Si vuelve bien si le doy RUN vere la calculadora System que lanzo.</p>
+<figure><img loading="lazy" src="img/60/73.png" alt="Captura 73 del tute 60"></figure>
+<figure><img loading="lazy" src="img/60/74.png" alt="Captura 74 del tute 60"></figure>
+<p>Por supuesto esto puede funcionar un rato porque al no restaurar el puntero original puede producir crashes, igual la idea es ver el método y aprender, ya sabemos que eso puede ocurrir, asi que en ámbitos reales habrá que hacerlo, yo ya no tengo ganas jeje.</p>
+<p>Bueno como vemos esto funciona en 32 bits y en 64 bits habrá que adaptar bien los tipos de datos para el caso, por ahora esta bueno practicar con esto.</p>
+<p>Hasta la próxima parte</p>
+<p>Ricardo Narvaja</p>
+</main>
+<footer class="pie">
+  <p>Material educativo y defensivo. Las prácticas se limitan a programas propios, software abierto o crackmes diseñados para aprender. No se enseña a eludir licencias, DRM ni controles de acceso.</p>
+  <p><a href="../00_EMPEZAR_AQUI.html">Inicio</a> · <a href="../guia/etapa-0.html">Etapas</a> · <a href="../fuentes_y_limites.html">Fuentes y límites</a> · <a href="../registro_de_cobertura.csv">Registro de cobertura</a></p>
+</footer>
+<script>
+(function(){
+  function abrir(src){
+    var o=document.createElement('div'); o.className='lightbox-ov';
+    var i=document.createElement('img'); i.src=src; o.appendChild(i);
+    function cerrar(){o.remove(); document.removeEventListener('keydown', onkey);}
+    function onkey(e){ if(e.key==='Escape') cerrar(); }
+    o.addEventListener('click', cerrar);
+    document.addEventListener('keydown', onkey);
+    document.body.appendChild(o);
+  }
+  document.addEventListener('DOMContentLoaded', function(){
+    document.querySelectorAll('figure img, main img').forEach(function(img){
+      img.style.cursor='zoom-in';
+      img.addEventListener('click', function(){ abrir(img.currentSrc||img.src); });
+    });
+  });
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tute 46 · Ejercicio parte 44 (heap) — Curso IDA</title>
+<meta name="description" content="Tutorial ilustrado del tute 46 del Curso IDA desde cero: Ejercicio parte 44 (heap).">
+<link rel="stylesheet" href="../guia/estilo.css">
+</head>
+<body>
+<a class="salto" href="#contenido">Saltar al contenido</a>
+<header class="cabecera">
+  <div class="marca"><a href="../00_EMPEZAR_AQUI.html">CLS · Curso de reversing</a> <span class="edicion">edición 5 · 27/10/2026</span></div>
+  <nav class="principal" aria-label="Navegación principal">
+    <a href="../00_EMPEZAR_AQUI.html">Inicio</a>
+    <a href="../guia/index.html">Curso</a>
+    <a href="../fichas/index.html">Fichas</a>
+    <a href="../glosario.html">Glosario</a>
+    <a href="../preguntas_y_respuestas.html">Repaso</a>
+  </nav>
+</header>
+<main id="contenido">
+<p class="migas"><a href="../ida-tutes.html">← Índice de los 69 tutes de IDA</a></p>
+<h1>Tute 46 · Ejercicio parte 44 (heap)</h1>
+<p class="meta-tute"><strong>⏱ 12 min de lectura</strong> · 2.217 palabras · 42 capturas · grupo: Vulnerabilidades y exploiting en user-mode (VLC/CVE, DEP, Mona, canary/SEH, shellcode, heap)</p>
+<aside class="callout nota"><p class="callout-titulo">Qué enseña</p><p>Consideraciones de los exploits de heap.</p></aside>
+<p><em>se conecta con:</em> <a href="../guia/05-vulnerabilidades.html">Vulnerabilidades (defensivo)</a></p>
+<aside class="callout aviso"><p class="callout-titulo">Material observado, no reescrito</p><p>Es el texto y las capturas del <code>.docx</code> original del curso, solo presentados como tutorial. Puede tener erratas de origen. El autor del curso es Ricardo Narvaja.</p></aside>
+<hr>
+<p>INTRODUCCIÓN AL REVERSING CON IDA PRO DESDE CERO PARTE 46.</p>
+<p>EJERCICIO de la parte 44.</p>
+<p>http://ricardonarvaja.info/WEB/INTRODUCCION%20AL%20REVERSING%20CON%20IDA%20PRO%20DESDE%20CERO/EJERCICIOS/PRACTICA_44.7z</p>
+<p>Antes de hacerlo hagamos algunas consideraciones.</p>
+<p>Los exploits de Heap dependen mucho del programa y de la vulnerabilidad, algunos son explotables, otros no.</p>
+<p>Muchas veces la reliabilidad (el porcentaje de funcionamiento correcto contra las veces que falla) es menor a otros tipos de exploit que explotan otro tipo de vulnerabilidad.</p>
+<p>En general un exploit de heap con todo bien si los planetas se alinean y el exploit writer trabajo bien, puede superar un 80% de reliabilidad, en casos de que las cosas van mal el programa no permite manipulación del heap, o el exploit writer no acierta puede ser mucho menor de un 30% a un 60% de reliabilidad.</p>
+<p>A que me refiero con manipulación de heap, o masaje de heap o como se llame, a ir llenando los huecos o sea los bloques free con diferentes allocaciones de distintos tamaños, antes de ubicar el bloque que se va a overflodear, para que el mismo se coloque en una posición anterior a un puntero, una vtable o algo posible de pisar.</p>
+<p>Por ejemplo si vamos a explotar un server, ir enviando diferentes paquetes de datos, no al tun tun, sino habiendo visto que hace cada tipo de paquete y que tamaños alloca según lo que le envío y cuando está lleno a mi gusto el heap, envío el paquete que produce la allocacion y se puede overflodear, para que se ubique en una posición a mi gusto.</p>
+<p>Si el programa abre un archivo por ejemplo MICROSOFT WORD, le agrego al archivo, campos de texto, tablas, etc cada uno alocará diferentes tamaños que puedo controlar, antes de allocar el que se va a overflodear.</p>
+<p>Obviamente esto no es sencillo y hay que conocer lo que se está haciendo y el programa a explotar, a ciegas no se hace nada.</p>
+<p>Para que no se vuelvan locos leyendo cosas viejas de explotación de heap, hay métodos viejos que pisaban los punteros del header del bloque, y se podía explotar hace años, allocando y desallocando, solo controlando lo que se escribía en los punteros del header al overflodear el bloque anterior.</p>
+<p>Como vimos ahora los punteros del header están xoreados con valores que cambian, el heap trabaja en forma diferente y hace múltiples chequeos en los punteros, así que esos métodos no sirven hoy día más, y es inútil ponerse a estudiarlos hoy.</p>
+<p>Por supuesto la practica 44 es el peor de los escenarios, pues solo puedo controlar una sola allocacion según el size que pase, lo cual no es muy flexible ni muy real, así que las posibilidades son muy pocas.</p>
+<p>A continuación de esta parte haré una nueva versión del ejercicio 44 con múltiples allocaciones como en un caso real para que practiquen como llenar los agujeros del queso jeje para tener más posibilidades de explotar y mejorar la reliabilidad.</p>
+<p>La idea era que practiquen y choquen con este para que vean como pueden hacer con el siguiente, igual lo analizaremos y veremos qué pasa.</p>
+<p>Ahora chocare yo un poco, para que vean el análisis.</p>
+<p>Abro el ejecutable en el loader de  IDA.</p>
+<figure><img loading="lazy" src="img/46/1.png" alt="Captura 1 del tute 46"></figure>
+<p>Bueno vemos que después de cargar la Mypepe.dll imprime “Ingrese una cantidad de números enteros” y llama a scanf luego le pasa con el LEA la dirección de la variable número, para que guarde allí el valor tipeado en formato decimal ya que el formato es %d.</p>
+<figure><img loading="lazy" src="img/46/2.png" alt="Captura 2 del tute 46"></figure>
+<p>Luego toma ese número y lo multiplica por 4 y lo usa como size del malloc.</p>
+<p>shl eax, 2   ;Equivalent to EAX*4</p>
+<p>Y guarda el bloque en la variable Dst, le cambiare el nombre.</p>
+<figure><img loading="lazy" src="img/46/3.png" alt="Captura 3 del tute 46"></figure>
+<p>Para diferenciar un poco le puse una abreviatura de puntero a bloque donde controlo el size.</p>
+<figure><img loading="lazy" src="img/46/4.png" alt="Captura 4 del tute 46"></figure>
+<p>Vemos que guarda la dirección de system en la variable Dst3, le cambiare el nombre.</p>
+<figure><img loading="lazy" src="img/46/5.png" alt="Captura 5 del tute 46"></figure>
+<p>Luego llama a new, eso se ve mejor si cambio en demangle names.</p>
+<figure><img loading="lazy" src="img/46/6.png" alt="Captura 6 del tute 46"></figure>
+<p>Vemos que el size esta fijo en 0x10.</p>
+<figure><img loading="lazy" src="img/46/7.png" alt="Captura 7 del tute 46"></figure>
+<p>Vemos que internamente el new llama a un malloc con el mismo size y que si puede allocar EAX será diferente de cero e ira al bloque con el pop ebp-ret devolviendo en EAX la dirección del bloque allocado.</p>
+<figure><img loading="lazy" src="img/46/8.png" alt="Captura 8 del tute 46"></figure>
+<p>Le puse una abreviatura a la variable que guarda dicha dirección, de puntero a bloque de tamaño fijo 0x10, ademas guarda en la variable array la misma dirección.</p>
+<figure><img loading="lazy" src="img/46/9.png" alt="Captura 9 del tute 46"></figure>
+<p>Luego guarda la dirección de printf en ese buffer apuntado por array, se ve que es un array de punteros o dwords, porque parece indexar de a 4, igual solo llena el primer campo del array con la dirección de printf.</p>
+<p>ECX + EAX es igual a ECX, dado que EAX vale 0, o sea guardara printf en la dirección del inicio del array o sea el primer campo)</p>
+<p>Si tuviéramos el código comprobaríamos que son 4 campos de 4 bytes y que en el primero guarda un puntero a printf.</p>
+<figure><img loading="lazy" src="img/46/10.png" alt="Captura 10 del tute 46"></figure>
+<p>El tipo system_t lo definí y es un puntero a system, así 4 punteros de 4 bytes cada uno, el largo es 0x10 o sea 16 decimal, el size de lo que va a allocar (un array de punteros).</p>
+<figure><img loading="lazy" src="img/46/11.png" alt="Captura 11 del tute 46"></figure>
+<p>Luego avisa imprimiendo la dirección del bloque con mi tamaño p_bloque_mi_size y diciéndome que allí voy a escribir mis enteros.</p>
+<p>O sea que tenemos un array de punteros a system y una allocacion que yo controlo el size y que allí voy a escribir enteros.</p>
+<figure><img loading="lazy" src="img/46/12.png" alt="Captura 12 del tute 46"></figure>
+<p>Luego imprime que ingresemos nuestro primer entero y entra al loop que está marcado en verde, pone una variable  i =0 que será el contador,  la salida es comparar con el valor de numero, si es más grande se va fuera del loop.</p>
+<p>O sea la idea del loop es ir escribiendo los enteros, por ejemplo si uno tipeo en número el valor 4 decimal, allocó 4 * 4 o sea 16 decimal o sea 0x10, y tendrá que loopear 4 veces, para en cada ciclo guardar un entero de cuatro bytes y incrementar de a 4, así ciclara 4 veces por 4 bytes guardados en cada vez será 16 bytes decimal guardados en el bloque de 16 decimal de size y no habría overflow ni nada.</p>
+<p>Ya vemos que la salida del loop será cuando i o sea el contador sea mayor o igual que el número que ingrese al inicio.</p>
+<p>El overflow aquí se produce en la multiplicación, si mi número inicial es por ejemplo 1073741825 que corresponde al 0x40000001 al multiplicarlo por 4 desbordara el máximo posible de 32 bits y el resultado será 4 y alocará un size de solo 4.</p>
+<figure><img loading="lazy" src="img/46/13.png" alt="Captura 13 del tute 46"></figure>
+<figure><img loading="lazy" src="img/46/14.png" alt="Captura 14 del tute 46"></figure>
+<p>Entonces alocará 4 bytes de tamaño y al escribir en cada ciclo copiara 4 bytes allí y se repetirá 1073741825 veces ya que ese es el número que tipeamos y el que evalúa comparando el contador contra ese valor como salida.</p>
+<p>Es obvio que el programa funciona bien mientras que la multiplicación del número ingresado por 4 no desborde el máximo de un entero de 32 bits.</p>
+<p>Muchos dicen, como sacaste el valor 0x40000001, fácil dividir 0xffffffff/4 me da 0x3fffffff</p>
+<figure><img loading="lazy" src="img/46/15.png" alt="Captura 15 del tute 46"></figure>
+<p>Ese al multiplicarlo por 4 estará cerca de 0xffffffff. Lo voy aumentando de a uno hasta que se desborde y el resultado sea un número pequeño.</p>
+<figure><img loading="lazy" src="img/46/16.png" alt="Captura 16 del tute 46"></figure>
+<p>Así que 0x40000000 por 4 me da cero, ese no me sirve, le sumo uno más y me da 4 ese ya sirve y así tengo el rango de valores a partir de 0x40000001 en adelante que me producen desbordamiento y cuyo resultado es un valor chico.</p>
+<p>Obviamente los múltiplos de 0x40000000 al cual luego le voy sumando de a uno servirán.</p>
+<figure><img loading="lazy" src="img/46/17.png" alt="Captura 17 del tute 46"></figure>
+<p>Así que vemos que aquí la idea es desbordar el bloque al cual le escribo los números enteros, tratando de llegar al bloque del array de punteros, además en el medio del ciclo usa para imprimir el puntero guardado en el primer campo del array.</p>
+<figure><img loading="lazy" src="img/46/18.png" alt="Captura 18 del tute 46"></figure>
+<p>Imprime en cada ciclo la palabra correcto, usando el puntero a printf guardado en el array y sumándole como la vez anterior ECX que vale cero, que proviene de esa multiplicación por cero, así que si no pisamos el puntero, saltara a imprimir, pero si llegamos a pisar el array podremos saltar a ejecutar código.</p>
+<p>El tema es que se tienen que dar varias cosas para que esto ocurra, como aquí no hay muchas allocaciones ni podemos masajear el heap llenando los huecos del mismo con allocaciones con size controlado, la cosa puede fallar, ya que si el array de punteros queda en una dirección más baja que el bloque a desbordar no podre alcanzarlo porque no puedo escribir para atrás jeje.</p>
+<p>O sea la idea es que el array de punteros debe quedar cerca pero en una dirección más alta que el bloque a desbordar.</p>
+<p>Obviamente eso no depende de nosotros en este caso y si no se da no será posible explotarlo, si hubiera múltiples allocaciones como en la próxima práctica podríamos ir llenando el heap, allocando en los bloques libres para obligar a que el bloque a overflodear no le quede otra que ir en una dirección más alta.</p>
+<figure><img loading="lazy" src="img/46/19.png" alt="Captura 19 del tute 46"></figure>
+<p>Lo último es que el entero que ingresamos lo guarda en una variable temporal y solo lo copia con memcpy de 4 bytes de largo al bloque si es mayor que 0x20, si es menor saltea la copia.</p>
+<figure><img loading="lazy" src="img/46/20.png" alt="Captura 20 del tute 46"></figure>
+<p>Allí vemos que la dirección donde escribe se incrementa de a 4, o sea que es un array de enteros también por eso se incrementa de a 4.</p>
+<figure><img loading="lazy" src="img/46/21.png" alt="Captura 21 del tute 46"></figure>
+<p>Bueno ya está analizado veamos que pasa si lo tiro suelto fuera de IDA.</p>
+<figure><img loading="lazy" src="img/46/22.png" alt="Captura 22 del tute 46"></figure>
+<p>Probemos que nuestro bloque alloque la misma cantidad que el array de punteros o sea 0x10, lo cual tendría cierta lógica, ya que como primero alloca mi bloque y luego el array de punteros ambos con el mismo size, el mío quede en una dirección más baja para overflodear y pisar el otro, pero no se voy a probar primero en Windows 7 que es más amigable para casos de heap.</p>
+<figure><img loading="lazy" src="img/46/23.png" alt="Captura 23 del tute 46"></figure>
+<p>Eso se ve bien el bloque a desbordar está en 0x612900 y el bloque con el array de punteros en 0x612918 jeje voy a tirarlo 10 veces a ver qué porcentaje sale bien.(recuerden si cambiaron el page heap para este proceso volverlo a heap normal).</p>
+<figure><img loading="lazy" src="img/46/24.png" alt="Captura 24 del tute 46"></figure>
+<p>Vemos que siempre la distancia me da 18 porque al ser ambos del mismo tamaño y en Windows 7 que es más bueno, la cosa va bien ahora probare en w10.</p>
+<figure><img loading="lazy" src="img/46/25.png" alt="Captura 25 del tute 46"></figure>
+<p>Vemos que en w10 la cosa es más variable, a veces queda bien y a veces mal.</p>
+<p>Vemos que si uso un tamaño menor queda bastante lejos.</p>
+<figure><img loading="lazy" src="img/46/26.png" alt="Captura 26 del tute 46"></figure>
+<p>El tema es que no puedo manipular el heap allocando, así que por ahora hare este exploit solo para w7, el próximo que hagamos veremos si manipulando nos ayuda a poder hacer una versión para cada uno.</p>
+<p>MASAJEANDO EL HEAP.</p>
+<p>Bueno ahora armare un script provisorio para ir probando.</p>
+<figure><img loading="lazy" src="img/46/27.png" alt="Captura 27 del tute 46"></figure>
+<p>Arranco el script, elijo en el IDA el windbg debugger y atacheo al proceso que queda detenido dentro del scanf.</p>
+<figure><img loading="lazy" src="img/46/28.png" alt="Captura 28 del tute 46"></figure>
+<p>Como puse un breakpoint en 0x4010d0 antes del primer malloc, parara allí al aceptar el ENTER del script.</p>
+<figure><img loading="lazy" src="img/46/29.png" alt="Captura 29 del tute 46"></figure>
+<p>Vemos el número que ingrese está en EDX es 0x40000004.</p>
+<p>Al hacer el SHL lo multiplica por 4 queda 0x10 el size a allocar.</p>
+<figure><img loading="lazy" src="img/46/30.png" alt="Captura 30 del tute 46"></figure>
+<figure><img loading="lazy" src="img/46/31.png" alt="Captura 31 del tute 46"></figure>
+<p>Veamos que nos dice</p>
+<p>!heap -a 0x2c0000</p>
+<p>!heap -a 0x510000</p>
+<p>No pondré acá todos los resultados pero los guardo en un txt.</p>
+<p>Ahora paso el malloc de 0x10.</p>
+<figure><img loading="lazy" src="img/46/32.png" alt="Captura 32 del tute 46"></figure>
+<p>El bloque mío de size 0x10 estará ubicado en 0x302fd0.</p>
+<figure><img loading="lazy" src="img/46/33.png" alt="Captura 33 del tute 46"></figure>
+<p>Si pregunto por esa dirección veo que pertenece al heap de 0x2c0000.</p>
+<figure><img loading="lazy" src="img/46/34.png" alt="Captura 34 del tute 46"></figure>
+<p>Igual no está en el listado por ser de size muy pequeño, pero si pregunto qué filtre los bloques de tamaño 0x10</p>
+<p>!heap -flt s 0x10</p>
+<p>Ahí si me aparece</p>
+<figure><img loading="lazy" src="img/46/35.png" alt="Captura 35 del tute 46"></figure>
+<p>Vemos que en el listado general aparecen dentro de un bloque de 0x400 sin especificar lo que hay dentro, al pedir por tamaño si disgrega el contenido.</p>
+<figure><img loading="lazy" src="img/46/36.png" alt="Captura 36 del tute 46"></figure>
+<p>También se puede buscar por rango</p>
+<p>!heap -flt r 0x10 0x20</p>
+<p>Pero bueno al buscar los bloques de 0x10 y ver los libres, vemos que justo debajo del nuestro hay otro bloque free en 0x302fe0 que es el siguiente libre y que supuestamente al hacer malloc de 0x10 debería usar ese, lleguemos hasta el otro malloc.</p>
+<figure><img loading="lazy" src="img/46/37.png" alt="Captura 37 del tute 46"></figure>
+<p>Vemos que justo allocó usando el siguiente que estaba free y que estaba cerca.</p>
+<figure><img loading="lazy" src="img/46/38.png" alt="Captura 38 del tute 46"></figure>
+<figure><img loading="lazy" src="img/46/39.png" alt="Captura 39 del tute 46"></figure>
+<p>Justo el siguiente de 0x10 al menos en Windows 7 es bastante predictivo.</p>
+<p>Más o menos ya tengo una idea la distancia entre los dos es 0x302fe8 -0x302fd0</p>
+<p>Python&gt;hex(0x302fe8 -0x302fd0)</p>
+<p>0x18</p>
+<figure><img loading="lazy" src="img/46/40.png" alt="Captura 40 del tute 46"></figure>
+<p>Allí puse 6 valores lo cual me da 24 de largo (0x18) y el 7mo seria 0x41424344 pasado a decimal, veamos qué pasa.</p>
+<figure><img loading="lazy" src="img/46/41.png" alt="Captura 41 del tute 46"></figure>
+<p>Obviamente eso se da porque W7 es bastante predecible. Seguramente en w10 habrá que poner varios de estos 0x41424344 de relleno para que si se mueve termine saltando igual, en el caso que se pueda hacer.</p>
+<figure><img loading="lazy" src="img/46/42.png" alt="Captura 42 del tute 46"></figure>
+<p>Bueno con eso saltaríamos a ejecutar mi bloque el problema es que EDX ahora apunta a los últimos bytes que hay ya que se fue incrementando, lo cual es medio molesto, así que lo dejaremos ahí al menos demostramos que saltamos a ejecutar en el próximo ejercicio podremos manejar más distintos allocs de diferentes tamaños, y podremos tratar de pelearlo tanto en Windows 7 como en w10.</p>
+<p>Hasta la parte 47</p>
+<p>Ricardo Narvaja</p>
+</main>
+<footer class="pie">
+  <p>Material educativo y defensivo. Las prácticas se limitan a programas propios, software abierto o crackmes diseñados para aprender. No se enseña a eludir licencias, DRM ni controles de acceso.</p>
+  <p><a href="../00_EMPEZAR_AQUI.html">Inicio</a> · <a href="../guia/etapa-0.html">Etapas</a> · <a href="../fuentes_y_limites.html">Fuentes y límites</a> · <a href="../registro_de_cobertura.csv">Registro de cobertura</a></p>
+</footer>
+<script>
+(function(){
+  function abrir(src){
+    var o=document.createElement('div'); o.className='lightbox-ov';
+    var i=document.createElement('img'); i.src=src; o.appendChild(i);
+    function cerrar(){o.remove(); document.removeEventListener('keydown', onkey);}
+    function onkey(e){ if(e.key==='Escape') cerrar(); }
+    o.addEventListener('click', cerrar);
+    document.addEventListener('keydown', onkey);
+    document.body.appendChild(o);
+  }
+  document.addEventListener('DOMContentLoaded', function(){
+    document.querySelectorAll('figure img, main img').forEach(function(img){
+      img.style.cursor='zoom-in';
+      img.addEventListener('click', function(){ abrir(img.currentSrc||img.src); });
+    });
+  });
+})();
+</script>
+</body>
+</html>

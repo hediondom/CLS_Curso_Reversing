@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>6.5 · Minifilters y callbacks: observación del sistema de archivos</title>
+<meta name="description" content="Entender dónde se conecta un minifilter, cómo lo ordenan altitudes y grupos de carga, qué callbacks observa, a qué IRQL corren y qué evidencia usar para analizar uno; sin interceptar ni alterar datos ajenos.">
+<link rel="stylesheet" href="../guia/estilo.css">
+</head>
+<body>
+<a class="salto" href="#contenido">Saltar al contenido</a>
+<header class="cabecera">
+  <div class="marca"><a href="../00_EMPEZAR_AQUI.html">CLS · Curso de reversing</a> <span class="edicion">edición 5 · 27/10/2026</span></div>
+  <nav class="principal" aria-label="Navegación principal">
+    <a href="../00_EMPEZAR_AQUI.html">Inicio</a>
+    <a href="../guia/index.html">Curso</a>
+    <a href="../materiales.html">Materiales</a>
+    <a href="../fichas/index.html">Fichas</a>
+    <a href="../glosario.html">Glosario</a>
+    <a href="../preguntas_y_respuestas.html">Repaso</a>
+    <a href="../buscar.html">Buscar</a>
+  </nav>
+</header>
+<main id="contenido">
+<nav class="migas" aria-label="Ubicación"><a href="../00_EMPEZAR_AQUI.html">Inicio</a><span aria-hidden="true">›</span><a href="../guia/index.html">Curso</a><span aria-hidden="true">›</span><span>Etapa 6 · Kernel y drivers (rama optativa)</span></nav><h1 id="minifilters-y-callbacks-observación-del-sistema-de-archivos">Minifilters y callbacks: observación del sistema de archivos</h1>
+<aside class="callout aviso"><p class="callout-titulo">Alcance de lectura</p><p>No construyas un filtro para bloquear, cambiar o capturar archivos de terceros. La práctica usa documentación, una muestra didáctica y archivos descartables de la VM. No cargues, descargues, adjuntes ni separes filtros del sistema.</p></aside>
+<aside class="callout nota"><p class="callout-titulo">Propósito</p><p>Ubicar un minifilter en la pila de filesystem y describir pre/post callbacks, orden y límites de observación. Al terminar deberías poder leer la lista de filtros de una VM, ubicar cada uno por su altitud y explicar qué puede y qué no puede haber visto de una operación.</p></aside>
+<p><strong>Prerrequisitos</strong></p>
+<ul><li><em>Obligatorios:</em> <a href="6-01-arquitectura-kernel.html">6.1 I/O y stacks</a>, <a href="6-03-debug-kernel.html">6.3 WinDbg</a>.</li><li><em>Recomendados:</em> <a href="6-04-revision-driver.html">6.4 revisión de drivers</a>.</li></ul>
+<h2 id="funcionamiento">Funcionamiento</h2>
+<p>Un minifilter se conecta a una o más pilas de filesystem y puede recibir callbacks antes y después de operaciones de I/O. El Filter Manager y el registro de operaciones ordenan la interacción con otros filtros. Según propósito puede observar, modificar o impedir operaciones; esta lección estudia la observación y el orden conceptual, no modifica contenido.</p>
+<p>Una operación visible en un callback no necesariamente llega al disco ni representa una acción completa: puede fallar, cancelarse, ser reintentada o transformarse en otra operación. Correlacioná status, contexto, proceso y archivo de prueba.</p>
+<h2 id="filter-manager-instancias-y-frames">Filter Manager, instancias y frames</h2>
+<p>El <strong>Filter Manager</strong> (<code>FltMgr.sys</code>) es un driver del sistema que se activa cuando se carga un minifilter y se adjunta a la pila de filesystem de cada volumen. Un minifilter <strong>no</strong> se adjunta directamente: se <strong>registra</strong> ante el Filter Manager con los tipos de operación que quiere ver. La adhesión de un minifilter a un volumen, a una altitud determinada, se llama <strong>instancia</strong>. Para convivir con filtros heredados (<em>legacy</em>), el Filter Manager puede tener varios <strong>frames</strong> en la pila, cada uno cubriendo un rango de altitudes.</p>
+<p>Un minifilter puede recibir tres clases de operaciones: las basadas en IRP, las de <strong>fast I/O</strong> y las de callbacks del sistema de archivos. Una misma acción del usuario puede llegar por un camino u otro, así que “no vi el IRP” no significa “no hubo operación”.</p>
+<h2 id="altitudes-y-grupos-de-carga">Altitudes y grupos de carga</h2>
+<p>Cada minifilter tiene una <strong>altitud</strong>: un número (interpretado como decimal) que fija su posición en la pila. Microsoft asigna las altitudes y define <strong>grupos de carga</strong> con rangos por tipo de producto. Algunos ejemplos de la tabla oficial:</p>
+<div class="tabla"><table>
+<thead><tr>
+<th>Grupo de carga</th>
+<th>Rango de altitud</th>
+<th>Propósito declarado</th>
+</tr></thead><tbody>
+<tr><td>FSFilter Activity Monitor</td><td>360000–389999</td><td>Observar e informar sobre la E/S de archivos</td></tr>
+<tr><td>FSFilter Anti-Virus</td><td>320000–329999</td><td>Detectar y desinfectar durante la E/S</td></tr>
+<tr><td>FSFilter Replication</td><td>300000–309999</td><td>Replicar datos a servidores remotos</td></tr>
+<tr><td>FSFilter Content Screener</td><td>260000–269999</td><td>Impedir la creación de ciertos archivos o contenidos</td></tr>
+<tr><td>FSFilter Encryption</td><td>140000–149999</td><td>Cifrar y descifrar durante la E/S</td></tr>
+<tr><td>FSFilter Virtualization</td><td>130000–139999</td><td>Virtualizar rutas de archivo</td></tr>
+</tbody></table></div>
+<p>Para el análisis, la altitud es una <strong>pista de propósito</strong>: un filtro en el rango de antivirus probablemente pertenece a un producto de seguridad. Microsoft publica además una lista de altitudes asignadas con empresa y nombre de archivo, útil para identificar un filtro desconocido. Que la altitud caiga en un rango no prueba qué hace el filtro, pero un filtro sin correspondencia en la lista pública es algo a preguntar.</p>
+<h2 id="orden-de-los-callbacks">Orden de los callbacks</h2>
+<p>Cuando el Filter Manager recibe una operación, llama a los <strong>preoperation callbacks</strong> en orden de altitud <strong>de mayor a menor</strong>, y después, al completarse, a los <strong>postoperation callbacks</strong> en orden <strong>inverso</strong>, de menor a mayor. Un filtro alto ve la operación primero en la ida y último en la vuelta.</p>
+<p><strong>Qué puede decidir un preoperation callback</strong> (valores documentados):</p>
+<div class="tabla"><table>
+<thead><tr>
+<th>Valor devuelto</th>
+<th>Significado</th>
+</tr></thead><tbody>
+<tr><td><code>FLT_PREOP_SUCCESS_NO_CALLBACK</code></td><td>Deja pasar la operación y no quiere su postoperation</td></tr>
+<tr><td><code>FLT_PREOP_SUCCESS_WITH_CALLBACK</code></td><td>Deja pasar y quiere ver el resultado final en el postoperation</td></tr>
+<tr><td><code>FLT_PREOP_PENDING</code></td><td>La deja pendiente para completarla o continuarla después</td></tr>
+<tr><td><code>FLT_PREOP_SYNCHRONIZE</code></td><td>Pide que el postoperation corra en el mismo hilo que el pre</td></tr>
+<tr><td><code>FLT_PREOP_COMPLETE</code></td><td>Termina la operación ahí, con un estado final propio</td></tr>
+</tbody></table></div>
+<p><code>FLT_PREOP_COMPLETE</code> es el caso en que un filtro <strong>impide</strong> o <strong>responde</strong> una operación sin que llegue a los filtros inferiores ni al sistema de archivos: por eso un filtro alto puede hacer que otro, más bajo, nunca vea algo.</p>
+<p><strong>IRQL y contexto.</strong> Un preoperation se llama a <code>PASSIVE_LEVEL</code> o <code>APC_LEVEL</code>, casi siempre en el hilo que originó la E/S. Un postoperation, como una rutina de completion, se llama a IRQL de hasta <code>DISPATCH_LEVEL</code> y en un hilo arbitrario, salvo excepciones documentadas (post-create a <code>PASSIVE_LEVEL</code> en el hilo original, operaciones sincronizadas y fast I/O). Esto explica por qué un filtro bien escrito toma en el pre la información que necesitará en el post.</p>
+<h2 id="inspección-de-solo-lectura">Inspección de solo lectura</h2>
+<ul><li><strong>En la VM, con privilegios de administrador:</strong> <code>fltmc filters</code> lista los minifilters cargados con su altitud y cantidad de instancias, y <code>fltmc instances</code> muestra en qué volúmenes está cada uno. Las otras órdenes de <code>fltmc</code> (cargar, descargar, adjuntar, separar) <strong>no</strong> se usan en este curso.</li><li><strong>Con el depurador de kernel de la 6.3:</strong> la extensión <code>!fltkd</code> ofrece <code>!filters</code>, <code>!frames</code>, <code>!instance</code> y <code>!volumes</code>, y <code>!cbd</code>, el equivalente de <code>!irp</code> para los datos de callback del Filter Manager.</li></ul>
+<h2 id="ejemplo-trabajado">Ejemplo trabajado</h2>
+<p><em>(Flujo esquemático ficticio.)</em></p>
+<pre><code class="lenguaje-text">app solicita abrir C:\Lab\sample.txt
+  -&gt; pre-operation callback (observa operación/flags)
+  -&gt; filesystem y filtros inferiores
+  -&gt; post-operation callback (status final/contexto)
+  -&gt; app recibe resultado</code></pre>
+<p>El callback de pre-op no prueba que la apertura haya tenido éxito; el status final aparece después. Un driver distinto puede alterar el orden observado.</p>
+<p>Ficha de inventario de una VM (ilustrativa; nombres y altitudes ficticios):</p>
+<div class="tabla"><table>
+<thead><tr>
+<th>Filtro</th>
+<th>Altitud</th>
+<th>Grupo inferido</th>
+<th>Instancias</th>
+<th>Lectura</th>
+</tr></thead><tbody>
+<tr><td><code>labmon</code></td><td>370100</td><td>Activity Monitor</td><td>C:, D:</td><td>Observa E/S en ambos volúmenes</td></tr>
+<tr><td><code>labav</code></td><td>321500</td><td>Anti-Virus</td><td>C:</td><td>Ve la operación <strong>después</strong> de <code>labmon</code> en la ida y <strong>antes</strong> en la vuelta</td></tr>
+<tr><td><code>labcrypt</code></td><td>141000</td><td>Encryption</td><td>D:</td><td>Si cifra, los filtros más altos ven datos en claro y los más bajos, cifrados</td></tr>
+</tbody></table></div>
+<p>Lo que <strong>no</strong> se puede afirmar con esta ficha: qué hace cada filtro con las operaciones, si alguno completa operaciones en el pre, ni a qué producto pertenece sin contrastar la lista pública de altitudes y el inventario de software.</p>
+<h2 id="práctica">Práctica</h2>
+<p>Lee el diagrama y callbacks de una muestra oficial de minifilter sin instalarla. Opcionalmente, inspecciona un minifilter ya presente en una VM con herramientas administrativas de solo lectura y registra nombre/altitud/estado. No descargues ni cambies filtros del sistema. Si se usa una muestra cargada por el instructor, solo observa accesos a archivos creados para el lab y revierte snapshot.</p>
+<ol><li>En la muestra, enumerá qué operaciones registra, qué devuelve cada pre y si hay post.</li><li>En la VM, completá la ficha de inventario con <code>fltmc filters</code> y <code>fltmc instances</code>.</li><li>Ubicá cada filtro en su grupo por la altitud y contrastalo con la lista pública de altitudes asignadas.</li></ol>
+<h2 id="entregable">Entregable</h2>
+<p>Diagrama de stack con altitudes, puntos pre/post, ficha de inventario, datos observados, límites y confirmación de que no se alteraron archivos ni filtros de la máquina.</p>
+<h2 id="repaso">Repaso</h2>
+<details class="qa"><summary>¿Pre-operation demuestra que la operación se completó?</summary><div class="respuesta"><p>No. La operación aún puede fallar o cancelarse; hay que leer resultado/post-op.</p></div></details>
+<details class="qa"><summary>¿Un minifilter siempre modifica datos?</summary><div class="respuesta"><p>No. Puede observar, filtrar o modificar; depende de su implementación.</p></div></details>
+<details class="qa"><summary>¿En qué orden se llaman los callbacks de varios minifilters?</summary><div class="respuesta"><p>Los pre, de mayor a menor altitud; los post, en orden inverso.</p></div></details>
+<details class="qa"><summary>¿Qué significa <code>FLT_PREOP_COMPLETE</code> para los filtros inferiores?</summary><div class="respuesta"><p>Que la operación terminó en ese filtro: los inferiores y el sistema de archivos no la ven.</p></div></details>
+<details class="qa"><summary>¿Por qué un postoperation no puede usar memoria paginada en general?</summary><div class="respuesta"><p>Porque puede correr hasta <code>DISPATCH_LEVEL</code> en un hilo arbitrario, salvo las excepciones documentadas.</p></div></details>
+<details class="qa"><summary>¿Qué te dice la altitud de un filtro?</summary><div class="respuesta"><p>Su posición en la pila y, por el rango, el tipo de producto declarado; no prueba qué hace.</p></div></details>
+<details class="qa"><summary>¿Por qué no retirar un filtro desconocido durante análisis?</summary><div class="respuesta"><p>Puede pertenecer al sistema o producto crítico; documenta y consulta al administrador para preservar estabilidad/evidencia.</p></div></details>
+<aside class="callout nota"><p class="callout-titulo">Puerta optativa</p><p>Podés explicar el recorrido de una operación, ubicar filtros por altitud y grupo, distinguir callback previo de resultado final, explicar el efecto de cada valor de retorno del pre y documentar un inventario con alcance y límites.</p></aside>
+<aside class="callout nota"><p class="callout-titulo">Lo que queda fuera</p><p>Escribir minifilters, contextos y su gestión, comunicación con user mode por puertos de filtro, filtros heredados en detalle y otros callbacks del kernel (procesos, registro, objetos) no se desarrollan.</p></aside>
+<h2 id="fuentes">Fuentes</h2>
+<ul><li>Microsoft Learn: <a href="https://learn.microsoft.com/en-us/windows-hardware/drivers/ifs/about-file-system-filter-drivers" rel="noopener" target="_blank">About File System Filter Drivers</a>, <a href="https://learn.microsoft.com/en-us/windows-hardware/drivers/ifs/filter-manager-concepts" rel="noopener" target="_blank">Filter Manager concepts</a>, <a href="https://learn.microsoft.com/en-us/windows-hardware/drivers/ifs/writing-preoperation-callback-routines" rel="noopener" target="_blank">Writing Preoperation Callback Routines</a>, <a href="https://learn.microsoft.com/en-us/windows-hardware/drivers/ifs/writing-postoperation-callback-routines" rel="noopener" target="_blank">Writing Postoperation Callback Routines</a>.</li><li>Microsoft Learn, altitudes y herramientas: <a href="https://learn.microsoft.com/en-us/windows-hardware/drivers/ifs/load-order-groups-and-altitudes-for-minifilter-drivers" rel="noopener" target="_blank">Load Order Groups and Altitudes for Minifilter Drivers</a>, <a href="https://learn.microsoft.com/en-us/windows-hardware/drivers/ifs/allocated-altitudes" rel="noopener" target="_blank">Allocated filter altitudes</a>, <a href="https://learn.microsoft.com/en-us/windows-hardware/drivers/ifs/development-and-testing-tools" rel="noopener" target="_blank">Tools for Minifilter Development and Testing (Fltmc, !fltkd)</a>.</li></ul>
+<aside class="callout nota"><p class="callout-titulo">Etiquetas</p><p><strong>Observado en CLS:</strong> monitoreo de procesos como contexto. <strong>Conocimiento externo:</strong> Filter Manager/minifilters, altitudes, valores de retorno e IRQL de callbacks. <strong>Ejemplo ilustrativo:</strong> flujo de archivo y ficha de inventario ficticia. <strong>Laboratorio verificado:</strong> no.</p></aside>
+</main>
+<footer class="pie">
+  <p>Material educativo y defensivo. Las prácticas se limitan a programas propios, software abierto o crackmes diseñados para aprender. No se enseña a eludir licencias, DRM ni controles de acceso.</p>
+  <p><a href="../00_EMPEZAR_AQUI.html">Inicio</a> · <a href="../guia/etapa-0.html">Etapas</a> · <a href="../fuentes_y_limites.html">Fuentes y límites</a> · <a href="../registro_de_cobertura.csv">Registro de cobertura</a></p>
+</footer>
+</body>
+</html>

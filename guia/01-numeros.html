@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Etapa 1 · Bits, bytes, hexadecimal y números con signo</title>
+<meta name="description" content="La aritmética mínima para leer un debugger: binario, hexadecimal, complemento a dos, little-endian y tamaños.">
+<link rel="stylesheet" href="../guia/estilo.css">
+</head>
+<body>
+<a class="salto" href="#contenido">Saltar al contenido</a>
+<header class="cabecera">
+  <div class="marca"><a href="../00_EMPEZAR_AQUI.html">CLS · Curso de reversing</a> <span class="edicion">edición 5 · 27/10/2026</span></div>
+  <nav class="principal" aria-label="Navegación principal">
+    <a href="../00_EMPEZAR_AQUI.html">Inicio</a>
+    <a href="../guia/index.html">Curso</a>
+    <a href="../materiales.html">Materiales</a>
+    <a href="../fichas/index.html">Fichas</a>
+    <a href="../glosario.html">Glosario</a>
+    <a href="../preguntas_y_respuestas.html">Repaso</a>
+    <a href="../buscar.html">Buscar</a>
+  </nav>
+</header>
+<main id="contenido">
+<nav class="migas" aria-label="Ubicación"><a href="../00_EMPEZAR_AQUI.html">Inicio</a><span aria-hidden="true">›</span><a href="../guia/index.html">Curso</a><span aria-hidden="true">›</span><span>Etapa 1 · Fundamentos</span></nav><h1 id="bits-bytes-hexadecimal-y-números-con-signo">Bits, bytes, hexadecimal y números con signo</h1>
+<aside class="callout nota"><p class="callout-titulo">Objetivo de la lección</p><p>Al terminar vas a poder convertir entre binario, hexadecimal y decimal sin calculadora, interpretar un valor de 32 bits como positivo o negativo según el contexto, y leer los bytes de un número en memoria sin confundir el orden. También vas a poder verificar una dirección virtual contra el archivo en disco.</p></aside>
+<p><strong>Prerrequisitos:</strong> Etapa 0 (laboratorio y bitácora). <strong>Duración sugerida:</strong> 4 a 5 horas, con ejercicios. Estimación aproximada de esta guía.</p>
+<h2 id="por-qué-esto-no-es-un-trámite">Por qué esto no es un trámite</h2>
+<p>Cuando abrís un programa en un debugger ves tres columnas: direcciones, bytes y una versión legible de esos bytes. Todo está en hexadecimal. Si no podés pasar de <code>FB</code> a <code>251</code> ni entender por qué <code>FFFFFFFF</code> a veces es <code>-1</code>, cada pantalla se vuelve un jeroglífico y terminás copiando pasos sin entender.</p>
+<p>La buena noticia: el reversing cotidiano usa muy pocos conceptos numéricos, y son los mismos siempre. Esta lección los junta.</p>
+<h2 id="bit-byte-y-nibble">Bit, byte y nibble</h2>
+<p>Un <strong>bit</strong> es la unidad mínima: vale 0 o 1. Un <strong>byte</strong> son 8 bits. Un <strong>nibble</strong> son 4 bits, que es exactamente lo que representa un dígito hexadecimal.</p>
+<p>Por eso hexadecimal y binario se llevan tan bien: cada dígito hexadecimal equivale a cuatro bits.</p>
+<div class="tabla"><table>
+<thead><tr>
+<th>Hex</th>
+<th>Binario</th>
+<th>Decimal</th>
+</tr></thead><tbody>
+<tr><td>0</td><td>0000</td><td>0</td></tr>
+<tr><td>1</td><td>0001</td><td>1</td></tr>
+<tr><td>2</td><td>0010</td><td>2</td></tr>
+<tr><td>4</td><td>0100</td><td>4</td></tr>
+<tr><td>8</td><td>1000</td><td>8</td></tr>
+<tr><td>A</td><td>1010</td><td>10</td></tr>
+<tr><td>F</td><td>1111</td><td>15</td></tr>
+</tbody></table></div>
+<p>Para leer un byte en hexadecimal, separá los dos dígitos y convertí cada uno por separado:</p>
+<pre><code class="lenguaje-text">0x8F  -&gt;  8 = 1000     F = 1111   -&gt;  1000 1111  -&gt;  128 + 8 + 4 + 2 + 1 = 143
+0xFB  -&gt;  F = 1111     B = 1011   -&gt;  1111 1011  -&gt;  128+64+32+16+8+2+1 = 251</code></pre>
+<p>El método mental que usa Solid en el capítulo 01 es asignar a cada bit su potencia de dos, de derecha a izquierda: 1, 2, 4, 8, 16, 32, 64, 128. Para representar 10, prendés 8 y 2:</p>
+<pre><code class="lenguaje-text">bit:     7   6   5   4   3   2   1   0
+valor: 128  64  32  16   8   4   2   1
+10  -&gt;   0   0   0   0   1   0   1   0     = 0x0A</code></pre>
+<p>Esto aparece explicado en el capítulo 01 (<a class="fuente" href="../../CLS_resultados_intermedios/transcripciones/extraidos/Reversing%20desde%20cero%20%28Ricardo%20y%20Solid%29/Ricardo%20Narvaja%20y%20Solid%20-%20Reversing%20desde%20cero_01%20x64dbg%20primeros%20pasos_01%20x64dbg%20primeros%20pasos.txt">Reversing desde cero, cap. 01</a>, 00:19:00–00:22:00).</p>
+<aside class="callout aviso"><p class="callout-titulo">El audio se equivoca en una palabra</p><p>En el capítulo 01, alrededor de 00:22:33, la transcripción dice que "el byte más significativo es el de la derecha". La idea que quiere transmitir es correcta —en memoria, el byte <strong>menos</strong> significativo va primero— pero la palabra está invertida. Quedate con la regla de abajo, no con la frase del audio.</p></aside>
+<aside class="callout nota"><p class="callout-titulo">En el Curso IDA: convertir bases sin calculadora</p><p>El Curso IDA aprovecha la <strong>barra de Python</strong> que IDA trae en la parte de abajo para pasar de una base a otra al instante: <code>hex(143)</code> devuelve <code>0x8f</code>, <code>bin(10)</code> te da <code>0b1010</code>, <code>0x8f</code> tipeado solo te lo muestra en decimal. Si esa barra no aparece, es que falta el soporte de Python de IDA (reinstalarlo lo soluciona) (<a href="../ida_tutes/2.html">Curso IDA · tute 2, Sistemas de numeración</a>).</p></aside>
+<h2 id="little-endian-cómo-se-guarda-un-número-en-memoria">Little-endian: cómo se guarda un número en memoria</h2>
+<p>x86 y x64 son <strong>little-endian</strong>: el byte menos significativo (el de menor peso) se guarda en la dirección más baja. Si en memoria ves estos cuatro bytes:</p>
+<pre><code class="lenguaje-text">dirección:  1000  1001  1002  1003
+contenido:    0D    0C    0B    0A</code></pre>
+<p>el valor de 32 bits es <code>0x0A0B0C0D</code>, no <code>0x0D0C0B0A</code>. Para leerlo, das vuelta los bytes.</p>
+<p>La confusión típica es Mirar la columna de bytes del debugger y creer que ya es el número. No: es la representación <strong>en memoria</strong>. Los registros, en cambio, te muestran el valor ya interpretado.</p>
+<p>El capítulo 01 lo explica con un ejemplo de cuatro bytes <code>41 42 43 44</code> y aclara que en memoria se leen al revés (00:22:33–00:23:30). El capítulo 02 lo vuelve a mostrar al mover un valor desde una dirección a <code>EAX</code>: los bytes <code>36 00 00 38</code> en memoria se convierten en <code>0x38000036</code> en el registro (<a class="fuente" href="../../CLS_resultados_intermedios/transcripciones/extraidos/Reversing%20desde%20cero%20%28Ricardo%20y%20Solid%29/Ricardo%20Narvaja%20y%20Solid%20-%20Reversing%20desde%20cero_02%20Instrucciones%201_02%20Instrucciones%201.txt">Reversing desde cero, cap. 02</a>, 00:07:12–00:07:50).</p>
+<h2 id="números-con-signo-complemento-a-dos">Números con signo: complemento a dos</h2>
+<p>Un mismo patrón de bits puede interpretarse de dos maneras. <code>0xFB</code> es 251 si el dato es <strong>sin signo</strong> y −5 si es <strong>con signo</strong>. El procesador no guarda el signo en un bit aparte: usa una convención llamada <strong>complemento a dos</strong>.</p>
+<p>La regla práctica:</p>
+<ul><li>Si el bit más alto es 0, el número es positivo y vale lo mismo que en sin signo.</li><li>Si el bit más alto es 1, el número es negativo. Para saber cuánto vale, invertí todos los bits y sumá 1 (o restá el valor a 2^n).</li></ul>
+<p>Ejemplo con 8 bits:</p>
+<pre><code class="lenguaje-text"> 5  = 0000 0101
+-5  = 1111 1010 + 1 = 1111 1011 = 0xFB</code></pre>
+<p>Comprobación: <code>0xFB</code> = 251. Y 256 − 251 = 5, así que representa −5. La relación es <code>valor_con_signo = valor_sin_signo − 2^8</code>.</p>
+<p>Los rangos que hay que saber de memoria:</p>
+<div class="tabla"><table>
+<thead><tr>
+<th>Tamaño</th>
+<th>Nombre</th>
+<th>Bits</th>
+<th>Sin signo</th>
+<th>Con signo</th>
+</tr></thead><tbody>
+<tr><td>1 byte</td><td>BYTE</td><td>8</td><td>0 a 255</td><td>−128 a 127</td></tr>
+<tr><td>2 bytes</td><td>WORD</td><td>16</td><td>0 a 65.535</td><td>−32.768 a 32.767</td></tr>
+<tr><td>4 bytes</td><td>DWORD</td><td>32</td><td>0 a 4.294.967.295</td><td>−2.147.483.648 a 2.147.483.647</td></tr>
+<tr><td>8 bytes</td><td>QWORD</td><td>64</td><td>0 a 18.446.744.073.709.551.615</td><td>−9.223.372.036.854.775.808 a 9.223.372.036.854.775.807</td></tr>
+</tbody></table></div>
+<p>Por eso <code>0xFFFFFFFF</code> es 4.294.967.295 sin signo y −1 con signo. Y <code>0x7FFFFFFF</code> es el máximo positivo de 32 bits: 2.147.483.647.</p>
+<p>El capítulo 03 explica la idea de dividir el rango en dos mitades, una positiva y otra negativa (<a class="fuente" href="../../CLS_resultados_intermedios/transcripciones/extraidos/Reversing%20desde%20cero%20%28Ricardo%20y%20Solid%29/Ricardo%20Narvaja%20y%20Solid%20-%20Reversing%20desde%20cero_03%20Registros%2C%20Flags%20y%20N%C3%BAmeros_03%20Registros%2C%20Flags%20y%20N%C3%BAmeros.txt">Reversing desde cero, cap. 03</a>, 00:14:46–00:17:10). El audio se enreda al pasar de DWORD a WORD y dice un rango que no corresponde; la tabla de arriba es la que vale.</p>
+<aside class="callout aviso"><p class="callout-titulo">El tamaño importa: una suma que "se da vuelta"</p><p>Si un programa acumula valores en un registro de <strong>un byte</strong>, al pasar de <code>0xFF</code> el resultado se envuelve: <code>0xFF + 2 = 0x01</code>, porque solo se guarda la parte baja. Lo mismo vale para <code>WORD</code> o <code>DWORD</code> en su tope. Es un detalle que cambia por completo lo que compara una función. El capítulo 34 lo usa: un programa suma los caracteres que ingresás en un byte, y una suma que pasa de <code>0xFF</code> deja un valor chico (por ejemplo <code>0x149</code> guarda <code>0x49</code>). Cuando leas una comparación, fijate <strong>qué tamaño</strong> tiene el acumulador (<a class="fuente" href="../../CLS_resultados_intermedios/transcripciones/extraidos/Reversing%20desde%20cero%20%28Ricardo%20y%20Solid%29/Ricardo%20Narvaja%20y%20Solid%20-%20Reversing%20desde%20cero_34%20Reverseando%20sin%20s%C3%ADmbolos_34%20Reverseando%20sin%20s%C3%ADmbolos.txt">Reversing desde cero, cap. 34</a>).</p></aside>
+<h2 id="ejemplo-paso-a-paso-de-una-dirección-virtual-al-offset-del-archivo">Ejemplo paso a paso: de una dirección virtual al offset del archivo</h2>
+<p>Este es el cálculo que más vas a repetir cuando pases de un debugger a un editor hexadecimal o a un desensamblador. El capítulo 05 lo hace con un ejecutable concreto (<a class="fuente" href="../../CLS_resultados_intermedios/transcripciones/extraidos/Reversing%20desde%20cero%20%28Ricardo%20y%20Solid%29/Ricardo%20Narvaja%20y%20Solid%20-%20Reversing%20desde%20cero_05%20Virtual%20Adress%2C%20RVA%2C%20Offsets%20y%20Desplazamientos_05%20Virtual%20Adress%2C%20RVA%2C%20Offsets%20y%20Desplazamientos.txt">Reversing desde cero, cap. 05</a>, 00:00:40–00:04:20).</p>
+<p>Datos del ejemplo:</p>
+<ul><li>Image Base: <code>0x6D0000</code></li><li>Dirección virtual (VA) de la instrucción: <code>0x6D1372</code></li><li>Tamaño reservado para el header en memoria: <code>0x1000</code></li><li><code>PointerToRawData</code> de la sección <code>.text</code>: <code>0x400</code></li></ul>
+<p><strong>Paso 1.</strong> Calculá la RVA (Relative Virtual Address), que es la distancia desde la base:</p>
+<pre><code class="lenguaje-text">RVA = VA - Image Base
+    = 0x6D1372 - 0x6D0000
+    = 0x1372</code></pre>
+<p><strong>Paso 2.</strong> Restá el espacio que el header ocupa en memoria (<code>0x1000</code>) y sumá el offset real donde empieza <code>.text</code> en el archivo (<code>0x400</code>):</p>
+<pre><code class="lenguaje-text">File Offset = RVA - 0x1000 + 0x400
+            = 0x1372 - 0x1000 + 0x400
+            = 0x372 + 0x400
+            = 0x772</code></pre>
+<p><strong>Paso 3.</strong> Verificá en el archivo. En el offset <code>0x772</code> del <code>.exe</code> deberían estar los bytes <code>E8 C4 03 00 00</code>, los mismos que muestra el debugger en esa dirección. El capítulo 05 lo comprueba con un editor hexadecimal (00:03:41–00:04:30).</p>
+<aside class="callout nota"><p class="callout-titulo">Por qué se resta 0x1000 y no el tamaño real del header</p><p>El cargador de Windows alinea el header a <code>0x1000</code> en memoria, aunque el header real sea más chico (en el ejemplo, <code>.text</code> empieza en el archivo en <code>0x400</code>). Por eso la fórmula usa la diferencia entre la alineación de memoria y el offset real de la sección. Cada sección tiene su propio <code>PointerToRawData</code>; no uses <code>0x400</code> para <code>.rdata</code> ni para <code>.data</code>.</p></aside>
+<h2 id="ejemplo-paso-a-paso-a-dónde-salta-un-call-directo">Ejemplo paso a paso: a dónde salta un <code>call</code> directo</h2>
+<p>En un <code>call</code> directo, el opcode <code>E8</code> va seguido de un desplazamiento de 4 bytes. La dirección destino se calcula sumando al desplazamiento la dirección de la <strong>instrucción siguiente</strong> (no la del <code>call</code>).</p>
+<p>En el capítulo 05, el <code>call</code> está en <code>0x6D1372</code>, mide 5 bytes y su desplazamiento es <code>0x3C4</code>:</p>
+<pre><code class="lenguaje-text">destino = VA_del_call + tamaño_del_call + desplazamiento
+        = 0x6D1372 + 5 + 0x3C4
+        = 0x6D1377 + 0x3C4
+        = 0x6D173B</code></pre>
+<p>El debugger muestra <code>0x6D173B</code> como destino. Si el salto fuera hacia atrás, el desplazamiento sería negativo y se rellenaría con <code>FF</code> a la izquierda antes de sumar (cap. 05, 00:09:00–00:12:00).</p>
+<h2 id="práctica">Práctica</h2>
+<ol><li>Convertí a hexadecimal: 42, 200, 255, 1024, 4096.</li><li>Convertí a decimal: <code>0x2A</code>, <code>0xC8</code>, <code>0xFF</code>, <code>0x400</code>, <code>0x1000</code>.</li><li>¿Qué valor con signo representa <code>0xFFFFFFFB</code> en 32 bits? ¿Y sin signo?</li><li>Escribí los bytes que ocupa <code>0x11223344</code> en memoria little-endian.</li><li>Con Image Base <code>0x400000</code>, VA <code>0x401040</code>, header <code>0x1000</code> y <code>.text</code> en <code>0x400</code>, calculá el file offset.</li><li>Un <code>call</code> en <code>0x401000</code> tiene desplazamiento <code>0x20</code>. ¿A qué dirección salta? (Ojo con el tamaño de la instrucción.)</li><li>Abrí PowerShell y comprobá tus conversiones:</li></ol>
+<pre><code class="lenguaje-powershell">'{0:X}' -f 42          # 2A
+'{0:X8}' -f 4294967295 # FFFFFFFF
+[Convert]::ToInt32('FFFFFFFB',16)  # -5</code></pre>
+<h2 id="preguntas-de-repaso">Preguntas de repaso</h2>
+<p><strong>1. ¿Cuántos bits hay en un byte y cuántos dígitos hexadecimales lo representan?</strong> Ocho bits y dos dígitos hexadecimales, porque cada dígito representa cuatro bits.</p>
+<p><strong>2. ¿Por qué <code>0xFB</code> puede ser 251 o −5?</strong> Porque el patrón de bits es el mismo. El tipo del dato y la instrucción que lo usa deciden si se interpreta con signo o sin signo.</p>
+<p><strong>3. ¿Qué significa little-endian?</strong> Que el byte menos significativo se almacena en la dirección más baja. Para leer un valor de memoria hay que invertir el orden de los bytes.</p>
+<p><strong>4. ¿La dirección que muestra el debugger es la misma que la del archivo en disco?</strong> No. La del debugger es una dirección virtual; la del archivo es un offset. Se relacionan con la fórmula <code>offset = RVA − alineación_del_header + PointerToRawData</code>.</p>
+<p><strong>5. ¿Por qué el destino de un <code>call</code> se calcula desde la instrucción siguiente?</strong> Porque el desplazamiento se mide desde el final de la instrucción actual, que es donde el procesador ya actualizó <code>EIP</code>/<code>RIP</code>. Sumar el tamaño de la instrucción es parte del cálculo.</p>
+<h2 id="antes-de-avanzar">Antes de avanzar</h2>
+<p>Tenés que poder, sin mirar la tabla:</p>
+<ul><li>Pasar un byte de hexadecimal a binario y a decimal.</li><li>Explicar complemento a dos con el ejemplo de <code>0xFB</code>.</li><li>Escribir <code>0x0A0B0C0D</code> como bytes en memoria.</li><li>Calcular un file offset a partir de una VA y un <code>call</code> directo a partir de su desplazamiento.</li></ul>
+<aside class="callout nota"><p class="callout-titulo">Puerta de salida de la Etapa 1 · bloque 1</p><p>Si los ejercicios 3 a 6 te salen con seguridad, seguí con memoria y procesos. Si no, repetilos con lápiz y papel antes de abrir un debugger: la pantalla no perdona la aritmética floja.</p></aside>
+<h2 id="fuentes-de-esta-lección">Fuentes de esta lección</h2>
+<ul><li><a class="fuente" href="../../CLS_resultados_intermedios/transcripciones/extraidos/Reversing%20desde%20cero%20%28Ricardo%20y%20Solid%29/Ricardo%20Narvaja%20y%20Solid%20-%20Reversing%20desde%20cero_01%20x64dbg%20primeros%20pasos_01%20x64dbg%20primeros%20pasos.txt">Reversing desde cero, cap. 01</a> — bits, bytes, little-endian, tamaños (00:18:00–00:24:00).</li><li><a class="fuente" href="../../CLS_resultados_intermedios/transcripciones/extraidos/Reversing%20desde%20cero%20%28Ricardo%20y%20Solid%29/Ricardo%20Narvaja%20y%20Solid%20-%20Reversing%20desde%20cero_02%20Instrucciones%201_02%20Instrucciones%201.txt">Reversing desde cero, cap. 02</a> — lectura de un valor desde memoria (00:07:00–00:08:00).</li><li><a class="fuente" href="../../CLS_resultados_intermedios/transcripciones/extraidos/Reversing%20desde%20cero%20%28Ricardo%20y%20Solid%29/Ricardo%20Narvaja%20y%20Solid%20-%20Reversing%20desde%20cero_03%20Registros%2C%20Flags%20y%20N%C3%BAmeros_03%20Registros%2C%20Flags%20y%20N%C3%BAmeros.txt">Reversing desde cero, cap. 03</a> — números con signo (00:14:46–00:17:10).</li><li><a class="fuente" href="../../CLS_resultados_intermedios/transcripciones/extraidos/Reversing%20desde%20cero%20%28Ricardo%20y%20Solid%29/Ricardo%20Narvaja%20y%20Solid%20-%20Reversing%20desde%20cero_05%20Virtual%20Adress%2C%20RVA%2C%20Offsets%20y%20Desplazamientos_05%20Virtual%20Adress%2C%20RVA%2C%20Offsets%20y%20Desplazamientos.txt">Reversing desde cero, cap. 05</a> — VA, RVA, file offset y desplazamientos (00:00:40–00:12:00).</li><li><a href="../ida_tutes/2.html">Curso IDA · tute 2, Sistemas de numeración</a> — binario/decimal/hexadecimal y la barra de Python de IDA para convertir bases.</li></ul>
+<aside class="callout nota"><p class="callout-titulo">Capas de esta lección</p><p><strong>Contenido observado en CLS:</strong> el ejemplo numérico de la VA <code>0x6D1372</code>, la fórmula del offset y el cálculo del <code>call</code> a <code>0x6D173B</code>. <strong>Conocimiento externo:</strong> complemento a dos, rangos y aritmética hexadecimal. <strong>Recomendación editorial:</strong> el orden de los ejercicios y la advertencia sobre las imprecisiones del audio.</p></aside>
+</main>
+<footer class="pie">
+  <p>Material educativo y defensivo. Las prácticas se limitan a programas propios, software abierto o crackmes diseñados para aprender. No se enseña a eludir licencias, DRM ni controles de acceso.</p>
+  <p><a href="../00_EMPEZAR_AQUI.html">Inicio</a> · <a href="../guia/etapa-0.html">Etapas</a> · <a href="../fuentes_y_limites.html">Fuentes y límites</a> · <a href="../registro_de_cobertura.csv">Registro de cobertura</a></p>
+</footer>
+</body>
+</html>

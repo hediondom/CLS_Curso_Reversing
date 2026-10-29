@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Etapa 3 · .NET como primera victoria</title>
+<meta name="description" content="Entender el runtime .NET, leer IL y comparar fuente, IL y decompilación en un programa propio.">
+<link rel="stylesheet" href="../guia/estilo.css">
+</head>
+<body>
+<a class="salto" href="#contenido">Saltar al contenido</a>
+<header class="cabecera">
+  <div class="marca"><a href="../00_EMPEZAR_AQUI.html">CLS · Curso de reversing</a> <span class="edicion">edición 5 · 27/10/2026</span></div>
+  <nav class="principal" aria-label="Navegación principal">
+    <a href="../00_EMPEZAR_AQUI.html">Inicio</a>
+    <a href="../guia/index.html">Curso</a>
+    <a href="../materiales.html">Materiales</a>
+    <a href="../fichas/index.html">Fichas</a>
+    <a href="../glosario.html">Glosario</a>
+    <a href="../preguntas_y_respuestas.html">Repaso</a>
+    <a href="../buscar.html">Buscar</a>
+  </nav>
+</header>
+<main id="contenido">
+<nav class="migas" aria-label="Ubicación"><a href="../00_EMPEZAR_AQUI.html">Inicio</a><span aria-hidden="true">›</span><a href="../guia/index.html">Curso</a><span aria-hidden="true">›</span><span>Etapa 3 · .NET como primera victoria</span></nav><h1 id="etapa-3-net-como-primera-victoria">Etapa 3 · .NET como primera victoria</h1>
+<aside class="callout nota"><p class="callout-titulo">Objetivo medible</p><p>Entender el runtime .NET, leer IL y comparar fuente, IL y decompilación en un programa propio.</p></aside>
+<p><strong>Prerrequisitos:</strong> Etapa 2. <strong>Duración estimada:</strong> 7 a 10 horas. Es una estimación de esta guía, derivada de la suma de las lecciones; no es una duración declarada por CLS.</p>
+<h2 id="lecciones">Lecciones</h2>
+<div class="tabla"><table>
+<thead><tr>
+<th>#</th>
+<th>Lección</th>
+<th>Qué aprendés</th>
+</tr></thead><tbody>
+<tr><td>3.1</td><td><a href="03-dotnet-runtime.html">.NET: runtime, ensamblados y metadatos</a></td><td>CLR, IL, JIT, ensamblado y decompiladores.</td></tr>
+<tr><td>3.2</td><td><a href="03-dotnet-il.html">Leer IL y comparar fuente, IL y decompilación</a></td><td>Pila de evaluación, opcodes y reconstrucción.</td></tr>
+</tbody></table></div>
+<h2 id="recursos-de-cls-para-esta-etapa">Recursos de CLS para esta etapa</h2>
+<ul><li><a href="../fichas/reversing-desde-cero.html">Reversing desde cero (contexto de análisis)</a></li><li><a href="../fichas/teorias-numeradas.html">Teorias_Numeradas (títulos .NET, pendiente)</a></li></ul>
+<h2 id="evaluación-de-salida">Evaluación de salida</h2>
+<ul><li>Explicar C# → IL → JIT → CPU.</li><li>Leer un método IL de 20 instrucciones y decir qué devuelve.</li><li>Compilar Debug y Release y marcar tres diferencias.</li><li>Reconocer señales de ofuscación.</li></ul>
+<aside class="callout practica"><p class="callout-titulo">Entregable de la etapa</p><p>Un archivo en tu bitácora con: lecciones completadas, ejercicios resueltos, dudas abiertas y evidencia (capturas, valores, hashes). Sin evidencia no se considera aprobada.</p></aside>
+<h2 id="errores-frecuentes">Errores frecuentes</h2>
+<ul><li>Creer que el decompilador devuelve el código fuente exacto.</li><li>Asumir que .NET es inseguro por naturaleza.</li><li>Analizar software comercial para saltar licencias.</li></ul>
+<h2 id="qué-no-entra-en-esta-etapa">Qué no entra en esta etapa</h2>
+<p>Los temas que no tienen material revisado o que exceden el marco se listan en <a href="05-fuera-de-alcance.html">Kernel y otros territorios</a>. No los uses como atajo: cada rama tiene prerrequisitos.</p>
+<aside class="callout nota"><p class="callout-titulo">Volver</p><p><a href="index.html">Mapa del curso</a> · <a href="../00_EMPEZAR_AQUI.html">Inicio</a></p></aside>
+</main>
+<footer class="pie">
+  <p>Material educativo y defensivo. Las prácticas se limitan a programas propios, software abierto o crackmes diseñados para aprender. No se enseña a eludir licencias, DRM ni controles de acceso.</p>
+  <p><a href="../00_EMPEZAR_AQUI.html">Inicio</a> · <a href="../guia/etapa-0.html">Etapas</a> · <a href="../fuentes_y_limites.html">Fuentes y límites</a> · <a href="../registro_de_cobertura.csv">Registro de cobertura</a></p>
+</footer>
+</body>
+</html>

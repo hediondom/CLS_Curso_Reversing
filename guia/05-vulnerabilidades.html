@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Etapa 5 · Rama vulnerabilidades: entender el defecto, no armar un exploit</title>
+<meta name="description" content="Desbordes de memoria, mitigaciones y divulgación responsable, practicando solo con programas propios.">
+<link rel="stylesheet" href="../guia/estilo.css">
+</head>
+<body>
+<a class="salto" href="#contenido">Saltar al contenido</a>
+<header class="cabecera">
+  <div class="marca"><a href="../00_EMPEZAR_AQUI.html">CLS · Curso de reversing</a> <span class="edicion">edición 5 · 27/10/2026</span></div>
+  <nav class="principal" aria-label="Navegación principal">
+    <a href="../00_EMPEZAR_AQUI.html">Inicio</a>
+    <a href="../guia/index.html">Curso</a>
+    <a href="../materiales.html">Materiales</a>
+    <a href="../fichas/index.html">Fichas</a>
+    <a href="../glosario.html">Glosario</a>
+    <a href="../preguntas_y_respuestas.html">Repaso</a>
+    <a href="../buscar.html">Buscar</a>
+  </nav>
+</header>
+<main id="contenido">
+<nav class="migas" aria-label="Ubicación"><a href="../00_EMPEZAR_AQUI.html">Inicio</a><span aria-hidden="true">›</span><a href="../guia/index.html">Curso</a><span aria-hidden="true">›</span><span>Etapa 5 · Ramas opcionales</span></nav><h1 id="rama-vulnerabilidades-entender-el-defecto-no-armar-un-exploit">Rama vulnerabilidades: entender el defecto, no armar un exploit</h1>
+<aside class="callout nota"><p class="callout-titulo">Objetivo de la lección</p><p>Al terminar vas a poder explicar cómo un desborde de buffer puede pisar el return address, qué mitigaciones lo frenan (canary, NX, ASLR) y cómo se documentan y corrigen varias familias de defectos, y cómo se divulga una vulnerabilidad de forma responsable.</p></aside>
+<p><strong>Prerrequisitos:</strong> etapas 0 a 4, stack y formato PE. <strong>Duración sugerida:</strong> 5 horas. Estimación aproximada.</p>
+<h2 id="alcance">Alcance</h2>
+<p>Esta rama <strong>no enseña a explotar sistemas ajenos</strong>. Enseña a entender una clase de defecto, reconocerlo en código propio y explicar por qué las mitigaciones funcionan. Las prácticas se hacen con programas que escribís vos, en una VM local, sin red y sin datos reales.</p>
+<p>En CLS hay carpetas de exploiting (<code>EXPLOITING</code>, <code>EXPLOITING Y REVERSING USANDO HERRAMIENTAS FREE</code>, <code>CURSO DE ARM EXPLOIT</code>) y material de "EXPLOIT" en <code>mega_OTROS</code>. Son <strong>contenedores no revisados</strong>; el mapa los ubica en la Etapa 5. Esta lección no los usa como fuente y no reproduce sus técnicas.</p>
+<h2 id="el-defecto-escribir-más-de-lo-que-entra">El defecto: escribir más de lo que entra</h2>
+<pre><code class="lenguaje-c">#include &lt;string.h&gt;
+void copiar(char *entrada) {
+    char buffer[16];
+    strcpy(buffer, entrada);   // no verifica el tamaño
+}</code></pre>
+<p><code>buffer</code> tiene 16 bytes en el stack. Si <code>entrada</code> mide 20, <code>strcpy</code> escribe 4 bytes más allá del final. Esos bytes pisan lo que haya arriba en el stack: otras variables, el <code>EBP</code> guardado o el <strong>return address</strong>.</p>
+<pre><code class="lenguaje-text">stack de copiar():
++------------------+
+| return address   |  &lt;- si se pisa, el ret va a otra dirección
+| EBP guardado     |
+| buffer[16]       |  &lt;- strcpy escribe acá y sigue
++------------------+</code></pre>
+<p>Si el atacante controla la entrada y el programa no valida, puede intentar que el return address apunte a código que él eligió. Ese es el núcleo del <em>stack buffer overflow</em> clásico.</p>
+<aside class="callout peligro"><p class="callout-titulo">No es una receta</p><p>Esta explicación es conceptual. No incluye direcciones, offsets, shellcode ni pasos para lograr ejecución. Practicar eso contra sistemas ajenos es ilegal y está fuera del alcance del curso. El objetivo es reconocer el defecto y entender la mitigación.</p></aside>
+<h2 id="otras-familias-de-defectos-que-conviene-reconocer">Otras familias de defectos que conviene reconocer</h2>
+<p>El desbordamiento de buffer es solo una familia. En una revisión defensiva también conviene distinguir:</p>
+<ul><li><strong>Desbordamiento o wraparound de enteros:</strong> una longitud o un cálculo de tamaño se reduce o desborda antes de reservar/copiar memoria. Revisá límites, signo y operaciones de suma/multiplicación.</li><li><strong>Lectura/escritura fuera de límites:</strong> el índice o longitud excede el objeto. La escritura puede corromper memoria; la lectura puede exponer datos o fallar.</li><li><strong>Use-after-free y double free:</strong> se usa una referencia después de liberar el objeto, o se libera dos veces. Seguí el ciclo de vida y la propiedad de cada recurso.</li><li><strong>Format string:</strong> una entrada controlada se usa como formato; separá datos y cadena de formato.</li><li><strong>Condiciones de carrera:</strong> el estado cambia entre la comprobación y el uso; buscá sincronización y propiedad compartida.</li></ul>
+<p>La meta del curso es localizar la condición en código propio, reproducirla de forma inocua, explicar el impacto y corregir la causa. No se construyen payloads ni se convierten estos ejemplos en explotación.</p>
+<h2 id="mitigaciones">Mitigaciones</h2>
+<div class="tabla"><table>
+<thead><tr>
+<th>Mitigación</th>
+<th>Qué hace</th>
+<th>Cómo se ve</th>
+</tr></thead><tbody>
+<tr><td><strong>Stack canary</strong></td><td>Coloca un valor aleatorio antes del return address; si cambió, aborta</td><td><code>__security_cookie</code>, <code>__stack_chk_fail</code></td></tr>
+<tr><td><strong>NX / DEP</strong></td><td>Marca el stack como no ejecutable</td><td>Página sin permiso <code>X</code></td></tr>
+<tr><td><strong>ASLR (<code>/DYNAMICBASE</code>)</strong></td><td>Aleatoriza la base de las imágenes</td><td>Direcciones distintas en cada ejecución</td></tr>
+<tr><td><strong>SafeSEH / SEHOP</strong></td><td>Protege la cadena de manejadores SEH (32 bits)</td><td>Valida que el handler sea legítimo</td></tr>
+<tr><td><strong>CFG (<code>/guard:cf</code>)</strong></td><td>Valida los destinos de llamadas indirectas</td><td>Chequeo antes de un <code>call</code> indirecto</td></tr>
+<tr><td><strong>CET / Shadow Stack</strong></td><td>Protege la dirección de retorno por hardware</td><td>Aborta si el return address fue alterado</td></tr>
+</tbody></table></div>
+<p>El capítulo 15 muestra el <strong>security cookie</strong> de MSVC: el compilador guarda un valor calculado con XOR contra <code>RSP</code> y lo verifica antes de retornar. Si el buffer lo pisa, la verificación falla y el programa termina (<a class="fuente" href="../../CLS_resultados_intermedios/transcripciones/extraidos/Reversing%20desde%20cero%20%28Ricardo%20y%20Solid%29/Ricardo%20Narvaja%20y%20Solid%20-%20Reversing%20desde%20cero_15%20Ejercicio%202%20-%20An%C3%A1lisis%20est%C3%A1tico_15%20Ejercicio%202%20-%20An%C3%A1lisis%20est%C3%A1tico.txt">Reversing desde cero, cap. 15</a>, 00:07:34–00:08:00).</p>
+<p>ASLR se explica en el capítulo 26b: si la imagen se mueve, las direcciones absolutas dejan de ser predecibles (<a class="fuente" href="../../CLS_resultados_intermedios/transcripciones/extraidos/Reversing%20desde%20cero%20%28Ricardo%20y%20Solid%29/Ricardo%20Narvaja%20y%20Solid%20-%20Reversing%20desde%20cero_26b%20ASLR_26b%20ASLR.txt">Reversing desde cero, cap. 26b</a>, 00:01:53–00:02:30).</p>
+<h2 id="excepciones-y-explotación-el-caso-histórico-de-seh">Excepciones y explotación: el caso histórico de SEH</h2>
+<p>En Windows de 32 bits, los manejadores de excepciones se encadenan en el stack y <code>FS:[0]</code> apunta al primero (cap. 16b, 00:02:29). Durante años, los desbordes de stack se usaron para sobrescribir esa cadena y redirigir el flujo cuando se producía una excepción.</p>
+<p>En 64 bits, esa información se movió a tablas <code>.pdata</code>/<code>.rdata</code> y ya no está en el stack (cap. 36, 00:00:27). Es un ejemplo de cómo una mitigación cambia el panorama: el mismo defecto (escribir de más) tiene consecuencias distintas según el soporte de excepciones.</p>
+<p>El capítulo 21 abre la estructura por dentro. En el prólogo de una función con <code>try/except</code>, el compilador arma en el stack un <strong>registro de excepción</strong> de cuatro campos: <code>next</code> (apunta al manejador anterior, el que estaba en <code>FS:[0]</code>), <code>exception handler</code> (la función de Windows que atiende la excepción), un puntero a una <strong>scopetable</strong> en <code>.data</code> y el <code>try level</code>. Luego instala el nuevo manejador con <code>mov fs:[0], &amp;registro</code>, encadenándolo. La scopetable guarda los punteros a la <strong>función filtro</strong> y a la <strong>función del <code>except</code></strong>; en compiladores modernos ese puntero va <strong>XOR</strong> con una cookie para que no se pueda falsificar trivialmente. Cuando ocurre la excepción, el handler desofusca la scopetable, llama primero al <strong>filtro</strong> —que inspecciona el código de la excepción vía <code>EXCEPTION_POINTERS → ExceptionRecord.ExceptionCode</code> (por ejemplo <code>0xC0000005</code> acceso inválido, <code>0xC0000094</code> división por cero, <code>0x80000003</code> breakpoint)— y, según devuelva 1 o 0, ejecuta o no el bloque <code>except</code> (<a class="fuente" href="../../CLS_resultados_intermedios/transcripciones/extraidos/Reversing%20desde%20cero%20%28Ricardo%20y%20Solid%29/Ricardo%20Narvaja%20y%20Solid%20-%20Reversing%20desde%20cero_21%20Excepciones%202_21%20Excepciones%202.txt">Reversing desde cero, cap. 21</a>; transcripción .txt, sin marcas de tiempo).</p>
+<p>Ese mismo <code>EXCEPTION_POINTERS</code> tiene un <code>ContextRecord</code> con los registros al momento de la excepción, incluidos <code>DR0</code>–<code>DR3</code>. Por eso un programa puede usar una excepción no solo para controlar el flujo, sino para <strong>detectar breakpoints de hardware</strong> (ver la lección del debugger). Entender la estructura sirve para análisis defensivo, no para construir un exploit.</p>
+<p>Para el curso, lo relevante es entender <strong>por qué</strong> el diseño cambió y cómo se detecta, no cómo se explotaba.</p>
+<h2 id="rop-en-una-frase">ROP en una frase</h2>
+<p><strong>ROP</strong> (<em>Return-Oriented Programming</em>) encadena fragmentos de código existente ("gadgets") que terminan en <code>ret</code>, para hacer operaciones sin inyectar código nuevo. Funciona porque reutiliza bytes que ya están en la imagen ejecutable. <strong>NX</strong> no lo detiene y <strong>ASLR</strong> lo complica (no sabés dónde están los gadgets). La mitigación más <strong>directa</strong> contra las cadenas basadas en <code>ret</code> es <strong>CET / shadow stack</strong>, que protege la dirección de retorno por hardware. <strong>CFG</strong> apunta a otra cosa: valida los destinos de <strong>llamadas indirectas</strong> (más relevante para variantes tipo COP/JOP que para el ROP clásico de <code>ret</code>).</p>
+<p>No vas a construir una cadena ROP en esta guía. Vas a entender por qué existen las mitigaciones y por qué "el stack no es ejecutable" no alcanza.</p>
+<aside class="callout nota"><p class="callout-titulo">En el Curso IDA: las mitigaciones "en acción" (y qué cambió desde entonces)</p><p>Los tutes 29–48 del Curso IDA recorren estas mismas mitigaciones con ejemplos concretos: analizan un <strong>CVE real por patch-diffing</strong> (VLC, CVE-2008-4654; tutes 29–31), compilan un programa <strong>con y sin DEP</strong> (<code>SetProcessDEPPolicy</code>) para comparar (34–37), muestran el <strong>canary</strong> y el <strong>SEH overwrite</strong> (38–39) y el manejo de <strong>heap/LFH</strong> (41–48), todo con <strong>WinDbg + IDA + Mona</strong>.</p>
+<p>Sirven en clave defensiva —entender el defecto y por qué cada mitigación lo frena—, pero <strong>las recetas de explotación están datadas</strong>: son de <strong>Windows 7 / 32 bits (2016–2018)</strong> y en Windows 10/11 x64 muchas ya no funcionan tal cual, porque se sumaron <strong>CFG</strong>, <strong>CET/shadow stack</strong>, <strong>SEHOP</strong> y un heap más endurecido (los propios tutes avisan que el "shellcode universal" puede no andar en Win10). Tomalos como <strong>historia y concepto</strong>, no como guía de explotación actual (<a href="../ida_tutes/29.html">Curso IDA · tutes 29–48</a>).</p></aside>
+<h2 id="ejemplo-paso-a-paso-ver-la-mitigación-en-tu-programa">Ejemplo paso a paso: ver la mitigación en tu programa</h2>
+<ol><li>Compilá el programa del buffer <strong>sin</strong> canary (MSVC desactivando <code>/GS</code>):</li></ol>
+<pre><code class="lenguaje-bat">cl /Od /GS- vuln.c</code></pre>
+<ol><li>Ejecutalo con una entrada corta: funciona.</li><li>Ejecutalo con una entrada larga (por ejemplo, 40 caracteres) dentro de la VM: probablemente crashea. Anotá el mensaje.</li><li>Compilá <strong>con</strong> canary (<code>/GS</code>, que en MSVC está activo por defecto):</li></ol>
+<pre><code class="lenguaje-bat">cl /Od /GS vuln.c</code></pre>
+<ol><li>Repetí la entrada larga. Ahora el programa aborta con <em>buffer overrun detected</em> (MSVC llama a <code>__report_gsfailure</code>).</li><li>Mirá las mitigaciones de cada <code>.exe</code> con un visor de PE o con <code>dumpbin /headers /loadconfig vuln.exe</code> y compará (<code>/GS</code>, <code>/DYNAMICBASE</code>, <code>/NXCOMPAT</code>, <code>/guard:cf</code>).</li></ol>
+<p><strong>Qué observaste:</strong> el canary convierte una escritura silenciosa en una detección. No arregla el defecto (el <code>strcpy</code> sigue sin validar), pero impide que el return address se use.</p>
+<h2 id="cómo-se-arregla-el-defecto">Cómo se arregla el defecto</h2>
+<div class="tabla"><table>
+<thead><tr>
+<th>Mal</th>
+<th>Bien</th>
+</tr></thead><tbody>
+<tr><td><code>strcpy(buffer, entrada)</code></td><td><code>strncpy(buffer, entrada, sizeof(buffer)-1)</code> y terminador</td></tr>
+<tr><td><code>sprintf(buffer, ...)</code></td><td><code>snprintf(buffer, sizeof(buffer), ...)</code></td></tr>
+<tr><td><code>gets(buffer)</code></td><td><code>fgets(buffer, sizeof(buffer), stdin)</code></td></tr>
+<tr><td>Confiar en el largo de la entrada</td><td>Validar antes de copiar</td></tr>
+</tbody></table></div>
+<p>La mitigación no reemplaza la corrección: un programa con canary y <code>strcpy</code> sigue teniendo un defecto. El canary solo hace más difícil aprovecharlo.</p>
+<aside class="callout nota"><p class="callout-titulo">En el Curso IDA: decidir si algo es vulnerable, y leer un parche con un <em>differ</em></p><p>El Curso IDA entra al tema de forma didáctica y <strong>defensiva</strong>: define qué es una vulnerabilidad y propone un ejercicio de <em>"¿vulnerable o no?"</em> donde tenés el <strong>código fuente, el IDB y el ejecutable</strong>, y lo analizás estáticamente en IDA antes de concluir. También presenta los <em><strong>differs</strong></em>: herramientas que comparan <strong>dos versiones consecutivas</strong> de un programa y marcan qué funciones cambiaron —por ejemplo, para ver <strong>qué arregló un parche de seguridad</strong> (la base del análisis de parches / 1-day, en clave defensiva). Identificar el defecto no es construir el exploit (<a href="../ida_tutes/20.html">Curso IDA · tute 20, Qué es una vulnerabilidad</a>; <a href="../ida_tutes/21.html">tute 21, ¿Vulnerable o no?</a>; <a href="../ida_tutes/22.html">tute 22, Differ</a>).</p></aside>
+<h2 id="divulgación-responsable">Divulgación responsable</h2>
+<p>Si encontrás una vulnerabilidad en un programa que tenés permiso de analizar:</p>
+<ol><li>Confirmá el impacto y la versión afectada.</li><li>Escribí un reporte privado con pasos mínimos de reproducción.</li><li>Contactá al proveedor y guardá la evidencia.</li><li>Acordá un plazo (por ejemplo, 90 días) antes de publicar.</li><li>No accedas a datos de terceros ni dejes el sistema en un estado inseguro.</li><li>Publicá solo cuando el proveedor haya tenido tiempo de corregir, o según el acuerdo.</li></ol>
+<h2 id="práctica">Práctica</h2>
+<ol><li>Escribí <code>vuln.c</code> con un buffer de 16 bytes y <code>strcpy</code>.</li><li>Compilalo con y sin canary. Ejecutá entradas de 8, 16, 24 y 40 caracteres en la VM. Anotá qué pasa.</li><li>Mirá las mitigaciones de las dos versiones con <code>dumpbin /headers /loadconfig</code> o un visor de PE y explicá cada una.</li><li>Corregí el programa con una copia <strong>acotada y con terminador explícito</strong> (<code>strncpy</code> + poner el <code>\0</code> final, o <code>strcpy_s</code>) y verificá que la entrada larga ya no rompe.</li><li>Escribí un informe de dos páginas: defecto, impacto, mitigación, corrección y límites. Sin exploit.</li></ol>
+<h2 id="preguntas-de-repaso">Preguntas de repaso</h2>
+<p><strong>1. ¿Qué es un desborde de buffer?</strong> Escribir más datos de los que entran en un buffer, pisando memoria adyacente.</p>
+<p><strong>2. ¿Qué protege el stack canary?</strong> Detecta si se modificó el valor colocado antes del return address. Si cambió, aborta antes de retornar.</p>
+<p><strong>3. ¿NX impide ejecutar código en el stack?</strong> Sí, marca las páginas del stack como no ejecutables. No impide el desborde ni la sobrescritura de punteros.</p>
+<p><strong>4. ¿ASLR alcanza para proteger un programa?</strong> No. Complica la predicción de direcciones, pero un defecto sigue siendo explotable si se filtra una dirección o si el atacante puede reintentar.</p>
+<p><strong>5. ¿Qué diferencia hay entre mitigar y corregir?</strong> Mitigar reduce el impacto; corregir elimina la causa. Un canary mitiga un <code>strcpy</code> inseguro; la corrección es usar una copia <strong>acotada y bien terminada</strong> —validar el tamaño y garantizar el <code>\0</code> final (p. ej. <code>strncpy</code> <strong>más terminación explícita</strong>, o <code>strcpy_s</code>/<code>strlcpy</code>)—. <code>strncpy</code> a secas no alcanza: puede dejar la cadena <strong>sin terminador</strong> y no valida que la entrada tenga sentido.</p>
+<p><strong>6. ¿Qué se hace al encontrar una vulnerabilidad?</strong> Documentarla, reportarla en privado, no publicar el exploit y acordar un plazo de divulgación.</p>
+<h2 id="antes-de-avanzar">Antes de avanzar</h2>
+<p>Tenés que poder:</p>
+<ul><li>Explicar el defecto con el dibujo del stack.</li><li>Nombrar cuatro mitigaciones y qué frena cada una.</li><li>Compilar con y sin canary y observar la diferencia.</li><li>Escribir un informe sin exploit.</li></ul>
+<aside class="callout nota"><p class="callout-titulo">Puerta de salida</p><p>Si podés explicar por qué el canary detecta el desborde y por qué no corrige el <code>strcpy</code>, la rama está aprobada. Si tu objetivo es "hacer que funcione el exploit", estás en el lugar equivocado.</p></aside>
+<h2 id="fuentes-de-esta-lección">Fuentes de esta lección</h2>
+<ul><li>MITRE CWE: <a href="https://cwe.mitre.org/data/definitions/787.html" rel="noopener" target="_blank">Out-of-bounds Write (CWE-787)</a>, <a href="https://cwe.mitre.org/data/definitions/190.html" rel="noopener" target="_blank">Integer Overflow or Wraparound (CWE-190)</a>, <a href="https://cwe.mitre.org/data/definitions/416.html" rel="noopener" target="_blank">Use After Free (CWE-416)</a>.</li></ul>
+<ul><li><a class="fuente" href="../../CLS_resultados_intermedios/transcripciones/extraidos/Reversing%20desde%20cero%20%28Ricardo%20y%20Solid%29/Ricardo%20Narvaja%20y%20Solid%20-%20Reversing%20desde%20cero_15%20Ejercicio%202%20-%20An%C3%A1lisis%20est%C3%A1tico_15%20Ejercicio%202%20-%20An%C3%A1lisis%20est%C3%A1tico.txt">Reversing desde cero, cap. 15</a> — security cookie.</li><li><a class="fuente" href="../../CLS_resultados_intermedios/transcripciones/extraidos/Reversing%20desde%20cero%20%28Ricardo%20y%20Solid%29/Ricardo%20Narvaja%20y%20Solid%20-%20Reversing%20desde%20cero_16b%20Ap%C3%A9ndice%20te%C3%B3rico%202%20-%20Excepciones%201_16b%20Ap%C3%A9ndice%20te%C3%B3rico%202%20-%20Excepciones%201.txt">Reversing desde cero, cap. 16b</a> — SEH en 32 bits.</li><li><a class="fuente" href="../../CLS_resultados_intermedios/transcripciones/extraidos/Reversing%20desde%20cero%20%28Ricardo%20y%20Solid%29/Ricardo%20Narvaja%20y%20Solid%20-%20Reversing%20desde%20cero_21%20Excepciones%202_21%20Excepciones%202.txt">Reversing desde cero, cap. 21</a> — estructura SEH (registro, scopetable, filtro y handler), códigos de excepción y <code>ContextRecord</code> (se omite la parte de keygen).</li><li><a class="fuente" href="../../CLS_resultados_intermedios/transcripciones/extraidos/Reversing%20desde%20cero%20%28Ricardo%20y%20Solid%29/Ricardo%20Narvaja%20y%20Solid%20-%20Reversing%20desde%20cero_36%20Excepciones%20en%2064%20bits_36%20Excepciones%20en%2064%20bits.txt">Reversing desde cero, cap. 36</a> — SEH basado en tablas en 64 bits.</li><li><a class="fuente" href="../../CLS_resultados_intermedios/transcripciones/extraidos/Reversing%20desde%20cero%20%28Ricardo%20y%20Solid%29/Ricardo%20Narvaja%20y%20Solid%20-%20Reversing%20desde%20cero_26b%20ASLR_26b%20ASLR.txt">Reversing desde cero, cap. 26b</a> — ASLR.</li><li><a class="fuente" href="../../CLS_fuentes_externas/github/apuromafo_Crackslatinos/EXPLOITING">EXPLOITING (contenedor)</a> — <strong>pendiente de revisar</strong>: no se extrajo ni se leyó.</li><li><a href="../ida_tutes/20.html">Curso IDA · tutes 20–22</a> — qué es una vulnerabilidad, el ejercicio "¿vulnerable o no?" (fuente + IDB + binario) y los <em>differs</em> para leer qué cambió un parche (defensivo).</li><li><a href="../ida_tutes/29.html">Curso IDA · tutes 29–48</a> — las mitigaciones en ejemplos (VLC/CVE-2008-4654, DEP, canary/SEH, heap) con WinDbg/IDA/Mona; recetas de Windows 7 / 32 bits, <strong>históricas</strong>: en Windows moderno cambian CFG, CET y SEHOP.</li></ul>
+<aside class="callout nota"><p class="callout-titulo">Capas de esta lección</p><p><strong>Contenido observado en CLS:</strong> la cookie del capítulo 15, el SEH de los capítulos 16b y 36, y ASLR del 26b. <strong>Conocimiento externo:</strong> desbordes, overflow de enteros, acceso fuera de límites, use-after-free, double free, format string, carreras, mitigaciones, ROP y divulgación. <strong>Recomendación editorial:</strong> el ejemplo <code>vuln.c</code> y el límite explícito sobre exploits.</p></aside>
+</main>
+<footer class="pie">
+  <p>Material educativo y defensivo. Las prácticas se limitan a programas propios, software abierto o crackmes diseñados para aprender. No se enseña a eludir licencias, DRM ni controles de acceso.</p>
+  <p><a href="../00_EMPEZAR_AQUI.html">Inicio</a> · <a href="../guia/etapa-0.html">Etapas</a> · <a href="../fuentes_y_limites.html">Fuentes y límites</a> · <a href="../registro_de_cobertura.csv">Registro de cobertura</a></p>
+</footer>
+</body>
+</html>

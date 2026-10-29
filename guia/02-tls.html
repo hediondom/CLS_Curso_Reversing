@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>2.11 · TLS: código que corre antes de main</title>
+<meta name="description" content="Thread Local Storage y TLS callbacks: el directorio TLS del PE, AddressOfCallBacks y por qué ese código se ejecuta antes del entry point.">
+<link rel="stylesheet" href="../guia/estilo.css">
+</head>
+<body>
+<a class="salto" href="#contenido">Saltar al contenido</a>
+<header class="cabecera">
+  <div class="marca"><a href="../00_EMPEZAR_AQUI.html">CLS · Curso de reversing</a> <span class="edicion">edición 5 · 27/10/2026</span></div>
+  <nav class="principal" aria-label="Navegación principal">
+    <a href="../00_EMPEZAR_AQUI.html">Inicio</a>
+    <a href="../guia/index.html">Curso</a>
+    <a href="../materiales.html">Materiales</a>
+    <a href="../fichas/index.html">Fichas</a>
+    <a href="../glosario.html">Glosario</a>
+    <a href="../preguntas_y_respuestas.html">Repaso</a>
+    <a href="../buscar.html">Buscar</a>
+  </nav>
+</header>
+<main id="contenido">
+<nav class="migas" aria-label="Ubicación"><a href="../00_EMPEZAR_AQUI.html">Inicio</a><span aria-hidden="true">›</span><a href="../guia/index.html">Curso</a><span aria-hidden="true">›</span><span>Etapa 2 · Windows intermedio</span></nav><h1 id="tls-código-que-corre-antes-de-main">TLS: código que corre antes de <code>main</code></h1>
+<aside class="callout nota"><p class="callout-titulo">Objetivo de la lección</p><p>Entender qué es el <strong>Thread Local Storage (TLS)</strong> y, sobre todo, los <strong>TLS callbacks</strong>: código que Windows ejecuta <strong>antes del entry point</strong>, un lugar clásico para esconder lógica. Saber encontrarlo en el PE y en el debugger. <strong>Prerrequisitos:</strong> PE y directorios (1.4), procesos e hilos (1.5), debugger (2.6).</p></aside>
+<h2 id="dos-cosas-distintas-con-el-mismo-nombre">Dos cosas distintas con el mismo nombre</h2>
+<p>El capítulo 38 es un apéndice teórico sobre TLS y aclara que en un mismo ejercicio (<code>EjemploTLS</code>) conviven <strong>dos formas</strong> de guardar datos por hilo (<a class="fuente" href="../../CLS_resultados_intermedios/transcripciones/extraidos/Reversing%20desde%20cero%20%28Ricardo%20y%20Solid%29/Ricardo%20Narvaja%20y%20Solid%20-%20Reversing%20desde%20cero_38%20Ap%C3%A9ndice%20te%C3%B3rico%20TLS_Ap%C3%A9ndice%20te%C3%B3rico%20TLS.txt">Reversing desde cero, cap. 38</a>):</p>
+<ol><li><strong>Por API:</strong> <code>TlsAlloc</code>, <code>TlsSetValue</code>, <code>TlsGetValue</code>, <code>TlsFree</code>. El programa pide un índice y guarda/lee un valor propio de cada hilo. Es explícito y se ve en los imports.</li><li><strong>Por variable <code>__declspec(thread)</code>:</strong> el compilador reserva el dato en la sección <code>.tls</code> y lo resuelve con ayuda del loader. No hay llamadas visibles: el acceso aparece como lectura de una zona por hilo.</li></ol>
+<p>Y hay un <strong>tercer mecanismo, aparte</strong>: los <strong>TLS callbacks</strong>. No dependen de cómo declares las variables —<code>__declspec(thread)</code> usa <code>.tls</code> pero <strong>no</strong> crea callbacks por sí solo—; los callbacks se registran en el <strong>directorio TLS del PE</strong> y son lo que más importa para el reversing, porque corren antes de <code>main</code>.</p>
+<h2 id="el-directorio-tls-y-los-callbacks">El directorio TLS y los callbacks</h2>
+<p>El PE tiene un <strong>directorio TLS</strong> (<code>IMAGE_TLS_DIRECTORY</code>) entre sus <em>data directories</em>. Su campo clave para el análisis es <strong><code>AddressOfCallBacks</code></strong>: un puntero a un arreglo de funciones terminado en cero. Esas funciones son los <strong>TLS callbacks</strong>, y el loader de Windows <strong>las ejecuta antes de que corra el entry point</strong> (antes de <code>main</code>), en cada carga y en cada creación/destrucción de hilo.</p>
+<p>La consecuencia para quien analiza (<strong>conocimiento externo</strong>, confirmado por el rol de TLS que explica el cap. 38): si ponés el breakpoint solo en el entry point, <strong>te perdés todo lo que pasó en el callback</strong>. Es el escondite preferido para anti-debug temprano o para inicializaciones que no querés que se vean.</p>
+<h2 id="cómo-encontrarlo">Cómo encontrarlo</h2>
+<ul><li><strong>En el PE</strong> (PE-bear, CFF Explorer o IDA): abrí el <em>data directory</em> <strong>TLS</strong>; si <code>AddressOfCallBacks</code> no es cero, seguilo y vas a ver la lista de callbacks.</li><li><strong>En IDA:</strong> aparecen como <code>TlsCallback_0</code>, <code>TlsCallback_1</code>… y suelen quedar fuera del flujo del <code>main</code>; búscalos por nombre o desde el directorio TLS.</li><li><strong>En x64dbg:</strong> activá <em>Options → Preferences → Events → <strong>TLS Callbacks</strong></em> para que el debugger <strong>pare en el primer callback</strong>, antes del entry point. Si no, arrancás ya pasado el punto interesante.</li></ul>
+<h2 id="ejemplo-paso-a-paso-leer-el-directorio-tls">Ejemplo paso a paso: leer el directorio TLS</h2>
+<p><em>(Ejemplo <strong>ilustrativo</strong>: valores construidos; en un binario real cambian las direcciones.)</em></p>
+<p>En PE-bear, el <em>data directory</em> número 9 (TLS) apunta a la estructura, y adentro seguís <code>AddressOfCallBacks</code>:</p>
+<pre><code class="lenguaje-text">DataDirectory[9] TLS → RVA 0x3000, size 0x18
+
+IMAGE_TLS_DIRECTORY  (en .rdata)
+  StartAddressOfRawData  0x00404000
+  EndAddressOfRawData    0x00404008
+  AddressOfIndex         0x00404100
+  AddressOfCallBacks     0x00403020   ← seguí este puntero
+  SizeOfZeroFill         0
+  Characteristics        0
+
+En 0x00403020 (arreglo de punteros, terminado en NULL):
+  20 10 40 00   00 00 00 00
+  → callback[0] = 0x00401020
+  → callback[1] = NULL  (fin de la lista)</code></pre>
+<p>Vas a <code>0x00401020</code> y ahí está el <code>TlsCallback_0</code>: ese código corre <strong>antes</strong> del entry point. Si <code>AddressOfCallBacks</code> fuera <code>0</code>, no habría callbacks y bastaría el breakpoint en el entry point.</p>
+<h2 id="práctica">Práctica</h2>
+<p>En tu VM, con un <strong>programa propio</strong>:</p>
+<ol><li>Compilá algo mínimo con un callback TLS. En MSVC, el código mínimo es:</li></ol>
+<pre><code class="lenguaje-c">   #include &lt;windows.h&gt;
+   #include &lt;stdio.h&gt;
+
+   volatile int orden = 0;   /* lo escribe el callback; lo lee main */
+
+   void NTAPI mi_cb(PVOID h, DWORD motivo, PVOID r) {
+       /* OJO: nada de printf acá. El callback corre ANTES de que
+          el CRT se inicialice, así que el runtime de C todavía no
+          está listo. Solo tocamos una variable. */
+       if (motivo == DLL_PROCESS_ATTACH) orden = 1;
+   }
+
+   /* El símbolo del linker cambia según la arquitectura:
+      x86 -&gt; __tls_used (dos guiones bajos); x64 -&gt; _tls_used (uno). */
+   #ifdef _WIN64
+   #pragma comment(linker, "/INCLUDE:_tls_used")
+   #else
+   #pragma comment(linker, "/INCLUDE:__tls_used")
+   #endif
+   #pragma const_seg(".CRT$XLB")
+   EXTERN_C const PIMAGE_TLS_CALLBACK p_cb = mi_cb;
+   #pragma const_seg()
+
+   int main(void) {
+       printf("orden al entrar a main = %d  (1 =&gt; el callback ya corrió)\n", orden);
+       return 0;
+   }</code></pre>
+<ol><li>Abrilo en PE-bear y confirmá que el directorio <strong>TLS</strong> no está vacío y que <code>AddressOfCallBacks</code> apunta a tu función.</li><li>En x64dbg, activá el breakpoint de TLS callbacks y verificá que <strong>para antes de <code>main</code></strong>.</li><li>Confirmá el orden <strong>sin</strong> imprimir desde el callback: que el callback solo escriba <code>orden = 1</code> y que <code>main</code> imprima <code>orden</code>. Si al entrar a <code>main</code> vale 1, el callback corrió antes (imprimir desde el callback puede colgar: el CRT todavía no se inicializó).</li></ol>
+<h2 id="preguntas-de-repaso">Preguntas de repaso</h2>
+<details class="qa"><summary>¿Qué hace especial a un TLS callback frente a cualquier otra función?</summary><div class="respuesta"><p>Que el loader lo ejecuta <strong>antes del entry point</strong> (y en cada alta/baja de hilo), sin que el <code>main</code> lo llame. Corre "solo", por estar registrado en el directorio TLS.</p></div></details>
+<details class="qa"><summary>¿Qué campo del directorio TLS mirás primero y por qué?</summary><div class="respuesta"><p><code>AddressOfCallBacks</code>: si no es cero, hay callbacks. Apunta a un arreglo de punteros a función terminado en cero.</p></div></details>
+<details class="qa"><summary>Si solo ponés un breakpoint en el entry point, ¿qué te perdés?</summary><div class="respuesta"><p>Todo lo que haya hecho el/los callbacks TLS, que ya corrieron. Por eso en x64dbg conviene habilitar el breakpoint de TLS callbacks.</p></div></details>
+<details class="qa"><summary>¿En qué se diferencian las dos formas de TLS del <code>EjemploTLS</code>?</summary><div class="respuesta"><p>Una usa <strong>APIs</strong> (<code>TlsAlloc</code>/<code>TlsGetValue</code>/<code>TlsSetValue</code>), visible en imports; la otra usa <strong><code>__declspec(thread)</code></strong>, resuelta por el compilador y el loader vía la sección <code>.tls</code>, sin llamadas explícitas.</p></div></details>
+<details class="qa"><summary>¿Por qué el TLS es un buen escondite para anti-debug?</summary><div class="respuesta"><p>Porque corre antes que el código "principal" y mucha gente empieza a mirar desde el entry point; un chequeo puesto en un callback se ejecuta y decide antes de que el analista llegue.</p></div></details>
+<aside class="callout nota"><p class="callout-titulo">Puerta de salida</p><p>Podés: (1) distinguir TLS por API de <code>__declspec(thread)</code>; (2) ubicar el directorio TLS y <code>AddressOfCallBacks</code> en un PE; (3) hacer que x64dbg pare en el primer callback; (4) demostrar con tu propio binario que el callback corre antes de <code>main</code>.</p></aside>
+<h2 id="fuentes-de-esta-lección">Fuentes de esta lección</h2>
+<ul><li><a class="fuente" href="../../CLS_resultados_intermedios/transcripciones/extraidos/Reversing%20desde%20cero%20%28Ricardo%20y%20Solid%29/Ricardo%20Narvaja%20y%20Solid%20-%20Reversing%20desde%20cero_38%20Ap%C3%A9ndice%20te%C3%B3rico%20TLS_Ap%C3%A9ndice%20te%C3%B3rico%20TLS.txt">Reversing desde cero, cap. 38</a> — <code>EjemploTLS</code>: TLS por API (<code>TlsAlloc</code>/<code>TlsGetValue</code>/<code>TlsSetValue</code>) y por <code>__declspec(thread)</code>.</li></ul>
+<aside class="callout nota"><p class="callout-titulo">Capas de esta lección</p><p><strong>Contenido observado en CLS:</strong> las dos formas de TLS del <code>EjemploTLS</code> del capítulo 38. <strong>Conocimiento externo:</strong> la estructura <code>IMAGE_TLS_DIRECTORY</code>, <code>AddressOfCallBacks</code>, el orden de ejecución antes del entry point y el breakpoint de TLS en x64dbg. <strong>Recomendación editorial:</strong> el método de búsqueda y la práctica con binario propio.</p></aside>
+</main>
+<footer class="pie">
+  <p>Material educativo y defensivo. Las prácticas se limitan a programas propios, software abierto o crackmes diseñados para aprender. No se enseña a eludir licencias, DRM ni controles de acceso.</p>
+  <p><a href="../00_EMPEZAR_AQUI.html">Inicio</a> · <a href="../guia/etapa-0.html">Etapas</a> · <a href="../fuentes_y_limites.html">Fuentes y límites</a> · <a href="../registro_de_cobertura.csv">Registro de cobertura</a></p>
+</footer>
+</body>
+</html>

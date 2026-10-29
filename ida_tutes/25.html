@@ -1,0 +1,267 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tute 25 · Estructuras en IDA (1) — Curso IDA</title>
+<meta name="description" content="Tutorial ilustrado del tute 25 del Curso IDA desde cero: Estructuras en IDA (1).">
+<link rel="stylesheet" href="../guia/estilo.css">
+</head>
+<body>
+<a class="salto" href="#contenido">Saltar al contenido</a>
+<header class="cabecera">
+  <div class="marca"><a href="../00_EMPEZAR_AQUI.html">CLS · Curso de reversing</a> <span class="edicion">edición 5 · 27/10/2026</span></div>
+  <nav class="principal" aria-label="Navegación principal">
+    <a href="../00_EMPEZAR_AQUI.html">Inicio</a>
+    <a href="../guia/index.html">Curso</a>
+    <a href="../fichas/index.html">Fichas</a>
+    <a href="../glosario.html">Glosario</a>
+    <a href="../preguntas_y_respuestas.html">Repaso</a>
+  </nav>
+</header>
+<main id="contenido">
+<p class="migas"><a href="../ida-tutes.html">← Índice de los 69 tutes de IDA</a></p>
+<h1>Tute 25 · Estructuras en IDA (1)</h1>
+<p class="meta-tute"><strong>⏱ 13 min de lectura</strong> · 2.362 palabras · 62 capturas · grupo: Estructuras en IDA</p>
+<aside class="callout nota"><p class="callout-titulo">Qué enseña</p><p>Cómo ayuda IDA cuando el programa usa estructuras.</p></aside>
+<p><em>▶ video afín (mismo autor, en x64dbg):</em> <a href="../videos.html">«23 Ejercicio con Estructuras (con símbolos)»</a> · <em>se conecta con:</em> <a href="../guia/02-ida.html">IDA</a> · <a href="../guia/01-memoria.html">Memoria</a></p>
+<aside class="callout aviso"><p class="callout-titulo">Material observado, no reescrito</p><p>Es el texto y las capturas del <code>.docx</code> original del curso, solo presentados como tutorial. Puede tener erratas de origen. El autor del curso es Ricardo Narvaja.</p></aside>
+<hr>
+<p>INTRODUCCIÓN AL REVERSING CON IDA PRO DESDE CERO PARTE 25.</p>
+<p>ESTRUCTURAS</p>
+<p>En esta parte comenzaremos el estudio de como ayuda IDA PRO a reversear cuando el programa utiliza estructuras.</p>
+<p>Al final de esta parte estarán las soluciones de IDA3 e IDA4 brevemente pues ya es un tema sabido así que será bien breve la solución.</p>
+<p>Que es una estructura?</p>
+<p>No es necesario una definición muy técnica pero vimos que los ARRAYS eran tipos de datos contenedores, que reservaban un espacio en memoria para sus campos los cuales eran todos del mismo tipo, así puede haber ARRAYS de bytes, de words, de dwords, el tema es que en un mismo array no puede haber campos de diferente tipo.</p>
+<figure><img loading="lazy" src="img/25/1.png" alt="Captura 1 del tute 25"></figure>
+<p>Ahí vemos un ejemplo de un ARRAY que tiene size 34, y cada elemento tiene size 2 o sea cada elemento es un Word, por lo cual el largo total del mismo será 34 * 2 o sea 68 decimal.</p>
+<p>En este array de ejemplo, cada elemento es un word o sea que ocupa 2 bytes, si quiero un array que tenga elementos de 1 solo byte deberé construir otro array, ya que no puedo mezclar en el mismo datos de diferente tamaño o tipo.</p>
+<p>La Estructura por otro lado permite mezclar diferentes tipos de datos de diferentes tamaños dentro del mismo.</p>
+<figure><img loading="lazy" src="img/25/2.png" alt="Captura 2 del tute 25"></figure>
+<p>Ahí está la definición más elegante pero es eso, podremos tener un contenedor de diferentes tipos de datos y acá el largo será la suma del largo de todos los miembros o campos.</p>
+<p>struct MyStruct</p>
+<p>{</p>
+<p>char * p_size;</p>
+<p>char size;</p>
+<p>int cookie;</p>
+<p>int leidos;</p>
+<p>int cookie2;</p>
+<p>int maxsize;</p>
+<p>int(*foo2)(char *);</p>
+<p>void * buf2;</p>
+<p>char buf[50];</p>
+<p>};</p>
+<p>En C++ podríamos definir una estructura de esa forma, en este ejemplo vemos la estructura llamada MyStruct que tiene varios campos dentro, no es necesario que seamos grandes genios de la programación para darnos cuenta de que no es lo mismo una variable int que una variable char o un buffer de 50 bytes.</p>
+<p>Si tengo Visual Studio, puedo ver el size de toda la estructura que es 0x54.</p>
+<figure><img loading="lazy" src="img/25/3.png" alt="Captura 3 del tute 25"></figure>
+<p>Hago esto para verificar después lo que hagamos en IDA, no tiene mucha importancia si no tienen mucha idea de cómo se maneja Visual Studio, lo toman como información.</p>
+<p>Vemos que la suma total de los campos me da un poco menos que la cantidad que asigna al compilar pero eso suele pasar que el compilador asigne un poco más.</p>
+<p>El puntero a una variable carácter es de largo cuatro porque es un puntero que es un dword y su contenido apunta a una variable carácter.</p>
+<p>char * p_size; // largo 4</p>
+<p>Lo mismo los otros punteros a función y a buffer son punteros que son dwords o sea que su largo es 4 bytes y que apuntan a diferentes tipos de datos de diferente largo, pero en la estructura solo se guarda el puntero o sea que cada uno solo suma 4 bytes.</p>
+<p>int(*foo2)(char *); // largo 4 puntero a función</p>
+<p>void * buf2;  // largo 4 puntero a buffer</p>
+<p>En cambio el ultimo buffer no es un puntero (no tiene el asterisco (*), así que es un buffer que está directamente dentro de la estructura ocupando 50 bytes de la misma).</p>
+<p>char buf[50]; // largo 50 decimal</p>
+<p>Lo importante de todo esto, más que los largos en sí, es darse cuenta que las estructuras son contenedores de diferentes tipos de datos y que es muy difícil que al desensamblar, IDA pueda reconocer cada campo y su tipo automáticamente, sobre todo si no tenemos los símbolos.</p>
+<p>Hagamos un ejemplito sencillo para ir acostumbrándonos a detectar y manejar la estructura en IDA.</p>
+<figure><img loading="lazy" src="img/25/4.png" alt="Captura 4 del tute 25"></figure>
+<p>Vemos un código sencillo que recibe un argumento a través de la consola si no lo ejecutamos con algún argumento saldrá diciéndonos “Bye Bye”</p>
+<p>Podríamos arrancarlo así</p>
+<figure><img loading="lazy" src="img/25/5.png" alt="Captura 5 del tute 25"></figure>
+<p>Si solo hiciéramos doble click o no pusiéramos algún argumento, chequearía que argc que es la cantidad de argumentos es diferente de 2 y nos tira fuera (la cantidad de argumentos incluye al nombre del ejecutable así que en este caso serían dos argumentos el primero pepe.exe y el segundo aaaaaaaaaaa)</p>
+<p>if (argc != 2) {</p>
+<p>printf("Bye Bye");</p>
+<p>exit(1); }</p>
+<p>Vemos que pasa ese chequeo ya que argc es 2.</p>
+<p>Además de la definición de esta estructura como tipo de dato, podemos hacer que haya variables que además de poder ser del tipo int, char, float o el tipo que sea, además puede haber variables del tipo MyStruct.</p>
+<p>De la misma forma que declaramos una variable entera por ejemplo poniendo el tipo de dato delante</p>
+<p>int pepe;</p>
+<p>Es similar en el caso de la variable del tipo estructura</p>
+<p>MyStruct valores;</p>
+<p>Con lo cual la variable valores será del tipo MyStruct tendrá la misma definición, el mismo largo y los mismos campos.</p>
+<p>Podríamos crear varias variables diferentes del tipo MyStruct</p>
+<p>MyStruct pinguyo;</p>
+<p>Y para referirnos a los campos de alguna de ellas se usa</p>
+<p>valores.size</p>
+<p>pinguyo.size</p>
+<p>valores.cookie2</p>
+<p>De esta forma en el programa se asignan los valores a algunos campos de la variable valores.</p>
+<p>valores.cookie2 = 0;</p>
+<p>valores.size = 50;</p>
+<p>Y luego se hace un strncpy de las aes que están en la variable argv[1] al buffer de 50 bytes decimal valores.buf, tomando como máximo size, el valor de valores.size que es 50.</p>
+<p>strncpy (valores.buf , argv[1], valores.size);</p>
+<p>Así que no habrá overflow pues copia 50 bytes a un buffer de 50 bytes de largo, no desborda.</p>
+<p>Luego imprime lo que tipeamos que está ahora guardado en valores.buf para mostrarlo.</p>
+<p>printf(valores.buf);</p>
+<p>Y finalmente hay una llamada a  getchar() para que no se cierre solo hasta que apretemos alguna tecla y  podamos ver las Aes.</p>
+<p>Ahora abramos el ejecutable en IDA y vamos a ver cómo podemos interpretar esto.</p>
+<figure><img loading="lazy" src="img/25/6.png" alt="Captura 6 del tute 25"></figure>
+<p>Vemos que cuando hay símbolos todo es felicidad, IDA detecto a valores como una variable del tipo MyStruct, sin problema, incluso dentro del código vemos que accede a los campos de la estructura con su nombre perfectamente.</p>
+<figure><img loading="lazy" src="img/25/7.png" alt="Captura 7 del tute 25"></figure>
+<p>También aquí</p>
+<figure><img loading="lazy" src="img/25/8.png" alt="Captura 8 del tute 25"></figure>
+<p>Vemos que detecta el buffer de 50 bytes ya lo tiene renombrado como valores.buf, en el strncpy y en el printf final.</p>
+<p>Inclusive si vamos a la pestaña estructuras.</p>
+<figure><img loading="lazy" src="img/25/9.png" alt="Captura 9 del tute 25"></figure>
+<figure><img loading="lazy" src="img/25/10.png" alt="Captura 10 del tute 25"></figure>
+<p>Vemos que está definida la estructura si le damos allí a CTRL mas + .</p>
+<figure><img loading="lazy" src="img/25/11.png" alt="Captura 11 del tute 25"></figure>
+<p>Vemos que los largos y los nombres están de acuerdo a lo que había definido la variable size de 1 byte o db, la variable cookie2 4 bytes o dd y buf de 50 bytes decimal.</p>
+<p>struct MyStruct</p>
+<p>{</p>
+<p>char size;     // largo 1</p>
+<p>int cookie2;   // largo 4</p>
+<p>char buf[50]; // largo 0x32</p>
+<p>};</p>
+<p>Incluso en IDA hay una pestaña LOCAL TYPES para editar e ingresar estructuras en formato c++, puedo ver si está allí.</p>
+<p>Hay muchas pero como tengo el filtro con CTRL +F pongo My y me sale</p>
+<figure><img loading="lazy" src="img/25/12.png" alt="Captura 12 del tute 25"></figure>
+<p>Y puedo ver haciendo click derecho EDIT</p>
+<figure><img loading="lazy" src="img/25/13.png" alt="Captura 13 del tute 25"></figure>
+<p>Que esta correcta.</p>
+<p>Pero como en la vida no todo es alegría y casi nunca tendremos símbolos, habrá que traspirar un poco ya que IDA no podrá detectar sin ellos los campos ni la estructura, aunque nos da las herramientas interactivas para hacerlo.</p>
+<p>Si cuando compilo renombro pepe.pdb</p>
+<figure><img loading="lazy" src="img/25/14.png" alt="Captura 14 del tute 25"></figure>
+<p>Ya no encontrara los símbolos y la cosa será más peliaguda.</p>
+<p>Vuelvo a abrirlo a pepe.exe y que lo vuelva a desensamblar.</p>
+<figure><img loading="lazy" src="img/25/15.png" alt="Captura 15 del tute 25"></figure>
+<p>Vemos que ya no se detecta la estructura y los campos de la misma están pero como variables individuales.</p>
+<p>Alguien podría objetar  que podría reversearse así.</p>
+<p>El tema es que este es un programa como una sola función, y una estructura sencilla, pero ya veremos más adelante en programas con muchas funciones y estructuras complejas donde se pasan la misma de una a otra función por medio de la dirección de inicio de la estructura, que es muy difícil saber en medio del programa sino lo vas armando como estructura, a que corresponde cada campo.</p>
+<p>Ya lo veremos igualmente pero por ahora créanme, en reversing hay que saber trabajar como estructuras.</p>
+<p>Por ahora en este caso el reversing como variables individuales funcionaria, pero pongámosle ganas y hagámoslo como si ya sabemos que es una estructura, más adelante veremos cómo detectar  cuando es una estructura y cuando son variables locales sueltas.</p>
+<figure><img loading="lazy" src="img/25/16.png" alt="Captura 16 del tute 25"></figure>
+<p>Ya conocemos de reversing anteriores el CANARY, así que lo renombramos.</p>
+<figure><img loading="lazy" src="img/25/17.png" alt="Captura 17 del tute 25"></figure>
+<p>Compara argc con 2 si es igual sigue y si no va a imprimir Bye Bye y a Exit, lo pintamos de rojo eso y verde la parte buena.</p>
+<figure><img loading="lazy" src="img/25/18.png" alt="Captura 18 del tute 25"></figure>
+<p>Luego vemos que guarda 0x32 en una variable y que más adelante usa 0x32 como size del strncpy, en el código nuestro usaba la variable como largo, pero aquí para ganar espacio lo pone directo con PUSH 0x32.</p>
+<figure><img loading="lazy" src="img/25/19.png" alt="Captura 19 del tute 25"></figure>
+<p>La variable var_40 no la usa más, igual la renombrare a size.</p>
+<figure><img loading="lazy" src="img/25/20.png" alt="Captura 20 del tute 25"></figure>
+<p>Vemos pasando el mouse por encima, que la detecta como variable de un byte (db).</p>
+<p>También vemos haciendo click derecho que las otras representaciones nos muestran que es una variable de un byte ya que la instrucción lo dice.</p>
+<figure><img loading="lazy" src="img/25/21.png" alt="Captura 21 del tute 25"></figure>
+<p>Sabemos que en el código original la variable cookie2 no se usaba y la ponía a cero.</p>
+<figure><img loading="lazy" src="img/25/22.png" alt="Captura 22 del tute 25"></figure>
+<p>valores.cookie2 = 0;</p>
+<p>Igual la renombraremos como cookie2 pero si no sabríamos le pondríamos cualquier nombre total no la usa más y no afecta en nada.</p>
+<figure><img loading="lazy" src="img/25/23.png" alt="Captura 23 del tute 25"></figure>
+<p>Veamos la representación del stack.</p>
+<figure><img loading="lazy" src="img/25/24.png" alt="Captura 24 del tute 25"></figure>
+<p>Nos falta Dest que vemos espacio vacío debajo, lo cual nos dice que puede ser un buffer, y además cuando busco referencias con X.</p>
+<figure><img loading="lazy" src="img/25/25.png" alt="Captura 25 del tute 25"></figure>
+<p>Casi siempre los buffers van a tener alguna referencia que sea LEA, ya que para llenarlo habrá que pasarle la dirección del mismo a alguna función como en este caso strncpy y el LEA la obtiene.</p>
+<figure><img loading="lazy" src="img/25/26.png" alt="Captura 26 del tute 25"></figure>
+<p>En este caso reservo 52 en vez de 50 lo cual suele suceder.</p>
+<figure><img loading="lazy" src="img/25/27.png" alt="Captura 27 del tute 25"></figure>
+<p>Ya vemos la representación del stack completa con esto ya podemos saber que no hay overflow, porque sabemos que el buffer Dest tiene como largo 52 y copia al mismo 0x32 bytes hexa en el strncpy.</p>
+<figure><img loading="lazy" src="img/25/28.png" alt="Captura 28 del tute 25"></figure>
+<figure><img loading="lazy" src="img/25/29.png" alt="Captura 29 del tute 25"></figure>
+<p>O sea que copia 50 bytes decimal a un buffer de 52 lo cual hace que no sea vulnerable y no haya overflow.</p>
+<p>Con esto ya estaría pero bueno hay que empezar de a poco con el tema estructuras y aunque en este ejemplo no sea necesario, lo usaremos.</p>
+<p>Vayamos a la representación del stack.</p>
+<p>Si hay una estructura no incluirá el CANARY que lo pone el compilador</p>
+<figure><img loading="lazy" src="img/25/30.png" alt="Captura 30 del tute 25"></figure>
+<p>Abarcara posiblemente eso.</p>
+<p>Así que marco esa zona y voy al menú a EDIT-CREATE STRUCT FROM SELECTION</p>
+<figure><img loading="lazy" src="img/25/31.png" alt="Captura 31 del tute 25"></figure>
+<figure><img loading="lazy" src="img/25/32.png" alt="Captura 32 del tute 25"></figure>
+<p>Y nos quedara así, si vemos en la pestaña estructuras.</p>
+<figure><img loading="lazy" src="img/25/33.png" alt="Captura 33 del tute 25"></figure>
+<p>Una variable struct_0 del tipo struct podría quedar así pero renombraremos para que coincida con el código.</p>
+<figure><img loading="lazy" src="img/25/34.png" alt="Captura 34 del tute 25"></figure>
+<p>Y en la representación del stack a la variable del tipo MyStruct la renombrare a valores.</p>
+<figure><img loading="lazy" src="img/25/35.png" alt="Captura 35 del tute 25"></figure>
+<p>Así que ya nos está quedando parecido a cuando teníamos los símbolos.</p>
+<figure><img loading="lazy" src="img/25/36.png" alt="Captura 36 del tute 25"></figure>
+<p>Vemos que al menos en esta función que es donde está definida la variable valores los campos los cambio de nombre automáticamente a valores.xxxx</p>
+<p>Obviamente esta es la forma más sencilla, tenemos que saber que muchas veces en estructuras complejas habrá que reversear campo a campo y pelear para tenerla lo más completa posible.</p>
+<p>En la parte siguiente seguiremos con ejemplos más complicados de estructuras.</p>
+<p>Soluciones del IDA3 y IDA4.</p>
+<figure><img loading="lazy" src="img/25/37.png" alt="Captura 37 del tute 25"></figure>
+<p>Las variables de TEMP para arriba son agregadas por el compilador.</p>
+<figure><img loading="lazy" src="img/25/38.png" alt="Captura 38 del tute 25"></figure>
+<p>Allí veo la representación del stack, y las variables que debo pisar COOKIE y COOKIE2, ya sabemos que ingresa datos por gets, así que es vulnerable no hay limite a la cantidad de bytes que ingreso.</p>
+<p>Veamos cual es la cantidad de bytes que necesito para llegar a desbordar hasta COOKIE.</p>
+<p>Como COOKIE esta justo debajo de BUFFER que mide 68 bytes decimal, entonces pasando</p>
+<p>68 * ‘A’  + “ABCD”</p>
+<p>Me desbordaría el buffer y pisaría COOKIE, veamos qué valor necesito en dicha variable para llegar a chico bueno.</p>
+<figure><img loading="lazy" src="img/25/39.png" alt="Captura 39 del tute 25"></figure>
+<p>Vemos que a pesar de que no hay un chico bueno definido, me deja imprimir lo que yo quiera, ya que imprime lo que guarda en el Buffer si pasa el chequeo de ambas cookies, puedo poner en el Buffer en vez de Aes.</p>
+<p>“Lo pude hacerrrr!!!!”</p>
+<p>Iremos armando el script también vemos que luego de COOKIE vienen 4 bytes para Flag y los 4 siguientes serán la COOKIE2</p>
+<figure><img loading="lazy" src="img/25/40.png" alt="Captura 40 del tute 25"></figure>
+<figure><img loading="lazy" src="img/25/41.png" alt="Captura 41 del tute 25"></figure>
+<p>Si lo ejecuto.</p>
+<figure><img loading="lazy" src="img/25/42.png" alt="Captura 42 del tute 25"></figure>
+<p>Vemos que acomode la string delante y le reste a los 68 bytes el largo de la misma string para que se mantenga en total siendo 68, y no se mueva lo que piso en cookie y cookie2.</p>
+<p>string + (68 -(len(string))) *"A"</p>
+<figure><img loading="lazy" src="img/25/43.png" alt="Captura 43 del tute 25"></figure>
+<p>En el ida4 vemos que hay una función check</p>
+<figure><img loading="lazy" src="img/25/44.png" alt="Captura 44 del tute 25"></figure>
+<p>Vayamos reverseando el main.</p>
+<figure><img loading="lazy" src="img/25/45.png" alt="Captura 45 del tute 25"></figure>
+<p>Vemos que en el printf imprime tres direcciones la de cookie, la de cookie2 y la del Buffer.</p>
+<p>Así que renombremos según eso.</p>
+<figure><img loading="lazy" src="img/25/46.png" alt="Captura 46 del tute 25"></figure>
+<p>Luego le pasa el Buffer a gets, así que sabemos que será vulnerable, igual miremos el largo del buffer.</p>
+<figure><img loading="lazy" src="img/25/47.png" alt="Captura 47 del tute 25"></figure>
+<p>Vemos que es 50 decimal.</p>
+<figure><img loading="lazy" src="img/25/48.png" alt="Captura 48 del tute 25"></figure>
+<p>Y que a continuación hay dos cookies de 4 bytes cada una.</p>
+<figure><img loading="lazy" src="img/25/49.png" alt="Captura 49 del tute 25"></figure>
+<p>Vemos que las dos cookies se pasan como argumentos de la función check, más una variable var_4 que aún no sabemos que es, le pondremos FLAG de última le cambiamos el nombre.</p>
+<figure><img loading="lazy" src="img/25/50.png" alt="Captura 50 del tute 25"></figure>
+<p>Vemos que el argumento más lejano es FLAG, luego COOKIE y finalmente COOKIE2, entremos a la función.</p>
+<p>Vemos tres argumentos y una variable local</p>
+<figure><img loading="lazy" src="img/25/51.png" alt="Captura 51 del tute 25"></figure>
+<p>En la representación del stack se ve bien.</p>
+<figure><img loading="lazy" src="img/25/52.png" alt="Captura 52 del tute 25"></figure>
+<p>Lo que está bajo la raya debajo de s y r serán argumentos y arriba variables.</p>
+<figure><img loading="lazy" src="img/25/53.png" alt="Captura 53 del tute 25"></figure>
+<p>Las renombro según el orden que se pasan y hago click derecho set type para propagarlas hacia el main y ver que está todo bien.</p>
+<figure><img loading="lazy" src="img/25/54.png" alt="Captura 54 del tute 25"></figure>
+<p>Vemos que coincide</p>
+<figure><img loading="lazy" src="img/25/55.png" alt="Captura 55 del tute 25"></figure>
+<figure><img loading="lazy" src="img/25/56.png" alt="Captura 56 del tute 25"></figure>
+<p>Vemos que la única manera de llegar al ret y no ir a exit es seguir los bloques verdes y para ello cookie1 debe compararse contra qrUS y cookie2 contra 0x10200d0a y debe no ser igual a ese valor para salir por el bloque verde, pongamos esos valores en el script.</p>
+<figure><img loading="lazy" src="img/25/57.png" alt="Captura 57 del tute 25"></figure>
+<p>Con eso ya salimos de la función check pero aún falta algo más, vemos que el valor que devuelve la función check es el valor de flag.</p>
+<figure><img loading="lazy" src="img/25/58.png" alt="Captura 58 del tute 25"></figure>
+<figure><img loading="lazy" src="img/25/59.png" alt="Captura 59 del tute 25"></figure>
+<p>Que es el valor que guarda en var_8 y al final compara, así que flag debe ser ese valor 35224158.</p>
+<figure><img loading="lazy" src="img/25/60.png" alt="Captura 60 del tute 25"></figure>
+<p>Si lo probamos.</p>
+<figure><img loading="lazy" src="img/25/61.png" alt="Captura 61 del tute 25"></figure>
+<figure><img loading="lazy" src="img/25/62.png" alt="Captura 62 del tute 25"></figure>
+<p>Así que funciona, nos vemos en la parte siguiente con más estructuras.</p>
+<p>Hasta la parte 26</p>
+<p>Ricardo Narvaja</p>
+</main>
+<footer class="pie">
+  <p>Material educativo y defensivo. Las prácticas se limitan a programas propios, software abierto o crackmes diseñados para aprender. No se enseña a eludir licencias, DRM ni controles de acceso.</p>
+  <p><a href="../00_EMPEZAR_AQUI.html">Inicio</a> · <a href="../guia/etapa-0.html">Etapas</a> · <a href="../fuentes_y_limites.html">Fuentes y límites</a> · <a href="../registro_de_cobertura.csv">Registro de cobertura</a></p>
+</footer>
+<script>
+(function(){
+  function abrir(src){
+    var o=document.createElement('div'); o.className='lightbox-ov';
+    var i=document.createElement('img'); i.src=src; o.appendChild(i);
+    function cerrar(){o.remove(); document.removeEventListener('keydown', onkey);}
+    function onkey(e){ if(e.key==='Escape') cerrar(); }
+    o.addEventListener('click', cerrar);
+    document.addEventListener('keydown', onkey);
+    document.body.appendChild(o);
+  }
+  document.addEventListener('DOMContentLoaded', function(){
+    document.querySelectorAll('figure img, main img').forEach(function(img){
+      img.style.cursor='zoom-in';
+      img.addEventListener('click', function(){ abrir(img.currentSrc||img.src); });
+    });
+  });
+})();
+</script>
+</body>
+</html>

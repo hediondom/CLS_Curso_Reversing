@@ -1,0 +1,246 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Etapa 4 · Método de análisis: de la pregunta al hallazgo</title>
+<meta name="description" content="Un procedimiento repetible para analizar un programa propio: hipótesis, estático, dinámico y conclusión; también aplicado a reconstruir un formato de archivo propio.">
+<link rel="stylesheet" href="../guia/estilo.css">
+</head>
+<body>
+<a class="salto" href="#contenido">Saltar al contenido</a>
+<header class="cabecera">
+  <div class="marca"><a href="../00_EMPEZAR_AQUI.html">CLS · Curso de reversing</a> <span class="edicion">edición 5 · 27/10/2026</span></div>
+  <nav class="principal" aria-label="Navegación principal">
+    <a href="../00_EMPEZAR_AQUI.html">Inicio</a>
+    <a href="../guia/index.html">Curso</a>
+    <a href="../materiales.html">Materiales</a>
+    <a href="../fichas/index.html">Fichas</a>
+    <a href="../glosario.html">Glosario</a>
+    <a href="../preguntas_y_respuestas.html">Repaso</a>
+    <a href="../buscar.html">Buscar</a>
+  </nav>
+</header>
+<main id="contenido">
+<nav class="migas" aria-label="Ubicación"><a href="../00_EMPEZAR_AQUI.html">Inicio</a><span aria-hidden="true">›</span><a href="../guia/index.html">Curso</a><span aria-hidden="true">›</span><span>Etapa 4 · Práctica guiada</span></nav><h1 id="método-de-análisis-de-la-pregunta-al-hallazgo">Método de análisis: de la pregunta al hallazgo</h1>
+<aside class="callout nota"><p class="callout-titulo">Objetivo de la lección</p><p>Al terminar vas a poder analizar un programa de práctica con un método explícito: formular una pregunta, inspeccionar el binario, proponer una hipótesis, confirmarla con el debugger y escribir una conclusión que otra persona pueda reproducir.</p></aside>
+<p><strong>Prerrequisitos:</strong> etapas 0 a 3. <strong>Duración sugerida:</strong> 6 horas (4 para el ciclo con <code>check.exe</code> y 2 para el formato propio). Estimación aproximada.</p>
+<h2 id="por-qué-un-método-y-no-ir-probando">Por qué un método y no "ir probando"</h2>
+<p>Cuando empezás, el debugger invita a tocar botones: F8, F7, breakpoints, parches. Eso funciona para un programa de 20 líneas y fracasa con uno de 20.000. Un método te evita dos trampas:</p>
+<ol><li><strong>Perderte en el camino equivocado.</strong> Sin una pregunta, cualquier instrucción parece interesante.</li><li><strong>Confundir correlación con explicación.</strong> Ver que un salto se toma no significa entender por qué.</li></ol>
+<p>El capítulo 11 lo dice a su manera: primero buscás lo más fácil (las strings, los mensajes), y si no alcanza, cambiás de estrategia. El análisis visual es rápido, pero hay que saber qué se está buscando (<a class="fuente" href="../../CLS_resultados_intermedios/transcripciones/extraidos/Reversing%20desde%20cero%20%28Ricardo%20y%20Solid%29/Ricardo%20Narvaja%20y%20Solid%20-%20Reversing%20desde%20cero_11%20Ejercicio%201%20-%20An%C3%A1lisis%20din%C3%A1mico_11%20Ejercicio%201%20-%20An%C3%A1lisis%20din%C3%A1mico.txt">Reversing desde cero, cap. 11</a>, 00:00:05–00:02:00).</p>
+<h2 id="el-ciclo-de-cinco-pasos">El ciclo de cinco pasos</h2>
+<pre><code class="lenguaje-text">1. Pregunta     -&gt; ¿qué quiero saber?
+2. Inventario   -&gt; ¿qué es este archivo?
+3. Estático     -&gt; ¿dónde está la lógica?
+4. Hipótesis    -&gt; ¿qué creo que hace y por qué?
+5. Confirmación -&gt; ¿cómo lo pruebo?</code></pre>
+<p>Después se escribe la conclusión y se anotan los límites. Si la confirmación falla, se vuelve al paso 3 con una hipótesis nueva. Ese ida y vuelta es el trabajo real.</p>
+<h2 id="paso-1-la-pregunta">Paso 1: la pregunta</h2>
+<p>Una pregunta útil es específica y verificable. No es "¿qué hace este programa?", sino:</p>
+<ul><li>¿Qué condición tiene que cumplir la entrada para que muestre "Correcto"?</li><li>¿Qué compara exactamente la instrucción de la dirección <code>0x401234</code>?</li><li>¿De dónde sale el valor que se usa como índice?</li></ul>
+<p>Para el programa de práctica de esta lección, la pregunta es: <strong>¿qué pares de números hacen que <code>check.exe</code> imprima "Correcto"?</strong></p>
+<h2 id="paso-2-inventario">Paso 2: inventario</h2>
+<p>Antes de abrir el debugger, respondé:</p>
+<div class="tabla"><table>
+<thead><tr>
+<th>Pregunta</th>
+<th>Herramienta</th>
+<th>Respuesta (ejemplo)</th>
+</tr></thead><tbody>
+<tr><td>¿Qué tipo de archivo es?</td><td>Visor de PE</td><td>PE32, ejecutable de consola</td></tr>
+<tr><td>¿Es nativo o .NET?</td><td>Detect It Easy</td><td>Nativo (C)</td></tr>
+<tr><td>¿Está empacado?</td><td>Secciones/imports</td><td>No: <code>.text</code> normal, imports de <code>msvcrt</code></td></tr>
+<tr><td>¿Qué cadenas muestra?</td><td><code>strings</code> o IDA</td><td>"Primer valor", "Segundo valor", "Correcto", "Incorrecto"</td></tr>
+<tr><td>¿Qué imports usa?</td><td>Visor de PE</td><td><code>printf</code>, <code>scanf</code>, <code>puts</code></td></tr>
+<tr><td>¿Tiene símbolos?</td><td>PDB</td><td>Sí, si lo compilaste en Debug</td></tr>
+</tbody></table></div>
+<p>Ese inventario ya te dice mucho: un programa de consola que usa <code>scanf</code> y <code>puts</code>, sin empaquetar, con cadenas claras. No hace falta empezar por el entry point.</p>
+<h2 id="árbol-de-decisión-de-triage-inicial-por-dónde-empiezo">Árbol de decisión de triage inicial («¿Por dónde empiezo?»)</h2>
+<p>Cuando te enfrentás a un binario desconocido (un crackme, un programa propio compilado meses atrás o un componente de laboratorio), los primeros diez minutos del <strong>Paso 2 (Inventario)</strong> definen qué herramientas abrir y a qué lección del curso acudir. Usar IDA sobre un ensamblado .NET puro o buscar strings en un binario empaquetado con UPX hace perder horas. Este árbol de decisión conecta los tres niveles del curso (Principiante, Intermedio y Avanzado) en un flujo único (y se complementa con el <a href="../hilo-conductor-y-plantillas.html">Hilo conductor multi-nivel y kit de plantillas C/C++</a>):</p>
+
+<pre class="arbol-triage"><code class="lenguaje-text">┌────────────────────────────────────────────────────────────────────────────┐
+│ FASE 1 · CONTENEDOR, ARQUITECTURA Y RUNTIME (PE-bear / DIE · 2 minutos)    │
+└─────────────────────────────────────┬──────────────────────────────────────┘
+                                      │
+  ├─► ¿NO empieza con "MZ" / "PE\0\0"?
+  │     ├─► ¿Es archivo de datos / captura de mensajes? ──► Lección 4.5 (Formatos y protocolos)
+  │     └─► ¿Es código máquina sin cabecera (posición independiente)? ──► Lección 2.23 (Shellcode)
+  │
+  ├─► ¿Es PE32 (0x10B, 32 bits) o PE32+ (0x20B, 64 bits)? (Lecciones 1.4 y 2.5)
+  │     ├─► 32 bits (x86): argumentos en stack (cdecl/stdcall) o ECX/EDX (fastcall/thiscall);
+  │     │                  en Windows x64 corre bajo WOW64 (ver Lección 2D.2).
+  │     └─► 64 bits (x64): argumentos en RCX, RDX, R8, R9 + shadow space de 32 bytes.
+  │
+  └─► ¿Tiene cabecera CLR (.NET) o marcador ".net bundle" (hostfxr)? (Lección 3.1)
+        ├─► SÍ (IL puro, ReadyToRun "RTR\0" o Single-File Bundle):
+        │     └──► Abrirlo en ILSpy / dnSpyEx (Etapa 3: Lecciones 3.1 y 3.2).
+        └─► NO (Nativo puro o .NET Native AOT):
+              └──► Avanzar a la FASE 2.
+
+┌────────────────────────────────────────────────────────────────────────────┐
+│ FASE 2 · ENTROPÍA, SECCIONES, IMPORTS Y HUELLA DE COMPILADOR (3 minutos)   │
+└─────────────────────────────────────┬──────────────────────────────────────┘
+                                      │
+  ├─► ¿Entropía alta (> 6,8), secciones renombradas (UPX0/UPX1), permisos W+X
+  │   o primera sección con RawSize = 0 e IAT mínima (LoadLibraryA + GetProcAddress)?
+  │     ├─► SÍ: Posible PACKER (Lección 2.17).
+  │     │     ├──► En UPX x86: "ESP trick" (F8 sobre pushad + HW breakpoint en [ESP]).
+  │     │     ├──► En UPX x64: breakpoint de memoria en ejecución sobre la sección vacía.
+  │     │     └──► En el OEP: dumpear y reconstruir IAT con Scylla (si es VM comercial: ver 2.10 / 5.4).
+  │     └─► IAT casi vacía pero entropía normal:
+  │           └──► Resolución dinámica por PEB / API Hashing (Lección 2.14):
+  │                buscar lecturas de fs:[30h] / gs:[60h], recorrido de InMemoryOrderModuleList
+  │                ([rsi+20h] = DllBase en x64) y constantes de hash de 32 bits.
+  │
+  └─► ¿Qué compilador o runtime delata la huella? (Lección 2.13)
+        ├─► MSVC C/C++ (Rich header + vcruntime140.dll / ucrtbase.dll + __security_cookie):
+        │     └──► ¿Hay vtables con RTTI en vtable[-1] o __CxxFrameHandler3/4 en .pdata/.xdata?
+        │          ──► Lección 2.18 (C++ profundo: RTTI, std::string SSO, STL y excepciones).
+        ├─► MFC (mfc140u.dll o estático con CWnd/CDialog):
+        │     └──► Lección 2.12: localizar GetMessageMap() ──► AFX_MSGMAP y AFX_MSGMAP_ENTRY.
+        ├─► MinGW / GCC (msvcrt.dll + __mingw_* + sección .eh_frame, sin Rich header):
+        │     └──► Lección 2.13: ubicar main pasado a __getmainargs.
+        ├─► Delphi (recursos RCDATA con firma "TPF0", TForm/TObject):
+        │     └──► Lección 2.13: ABI register en x86 (EAX=Self, EDX, ECX) y longitud en [ptr-4].
+        ├─► Go (binario grande estático, "Go build ID", tabla pclntab):
+        │     └──► Lección 2.13: ir a main.main; recordar que string = {ptr, len} sin byte 0.
+        └─► Rust (rutas "src/main.rs", mensajes de pánico Option::unwrap, símbolos _ZN / _R):
+              └──► Lección 2.13: separar ramas de pánico del flujo principal; string = {ptr, len}.
+
+┌────────────────────────────────────────────────────────────────────────────┐
+│ FASE 3 · PRE-MAIN, OFUSCACIÓN Y ROL DEL COMPONENTE (5 minutos)             │
+└─────────────────────────────────────┬──────────────────────────────────────┘
+                                      │
+  ├─► ¿El directorio TLS (AddressOfCallBacks) tiene punteros?
+  │     └──► SÍ: Inspeccionar TLS Callbacks antes de main (Lección 2.11); suelen ejecutar
+  │          chequeos anti-debug (IsDebuggerPresent, PEB.NtGlobalFlag, NtQueryInformationProcess, 2.15).
+  │
+  ├─► ¿La ventana de Strings (Shift+F12) no muestra los mensajes esperados?
+  │     └──► Buscar cadenas UTF-16 (funciones W, Lección 2.7), cadenas armadas en el stack (mov byte)
+  │          o bucles de descifrado XOR / RC4 / ChaCha20 / AES previos al uso (Lecciones 2.10 y 4.2).
+  │
+  ├─► ¿El grafo de la función en IDA/Ghidra es un único bucle gigante con switch?
+  │     └──► Distinguir Aplanamiento de Flujo (CFF: bloques con lógica real y variable de estado)
+  │          frente a Máquina Virtual (VM: handlers genéricos leídos por VIP) (Lección 2.10).
+  │
+  └─► ¿Cuál es el rol del binario y tu objetivo de análisis?
+        ├─► Programa de consola/GUI estándar ──► Ciclo de 5 pasos de esta lección (4.1) + 2.6 / 2.7 / 2.16.
+        ├─► Servicio de Windows (StartServiceCtrlDispatcher) ──► Lección 2D.4 (Servicios).
+        ├─► Persistencia en Registro / Tareas / WMI ──► Lecciones 2D.3, 2D.5 y 2D.9.
+        ├─► Servidor o cliente COM / DCOM / RPC / Named Pipe ──► Lecciones 2D.6 a 2D.10 y 4.5.
+        ├─► Diagnóstico de crash, corrupción de heap o comparación con parche ──► Lecciones 2.19, 2.20, 2D.11 y 5.2.
+        └─► Driver de kernel (.sys, importa ntoskrnl.exe / WdfVersionBind) ──► Etapa 6 (6.1 a 6.6).</code></pre>
+
+<div class="tabla"><table>
+<thead><tr>
+<th>Nivel</th>
+<th>Señal observada en los primeros 5 minutos</th>
+<th>Qué significa (hipótesis inicial)</th>
+<th>Acción inmediata y lección de referencia</th>
+</tr></thead><tbody>
+<tr><td><strong>Principiante</strong></td><td>Imports claros (<code>scanf</code>, <code>printf</code>, <code>MessageBoxW</code>) y strings visibles en <code>.rdata</code></td><td>Binario C/C++ sin empaquetar ni ofuscar</td><td>Buscar la string clave con <code>Shift+F12</code>, saltar por xref (<code>X</code>) y aplicar el ciclo de 5 pasos (<a href="02-ida.html">2.7</a>, <a href="04-metodo.html">4.1</a>).</td></tr>
+<tr><td><strong>Principiante</strong></td><td>Las strings de éxito y error están en el <strong>mismo bloque básico</strong> sin salto condicional entre ellas</td><td>Selección sin salto (<em>branchless</em>) producida por el compilador (<code>-O2</code>)</td><td>Buscar una instrucción <code>CMOVcc</code> (<code>cmovne</code>/<code>cmove</code>) que elige qué puntero de cadena pasar a <code>puts</code>/<code>printf</code> (<a href="02-flujo.html">2.4</a>, <a href="02-optimizaciones.html">2.8</a>, <a href="04-metodo.html">4.1</a>).</td></tr>
+<tr><td><strong>Principiante</strong></td><td>Importa <code>mscoree.dll</code> (<code>_CorExeMain</code>) o contiene metadatos <code>.NET</code> / marcador <code>.net bundle</code></td><td>Aplicación administrada .NET (IL, ReadyToRun o Single-File)</td><td>Abrir en <strong>ILSpy</strong> o <strong>dnSpyEx</strong> para leer C# e IL antes de tocar un desensamblador nativo (<a href="03-dotnet-runtime.html">3.1</a>, <a href="03-dotnet-il.html">3.2</a>).</td></tr>
+<tr><td><strong>Intermedio</strong></td><td>Secciones <code>UPX0</code> (<code>RawSize = 0</code>) y <code>UPX1</code> (entropía &gt; 7,5, permisos <code>W+X</code>), pocos imports</td><td>Ejecutable empaquetado con UPX</td><td>Llegar al OEP (<em>ESP trick</em> en x86 o breakpoint de memoria en ejecución sobre <code>UPX0</code> en x64), dumpear y reconstruir IAT con Scylla (<a href="02-packers.html">2.17</a>).</td></tr>
+<tr><td><strong>Intermedio</strong></td><td>Mi breakpoint en <code>main</code> nunca se alcanza, o una variable global ya llega alterada al entrar a <code>main</code></td><td>Código ejecutado antes del entry point principal</td><td>Revisar el directorio <strong>TLS (<code>AddressOfCallBacks</code>)</strong> en PE-bear/IDA y poner breakpoint en cada callback (<a href="02-tls.html">2.11</a>, <a href="02-anti-analisis.html">2.15</a>).</td></tr>
+<tr><td><strong>Intermedio</strong></td><td>Casi sin imports ni strings, pero lee <code>gs:[60h]</code> &rarr; <code>[rax+18h]</code> &rarr; <code>[rax+20h]</code> y rota enteros (<code>ror edx, 0Dh</code>)</td><td>Resolución dinámica de APIs por recorrido del PEB y <em>API hashing</em></td><td>Poner breakpoint en el <code>call reg</code> del resolvedor o cruzar constantes con listas de hashes de exportaciones (<a href="02-pe-fino.html">2.14</a>).</td></tr>
+<tr><td><strong>Intermedio</strong></td><td>Constantes <code>0x637c777b</code> (AES), <code>"expand 32-byte k"</code> (ChaCha20) o <code>0x9E3779B9</code> (TEA) en <code>.rdata</code>/código</td><td>Transformación criptográfica estándar o cifrado de configuración/mensajes</td><td>Etiquetar la función criptográfica por su constante mágica e interceptar su entrada/salida en vez de analizar las rondas internas (<a href="04-cripto.html">4.2</a>, <a href="02-scripting-debugger.html">2.21</a>).</td></tr>
+<tr><td><strong>Avanzado</strong></td><td>Llamadas indirectas <code>call qword ptr [rax+18h]</code> donde <code>rax</code> proviene de <code>[rcx]</code></td><td>Despacho virtual C++ (<code>vtable</code>) o interfaz COM (<code>IUnknown</code>)</td><td>Ubicar la <code>vtable</code> en <code>.rdata</code>, leer <code>vtable[-1]</code> (<code>Complete Object Locator</code>, RVAs en x64) para recuperar el nombre de la clase (<a href="02-cpp-profundo.html">2.18</a>, <a href="2d-06-com-interfaces.html">2D.6</a>).</td></tr>
+<tr><td><strong>Avanzado</strong></td><td>El proceso muere dentro de <code>ntdll!RtlFreeHeap</code> lejos de donde ocurrió el error real</td><td>Corrupción de heap previa (desborde, <em>use-after-free</em> o <em>double free</em>)</td><td>Activar <strong>Full Page Heap</strong> (<code>gflags /p /enable app.exe /full</code>) o grabar traza <strong>TTD</strong> en WinDbg y retroceder con <code>ba w4</code> + <code>g-</code> (<a href="02-windbg-heap.html">2.19</a>).</td></tr>
+<tr><td><strong>Avanzado</strong></td><td>Archivo <code>.sys</code> que importa <code>WdfVersionBind</code> y registra <code>EvtIoDeviceControl</code></td><td>Driver de modo kernel basado en KMDF</td><td>Desglosar cada constante <code>CTL_CODE</code> del <code>switch</code> (DeviceType, Access, Function, Method), revisar <code>SDDL</code> y auditar tamaños mínimos y usos de <code>METHOD_NEITHER</code> (<a href="6-02-kmdf-ioctl.html">6.2</a>, <a href="6-04-revision-driver.html">6.4</a>).</td></tr>
+</tbody></table></div>
+
+<h2 id="paso-3-análisis-estático">Paso 3: análisis estático</h2>
+<p>Abrí el binario en IDA Free o Ghidra y seguí las cadenas:</p>
+<ol><li><code>Shift+F12</code>, buscá "Correcto".</li><li><code>X</code> sobre la cadena para ver quién la usa.</li><li>Leé el bloque: vas a encontrar una comparación y dos caminos.</li><li>Renombrá: <code>check</code>, <code>primer_valor</code>, <code>segundo_valor</code>, <code>camino_ok</code>, <code>camino_error</code>.</li><li>Anotá la condición que deduce el grafo.</li></ol>
+<p>En el programa del capítulo 15, el análisis estático muestra:</p>
+<ul><li><code>scanf("%d", &amp;a)</code> y <code>scanf("%d", &amp;b)</code>;</li><li><code>if (a &gt; 50 || b &lt; 50) error;</code></li><li><code>if ((a + b) * 4 == 480) correcto; else incorrecto;</code></li></ul>
+<p>El capítulo 15 hace exactamente este recorrido, con <code>0x32</code> (50) y <code>0x1E0</code> (480), y lo confirma después en el debugger (<a class="fuente" href="../../CLS_resultados_intermedios/transcripciones/extraidos/Reversing%20desde%20cero%20%28Ricardo%20y%20Solid%29/Ricardo%20Narvaja%20y%20Solid%20-%20Reversing%20desde%20cero_15%20Ejercicio%202%20-%20An%C3%A1lisis%20est%C3%A1tico_15%20Ejercicio%202%20-%20An%C3%A1lisis%20est%C3%A1tico.txt">Reversing desde cero, cap. 15</a>, 00:06:00–00:16:00).</p>
+<h2 id="paso-4-la-hipótesis">Paso 4: la hipótesis</h2>
+<p>Una hipótesis se escribe como una afirmación falsable:</p>
+<blockquote><p>"El programa acepta cualquier par <code>(a, b)</code> con <code>a &lt;= 50</code>, <code>b &gt;= 50</code> y <code>(a + b) * 4 == 480</code>. Con <code>a = 40</code> y <code>b = 80</code> debería imprimir 'Correcto'; con <code>a = 40</code> y <code>b = 70</code> debería imprimir 'Incorrecto'."</p></blockquote>
+<p>Falsable significa que podés imaginar un resultado que la contradiga. "El programa compara números" no es falsable; "compara contra 50 y contra 480" sí.</p>
+<h2 id="paso-5-confirmación-dinámica">Paso 5: confirmación dinámica</h2>
+<p>Ahora sí, el debugger. El objetivo no es "ver qué pasa", sino <strong>comprobar la hipótesis</strong>.</p>
+<h3 id="preparación">Preparación</h3>
+<ol><li>Copiá el programa a la VM.</li><li>Abrilo en x64dbg.</li><li>Buscá la cadena "Correcto" y seguí la referencia hasta el bloque.</li><li>Etiquetá <code>camino_ok</code> y <code>camino_error</code>.</li><li>Poné un breakpoint en la comparación final (<code>cmp eax, 0x1E0</code>).</li></ol>
+<h3 id="ejecución-con-40-y-80">Ejecución con <code>40</code> y <code>80</code></h3>
+<ol><li><code>F9</code> para correr.</li><li>Ingresá <code>40</code> y <code>80</code>.</li><li>El programa se detiene en el breakpoint.</li><li>Mirá <code>EAX</code>: debería ser <code>0x1E0</code> (480).</li><li>Mirá <code>ZF</code>: debería ser 1.</li><li><code>F8</code> para ejecutar el salto: no se toma el salto a <code>camino_error</code>.</li><li><code>F9</code>: imprime "Correcto".</li></ol>
+<h3 id="ejecución-con-40-y-70">Ejecución con <code>40</code> y <code>70</code></h3>
+<ol><li>Reiniciá (<code>Ctrl+F2</code>).</li><li>Ingresá <code>40</code> y <code>70</code>.</li><li>En el breakpoint, <code>EAX</code> debería ser <code>0x1B8</code> (440).</li><li><code>ZF</code> = 0; el salto se toma; imprime "Incorrecto".</li></ol>
+<h3 id="ejecución-con-60-y-80">Ejecución con <code>60</code> y <code>80</code></h3>
+<ol><li>Reiniciá.</li><li>Ingresá <code>60</code> y <code>80</code>.</li><li>El programa ni siquiera llega a la comparación final: falla la primera condición (<code>a &gt; 50</code>).</li><li>Confirmá dónde se detiene y qué salto se toma.</li></ol>
+<aside class="callout nota"><p class="callout-titulo">Tu compilador puede generar otro código</p><p>Las direcciones y la forma exacta dependen del compilador, las optimizaciones y la arquitectura. Lo que no cambia es la <strong>lógica</strong>: dos comparaciones de rango, una suma, un desplazamiento y una comparación final. Si tu listado no coincide, buscá esas operaciones, no una dirección mágica.</p></aside>
+<h2 id="dos-casos-que-afinan-el-método">Dos casos que afinan el método</h2>
+<p>El ciclo de arriba sirve para la mayoría de los programas, pero conviene conocer dos situaciones que lo ponen a prueba.</p>
+<p><strong>La decisión no está donde la buscás (cap. 16).</strong> Lo habitual es un bloque "bueno" y un bloque "malo" separados por un salto. Pero un programa puede imprimir el mensaje correcto o el incorrecto <strong>desde el mismo bloque</strong>, eligiendo con un <code>CMOVcc</code> (ver la lección de flujo) qué puntero de cadena usar. Entonces no hay un salto evidente para entender —ni para parchear—. La lección de método: si las cadenas de éxito y error están en el mismo bloque, buscá un movimiento condicional, no un <code>Jcc</code>. En ese mismo ejercicio aparece un <code>strlen</code> <em>inline</em> (un bucle que incrementa un puntero hasta el byte <code>0</code> y resta inicio de final) en vez de una llamada a la API: reconocer funciones estándar escritas a mano es parte del método (<a class="fuente" href="../../CLS_resultados_intermedios/transcripciones/extraidos/Reversing%20desde%20cero%20%28Ricardo%20y%20Solid%29/Ricardo%20Narvaja%20y%20Solid%20-%20Reversing%20desde%20cero_16%20Ejercicio%203%20-%20An%C3%A1lisis%20Din%C3%A1mico%20y%20Est%C3%A1tico_16%20Ejercicio.txt">Reversing desde cero, cap. 16</a>; transcripción .txt, sin marcas).</p>
+<p><strong>Sin símbolos, igual se puede (cap. 20).</strong> El capítulo 20 resuelve un crackme <strong>sin PDB</strong>, y es un buen modelo del ciclo: ejecutar y anotar las cadenas; abrir en IDA; buscar la cadena de error con <code>Shift+F12</code> y llegar al código con <code>X</code>; <strong>pintar</strong> el bloque malo (salmón), el bueno (verde) y el camino (celeste); como la función es chica, analizarla <strong>desde el inicio</strong> hasta la comparación; renombrar funciones y variables mientras se lee, poniendo <code>printf?</code> con signo de pregunta cuando no hay certeza; deducir el algoritmo (ahí, el serial es la suma de los caracteres del nombre) y confirmarlo en el debugger con <em>popups</em> de valores (<a class="fuente" href="../../CLS_resultados_intermedios/transcripciones/extraidos/Reversing%20desde%20cero%20%28Ricardo%20y%20Solid%29/Ricardo%20Narvaja%20y%20Solid%20-%20Reversing%20desde%20cero_20%20Ejercicio%204%20-%20An%C3%A1lisis%20Est%C3%A1tico_20%20Ejercicio%204%20-%20An%C3%A1lisis%20Est%C3%A1tico.txt">Reversing desde cero, cap. 20</a>). Un detalle útil de ese capítulo: en 32 bits, <strong>el primer argumento es el que está más cerca del <code>call</code></strong>; y sobre una variable del stack, <code>A</code> la convierte en array/define su tamaño y <code>H</code> muestra el valor en decimal.</p>
+<aside class="callout aviso"><p class="callout-titulo">Cuando el resultado depende del tiempo o del entorno</p><p>A veces el valor correcto no es fijo: el capítulo 19 analiza un programa de 64 bits cuya clave se calcula a partir de <code>GetSystemTime</code> (depende del minuto actual). Entonces no se puede "ver el valor y volver a ingresarlo", porque para cuando lo tipeás ya cambió. Ahí la confirmación dinámica no alcanza por sí sola: hay que <strong>entender el algoritmo</strong> (o automatizarlo). Es un recordatorio de que estático y dinámico se complementan, y de que una sola corrida no demuestra el caso general (<a class="fuente" href="../../CLS_resultados_intermedios/transcripciones/extraidos/Reversing%20desde%20cero%20%28Ricardo%20y%20Solid%29/Ricardo%20Narvaja%20y%20Solid%20-%20Reversing%20desde%20cero_19%20Ejercicio%2064%20bits_19%20Ejercicio%2064%20bits.txt">Reversing desde cero, cap. 19</a>).</p></aside>
+<h2 id="cuando-la-pregunta-es-un-formato-o-un-protocolo-propio">Cuando la pregunta es un formato o un protocolo propio</h2>
+<p>Este apartado muestra la reconstrucción de <strong>un archivo propio</strong> dentro del ciclo general. La lección <a href="04-formatos-protocolos.html">4.5 · Reconstruir formatos y protocolos propios</a> sistematiza el trabajo con muestras, framing, protocolos con estado y validación independiente.</p>
+<p>Muchas preguntas reales no son "¿qué condición acepta?" sino "¿cómo es el archivo que guarda este programa?" o "¿qué significan los mensajes que manda?". El ciclo de cinco pasos sirve igual; cambian las herramientas de cada paso. Este apartado es <strong>recomendación editorial</strong> apoyada en <strong>conocimiento externo</strong>; el ejemplo es <strong>ilustrativo</strong> y supone un programa <strong>propio</strong> que guarda su configuración en un archivo binario.</p>
+<p><strong>1. Pregunta.</strong> Concreta: "¿qué campos tiene el archivo <code>.blc</code> y qué valida el programa al abrirlo?".</p>
+<p><strong>2. Inventario.</strong> Dos o tres archivos generados por el propio programa con datos distintos, y un volcado hexadecimal de cada uno. Las primeras cosas a buscar: bytes fijos al inicio (<strong>número mágico</strong>), números que coinciden con el tamaño del archivo o de un bloque (<strong>campos de longitud</strong>), texto legible (UTF-16 incluido, ver <a href="02-ida.html">IDA y el análisis estático</a>) y zonas de alta entropía (posible compresión o cifrado, ver <a href="04-cripto.html">criptografía y encoding</a>).</p>
+<p><strong>3. Estático: encontrar el parser.</strong> El código que lee el formato está detrás de las llamadas que traen los bytes: <code>ReadFile</code>, <code>fread</code>, <code>MapViewOfFile</code> para archivos; <code>recv</code>/<code>WSARecv</code> para red. Desde la xref, seguí el buffer: cada comparación contra una constante es una validación (el mágico, una versión) y cada lectura <code>[buffer+N]</code> con un tamaño fijo es un campo. Una lectura seguida de un salto que usa ese valor como cantidad o desplazamiento es un campo de longitud u offset.</p>
+<p><strong>4. Hipótesis: la tabla de campos.</strong> Escribí la estructura como tabla, con la evidencia de cada fila:</p>
+<div class="tabla"><table>
+<thead><tr>
+<th>Offset</th>
+<th>Tamaño</th>
+<th>Tipo</th>
+<th>Significado (hipótesis)</th>
+<th>Evidencia</th>
+</tr></thead><tbody>
+<tr><td><code>0x00</code></td><td>4</td><td>bytes</td><td>Mágico <code>BLOC</code></td><td>Comparado con <code>0x434F4C42</code> antes de seguir</td></tr>
+<tr><td><code>0x04</code></td><td>2</td><td>uint16 LE</td><td>Versión</td><td><code>cmp ax, 2</code> y rama de error "versión no soportada"</td></tr>
+<tr><td><code>0x06</code></td><td>2</td><td>uint16 LE</td><td>Cantidad de registros</td><td>Controla el contador del bucle</td></tr>
+<tr><td><code>0x08</code></td><td>4</td><td>uint32 LE</td><td>Checksum del resto</td><td>Comparado con el resultado de una función con tabla de 256 entradas (CRC32)</td></tr>
+<tr><td><code>0x0C</code></td><td>variable</td><td>registros</td><td>Datos</td><td>Leídos de a <code>0x20</code> bytes dentro del bucle</td></tr>
+</tbody></table></div>
+<p><strong>5. Confirmación diferencial.</strong> Con una <strong>copia</strong> del archivo, cambiá <strong>un solo byte</strong> por vez y observá: si cambiar la versión dispara el error de versión, la fila está confirmada; si cambiar un dato hace fallar el checksum, ya sabés que lo cubre. La prueba final es escribir un <strong>lector independiente</strong> (un script de Python con el módulo <code>struct</code>, o una descripción declarativa en un lenguaje como Kaitai Struct) que lea los tres archivos y dé los mismos valores que muestra el programa.</p>
+<p>Cuidados: trabajá sobre copias; el programa puede reescribir o "reparar" el archivo al abrirlo. Para protocolos de red, el mismo método se aplica a capturas de tu propio cliente y servidor en la VM aislada, sin apuntar a servicios de terceros. Si un campo está cifrado o comprimido, la tabla lo dice así ("bloque cifrado, clave no recuperada") en lugar de inventarle estructura.</p>
+<h2 id="cómo-se-escribe-la-conclusión">Cómo se escribe la conclusión</h2>
+<p>Una conclusión útil tiene cuatro partes:</p>
+<ol><li><strong>Respuesta a la pregunta.</strong> "El programa acepta pares con <code>a &lt;= 50</code>, <code>b &gt;= 50</code> y <code>(a+b)*4 == 480</code>."</li><li><strong>Evidencia.</strong> "Breakpoint en <code>0x...</code>: con (40,80), <code>EAX=0x1E0</code>, <code>ZF=1</code>, imprime 'Correcto'; con (40,70), <code>EAX=0x1B8</code>, <code>ZF=0</code>, imprime 'Incorrecto'."</li><li><strong>Método.</strong> "Análisis estático en IDA Free + confirmación en x64dbg; binario compilado con gcc -O0."</li><li><strong>Límites.</strong> "No se probaron todos los pares; la conclusión vale para esta compilación."</li></ol>
+<p>Eso es un hallazgo reproducible. No es "lo crackeé": es "entendí la condición y la verifiqué".</p>
+<h2 id="errores-frecuentes">Errores frecuentes</h2>
+<div class="tabla"><table>
+<thead><tr>
+<th>Error</th>
+<th>Por qué pasa</th>
+<th>Cómo evitarlo</th>
+</tr></thead><tbody>
+<tr><td>Buscar solo strings</td><td>El programa puede no tener mensajes claros</td><td>Probá imports, xrefs y el entry point</td></tr>
+<tr><td>Confundir dirección virtual con offset</td><td>ASLR y secciones</td><td>Usá RVA u offset, o rebaseá</td></tr>
+<tr><td>Leer un salto al revés</td><td><code>jne</code> salta cuando <strong>no</strong> son iguales</td><td>Preguntá qué camino toma el salto</td></tr>
+<tr><td>Confundir signo</td><td><code>JA</code> vs <code>JG</code></td><td>Mirá el tipo del dato y la instrucción</td></tr>
+<tr><td>Parchear como primera opción</td><td>Es más rápido que entender</td><td>Primero explicá; después decidí si hace falta</td></tr>
+<tr><td>No anotar</td><td>Te olvidás de lo que probaste</td><td>Bitácora en el momento</td></tr>
+</tbody></table></div>
+<h2 id="práctica">Práctica</h2>
+<ol><li>Analizá tu <code>check.exe</code> con el ciclo de cinco pasos. Escribí la pregunta, el inventario, la hipótesis y la confirmación.</li><li>Probá tres pares válidos y tres inválidos. Anotá los valores de <code>EAX</code> y <code>ZF</code> en cada caso.</li><li>Cambiá el programa: hacé que la condición sea <code>(a + b) * 2 == 240</code>. Recompilá y repetí el análisis sin mirar el código fuente. ¿Pudiste deducir la nueva constante?</li><li>Agregá una tercera condición (por ejemplo <code>a != b</code>) y analizala.</li><li>Escribí un párrafo de conclusión con las cuatro partes.</li><li>Escribí un programa propio que guarde tres o cuatro valores en un archivo binario con un mágico, una versión y un campo de longitud. Sin mirar el fuente, armá la tabla de campos con evidencia, confirmala cambiando un byte por vez sobre copias y escribí un lector en Python con <code>struct</code> que dé los mismos valores.</li></ol>
+<h2 id="preguntas-de-repaso">Preguntas de repaso</h2>
+<p><strong>1. ¿Cuál es la diferencia entre una hipótesis y una observación?</strong> La hipótesis es una afirmación que hacés antes de confirmar; la observación es lo que el debugger te muestra. La hipótesis se contrasta con la observación.</p>
+<p><strong>2. ¿Por qué conviene empezar por las strings?</strong> Porque en programas con interfaz o mensajes, las cadenas te llevan rápido a la lógica y a los bloques de éxito/error.</p>
+<p><strong>3. ¿Qué hacés si la confirmación falla?</strong> Volvés al análisis estático con una hipótesis nueva. No parcheás para que "funcione": entendés por qué falló.</p>
+<p><strong>4. ¿Por qué hay que anotar la compilación y las direcciones?</strong> Porque el mismo código compilado con otra versión u optimización puede generar otro listado. Sin esos datos, el informe no es reproducible.</p>
+<p><strong>5. ¿Qué significa que un hallazgo sea reproducible?</strong> Que otra persona, con el mismo binario y el mismo método, puede obtener el mismo resultado.</p>
+<p><strong>6. Querés entender el formato de archivo de un programa. ¿Dónde empezás a buscar el parser?</strong> En las xrefs a las APIs que traen los bytes (<code>ReadFile</code>, <code>fread</code>, <code>MapViewOfFile</code>; <code>recv</code> para red) y siguiendo el buffer: las comparaciones con constantes son validaciones y las lecturas a offsets fijos, campos.</p>
+<p><strong>7. ¿Qué es una confirmación diferencial y por qué se hace sobre copias?</strong> Cambiar un solo byte por vez y observar qué validación falla o qué valor cambia. Se hace sobre copias porque el programa puede reescribir el archivo y porque el original es la referencia.</p>
+<p><strong>8. ¿Cuándo das por confirmada la tabla de campos?</strong> Cuando un lector independiente (un script propio) lee varios archivos y obtiene los mismos valores que muestra el programa; lo que no se pudo explicar queda anotado como tal.</p>
+<h2 id="antes-de-avanzar">Antes de avanzar</h2>
+<p>Tenés que poder:</p>
+<ul><li>Formular una pregunta específica y una hipótesis falsable.</li><li>Hacer el inventario de un binario antes de ejecutarlo.</li><li>Confirmar una condición con un breakpoint y valores concretos.</li><li>Escribir una conclusión con evidencia y límites.</li><li>Reconstruir el formato de un archivo propio como tabla de campos con evidencia y confirmarlo con un lector independiente.</li></ul>
+<aside class="callout nota"><p class="callout-titulo">Puerta de salida</p><p>Si podés analizar un programa propio y explicar la condición sin mirar el fuente, aprobaste el método. La lección siguiente convierte ese trabajo en un informe.</p></aside>
+<aside class="callout nota"><p class="callout-titulo">Lo que queda fuera</p><p>El objetivo es reconocer y documentar compresión, checksums, hashes, MAC y cifrado, no romper cifrado ni recuperar claves. Tampoco se reconstruyen protocolos de servicios de terceros. La lección <a href="04-formatos-protocolos.html">4.5</a> enseña el procedimiento con formatos y comunicaciones de programas propios; el <em>fuzzing</em> guiado por formato se presenta en la optativa <a href="02-opt-fuzzing.html">2.24</a>.</p></aside>
+<h2 id="fuentes-de-esta-lección">Fuentes de esta lección</h2>
+<ul><li><a class="fuente" href="../../CLS_resultados_intermedios/transcripciones/extraidos/Reversing%20desde%20cero%20%28Ricardo%20y%20Solid%29/Ricardo%20Narvaja%20y%20Solid%20-%20Reversing%20desde%20cero_11%20Ejercicio%201%20-%20An%C3%A1lisis%20din%C3%A1mico_11%20Ejercicio%201%20-%20An%C3%A1lisis%20din%C3%A1mico.txt">Reversing desde cero, cap. 11</a> — análisis dinámico, strings, etiquetas y hipótesis.</li><li><a class="fuente" href="../../CLS_resultados_intermedios/transcripciones/extraidos/Reversing%20desde%20cero%20%28Ricardo%20y%20Solid%29/Ricardo%20Narvaja%20y%20Solid%20-%20Reversing%20desde%20cero_15%20Ejercicio%202%20-%20An%C3%A1lisis%20est%C3%A1tico_15%20Ejercicio%202%20-%20An%C3%A1lisis%20est%C3%A1tico.txt">Reversing desde cero, cap. 15</a> — análisis estático, condiciones <code>0x32</code>/<code>0x1E0</code> y confirmación.</li><li><a class="fuente" href="../../CLS_resultados_intermedios/transcripciones/extraidos/Reversing%20desde%20cero%20%28Ricardo%20y%20Solid%29/Ricardo%20Narvaja%20y%20Solid%20-%20Reversing%20desde%20cero_16%20Ejercicio%203%20-%20An%C3%A1lisis%20Din%C3%A1mico%20y%20Est%C3%A1tico_16%20Ejercicio.txt">Reversing desde cero, cap. 16</a> — decisión con <code>CMOVcc</code> en el mismo bloque y <code>strlen</code> inline.</li><li><a class="fuente" href="../../CLS_resultados_intermedios/transcripciones/extraidos/Reversing%20desde%20cero%20%28Ricardo%20y%20Solid%29/Ricardo%20Narvaja%20y%20Solid%20-%20Reversing%20desde%20cero_19%20Ejercicio%2064%20bits_19%20Ejercicio%2064%20bits.txt">Reversing desde cero, cap. 19</a> — clave dependiente del tiempo (<code>GetSystemTime</code>): por qué no se reproduce ingresando el mismo valor.</li><li><a class="fuente" href="../../CLS_resultados_intermedios/transcripciones/extraidos/Reversing%20desde%20cero%20%28Ricardo%20y%20Solid%29/Ricardo%20Narvaja%20y%20Solid%20-%20Reversing%20desde%20cero_20%20Ejercicio%204%20-%20An%C3%A1lisis%20Est%C3%A1tico_20%20Ejercicio%204%20-%20An%C3%A1lisis%20Est%C3%A1tico.txt">Reversing desde cero, cap. 20</a> — modelo del ciclo sin símbolos: strings, xref, pintar, analizar desde el inicio, renombrar con <code>?</code>.</li><li><a class="fuente" href="../../CLS_Guia/plantilla_informe.md">plantilla_informe.md</a> — plantilla base para el informe.</li><li>Conocimiento externo: <a href="https://docs.python.org/3/library/struct.html" rel="noopener" target="_blank">struct — Interpret bytes as packed binary data</a> (documentación de Python) y <a href="https://kaitai.io/" rel="noopener" target="_blank">Kaitai Struct</a> (lenguaje declarativo para describir formatos binarios).</li></ul>
+<aside class="callout nota"><p class="callout-titulo">Capas de esta lección</p><p><strong>Contenido observado en CLS:</strong> el método y los valores de los capítulos 11 y 15 (<code>0x32</code>, <code>0x1E0</code>, <code>40</code>/<code>80</code>), el caso <code>CMOVcc</code>/<code>strlen</code> inline del 16, el modelo sin símbolos del 20 y la clave por tiempo del 19. <strong>Conocimiento externo:</strong> ciclo hipótesis-confirmación, criterios de reproducibilidad y la reconstrucción de formatos (mágicos, campos de longitud, checksums). <strong>Ejemplo ilustrativo:</strong> el formato <code>.blc</code> y su tabla de campos. <strong>Recomendación editorial:</strong> el programa <code>check.exe</code>, la tabla de errores y la confirmación diferencial con lector independiente.</p></aside>
+</main>
+<footer class="pie">
+  <p>Material educativo y defensivo. Las prácticas se limitan a programas propios, software abierto o crackmes diseñados para aprender. No se enseña a eludir licencias, DRM ni controles de acceso.</p>
+  <p><a href="../00_EMPEZAR_AQUI.html">Inicio</a> · <a href="../guia/etapa-0.html">Etapas</a> · <a href="../fuentes_y_limites.html">Fuentes y límites</a> · <a href="../registro_de_cobertura.csv">Registro de cobertura</a></p>
+</footer>
+</body>
+</html>

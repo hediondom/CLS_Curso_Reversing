@@ -1,0 +1,206 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tute 63 · Segmentación y paginación x86 — Curso IDA</title>
+<meta name="description" content="Tutorial ilustrado del tute 63 del Curso IDA desde cero: Segmentación y paginación x86.">
+<link rel="stylesheet" href="../guia/estilo.css">
+</head>
+<body>
+<a class="salto" href="#contenido">Saltar al contenido</a>
+<header class="cabecera">
+  <div class="marca"><a href="../00_EMPEZAR_AQUI.html">CLS · Curso de reversing</a> <span class="edicion">edición 5 · 27/10/2026</span></div>
+  <nav class="principal" aria-label="Navegación principal">
+    <a href="../00_EMPEZAR_AQUI.html">Inicio</a>
+    <a href="../guia/index.html">Curso</a>
+    <a href="../fichas/index.html">Fichas</a>
+    <a href="../glosario.html">Glosario</a>
+    <a href="../preguntas_y_respuestas.html">Repaso</a>
+  </nav>
+</header>
+<main id="contenido">
+<p class="migas"><a href="../ida-tutes.html">← Índice de los 69 tutes de IDA</a></p>
+<h1>Tute 63 · Segmentación y paginación x86</h1>
+<p class="meta-tute"><strong>⏱ 11 min de lectura</strong> · 1.932 palabras · 36 capturas · grupo: Kernel de Windows y temas avanzados (drivers, HackSys/HEVD, SSDT/syscalls, VA→física)</p>
+<aside class="callout nota"><p class="callout-titulo">Qué enseña</p><p>Manejo de memoria en x86 (y rumbo a 64 bits).</p></aside>
+<p><em>se conecta con:</em> <a href="../guia/05-fuera-de-alcance.html">Fuera de alcance</a></p>
+<aside class="callout aviso"><p class="callout-titulo">Material observado, no reescrito</p><p>Es el texto y las capturas del <code>.docx</code> original del curso, solo presentados como tutorial. Puede tener erratas de origen. El autor del curso es Ricardo Narvaja.</p></aside>
+<hr>
+<p>INTRODUCCIÓN AL REVERSING CON IDA PRO DESDE CERO PARTE 63.</p>
+<p>SEGMENTACION Y PAGINACION DE MEMORIA PARA ARQUITECURA x86</p>
+<p>En esta parte del tutorial trataremos de ver el manejo de memoria en x86 y mas adelante trataremos de actualizarlo para 64 bits.</p>
+<p>Este es un tema denso, incluye tablas que hay que entender y aprender a ubicar así que iremos despacio.</p>
+<p>Veamos algunos conceptos choreados de Internet</p>
+<p>Memoria Real también llamada Física o Memoria RAM.</p>
+<p>Esta memoria es empleada para el almacenamiento de instrucciones y ejecución de procesos en nuestra computadora, la capacidad de esta memoria es la capacidad real con la que cuenta nuestra máquina para ejecutar nuestros programas.</p>
+<p>Memoria Virtual</p>
+<p>La Memoria Virtual más que una memoria como tal es una técnica utilizada en la computación para simular que se tiene una mayor capacidad de Memoria Real, la técnica consiste en pasar cierta cantidad de archivos al disco duro para almacenarlos allí momentáneamente, en cuanto son requeridos los datos, estos son enviados de regreso a la Memoria Real para su ejecución.Al aplicar esta técnica se puede obtener una mayor capacidad para la ejecución de instrucciones, sin embargo, esta también conlleva sus desventajas, como podría ser el hecho de que las aplicaciones ejecutadas por Memoria Virtual podrían correr de manera más lenta, esto debido a que el tiempo requerido por el sistema para acceder a los datos es mucho mayor que el tiempo requerido para acceder a los datos almacenados por Memoria Real.</p>
+<p>Cuando se utiliza toda la RAM, se usa la memoria virtual, que es usar espacio en el disco para simular más memoria real de la que tenemos.</p>
+<figure><img loading="lazy" src="img/63/1.jpg" alt="Captura 1 del tute 63"></figure>
+<p>Allí vemos en la imagen que el sistema operativo toma la memoria física que tiene, mas la memoria virtual (swap) y en x86 crea para cada proceso un espacio de direcciones virtuales que son las direcciones que vemos en nuestro debugger cuando trabajamos cotidianamente.</p>
+<figure><img loading="lazy" src="img/63/2.png" alt="Captura 2 del tute 63"></figure>
+<p>Estas direcciones virtuales para cada proceso comienzan en la dirección 0 y terminan en 0xffffffff y en Windows la mitad inferior o sea desde 0x0 hasta 0x7fffffff corresponde a la parte de nivel usuario donde residen los ejecutables y módulos del programa, la parte desde 0x7fffffff hasta 0xffffffff corresponde al kernel.</p>
+<p>Por lo tanto, vemos que como cada proceso tiene un espacio de memoria con las mismas direcciones, el tema es que el mismo trabaja con direcciones virtuales, o sea en mi proceso por ejemplo 0x401000 tiene determinado código y en otro proceso la misma dirección virtual 0x401000 tiene un código diferente o otra cosa, y es que ambos corresponden a direcciones físicas o reales diferentes en la memoria.</p>
+<p>DIRECCIONES FISICAS Y DIRECCIONES VIRTUALES</p>
+<p>Una dirección virtual es lo que ve una aplicación o lo que vemos cuando debuggeamos, una dirección física o real es lo que el hardware real y el sistema operativo ven.</p>
+<p>MODO REAL</p>
+<p>Intel, para mantener compatibilidad con versiones anteriores en sus procesadores (excepto IA-64) lo que hace es que en su estado inicial (después del reinicio) el procesador se inicia en un modo llamado modo real, durante el proceso de arranque del sistema operativo, el procesador se cambia al modo protegido.</p>
+<p>Se utiliza en el modo real la segmentación, que es un método antiguo de manejo de memoria, allí cada dirección lógica apunta directamente a la memoria física.</p>
+<p>Veamos algunos ejemplos (era 286-386):</p>
+<p>La arquitectura 286 introdujo 4 segmentos: CS (segmento de código) DS (segmento de datos) SS (segmento de pila) ES (segmento adicional).</p>
+<p>physical_address : = segment_part × 16 + offset</p>
+<p>Si tengo la dirección</p>
+<p>06EFh:1234h</p>
+<p>Para calcular la dirección física multiplico la parte del segmento por 16 (0x10 hexa) y le sumo el offset.</p>
+<p>0x6ef *0x10+ 0x1234</p>
+<figure><img loading="lazy" src="img/63/3.png" alt="Captura 3 del tute 63"></figure>
+<p>Y obtengo 0x8124 que es la dirección física, no vamos a ahondar mas en el modo real pues ya no se usa salvo por cuestiones de compatibilidad.</p>
+<p>MODO PROTEGIDO</p>
+<p>En el modo protegido la parte del segmento es reemplazada por un selector de 16 bits, aunque la translación a dirección física es un poco más compleja.</p>
+<p>Existen los llamados registros de control que vimos por encima en las partes anteriores como deshabilitar SMEP tocando el cr4, pero en este caso el que nos importa es el CR3.</p>
+<p>CR3</p>
+<p>Used when virtual addressing is enabled, hence when the PG bit is set in CR0. CR3 enables the processor to translate linear addresses into physical addresses by locating the page directory and page tables for the current task.</p>
+<p>Bueno vemos que se utiliza para convertir direcciones virtuales en físicas, así que tratemos de ver cómo usarlo, obviamente desde un proceso en modo user no podremos tener los privilegios para acceder a leerlo, así que deberemos debuggear el kernel como hemos visto en las partes anteriores.</p>
+<p>Vamos a la parte práctica que es la que mas me gusta.</p>
+<figure><img loading="lazy" src="img/63/4.png" alt="Captura 4 del tute 63"></figure>
+<p>Ahí arranque el sistema operativo y estoy debuggeando por ahora con Windbg.</p>
+<p>Voy a arrancar una calculadora que será el proceso donde voy a trabajar.</p>
+<figure><img loading="lazy" src="img/63/5.png" alt="Captura 5 del tute 63"></figure>
+<p>Ahora en el Windbg hago BREAK para que se detenga.</p>
+<figure><img loading="lazy" src="img/63/6.png" alt="Captura 6 del tute 63"></figure>
+<p>Cambiemos el contexto al del proceso calc.</p>
+<p>!process 0 0</p>
+<figure><img loading="lazy" src="img/63/7.png" alt="Captura 7 del tute 63"></figure>
+<p>.process /i 85024030</p>
+<p>Y luego G</p>
+<p>Para saber el proceso actual</p>
+<p>!process -1 0</p>
+<figure><img loading="lazy" src="img/63/8.png" alt="Captura 8 del tute 63"></figure>
+<p>Ya estamos en el proceso calc.</p>
+<p>Veamos el valor del registro CR3 con</p>
+<figure><img loading="lazy" src="img/63/9.png" alt="Captura 9 del tute 63"></figure>
+<p>Recuerden que este comando funciona solo debuggeando kernel, debuggeando en user mode no funciona.</p>
+<p>Bueno CR3 contiene la dirección física de la PAGE DIRECTORY TABLE (ya veremos que esto tiene un agregado si esta habilitado PAE)</p>
+<figure><img loading="lazy" src="img/63/10.png" alt="Captura 10 del tute 63"></figure>
+<p>Estamos en la parte inicial del dibujo la idea es que CR3 nos apunta a la dirección física de la Page Directory Table (PDT) que es el primer paso, esta es una tablita con entradas cada una de las mismas llamada  PAGE DIRECTORY ENTRY (PDE).</p>
+<p>Vemos que el comando !process en DirBase nos muestra la misma info o sea el mismo valor de CR3.</p>
+<figure><img loading="lazy" src="img/63/11.png" alt="Captura 11 del tute 63"></figure>
+<p>También se puede hallar a partir del EPROCESS</p>
+<figure><img loading="lazy" src="img/63/12.png" alt="Captura 12 del tute 63"></figure>
+<p>Como esta allí dentro de KPROCESS y tiene la misma dirección dumpeamos KPROCESS</p>
+<figure><img loading="lazy" src="img/63/13.png" alt="Captura 13 del tute 63"></figure>
+<p>Y allí nos dice que la dirección física es 0xbed525a0 coincide.</p>
+<p>Si uso el comando dd para mirar esa dirección de memoria.</p>
+<figure><img loading="lazy" src="img/63/14.png" alt="Captura 14 del tute 63"></figure>
+<p>No hay nada allí debería estar la tabla, el problema es que el comando dd sirve solo para mostrar direcciones virtuales, no las físicas, para ello se usa el comando !dd con el signo de admiración delante.</p>
+<figure><img loading="lazy" src="img/63/15.png" alt="Captura 15 del tute 63"></figure>
+<p>Ahora si estamos bien.</p>
+<p>Vamos a asumir que PAE esta habilitado se puede chequear así y hoy día es casi norma que lo esté, el que tiene dudas de lo que es vea acá</p>
+<p>https://es.wikipedia.org/wiki/Extensi%C3%B3n_de_direcci%C3%B3n_f%C3%ADsica</p>
+<p>Se chequea asi</p>
+<figure><img loading="lazy" src="img/63/16.png" alt="Captura 16 del tute 63"></figure>
+<p>Hay una tablita más (cuando PAE está habilitado) que ahí no se muestra que es PDPT table que es una tabla que cada entrada apunta a una PAGE DIRECTORY es como una tabla intermedia entre CR3 y PAGE DIRECTORY, igual no cambia nada eso.</p>
+<p>Mirando la tablita Page Directory y viendo las entradas, ahí mismo nos muestra que cada entrada apunta a otra tabla llamada PAGE TABLE.</p>
+<figure><img loading="lazy" src="img/63/17.png" alt="Captura 17 del tute 63"></figure>
+<p>Así que cada PAGE DIRECTORY tiene 1024 entradas, donde cada una (llamada PDE), apunta a una PAGE TABLE.(PT)</p>
+<p>Si utilizo el comando !dq en el valor de cr3, veo la tabla intermedia PDPT  en hay 4 entradas y  cada entrada es de 8 bytes y el contenido apunta a la PDT. (aunque eso depende de un detalle que faltaba que explico un poco mas adelante, en este caso toma la primera de las 4 entradas de la PDPT y asi seguimos el tute buscando el contenido de ese primera entrada y dicho contenido es la base de la PDT, pero la PDPT tiene cuatro entradas y puede usar las otras entradas, mas adelante explico en que caso )</p>
+<figure><img loading="lazy" src="img/63/18.png" alt="Captura 18 del tute 63"></figure>
+<p>Así que ya la primera entrada de la PDPT tiene el valor en mi maquina 0x1b508801 con la cual apuntamos a la base de la PT (hay que poner a cero los 12 bits inferiores de esta dirección), luego de eso tenemos la dirección física base de la PT.)</p>
+<p>Me queda pasado a binario.</p>
+<figure><img loading="lazy" src="img/63/19.png" alt="Captura 19 del tute 63"></figure>
+<pre class='asm'>00011011 01010000 1000-100000000001</pre>
+<p>Ya que los 12 de la parte baja son offset los reemplazo por ceros para que me de la base</p>
+<p>00011011010100001000000000000000</p>
+<p>Esto pasado a Hexa me da 0x1B508000 que sería la base de la PDT</p>
+<p>Ahora que ya obtuvimos la dirección física de la base de la PDT, vamos a hacer .reload /f para que cargue todos los módulos.</p>
+<figure><img loading="lazy" src="img/63/20.png" alt="Captura 20 del tute 63"></figure>
+<p>Luego con lm veo que la base del ejecutable calc es 0x740000, así que ese será el header del ejecutable, veamos.</p>
+<figure><img loading="lazy" src="img/63/21.png" alt="Captura 21 del tute 63"></figure>
+<p>Es el típico header con el MZ etc</p>
+<figure><img loading="lazy" src="img/63/22.png" alt="Captura 22 del tute 63"></figure>
+<p>Tomemos esa dirección 0x740000 trataremos de hallar su dirección física</p>
+<p>Una dirección virtual como 0x740000 se puede dividir en</p>
+<figure><img loading="lazy" src="img/63/23.png" alt="Captura 23 del tute 63"></figure>
+<p>Así que la pasamos a binario.</p>
+<figure><img loading="lazy" src="img/63/24.png" alt="Captura 24 del tute 63"></figure>
+<pre class='asm'>00000000 01110100 00000000 00000000</pre>
+<p>Separando los últimos 12 bytes, luego dos partes de 9 y una de 2 eso nos da 12+9+9+2=32 bits</p>
+<p>00-000000011- 101000000 – 000000000000</p>
+<p>Bueno los 12 bits mas bajos , son los 12 bits mas bajos de la dirección física o Byte Index (000000000000)</p>
+<p>Los siguientes 9 bits son un índice a la PAGE TABLE o Page table index (101000000)</p>
+<p>Los siguientes 9 son un índice a la PAGE DIRECTORY o Page directory index  (000000011)</p>
+<p>Aqui faltaba agregar que esos dos bytes mas altos, marcan que numero de entrada de las cuatro que hay en la  PDPT se va a usar, en este caso esos dos bytes son cero, asi que se utiliza la primera entrada de la PDPT por eso no habia problema,  sino se usan las que entradas que estan a continuacion segun el numero de ese indice de esos dos bytes)</p>
+<p>PDPT index=0x0</p>
+<p>Page directory index = 000000011 = 0x3</p>
+<p>Page table index = 101000000 = 0x140</p>
+<p>Byte index = 000000000000 = 0x0</p>
+<p>Recordemos que 0x1B508000 era la base de la PDT, como cada entrada tiene 8 bytes si quiero encontrar la dirección de la tercera entrada ya que el índice es 0x3.</p>
+<figure><img loading="lazy" src="img/63/25.png" alt="Captura 25 del tute 63"></figure>
+<p>hex(0x1B508000+ 0x3*8)</p>
+<p>Obtengo la dirección física de la tercera entrada.</p>
+<p>'0x1b508018'</p>
+<p>Esta es la PTE sabemos que su contenido apunta a la PT, veamos el contenido</p>
+<figure><img loading="lazy" src="img/63/26.png" alt="Captura 26 del tute 63"></figure>
+<p>A esa dirección le debemos quitar los 12 bits inferiores y completarla con ceros para dejar la base</p>
+<pre class='asm'>1ad5e867
+00011010 11010101 11101000 01100111</pre>
+<p>La base seria</p>
+<pre class='asm'>00011010 11010101 11100000 00000000</pre>
+<p>Si lo unimos</p>
+<p>00011010110101011110000000000000</p>
+<p>Por lo tanto la base de la PT de mi dirección es</p>
+<p>0x1AD5E000</p>
+<p>Hago lo mismo que con la otra tabla busco el índice de la PT que en mi caso era 0x140, como cada entrada es de 8 bytes de largo multiplico por 8 y le sumo la base.</p>
+<figure><img loading="lazy" src="img/63/27.png" alt="Captura 27 del tute 63"></figure>
+<figure><img loading="lazy" src="img/63/28.png" alt="Captura 28 del tute 63"></figure>
+<p>Eso me da '0x1ad5ea00' que es la PTE, el contenido de la misma es la Base Address</p>
+<figure><img loading="lazy" src="img/63/29.png" alt="Captura 29 del tute 63"></figure>
+<figure><img loading="lazy" src="img/63/30.png" alt="Captura 30 del tute 63"></figure>
+<p>Allí vemos en el cuadrito que la dirección física esta compuesta por base address + offset</p>
+<figure><img loading="lazy" src="img/63/31.png" alt="Captura 31 del tute 63"></figure>
+<p>Ahora debemos reemplazar los 12 bytes menores por el Byte Index de la dirección buscada.</p>
+<figure><img loading="lazy" src="img/63/32.png" alt="Captura 32 del tute 63"></figure>
+<pre class='asm'>00011011 01010000 11100000 00100101</pre>
+<p>Queda</p>
+<p>000110110101000011100000 00000000</p>
+<p>Que es</p>
+<p>0x1B50E000 que es la dirección física o real correspondiente a la dirección virtual 0x740000</p>
+<figure><img loading="lazy" src="img/63/33.png" alt="Captura 33 del tute 63"></figure>
+<p>Si comparo con el contenido de la dirección virtual</p>
+<figure><img loading="lazy" src="img/63/34.png" alt="Captura 34 del tute 63"></figure>
+<p>Vemos que es similar</p>
+<p>Ahora hay alguna forma más fácil de obtener una dirección física de acuerdo a una dirección virtual, se puede hacer en Windbg con el comando !pte.</p>
+<figure><img loading="lazy" src="img/63/35.png" alt="Captura 35 del tute 63"></figure>
+<p>Ese numero pfn lo multiplico por 0x1000</p>
+<figure><img loading="lazy" src="img/63/36.png" alt="Captura 36 del tute 63"></figure>
+<p>A eso le debo sumar el Byte Index o sea los últimos 12 bits de mi dirección, en mi caso es 0, así que ya obtuve la dirección física de la misma forma que antes, pero la idea era conocer las tablas ya que para trabajar en kernel hay que conocer todo jeje.</p>
+<p>Bueno a tragar la medicina que es amarga jeje</p>
+<p>Hasta la próxima</p>
+<p>Ricardo Narvaja</p>
+</main>
+<footer class="pie">
+  <p>Material educativo y defensivo. Las prácticas se limitan a programas propios, software abierto o crackmes diseñados para aprender. No se enseña a eludir licencias, DRM ni controles de acceso.</p>
+  <p><a href="../00_EMPEZAR_AQUI.html">Inicio</a> · <a href="../guia/etapa-0.html">Etapas</a> · <a href="../fuentes_y_limites.html">Fuentes y límites</a> · <a href="../registro_de_cobertura.csv">Registro de cobertura</a></p>
+</footer>
+<script>
+(function(){
+  function abrir(src){
+    var o=document.createElement('div'); o.className='lightbox-ov';
+    var i=document.createElement('img'); i.src=src; o.appendChild(i);
+    function cerrar(){o.remove(); document.removeEventListener('keydown', onkey);}
+    function onkey(e){ if(e.key==='Escape') cerrar(); }
+    o.addEventListener('click', cerrar);
+    document.addEventListener('keydown', onkey);
+    document.body.appendChild(o);
+  }
+  document.addEventListener('DOMContentLoaded', function(){
+    document.querySelectorAll('figure img, main img').forEach(function(img){
+      img.style.cursor='zoom-in';
+      img.addEventListener('click', function(){ abrir(img.currentSrc||img.src); });
+    });
+  });
+})();
+</script>
+</body>
+</html>

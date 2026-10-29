@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>2D.2 · Memoria y loader: PEB/TEB, VAD e image mapping</title>
+<meta name="description" content="Cómo Windows mapea y describe la memoria de un proceso: PEB/TEB, la lista del loader, las VAD del kernel y el mapeo de imágenes/secciones. Rama optativa 2D.">
+<link rel="stylesheet" href="../guia/estilo.css">
+</head>
+<body>
+<a class="salto" href="#contenido">Saltar al contenido</a>
+<header class="cabecera">
+  <div class="marca"><a href="../00_EMPEZAR_AQUI.html">CLS · Curso de reversing</a> <span class="edicion">edición 5 · 27/10/2026</span></div>
+  <nav class="principal" aria-label="Navegación principal">
+    <a href="../00_EMPEZAR_AQUI.html">Inicio</a>
+    <a href="../guia/index.html">Curso</a>
+    <a href="../materiales.html">Materiales</a>
+    <a href="../fichas/index.html">Fichas</a>
+    <a href="../glosario.html">Glosario</a>
+    <a href="../preguntas_y_respuestas.html">Repaso</a>
+    <a href="../buscar.html">Buscar</a>
+  </nav>
+</header>
+<main id="contenido">
+<nav class="migas" aria-label="Ubicación"><a href="../00_EMPEZAR_AQUI.html">Inicio</a><span aria-hidden="true">›</span><a href="../guia/index.html">Curso</a><span aria-hidden="true">›</span><span>Etapa 2 · 2D · Windows internals (optativa)</span></nav><h1 id="memoria-y-loader-peb-teb-vad-e-image-mapping">Memoria y loader: PEB/TEB, VAD e image mapping</h1>
+<aside class="callout aviso"><p class="callout-titulo">Rama optativa 2D</p><p>Lección de la <a href="../2d.html">rama optativa 2D</a>. Profundiza en cómo se <strong>describe</strong> la memoria del proceso; no repite el formato PE (<a href="01-pe.html">1.4</a>) ni el PE fino (<a href="02-pe-fino.html">2.14</a>), se apoya en ellos.</p></aside>
+<aside class="callout nota"><p class="callout-titulo">Propósito</p><p>Saber de dónde sale la información de memoria de un proceso: el <strong>PEB/TEB</strong> (en user-mode), la <strong>lista del loader</strong> (módulos cargados) y las <strong>VAD</strong> (cómo el kernel describe cada región), y cómo se <strong>mapea</strong> una imagen. Para orientarte en un dump o en vivo sin perderte, y reconocer el contexto WOW64.</p></aside>
+<p><strong>Prerrequisitos</strong></p>
+<ul><li><em>Obligatorios:</em> memoria y stack (<a href="01-memoria.html">1.2</a>), formato PE (<a href="01-pe.html">1.4</a>).</li><li><em>Recomendados:</em> PE fino (<a href="02-pe-fino.html">2.14</a>), TLS (<a href="02-tls.html">2.11</a>), WinDbg (<a href="02-windbg-heap.html">2.19</a>).</li></ul>
+<h2 id="peb-y-teb">PEB y TEB</h2>
+<p>El <strong>PEB</strong> (<em>Process Environment Block</em>) y el <strong>TEB</strong> (<em>Thread Environment Block</em>) son estructuras en <strong>user-mode</strong> que describen el proceso y cada hilo. Ya tocaste el PEB en <a href="02-anti-analisis.html">anti-análisis</a> (el campo <code>BeingDebugged</code>). Para memoria/loader, lo valioso del PEB:</p>
+<ul><li><strong><code>Ldr</code></strong> → tres listas doblemente enlazadas de <strong>módulos cargados</strong> (por orden de carga, de memoria y de inicialización): base, tamaño y nombre de cada DLL. Es de donde sale la lista de módulos que ves en el debugger.</li><li><strong><code>ProcessParameters</code></strong> → línea de comandos, directorio actual, variables de entorno: contexto de ejecución, útil en análisis.</li></ul>
+<p>El TEB guarda, entre otras cosas, el puntero a la cadena <strong>SEH</strong> en 32 bits (<code>FS:[0]</code>) y el TLS por hilo (lo viste en <a href="02-tls.html">2.11</a>).</p>
+<h2 id="wow64-proceso-x86-en-windows-de-64-bits">WOW64: proceso x86 en Windows de 64 bits</h2>
+<p><strong>WOW64</strong> permite ejecutar aplicaciones x86 en Windows x64; también hay variantes para ejecutar aplicaciones x86 y ARM de 32 bits en Windows ARM64. Para reversing importa porque el proceso conserva una vista de 32 bits, mientras el sistema operativo y algunas herramientas pueden mostrar el contexto nativo de 64 bits. Un proceso x86 no puede cargar una DLL x64 para ejecutarla, ni a la inversa; la comunicación entre ambos mundos requiere una frontera explícita, por ejemplo IPC o ciertos mecanismos de interoperabilidad.</p>
+<p>Al comparar un proceso WOW64, anotá siempre la arquitectura del proceso y la del sistema. La redirección de archivos y Registro puede hacer que una ruta aparente no sea la que finalmente se consulta; no confundas esa redirección con una diferencia en el binario. En depuración, confirmá qué contexto de registros y qué vista de módulos estás examinando antes de interpretar direcciones o stacks. La práctica de esta lección sigue siendo de lectura: identificar arquitectura, módulos y regiones sin cambiar redirecciones del sistema.</p>
+<h3 id="cruce-de-llamadas-entre-x86-y-el-sistema-nativo">Cruce de llamadas entre x86 y el sistema nativo</h3>
+<p>En Windows x64, WOW64 no convierte cada instrucción x86 a x64. El proceso usa su ntdll x86; cuando llega a una llamada de servicio, una secuencia de transición en user mode permite que WOW64 la intercepte. La transición entra en modo nativo, donde las thunks de Wow64.dll adaptan argumentos de 32 a 64 bits y encaminan la llamada al servicio nativo. Por eso una pila puede alternar contexto x86 y nativo, y una vista x86 del depurador no siempre muestra toda la transición.</p>
+<p>Con WinDbg nativo y la extensión wow64exts, !wow64exts.sw cambia entre los contextos x86 y nativo, !wow64exts.k muestra una pila combinada y !wow64exts.info resume datos de PEB/TEB de WOW64. La implementación interna puede variar por arquitectura y build; estos comandos sirven para observarla, no son un contrato de aplicación.</p>
+<h2 id="la-lista-del-loader">La lista del loader</h2>
+<p>El <strong>loader</strong> de ntdll mantiene esas listas (<code>PEB_LDR_DATA</code> → <code>LDR_DATA_TABLE_ENTRY</code>). Que estén en listas enlazadas tiene una consecuencia para el análisis: un módulo se puede <strong>desenlazar</strong> de ellas para "esconderlo" de herramientas que solo recorren la lista. Por eso, al buscar módulos ocultos, se compara la lista del loader con lo que dicen las <strong>VAD</strong> del kernel. (Reconocer esto es defensivo; no se enseña a ocultar nada.)</p>
+<h2 id="vad-cómo-el-kernel-describe-la-memoria">VAD: cómo el kernel describe la memoria</h2>
+<p>Las <strong>VAD</strong> (<em>Virtual Address Descriptors</em>) son un árbol que el kernel mantiene por proceso: cada nodo describe un <strong>rango</strong> de direcciones virtuales (privado o mapeado, permisos, a qué archivo/sección corresponde). En WinDbg, <strong><code>!vadump</code></strong> lista las regiones de un proceso en user mode. La extensión <code>!vad</code> ofrece detalles de nodos VAD en depuración de kernel y requiere los argumentos/contexto adecuados; no es un sustituto directo de <code>!vadump</code>. Sirven para:</p>
+<ul><li>Ver <strong>qué es</strong> cada región: imagen mapeada (<code>Image</code>), archivo mapeado (<code>Mapped</code>), o memoria privada (<code>Private</code>, típico del heap/stack).</li><li><strong>Cruzar</strong> con la lista del loader: si una VAD de tipo <code>Image</code> no aparece en la lista del loader, es <strong>algo a investigar</strong> —puede tener explicaciones legítimas—, no una prueba de que haya un módulo oculto.</li></ul>
+<h2 id="image-mapping-y-secciones">Image mapping y secciones</h2>
+<p>Un <code>.exe</code>/<code>.dll</code> no se "copia" a memoria: se <strong>mapea</strong> vía un objeto <strong>sección</strong> (<em>section</em>/<em>file mapping</em>). Las páginas de código <strong>suelen</strong> ser de solo-lectura/ejecución y <strong>compartidas</strong> entre procesos (varias instancias comparten la misma imagen física); las de datos usan <strong>copy-on-write</strong> (se duplican al primer escribir). Ojo: los permisos exactos <strong>dependen de las características de cada sección</strong> del PE (una sección puede ser escribible) y pueden variar, así que no asumas "todo el código es RO". El loader aplica las <strong>relocalizaciones</strong> solo si la imagen no cargó en su base preferida (ASLR), y resuelve los imports (lo viste en PE/IAT, <a href="01-pe.html">1.4</a>).</p>
+<h2 id="ejemplo-trabajado">Ejemplo trabajado</h2>
+<p><em>(Ejemplo <strong>ilustrativo</strong>: salida resumida de WinDbg; valores construidos.)</em></p>
+<pre><code class="lenguaje-text">0:000&gt; lm                      (módulos cargados — fuente confiable para la lista)
+    start    end      module
+    00400000 0040c000 prog
+    77000000 77180000 ntdll
+    75d00000 75e00000 KERNEL32
+
+0:000&gt; !peb                    (extracto; la salida varía según versión/sesión)
+    ProcessParameters.CommandLine: "prog.exe" --modo test
+
+0:000&gt; !vadump                 (extracto de regiones)
+    BaseAddress  RegionSize  Protect         Type
+    00400000     0000c000    EXECUTE_READ    Image    (prog.exe)
+    00030000     00002000    READWRITE       Private  (heap/stack)
+    00140000     00002000    READONLY        Mapped   (archivo de datos)</code></pre>
+<p>Lectura: <code>lm</code> da la lista de módulos; <code>prog.exe</code> aparece además como región <code>Image</code> en <code>!vadump</code>, el heap/stack es <code>Private</code> READWRITE y hay un archivo <code>Mapped</code> READONLY. La <code>CommandLine</code> del <code>!peb</code> da el contexto (ese comando puede variar según la versión de Windows y el tipo de sesión). Todo esto orienta un dump sin suponer.</p>
+<h2 id="práctica-segura">Práctica segura</h2>
+<p>En tu VM, con WinDbg sobre un <strong>proceso propio</strong>:</p>
+<ol><li>Con <code>lm</code> listá los <strong>módulos cargados</strong>; con <code>!peb</code> mirá la <strong>CommandLine</strong> (su salida varía según versión/sesión, por eso los módulos salen de <code>lm</code>).</li><li><code>!vadump</code>: identificá una región <code>Image</code>, una <code>Private</code> y, si hay, una <code>Mapped</code>. Decí qué es cada una.</li><li>Elegí una DLL de <code>lm</code> y confirmá que tiene una región <code>Image</code> en su base en <code>!vadump</code> (la coherencia módulos↔VAD).</li><li>Anotá base y tamaño de tu <code>.exe</code> y compará con lo que dice el PE en disco (<a href="02-pe-fino.html">2.14</a>).</li><li>En un proceso x86 bajo WOW64, alterná el contexto con !wow64exts.sw y observá la pila combinada con !wow64exts.k; registra qué frames son x86 y cuáles nativos.</li></ol>
+<h2 id="entregable">Entregable</h2>
+<p>Un mapa breve del proceso: lista de 3–5 módulos (base), 3 regiones de VAD clasificadas (Image/Private/Mapped) y la línea de comandos. Con una frase sobre la coherencia loader↔VAD.</p>
+<h2 id="preguntas-de-repaso">Preguntas de repaso</h2>
+<details class="qa"><summary>¿Qué guarda el campo <code>Ldr</code> del PEB y por qué importa?</summary><div class="respuesta"><p>Las <strong>listas de módulos cargados</strong> (base, tamaño, nombre). Importa porque es la fuente de la lista de DLLs del proceso; y porque un módulo puede desenlazarse de ahí para esconderse, lo que se detecta cruzando con las VAD.</p></div></details>
+<details class="qa"><summary>¿Qué describe una VAD?</summary><div class="respuesta"><p>Un <strong>rango</strong> de direcciones virtuales del proceso: su tipo (<code>Image</code>/<code>Mapped</code>/<code>Private</code>), permisos y a qué archivo/sección corresponde. El kernel las mantiene en un árbol por proceso; <code>!vadump</code> sirve para listar regiones en user mode y <code>!vad</code> para inspección detallada en el contexto de depuración de kernel.</p></div></details>
+<details class="qa"><summary>¿Qué precaución tomás al analizar un proceso WOW64?</summary><div class="respuesta"><p>Anoto por separado la arquitectura del proceso y la del sistema, confirmo el contexto de registros y módulos, y tengo en cuenta la redirección de archivos/Registro. Un proceso de 32 bits no puede cargar una DLL de 64 bits para ejecutarla.</p></div></details>
+<details class="qa"><summary>¿Cómo se investiga un posible módulo que no está en la lista del loader?</summary><div class="respuesta"><p>Comparando los módulos (<code>lm</code> / lista del loader) con las <strong>regiones <code>Image</code></strong> (<code>!vadump</code> / VAD del kernel): una imagen mapeada que no figure en la lista es <strong>algo a investigar</strong> (puede tener causas legítimas), no una prueba de ocultamiento. Es reconocimiento defensivo, no ocultar nada.</p></div></details>
+<details class="qa"><summary>¿Por qué el código de una DLL se comparte entre procesos y los datos no?</summary><div class="respuesta"><p>Porque el ejecutable se <strong>mapea</strong> como una imagen respaldada por una sección. Las páginas pueden compartirse mientras coinciden con el archivo; los permisos y el comportamiento ante escrituras dependen de cada sección. En una vista <em>copy-on-write</em>, la página modificada se vuelve privada para ese proceso. No todas las imágenes tienen permisos idénticos; verificá la región concreta con <code>!vadump</code>.</p></div></details>
+<details class="qa"><summary>¿Cuándo aplica el loader las relocalizaciones?</summary><div class="respuesta"><p>Solo si la imagen <strong>no</strong> cargó en su base preferida (por ASLR u ocupación): entonces ajusta las direcciones absolutas con la tabla de relocalización.</p></div></details>
+<aside class="callout nota"><p class="callout-titulo">Puerta de salida (optativa)</p><p>Podés: (1) listar módulos con <code>lm</code> y leer la CommandLine con <code>!peb</code>; (2) clasificar regiones con <code>!vadump</code> (Image/Private/Mapped); (3) explicar la coherencia módulos↔VAD y qué amerita investigar; (4) explicar image mapping, código compartido y copy-on-write, y por qué los permisos de sección pueden variar; (5) describir qué cambia al analizar un proceso WOW64 y no confundir la vista x86 con la nativa.</p></aside>
+<h2 id="fuentes">Fuentes</h2>
+<ul><li>Microsoft Learn: <a href="https://learn.microsoft.com/en-us/windows/win32/winprog64/debugging-wow64" rel="noopener" target="_blank">Debugging WOW64</a>, <a href="https://learn.microsoft.com/en-us/windows/win32/winprog64/file-system-redirector" rel="noopener" target="_blank">File System Redirector</a>.</li></ul>
+<ul><li>Microsoft Learn: <a href="https://learn.microsoft.com/en-us/windows/win32/winprog64/running-32-bit-applications" rel="noopener" target="_blank">Running 32-bit Applications (WOW64)</a>, <a href="https://learn.microsoft.com/en-us/windows/desktop/WinProg64/wow64-implementation-details" rel="noopener" target="_blank">WOW64 Implementation Details</a>.</li></ul>
+<ul><li><strong>Conocimiento externo</strong> (páginas concretas): <a href="https://learn.microsoft.com/en-us/windows/win32/api/winternl/ns-winternl-peb" rel="noopener" target="_blank">PEB (winternl)</a>, <a href="https://learn.microsoft.com/en-us/windows-hardware/drivers/debuggercmds/lm--list-loaded-modules-" rel="noopener" target="_blank"><code>lm</code> (list modules)</a>, <a href="https://learn.microsoft.com/en-us/windows-hardware/drivers/debuggercmds/-vadump" rel="noopener" target="_blank"><code>!vadump</code></a> y el <a href="https://learn.microsoft.com/en-us/windows/win32/debug/pe-format" rel="noopener" target="_blank">formato PE (características de sección)</a>. <em>Windows Internals</em> como referencia general. No se citan versiones ni valores reales.</li><li><strong>Tie con CLS:</strong> el PEB (<code>BeingDebugged</code>) en <a href="02-anti-analisis.html">2.15</a>; PE, IAT y relocalizaciones en <a href="01-pe.html">1.4</a> y <a href="02-pe-fino.html">2.14</a>; TLS/SEH en <a href="02-tls.html">2.11</a>.</li></ul>
+<aside class="callout nota"><p class="callout-titulo">Etiquetas</p><p><strong>Observado en CLS:</strong> PEB y PE/loader de 1.4, 2.11, 2.14, 2.15 (referencia). <strong>Conocimiento externo:</strong> VAD, listas del loader, image mapping/COW, redirección y transición WOW64. <strong>Ejemplo ilustrativo:</strong> las salidas de <code>lm</code>, <code>!peb</code> y <code>!vadump</code>. <strong>Laboratorio verificado:</strong> ninguno en esta edición; la práctica se hace sobre procesos propios en tu VM.</p></aside>
+</main>
+<footer class="pie">
+  <p>Material educativo y defensivo. Las prácticas se limitan a programas propios, software abierto o crackmes diseñados para aprender. No se enseña a eludir licencias, DRM ni controles de acceso.</p>
+  <p><a href="../00_EMPEZAR_AQUI.html">Inicio</a> · <a href="../guia/etapa-0.html">Etapas</a> · <a href="../fuentes_y_limites.html">Fuentes y límites</a> · <a href="../registro_de_cobertura.csv">Registro de cobertura</a></p>
+</footer>
+</body>
+</html>

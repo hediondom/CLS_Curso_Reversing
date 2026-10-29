@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tute 49 · Cierre user-mode / rumbo a kernel — Curso IDA</title>
+<meta name="description" content="Tutorial ilustrado del tute 49 del Curso IDA desde cero: Cierre user-mode / rumbo a kernel.">
+<link rel="stylesheet" href="../guia/estilo.css">
+</head>
+<body>
+<a class="salto" href="#contenido">Saltar al contenido</a>
+<header class="cabecera">
+  <div class="marca"><a href="../00_EMPEZAR_AQUI.html">CLS · Curso de reversing</a> <span class="edicion">edición 5 · 27/10/2026</span></div>
+  <nav class="principal" aria-label="Navegación principal">
+    <a href="../00_EMPEZAR_AQUI.html">Inicio</a>
+    <a href="../guia/index.html">Curso</a>
+    <a href="../fichas/index.html">Fichas</a>
+    <a href="../glosario.html">Glosario</a>
+    <a href="../preguntas_y_respuestas.html">Repaso</a>
+  </nav>
+</header>
+<main id="contenido">
+<p class="migas"><a href="../ida-tutes.html">← Índice de los 69 tutes de IDA</a></p>
+<h1>Tute 49 · Cierre user-mode / rumbo a kernel</h1>
+<p class="meta-tute"><strong>⏱ 7 min de lectura</strong> · 1.339 palabras · 34 capturas · grupo: Kernel de Windows y temas avanzados (drivers, HackSys/HEVD, SSDT/syscalls, VA→física)</p>
+<aside class="callout nota"><p class="callout-titulo">Qué enseña</p><p>Repaso de lo visto y anuncio de la rama de kernel.</p></aside>
+<p><em>se conecta con:</em> <a href="../guia/05-fuera-de-alcance.html">Fuera de alcance</a></p>
+<aside class="callout aviso"><p class="callout-titulo">Material observado, no reescrito</p><p>Es el texto y las capturas del <code>.docx</code> original del curso, solo presentados como tutorial. Puede tener erratas de origen. El autor del curso es Ricardo Narvaja.</p></aside>
+<hr>
+<p>INTRODUCCION AL REVERSING CON IDA PRO DESDE CERO PARTE 49.</p>
+<p>USE AFTER FREE</p>
+<p>Hemos visto a lo largo de este curso, la base del uso de IDA para realizar reversing estático, unpacking, exploiting, aún quedan varios temas más para abarcar, pero dentro de la rama del exploiting nos queda una de las formas de explotación más difíciles y que asusta a mucha gente veremos los USE AFTER FREE.</p>
+<p>Hemos visto el tema de buffer overflows en forma bastante completa, como explotar y desbordar buffers en el stack y en el heap, en varios ejercicios y vídeos que hemos subido a youtube.</p>
+<p>Para tratar de entender los use after free, usaremos el EXAMEN 20 como ejemplo pues realmente se puede explotar solamente como USE AFTER FREE, no hay overflow en ninguna parte del código y los buffers están correctos siempre, si ese es el caso, como se puede explotar y desviar la ejecución?</p>
+<p>Para poder entender necesitaran bajarse primero el código fuente del examen 20</p>
+<p>https://drive.google.com/file/d/0B13TW0I0f8O2WDRfQTlvT1JoNnc/view?usp=sharing</p>
+<p>El ejecutable que esta zipeado y tiene password a</p>
+<p>https://drive.google.com/file/d/0B13TW0I0f8O2N1gtZWNianZpNnM/view?usp=sharing</p>
+<p>Y los símbolos</p>
+<p>https://drive.google.com/file/d/0B13TW0I0f8O2c3RRUUpJTFJMaEE/view?usp=sharing</p>
+<p>Deberían renombrarlos con el mismo nombre del ejecutable con extensión pdb o cuando IDA les dice que no los encuentra buscarlos y decirle donde están para que los cargue.</p>
+<figure><img loading="lazy" src="img/49/1.png" alt="Captura 1 del tute 49"></figure>
+<p>Vemos en el código fuente una clase llamada Empleados, su constructor Empleados::Empleados y los métodos virtuales que hablando mal y pronto, serían las funciones que utilizaran las instancias de esta clase.</p>
+<p>Hasta acá todo bien veamos las instancias en el main.</p>
+<figure><img loading="lazy" src="img/49/2.png" alt="Captura 2 del tute 49"></figure>
+<p>Vemos dos instancias una llamada pepe y otra jose de dicha clase Empleados, la misma en este caso se efectúa usando la función new(), que es bastante similar a malloc pero para mas orientada a crear en este caso dichas instancias, reservando la memoria necesaria en el heap. (recordamos que cuando traceabamos la función new() dentro terminábamos en malloc ).</p>
+<figure><img loading="lazy" src="img/49/3.png" alt="Captura 3 del tute 49"></figure>
+<p>Ahí vemos en el ejecutable los dos llamados a new() para crear ambas instancias pepe y jose.</p>
+<p>Y si miramos dentro del new vemos que llama a malloc con el size que está allí como argumento, en este caso 416 decimal o 0x1A0 que es el size que necesita cada instancia.</p>
+<figure><img loading="lazy" src="img/49/4.png" alt="Captura 4 del tute 49"></figure>
+<figure><img loading="lazy" src="img/49/5.png" alt="Captura 5 del tute 49"></figure>
+<p>Sabemos que a bajo nivel la instancia es como una variable de tipo estructura y debe tener lugar para guardar todos los atributos de la clase, que son equivalentes a los campos de la estructura, vemos un int para salario actual, y en la parte publica un buffer de 200 bytes decimal llamado cadena, otro llamado name y vemos también la declaración de los métodos virtuales.</p>
+<p>Normalmente dentro del constructor, en el primer lugar del espacio reservado para cada instancia se guarda un puntero a una tablita llamaba vtable las direcciones a los métodos virtuales y en cada instancia habrá un puntero a dicha tablita o vtable.</p>
+<p>En el ejercicio 19 anterior que era también de clases, a pesar de que no había new porque la instancia era una variable en el stack y no en el heap, se veía claramente el constructor.</p>
+<figure><img loading="lazy" src="img/49/6.png" alt="Captura 6 del tute 49"></figure>
+<p>Y como dentro del mismo en el primer dword guardaba el puntero a la vtable.</p>
+<figure><img loading="lazy" src="img/49/7.png" alt="Captura 7 del tute 49"></figure>
+<p>Que apuntaba a los métodos virtuales, ahora en este ejemplo no se ve el constructor en el IDA si existiera, como tenemos los símbolos debería llamarse Empleados::Empleados y no existe ese método.</p>
+<figure><img loading="lazy" src="img/49/8.png" alt="Captura 8 del tute 49"></figure>
+<p>Bueno lo que pasa es que el compilador como vio que el constructor es muy pequeño y hace casi nada al optimizar, elimino dicho método y lo reemplazo por las instrucciones que contiene.</p>
+<figure><img loading="lazy" src="img/49/9.png" alt="Captura 9 del tute 49"></figure>
+<p>El constructor solo pone a cero ese atributo y además debe setear la vtable justo después del new que crea la instancia , veamos en el IDA.</p>
+<figure><img loading="lazy" src="img/49/10.png" alt="Captura 10 del tute 49"></figure>
+<p>Allí hace ambas cosas, pone a cero dicho atributo y setea la vtable para su uso posterior.</p>
+<figure><img loading="lazy" src="img/49/11.png" alt="Captura 11 del tute 49"></figure>
+<p>Así que guarda en el primer lugar de la memoria reservada de cada instancia, un puntero a esa tablita o vtable.</p>
+<p>Antes de reversear el examen completo, que lo veremos en el vídeo correspondiente, veamos como es el mecanismo de la vulnerabilidad USE AFTER FREE y como se explotaría.</p>
+<p>Vemos que dentro del programa, según se den ciertas condiciones, se borra mediante delete() que es equivalente a free(), la instancia de pepe o la de jose.</p>
+<figure><img loading="lazy" src="img/49/12.png" alt="Captura 12 del tute 49"></figure>
+<figure><img loading="lazy" src="img/49/13.png" alt="Captura 13 del tute 49"></figure>
+<p>Vemos que después de dejar de existir alguna de dichas instancias a algún genio se le ocurre pedir los sueldos de todos los Empleados para sacar el gasto total y para eso usa el método virtual get_Salario aplicado a cada instancia.</p>
+<figure><img loading="lazy" src="img/49/14.png" alt="Captura 14 del tute 49"></figure>
+<p>Pongámosle que pepe sea la instancia que se borró, al intentar llamar a get_salario, buscara en su bloque que ha sido liberado (free) y tratara de usar el puntero a la vtable que se encontraba allí dentro y intentara saltar al método get_Salario, pero como el bloque esta liberado, es posible que el programa al continuar corriendo, alloque allí mismo si se le pide y pise el puntero a la vtable.</p>
+<figure><img loading="lazy" src="img/49/15.png" alt="Captura 15 del tute 49"></figure>
+<p>Allí abajo vemos las llamadas a get_Salario, cada instancia buscara dentro en su primer lugar su puntero a la vtable y tratara de saltar a dicho método, pero la explotación consiste en tratar de ver cuál es el size del objeto que se borró y allocar ese mismo size y llenar con nuestra fruta el bloque que antes ocupaba la instancia pepe, y ahora se llenara de nuestra fruta, de esa forma al saltar a get_Salario ya que pisamos su puntero a la vtable, redirigiremos la ejecución donde queramos.</p>
+<p>Lo veremos ejecutando a mano sin realizar un script.</p>
+<p>Corro el examen en IDA pongo breakpoints en los new().</p>
+<p>Estoy usando Windows 7 que por ahora me asegura que con un solo malloc puedo pisar el bloque fritado ya veremos cómo hacer en w10.</p>
+<figure><img loading="lazy" src="img/49/16.png" alt="Captura 16 del tute 49"></figure>
+<p>Allí estoy parado le pido 416 bytes paso el new con f8.</p>
+<figure><img loading="lazy" src="img/49/17.png" alt="Captura 17 del tute 49"></figure>
+<p>En mi caso me da un bloque que empieza en 0x65b510</p>
+<figure><img loading="lazy" src="img/49/18.png" alt="Captura 18 del tute 49"></figure>
+<p>Vemos que en el primer dword guarda el puntero a la vtable, EBX apunta allí donde guardara.</p>
+<p>Allí está la vtable pero recordemos que en la memoria alocada hay un puntero a aquí.</p>
+<figure><img loading="lazy" src="img/49/19.png" alt="Captura 19 del tute 49"></figure>
+<p>Sigamos al otro new()</p>
+<figure><img loading="lazy" src="img/49/20.png" alt="Captura 20 del tute 49"></figure>
+<p>La segunda instancia jose se ubicara en mi caso en 0x65e000 y abajo se guardara allí su puntero a la vtable.</p>
+<figure><img loading="lazy" src="img/49/21.png" alt="Captura 21 del tute 49"></figure>
+<p>Por supuesto este puntero esta en la segunda instancia, pero apunta a la misma vtable que el de la primera.</p>
+<figure><img loading="lazy" src="img/49/22.png" alt="Captura 22 del tute 49"></figure>
+<p>Sigamos</p>
+<p>Luego hay una parte que dice que ingresemos el curriculum de los empleados y hay un fgets.</p>
+<figure><img loading="lazy" src="img/49/23.png" alt="Captura 23 del tute 49"></figure>
+<p>Podemos poner un breakpoint mas abajo en el delete y dar run.</p>
+<figure><img loading="lazy" src="img/49/24.png" alt="Captura 24 del tute 49"></figure>
+<p>Tipeo algo corto</p>
+<figure><img loading="lazy" src="img/49/25.png" alt="Captura 25 del tute 49"></figure>
+<p>Cuando apreto ENTER llega al delete()</p>
+<p>El argumento del delete es la dirección de la instancia a borrar.</p>
+<figure><img loading="lazy" src="img/49/26.png" alt="Captura 26 del tute 49"></figure>
+<p>Vemos que borrara la de 0x65b510 que era la primera o sea la de pepe.</p>
+<p>Si traceo dentro del delete veo que llega a free a liberar la memoria en 0x65b510.</p>
+<figure><img loading="lazy" src="img/49/27.png" alt="Captura 27 del tute 49"></figure>
+<p>Luego me dice que ingrese el largo del curriculum</p>
+<figure><img loading="lazy" src="img/49/28.png" alt="Captura 28 del tute 49"></figure>
+<p>Y ese valor sera el que use para allocar y allí copiara, para explotar el use after free debería pasarle el mismo size de las instancias borradas o sea 416 decimal.</p>
+<p>Si pongo un breakpoint en el malloc y doy run le tipeo ese size 416</p>
+<figure><img loading="lazy" src="img/49/29.png" alt="Captura 29 del tute 49"></figure>
+<p>Al apretar enter llego al malloc</p>
+<p>Veo que va a hacer malloc de 416 si me devuelve la misma dirección de memoria que frito voy bien sino me reventó jeje.</p>
+<figure><img loading="lazy" src="img/49/30.png" alt="Captura 30 del tute 49"></figure>
+<p>Vemos que me allocó en la misma dirección jeje, ahora solo debo copiar mi fruta allí, la misma se ingresa con el fgets doy run poniendo un breakpoint en el printf.</p>
+<figure><img loading="lazy" src="img/49/31.png" alt="Captura 31 del tute 49"></figure>
+<figure><img loading="lazy" src="img/49/32.png" alt="Captura 32 del tute 49"></figure>
+<p>Tipeo mi fruta y al dar ENTER.</p>
+<figure><img loading="lazy" src="img/49/33.png" alt="Captura 33 del tute 49"></figure>
+<p>Vemos que trata de buscar el puntero a la vtable de pepe en 0x65b510 y allí yo llene con mis Aes.</p>
+<figure><img loading="lazy" src="img/49/34.png" alt="Captura 34 del tute 49"></figure>
+<p>Allí vemos entonces como se desvía la ejecución de código, controlada por la fruta que ingrese.</p>
+<p>Este obviamente es un ejemplo sencillo en un programa complejo la cosa es mas difícil de realizar pero la idea es esta, es importante tener claro el concepto de como se explota.</p>
+<p>Lo veremos profundamente reverseado, en el vídeo de youtube correspondiente.</p>
+<p>Hasta la parte 50</p>
+<p>Ricardo Narvaja</p>
+</main>
+<footer class="pie">
+  <p>Material educativo y defensivo. Las prácticas se limitan a programas propios, software abierto o crackmes diseñados para aprender. No se enseña a eludir licencias, DRM ni controles de acceso.</p>
+  <p><a href="../00_EMPEZAR_AQUI.html">Inicio</a> · <a href="../guia/etapa-0.html">Etapas</a> · <a href="../fuentes_y_limites.html">Fuentes y límites</a> · <a href="../registro_de_cobertura.csv">Registro de cobertura</a></p>
+</footer>
+<script>
+(function(){
+  function abrir(src){
+    var o=document.createElement('div'); o.className='lightbox-ov';
+    var i=document.createElement('img'); i.src=src; o.appendChild(i);
+    function cerrar(){o.remove(); document.removeEventListener('keydown', onkey);}
+    function onkey(e){ if(e.key==='Escape') cerrar(); }
+    o.addEventListener('click', cerrar);
+    document.addEventListener('keydown', onkey);
+    document.body.appendChild(o);
+  }
+  document.addEventListener('DOMContentLoaded', function(){
+    document.querySelectorAll('figure img, main img').forEach(function(img){
+      img.style.cursor='zoom-in';
+      img.addEventListener('click', function(){ abrir(img.currentSrc||img.src); });
+    });
+  });
+})();
+</script>
+</body>
+</html>

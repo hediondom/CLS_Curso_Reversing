@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>2.17 · Packers didácticos: UPX, stub, OEP, dump e IAT</title>
+<meta name="description" content="Señales genéricas de empaquetado; cómo se ve un ejecutable comprimido con UPX, cómo llegar al OEP (también en x64), dumpear, reconstruir la IAT y por qué un dump falla — sobre binarios propios, con upx -d como red de seguridad.">
+<link rel="stylesheet" href="../guia/estilo.css">
+</head>
+<body>
+<a class="salto" href="#contenido">Saltar al contenido</a>
+<header class="cabecera">
+  <div class="marca"><a href="../00_EMPEZAR_AQUI.html">CLS · Curso de reversing</a> <span class="edicion">edición 5 · 27/10/2026</span></div>
+  <nav class="principal" aria-label="Navegación principal">
+    <a href="../00_EMPEZAR_AQUI.html">Inicio</a>
+    <a href="../guia/index.html">Curso</a>
+    <a href="../materiales.html">Materiales</a>
+    <a href="../fichas/index.html">Fichas</a>
+    <a href="../glosario.html">Glosario</a>
+    <a href="../preguntas_y_respuestas.html">Repaso</a>
+    <a href="../buscar.html">Buscar</a>
+  </nav>
+</header>
+<main id="contenido">
+<nav class="migas" aria-label="Ubicación"><a href="../00_EMPEZAR_AQUI.html">Inicio</a><span aria-hidden="true">›</span><a href="../guia/index.html">Curso</a><span aria-hidden="true">›</span><span>Etapa 2 · Windows avanzado (2C)</span></nav><h1 id="packers-didácticos-upx-stub-oep-dump-e-iat">Packers didácticos: UPX, stub, OEP, dump e IAT</h1>
+<aside class="callout nota"><p class="callout-titulo">Objetivo de la lección</p><p>Entender qué hace un <strong>packer</strong> y recorrer el desempaquetado <strong>didáctico</strong> de UPX: reconocer el stub, llegar al <strong>OEP</strong>, <strong>dumpear</strong> el proceso y reconstruir la <strong>IAT</strong>. <strong>Prerrequisitos:</strong> PE, secciones e IAT (1.4), PE fino (2.14), debugger (2.6).</p></aside>
+<aside class="callout peligro"><p class="callout-titulo">Solo UPX didáctico, sobre binarios propios</p><p>Esta lección usa <strong>UPX</strong> —un compresor <strong>abierto y reversible</strong>— sobre <strong>programas propios</strong>. UPX trae su propio <code>upx -d</code> que descomprime, así que siempre tenés una red de seguridad. <strong>No</strong> se cubre el desempaquetado de <strong>protectores comerciales</strong> (Themida, ACProtect, ASProtect, VMProtect…): eso queda fuera del recorrido, como la Etapa 5 excluida. El objetivo es <strong>entender el mecanismo</strong>, no vulnerar protecciones de terceros.</p></aside>
+<h2 id="qué-hace-un-packer">Qué hace un packer</h2>
+<p>Un packer toma tu <code>.exe</code>, <strong>comprime</strong> (o cifra) el código original y le pone adelante un <strong>stub</strong>: un pequeño programa que, al ejecutarse, <strong>descomprime</strong> el original en memoria y le salta. En disco ves poco; el código real aparece recién en runtime. Señales de UPX en el PE (lo viste en <a href="01-pe.html">1.4</a> y <a href="02-pe-fino.html">2.14</a>):</p>
+<ul><li>Secciones llamadas <strong><code>UPX0</code></strong> (vacía en disco, grande en memoria: ahí se descomprime) y <strong><code>UPX1</code></strong> (el stub + datos comprimidos).</li><li><strong>Pocos imports</strong> (el stub resuelve el resto en runtime).</li><li>El <strong>entry point</strong> cae en <code>UPX1</code>, no en el código original.</li></ul>
+<p>El <strong>OEP</strong> (<em>Original Entry Point</em>) es la dirección donde empezaba tu programa antes de empacar. Desempaquetar didácticamente es: <strong>llegar al OEP</strong>, <strong>dumpear</strong> la memoria ya descomprimida y <strong>reconstruir la IAT</strong> para que el dump vuelva a ser un <code>.exe</code> que corre.</p>
+<h2 id="el-método-sobre-un-binario-propio">El método (sobre un binario propio)</h2>
+<p>El capítulo 13 lo plantea como práctica de unpacking <strong>simple</strong>: los ejemplos no tienen IAT redirection ni stolen bytes/code, y su anti-debug es tan básico que alcanza el comando <code>hide</code> de x64dbg (<a class="fuente" href="../../CLS_resultados_intermedios/transcripciones/extraidos/Reversing%20desde%20cero%20%28Ricardo%20y%20Solid%29/Ricardo%20Narvaja%20y%20Solid%20-%20Reversing%20desde%20cero_13%20Unpacking%202%20-%20OEP_13%20Unpacking%202%20-%20OEP.txt">Reversing desde cero, cap. 13</a>).</p>
+<ol><li><strong>Reconocé el packer.</strong> Secciones <code>UPX0</code>/<code>UPX1</code>, entry en <code>UPX1</code>.</li><li><strong>Llegá al OEP.</strong> El stub termina restaurando registros y <strong>saltando</strong> al OEP. En UPX el patrón clásico es un <code>popad</code> seguido de un salto lejano (<code>jmp</code>) a una dirección en la zona que estaba vacía (<code>UPX0</code>). Un breakpoint de hardware sobre el stack o seguir hasta ese <code>jmp</code> te deja en el OEP.</li><li><strong>Dumpeá</strong> el proceso cuando estás en el OEP (con Scylla, o el script que muestra el curso).</li><li><strong>Reconstruí la IAT.</strong> El tute 15 del Curso IDA sigue justo acá: después del OEP, <strong>dumpear y reconstruir la IAT</strong> para que el ejecutable vuelva a resolver sus imports (<a class="fuente" href="../../CLS_Guia/_trabajo/extraido_ida/15-INTRODUCCION%20AL%20REVERSING%20CON%20IDA%20PRO%20DESDE%20CERO.txt">Curso IDA, tute 15</a>).</li><li><strong>Comprobá con <code>upx -d</code>.</strong> Como es UPX, descomprimí el mismo binario con <code>upx -d</code> y comparás tu dump con el original: así validás que llegaste bien.</li></ol>
+<h2 id="ejemplo-paso-a-paso-el-salto-al-oep">Ejemplo paso a paso: el salto al OEP</h2>
+<p><em>(Ejemplo <strong>ilustrativo</strong> y <strong>de 32 bits (PE32)</strong>: <code>popad</code>/<code>pushad</code> existen solo en x86, así que este patrón es el de un UPX sobre un binario de 32 bits; en x64 el stub se ve distinto. Direcciones construidas para mostrar el patrón.)</em></p>
+<pre><code class="lenguaje-asm">; ...final del stub de UPX, en la sección UPX1...
+0045A1F0  popad                      ; restaura los registros que guardó al inicio (pushad)
+0045A1F1  jmp     0x00401000         ; salto lejano a UPX0 → ese es el OEP
+;--- en 0x00401000 ya estás en el código ORIGINAL ---
+00401000  push    ebp
+00401001  mov     ebp, esp           ; prólogo típico del main</code></pre>
+<p>El <code>popad</code> + <code>jmp</code> fuera de <code>UPX1</code> (hacia la zona <code>UPX0</code>, antes vacía) es la firma de "acá terminó de descomprimir y salta a tu programa". Parás en <code>0x00401000</code>, dumpeás y reconstruís la IAT.</p>
+<h2 id="y-en-64-bits-dónde-está-el-popad">Y en 64 bits, ¿dónde está el <code>popad</code>?</h2>
+<p>No está: <code>pushad</code>/<code>popad</code> no existen en x64. El stub de un UPX de 64 bits guarda y restaura los registros que necesita con varios <code>push</code>/<code>pop</code> sueltos, y la firma del final cambia. Lo que <strong>no</strong> cambia es la idea: en algún momento el stub termina de escribir el código original y <strong>salta a una dirección dentro de la región que estaba vacía</strong>. Por eso el método general no busca una instrucción concreta, sino ese salto (<strong>conocimiento externo</strong>):</p>
+<ul><li><strong>Por el destino:</strong> ubicá en el <em>memory map</em> la región que corresponde a <code>UPX0</code> y buscá, cerca del final del stub, un <code>jmp</code> cuyo destino caiga ahí.</li><li><strong>Por la ejecución:</strong> poné un <strong>breakpoint de memoria en ejecución</strong> sobre esa región. No salta mientras el stub escribe en ella; salta cuando el procesador ejecuta la primera instrucción ahí, que es el OEP.</li></ul>
+<p>La segunda forma funciona igual en 32 y 64 bits, y es la que conviene entender, porque no depende del packer.</p>
+<h2 id="señales-genéricas-de-empaquetado">Señales genéricas de empaquetado</h2>
+<p>UPX se reconoce por el nombre de sus secciones, pero un packer cualquiera deja otras huellas que se pueden combinar (<strong>conocimiento externo</strong>; los permisos y constantes están en la documentación de Microsoft):</p>
+<div class="tabla"><table>
+<thead><tr>
+<th>Señal</th>
+<th>Dónde se ve</th>
+<th>Por qué sugiere empaquetado</th>
+</tr></thead><tbody>
+<tr><td><strong>Entropía alta</strong> de una sección (cerca de 8 bits por byte)</td><td>PE-bear, Detect It Easy o un script</td><td>Los datos comprimidos o cifrados parecen aleatorios; el código normal tiene entropía bastante menor</td></tr>
+<tr><td>Tamaño <strong>en disco</strong> chico y tamaño <strong>virtual</strong> grande</td><td>Tabla de secciones</td><td>La sección se llena en memoria al descomprimir</td></tr>
+<tr><td>Sección <strong>escribible y ejecutable</strong> a la vez</td><td>Flags de la sección (<code>MEM_WRITE</code> + <code>MEM_EXECUTE</code>)</td><td>El stub escribe código y después lo ejecuta en el mismo lugar</td></tr>
+<tr><td>Pocos imports, con <code>LoadLibrary</code>/<code>GetProcAddress</code></td><td>Tabla de imports</td><td>Los demás se resuelven en ejecución (<a href="02-pe-fino.html">2.14</a>)</td></tr>
+<tr><td>Entry point fuera de la primera sección de código</td><td>Cabecera opcional</td><td>El primer código que corre es el stub</td></tr>
+<tr><td>En ejecución: <code>VirtualAlloc</code>/<code>VirtualProtect</code> que dejan memoria ejecutable, escritura en ella y salto</td><td>Breakpoints en esas APIs</td><td>Es el desempaquetado en vivo</td></tr>
+</tbody></table></div>
+<p>Ninguna alcanza sola: un instalador con datos comprimidos tiene entropía alta sin ser un packer, y un programa legítimo puede cambiar permisos de memoria. Como con la huella de compilador (<a href="02-huella-compilador.html">2.13</a>), se suman señales.</p>
+<p><em>(Ejemplo <strong>ilustrativo</strong>: cálculo de entropía de Shannon de un bloque de bytes, para entender qué muestran las herramientas.)</em></p>
+<pre><code class="lenguaje-python">import math
+from collections import Counter
+
+def entropia(datos: bytes) -&gt; float:
+    # bits por byte: 0 si todos los bytes son iguales, 8 si son uniformes
+    if not datos:
+        return 0.0
+    n = len(datos)
+    return -sum(c / n * math.log2(c / n) for c in Counter(datos).values())</code></pre>
+<h2 id="por-qué-un-dump-puede-no-funcionar">Por qué un dump puede no funcionar</h2>
+<p>Llegar al OEP y dumpear no garantiza un ejecutable que corra. Las causas típicas, de la más común a la menos (<strong>conocimiento externo</strong>):</p>
+<ul><li><strong>IAT sin reconstruir:</strong> el dump tiene en la IAT direcciones absolutas de esta ejecución, no una tabla de imports que el loader pueda resolver.</li><li><strong>Cabeceras de secciones sin ajustar:</strong> en memoria cada sección está en su dirección virtual; si el dumper no reescribe los offsets en disco para que coincidan, el archivo queda desalineado.</li><li><strong>Base distinta:</strong> si el proceso cargó en otra base por ASLR y el dump no conserva o ajusta las relocalizaciones, las direcciones absolutas del código no coinciden.</li><li><strong>Estado ya modificado:</strong> si dumpeás después del OEP, las variables globales ya pueden tener valores de esta ejecución.</li><li><strong>Código que corre antes:</strong> TLS callbacks (<a href="02-tls.html">2.11</a>) o anti-dump (<a href="02-anti-analisis.html">2.15</a>).</li></ul>
+<p>Para <strong>analizar</strong> no siempre hace falta que el dump corra: abierto en IDA o Ghidra, con la base correcta, ya muestra el código descomprimido. Que corra es la prueba de que reconstruiste bien, no un requisito para leerlo.</p>
+<h2 id="práctica">Práctica</h2>
+<p>En tu VM, con un <strong>programa propio</strong> (necesitás UPX, gratis y open source; versiones de referencia: UPX 4.x, x64dbg, Scylla):</p>
+<ol><li>Compilá un <code>hola.exe</code> propio <strong>de 32 bits (x86)</strong> —para que valga el patrón <code>popad</code> de arriba— y guardá su hash.</li><li>Comprimilo: <code>upx hola.exe</code>. Mirá en PE-bear las secciones <code>UPX0</code>/<code>UPX1</code> y cómo cambió el entry point y los imports.</li><li>En x64dbg (x32dbg), llegá al OEP siguiendo el <code>popad</code>/<code>jmp</code>. Anotá el OEP como <strong>RVA</strong> (dirección − base de imagen), no como VA absoluta.</li><li>Dumpeá y reconstruí la IAT (Scylla).</li><li><strong>Validá</strong>: <code>upx -d hola.exe</code> recupera el original; comparalo con tu dump por <strong>RVA del OEP y comportamiento</strong> (no por la VA absoluta, que puede diferir según dónde cargue). ¿Coinciden el punto de entrada y los imports resueltos?</li><li>Repetí con un <code>hola.exe</code> propio <strong>de 64 bits</strong>: llegá al OEP con un breakpoint de memoria en ejecución sobre la región de <code>UPX0</code> y anotá qué instrucción del stub hizo el salto.</li><li>Calculá la entropía de cada sección del original y del comprimido (con una herramienta o con la función de arriba) y armá una tabla con las señales genéricas que muestra cada uno.</li></ol>
+<h2 id="preguntas-de-repaso">Preguntas de repaso</h2>
+<details class="qa"><summary>¿Qué son las secciones <code>UPX0</code> y <code>UPX1</code>?</summary><div class="respuesta"><p><code>UPX1</code> trae el <strong>stub</strong> y los datos comprimidos; <code>UPX0</code> está <strong>vacía en disco</strong> pero reservada en memoria: ahí el stub <strong>descomprime</strong> el código original. El entry point apunta a <code>UPX1</code>.</p></div></details>
+<details class="qa"><summary>¿Qué es el OEP y por qué lo buscás?</summary><div class="respuesta"><p>El <em>Original Entry Point</em>: la dirección donde arrancaba tu programa antes de empacar. Al llegar ahí, el código ya está <strong>descomprimido</strong> en memoria, listo para dumpear.</p></div></details>
+<details class="qa"><summary>¿Cuál es el patrón clásico para detectar el salto al OEP en UPX?</summary><div class="respuesta"><p>Un <strong><code>popad</code></strong> (restaura los registros que guardó el <code>pushad</code> inicial del stub) seguido de un <strong><code>jmp</code> lejano</strong> que sale de <code>UPX1</code> hacia la zona <code>UPX0</code>. Ese salto cae en el OEP.</p></div></details>
+<details class="qa"><summary>¿Por qué hay que reconstruir la IAT después de dumpear?</summary><div class="respuesta"><p>Porque el stub resolvió los imports en runtime; el dump "crudo" no tiene una tabla de imports válida. Reconstruir la IAT (p. ej. con Scylla) hace que el <code>.exe</code> recuperado vuelva a resolver sus funciones.</p></div></details>
+<details class="qa"><summary>En x64 no hay <code>popad</code>. ¿Cómo llegás al OEP de un UPX de 64 bits?</summary><div class="respuesta"><p>Buscando el salto a la región que estaba vacía, o con un breakpoint de memoria en ejecución sobre esa región: se dispara en la primera instrucción ejecutada ahí, que es el OEP. Ese método no depende del packer.</p></div></details>
+<details class="qa"><summary>¿Por qué la entropía alta sola no prueba que un binario esté empaquetado?</summary><div class="respuesta"><p>Porque cualquier dato comprimido o cifrado la tiene (un instalador con recursos comprimidos, por ejemplo). Se combina con otras señales: tamaños en disco y virtual, secciones escribibles y ejecutables, pocos imports, entry point en el stub.</p></div></details>
+<details class="qa"><summary>Llegaste al OEP y dumpeaste, pero el dump no arranca. ¿Qué revisás primero?</summary><div class="respuesta"><p>La IAT (¿se reconstruyó?), las cabeceras de secciones (¿coinciden offsets en disco y virtuales?) y la base (¿se conservaron las relocalizaciones?). Para leer el código no hace falta que arranque.</p></div></details>
+<details class="qa"><summary>¿Por qué UPX es seguro para practicar y un protector comercial no entra en esta guía?</summary><div class="respuesta"><p>UPX es <strong>abierto y reversible</strong> (<code>upx -d</code> deshace el empaquetado), y se practica sobre <strong>binarios propios</strong>. Desempaquetar protectores comerciales apunta a vulnerar software de terceros: queda fuera del marco educativo/defensivo.</p></div></details>
+<aside class="callout nota"><p class="callout-titulo">Puerta de salida</p><p>Podés: (1) reconocer un binario UPX por sus secciones/entry/imports; (2) explicar qué es el OEP; (3) llegar al OEP por el patrón <code>popad</code>/<code>jmp</code> y dumpear; (4) decir por qué hay que reconstruir la IAT; (5) validar tu resultado con <code>upx -d</code>; (6) llegar al OEP de un UPX de 64 bits sin el patrón <code>popad</code>; (7) reconocer un posible empaquetado por señales genéricas y explicar por qué una sola no alcanza; (8) diagnosticar por qué un dump no corre.</p></aside>
+<aside class="callout nota"><p class="callout-titulo">Lo que queda fuera</p><p>Packers con varias capas, código que se descifra por partes durante la ejecución, redirección de la IAT, <em>stolen bytes</em> y, por el límite del curso, todo protector comercial. La lección enseña el mecanismo con un compresor abierto y reversible.</p></aside>
+<h2 id="fuentes-de-esta-lección">Fuentes de esta lección</h2>
+<ul><li><a class="fuente" href="../../CLS_resultados_intermedios/transcripciones/extraidos/Reversing%20desde%20cero%20%28Ricardo%20y%20Solid%29/Ricardo%20Narvaja%20y%20Solid%20-%20Reversing%20desde%20cero_13%20Unpacking%202%20-%20OEP_13%20Unpacking%202%20-%20OEP.txt">Reversing desde cero, cap. 13</a> — unpacking simple: llegar al OEP y dumpear; ejemplos sin IAT redirection/stolen; anti-debug básico (<code>hide</code>).</li><li><a class="fuente" href="../../CLS_Guia/_trabajo/extraido_ida/15-INTRODUCCION%20AL%20REVERSING%20CON%20IDA%20PRO%20DESDE%20CERO.txt">Curso IDA, tute 15</a> — dumpeado y reconstrucción de la IAT después del OEP.</li><li><a href="../ida_tutes/14.html">Curso IDA · tutes 14–18</a> — serie de unpacking didáctico (UPX, ASPack) con IDA y Scylla.</li><li>Video «10 Unpacking 1 - UPX» del tronco del curso → <a href="../videos.html">índice de videos</a>.</li><li>Conocimiento externo: <a href="https://upx.github.io/" rel="noopener" target="_blank">UPX</a> (proyecto oficial); Microsoft Learn: <a href="https://learn.microsoft.com/en-us/windows/win32/debug/pe-format" rel="noopener" target="_blank">PE Format</a> (flags de sección), <a href="https://learn.microsoft.com/en-us/windows/win32/api/memoryapi/nf-memoryapi-virtualprotect" rel="noopener" target="_blank">VirtualProtect</a> y <a href="https://learn.microsoft.com/en-us/windows/win32/memory/memory-protection-constants" rel="noopener" target="_blank">Memory Protection Constants</a>.</li></ul>
+<aside class="callout nota"><p class="callout-titulo">Capas de esta lección</p><p><strong>Contenido observado en CLS:</strong> el método de OEP del capítulo 13 y la reconstrucción de IAT del tute 15. <strong>Conocimiento externo:</strong> las secciones <code>UPX0</code>/<code>UPX1</code>, el patrón <code>popad</code>/<code>jmp</code>, el método por breakpoint de memoria en x64, las señales genéricas (entropía, permisos, tamaños), las causas de un dump fallido y <code>upx -d</code>. <strong>Recomendación editorial:</strong> el marco de solo-UPX-didáctico-sobre-binarios-propios y los ejemplos ilustrativos (listado del stub y función de entropía; no hay un laboratorio compilado con hashes reales en esta edición).</p></aside>
+
+<aside class="ampliacion-ext">
+<p class="callout-titulo">Ampliación editorial basada en fuentes externas — Procedimiento paso a paso del breakpoint de hardware en el stack («ESP/RSP trick»)</p>
+<p>El paso 2 de esta lección menciona el breakpoint de hardware sobre el stack. Su fundamento combina la propiedad LIFO de la pila con los registros <code>DR0–DR3</code> (<em>Practical Malware Analysis</em>, Cap. 18; Intel SDM Vol. 3B §17.2) <em>(Hecho confirmado)</em>:</p>
+<ol>
+<li>En el inicio del stub de UPX, ejecutá <strong>una sola vez <code>F8</code></strong> sobre el <code>pushad</code> inicial (que guarda los 8 registros en el stack).</li>
+<li>En el panel de registros de x64dbg, hacé clic derecho en el nuevo valor de <strong><code>ESP</code></strong> &rarr; <em>Follow in Dump</em>.</li>
+<li>Seleccioná los primeros 4 bytes en el <em>Dump</em>, clic derecho &rarr; <em>Breakpoint &rarr; Hardware, Access &rarr; Dword</em>.</li>
+<li>Presioná <strong><code>F9</code> (Run)</strong>: cuando el stub termine de descomprimir y ejecute <code>popad</code> para restaurar esos mismos 4 bytes, el procesador disparará la interrupción de depuración y se detendrá exactamente sobre el <code>jmp OEP</code>.</li>
+</ol>
+</aside>
+</main>
+<footer class="pie">
+  <p>Material educativo y defensivo. Las prácticas se limitan a programas propios, software abierto o crackmes diseñados para aprender. No se enseña a eludir licencias, DRM ni controles de acceso.</p>
+  <p><a href="../00_EMPEZAR_AQUI.html">Inicio</a> · <a href="../guia/etapa-0.html">Etapas</a> · <a href="../fuentes_y_limites.html">Fuentes y límites</a> · <a href="../registro_de_cobertura.csv">Registro de cobertura</a></p>
+</footer>
+</body>
+</html>

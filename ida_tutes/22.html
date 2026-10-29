@@ -1,0 +1,175 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tute 22 · Differ (comparar versiones) — Curso IDA</title>
+<meta name="description" content="Tutorial ilustrado del tute 22 del Curso IDA desde cero: Differ (comparar versiones).">
+<link rel="stylesheet" href="../guia/estilo.css">
+</head>
+<body>
+<a class="salto" href="#contenido">Saltar al contenido</a>
+<header class="cabecera">
+  <div class="marca"><a href="../00_EMPEZAR_AQUI.html">CLS · Curso de reversing</a> <span class="edicion">edición 5 · 27/10/2026</span></div>
+  <nav class="principal" aria-label="Navegación principal">
+    <a href="../00_EMPEZAR_AQUI.html">Inicio</a>
+    <a href="../guia/index.html">Curso</a>
+    <a href="../fichas/index.html">Fichas</a>
+    <a href="../glosario.html">Glosario</a>
+    <a href="../preguntas_y_respuestas.html">Repaso</a>
+  </nav>
+</header>
+<main id="contenido">
+<p class="migas"><a href="../ida-tutes.html">← Índice de los 69 tutes de IDA</a></p>
+<h1>Tute 22 · Differ (comparar versiones)</h1>
+<p class="meta-tute"><strong>⏱ 8 min de lectura</strong> · 1.385 palabras · 48 capturas · grupo: Crackmes, differ y ejercicios</p>
+<aside class="callout nota"><p class="callout-titulo">Qué enseña</p><p>Qué es un differ y cómo empareja funciones entre dos versiones de un programa.</p></aside>
+<p><em>se conecta con:</em> <a href="../guia/02-ida.html">IDA</a> · <a href="../guia/02-llamadas.html">Llamadas y pila</a> · <a href="../guia/02-flujo.html">Flujo</a> · <a href="../guia/05-vulnerabilidades.html">Vulnerabilidades (defensivo)</a></p>
+<aside class="callout aviso"><p class="callout-titulo">Material observado, no reescrito</p><p>Es el texto y las capturas del <code>.docx</code> original del curso, solo presentados como tutorial. Puede tener erratas de origen. El autor del curso es Ricardo Narvaja.</p></aside>
+<hr>
+<p>INTRODUCCIÓN AL REVERSING CON IDA PRO DESDE CERO PARTE 22</p>
+<p>DIFFERS</p>
+<p>Un differ es un programa que a partir de dos versiones consecutivas de un mismo programa, trata de emparejar o matchear las funciones a pesar de los cambios y nos trata de mostrar cuáles funciones fueron cambiadas y donde.</p>
+<p>Obviamente este trabajo no es sencillo, sobre todo cuando de una versión a otra ha habido muchos cambios, los cuales pueden ser desde la aplicación de algún parche de seguridad para solucionar alguna vulnerabilidad, como también puede haber mejoras en el programa, agregados en la interfase, cambios generales, etc.</p>
+<p>Los que tenemos que trabajar con differs sabemos que cuanto más grande y más cambios haya en el ejecutable, más ingrato es el trabajo ya que el differ comete algunos errores al matchear.</p>
+<p>Vamos a ver los tres differs más conocidos que usaremos en general, para ir instalándolos y conociéndolos, cada uno tiene su punto fuerte y su punto débil, la realidad hace que a veces haya que usar más de uno en casos complejos para tratar de aclararse.</p>
+<p>BINDIFF.</p>
+<p>El primero que instalaremos será el BINDIFF.</p>
+<p>https://www.zynamics.com/software.html</p>
+<figure><img loading="lazy" src="img/22/1.png" alt="Captura 1 del tute 22"></figure>
+<p>De allí se baja aceptando las condiciones.</p>
+<figure><img loading="lazy" src="img/22/2.png" alt="Captura 2 del tute 22"></figure>
+<p>Bueno a bajar java si no lo tenemos.</p>
+<figure><img loading="lazy" src="img/22/3.png" alt="Captura 3 del tute 22"></figure>
+<figure><img loading="lazy" src="img/22/4.png" alt="Captura 4 del tute 22"></figure>
+<p>Parece ser esta la versión bajamos e instalamos.</p>
+<figure><img loading="lazy" src="img/22/5.png" alt="Captura 5 del tute 22"></figure>
+<p>A continuación reintento instalar el bindiff y parece que no hay problema, no se queja.</p>
+<p>Todavía tengo del ejercicio anterior los ejecutables el vulnerable y el no vulnerable, abro el más nuevo o sea el no vulnerable o parcheado en el LOADER del IDA para que cree el IDB si no lo hice antes.</p>
+<figure><img loading="lazy" src="img/22/6.png" alt="Captura 6 del tute 22"></figure>
+<p>Luego abro el vulnerable.</p>
+<figure><img loading="lazy" src="img/22/7.png" alt="Captura 7 del tute 22"></figure>
+<p>Luego voy a edit-plugins.</p>
+<figure><img loading="lazy" src="img/22/8.png" alt="Captura 8 del tute 22"></figure>
+<p>y elijo BINDIFF</p>
+<figure><img loading="lazy" src="img/22/9.png" alt="Captura 9 del tute 22"></figure>
+<p>Y apreto DIFF DATABASE y busco la versión parcheada contra la cual comparara.</p>
+<figure><img loading="lazy" src="img/22/10.png" alt="Captura 10 del tute 22"></figure>
+<figure><img loading="lazy" src="img/22/11.png" alt="Captura 11 del tute 22"></figure>
+<p>Una vez que termina me muestra los resultados a veces no es cómodo que se vea en una columna, así que puedo arrastrarlo y soltarlo en la barra de pestañas.</p>
+<figure><img loading="lazy" src="img/22/12.png" alt="Captura 12 del tute 22"></figure>
+<p>Ahora sí, la primera columna nos muestra la similaridad, las que dicen 1.00 son iguales y cuanto más bajo es el número, más diferentes son, conviene hacer click en la parte superior de esa columna para que las ordene de más diferente a más similar.</p>
+<figure><img loading="lazy" src="img/22/13.png" alt="Captura 13 del tute 22"></figure>
+<p>Vemos que hay una sola con similaridad menor que 1.</p>
+<figure><img loading="lazy" src="img/22/14.png" alt="Captura 14 del tute 22"></figure>
+<figure><img loading="lazy" src="img/22/15.png" alt="Captura 15 del tute 22"></figure>
+<p>Los bloques verdes son los similares, los amarillos tienen algún cambio y los rojos o grises son agregados.</p>
+<figure><img loading="lazy" src="img/22/16.png" alt="Captura 16 del tute 22"></figure>
+<p>Allí vemos el cambio, como sabemos cambiar un salto JLE por JBE es algo que puede evitar un BUFFER OVERFLOW, por lo tanto si en un programa del cual tenemos ambas la versión vulnerable y la versión parcheada y mirando las funciones cambiadas en alguna encontráramos esto sabremos que tendremos que ir a reversear estáticamente esa función a ver si realmente es la vulnerable del programa.</p>
+<p>Una de las ventajas de BINDIFF sobre los otros dos es que el gráfico es interactivo, no una imagen solamente, tiene un buscador arriba.</p>
+<figure><img loading="lazy" src="img/22/17.png" alt="Captura 17 del tute 22"></figure>
+<p>Lo cual es muy útil, y también se pueden buscar direcciones y cualquier texto que este en el gráfico.</p>
+<figure><img loading="lazy" src="img/22/18.png" alt="Captura 18 del tute 22"></figure>
+<p>Podemos copiar la dirección del bloque para pegarla en IDA e ir allí.</p>
+<p>Tenemos también un navegador gráfico para recorrer la función y la lista de bloques.</p>
+<figure><img loading="lazy" src="img/22/19.png" alt="Captura 19 del tute 22"></figure>
+<p>Podemos marcar un bloque y en el menú tenemos select ancestor o select succesors para que nos oscurezca los bloques del camino dentro de la función para llegar al mismo bloque inicial, o desde allí, en este caso es una sencilla función, pero en funciones grandes y complejas encontrar el camino a un bloque es muy importante.</p>
+<p>Tiene muchas cosas buenas el bindiff sobretodo en la parte gráfica, tiene algunos problemas de matcheo en programas grandes, pero es una de las mejores opciones a tener en cuenta.</p>
+<p>TURBODIFF</p>
+<p>Es un differ creado por mi compañero de Core Nicolas Economou, el mismo estará adjunto con el tute, también se puede descargar de la web de CORE SECURITY pero es una versión anterior a la que puse adjunta.</p>
+<p>El PLW se copia a la carpeta plugins dentro de la carpeta de instalación del IDA.</p>
+<figure><img loading="lazy" src="img/22/20.png" alt="Captura 20 del tute 22"></figure>
+<figure><img loading="lazy" src="img/22/21.png" alt="Captura 21 del tute 22"></figure>
+<p>Tendré que volver a arrancar el IDA para que lo cargue.</p>
+<p>Como siempre cargo la versión NO VULNERABLE primero.</p>
+<figure><img loading="lazy" src="img/22/22.png" alt="Captura 22 del tute 22"></figure>
+<p>Hay que tomar la información de cada uno de los idb que se van a comparar.</p>
+<figure><img loading="lazy" src="img/22/23.png" alt="Captura 23 del tute 22"></figure>
+<p>Así que hago eso en este primero.</p>
+<figure><img loading="lazy" src="img/22/24.png" alt="Captura 24 del tute 22"></figure>
+<p>Luego abro el vulnerable y hago lo mismo.</p>
+<figure><img loading="lazy" src="img/22/25.png" alt="Captura 25 del tute 22"></figure>
+<p>Luego desde el vulnerable vuelvo a llamar al plugin</p>
+<figure><img loading="lazy" src="img/22/26.png" alt="Captura 26 del tute 22"></figure>
+<figure><img loading="lazy" src="img/22/27.png" alt="Captura 27 del tute 22"></figure>
+<p>Busco la versión no vulnerable y acepto con las opciones que trae por default.</p>
+<figure><img loading="lazy" src="img/22/28.png" alt="Captura 28 del tute 22"></figure>
+<p>Allí pudo apretar CTRL mas F y buscar changed o suspicious para que me muestre las cambiadas.</p>
+<figure><img loading="lazy" src="img/22/29.png" alt="Captura 29 del tute 22"></figure>
+<p>Allí está haciendo doble click</p>
+<figure><img loading="lazy" src="img/22/30.png" alt="Captura 30 del tute 22"></figure>
+<p>Allí se ven las cambiadas también hay un código de colores según el tipo de cambio, verde para los bloques con mínimos cambios, amarillo para los bloques muy cambiados y rojo para los bloques agregados.</p>
+<p>Obviamente los gráficos son imágenes y no son interactivos, pero es un differ muy rápido realmente el más rápido, se nota mucho en ejecutables grandes y que no muestra demasiados cambios tontos como el bindiff, asumiendo muchos como no importantes lo cual en grandes trabajos se agradece.</p>
+<p>Si uno no le gusta la forma de los gráficos puede usar ambos differs a la vez y luego ver los resultados en el gráfico del bindiff.</p>
+<p>DIAPHORA</p>
+<p>El diaphora es un plugin hecho en Python por Joxean Koret</p>
+<p>https://github.com/joxeankoret/diaphora</p>
+<figure><img loading="lazy" src="img/22/31.png" alt="Captura 31 del tute 22"></figure>
+<p>No es necesario instalarlo puedo descomprimirlo en cualquier lugar y solo es necesario tener instalado Python en la máquina lo cual si tenemos IDA ya lo tendremos.</p>
+<figure><img loading="lazy" src="img/22/32.png" alt="Captura 32 del tute 22"></figure>
+<p>Así que iremos como siempre primero al parcheado o no vulnerable en el IDA.</p>
+<figure><img loading="lazy" src="img/22/33.png" alt="Captura 33 del tute 22"></figure>
+<p>En FILE-SCRIPT FILE abre el buscador y vamos donde los descomprimimos al diaphora y buscamos diaphora.py.</p>
+<figure><img loading="lazy" src="img/22/34.png" alt="Captura 34 del tute 22"></figure>
+<figure><img loading="lazy" src="img/22/35.png" alt="Captura 35 del tute 22"></figure>
+<p>Así como viene apretamos OK para que exporte la database a SQL.</p>
+<figure><img loading="lazy" src="img/22/36.png" alt="Captura 36 del tute 22"></figure>
+<p>Cuando termina abrimos el vulnerable en IDA y hacemos lo mismo abrimos el diaphora.py y sin cambiar nada exportamos la database.</p>
+<figure><img loading="lazy" src="img/22/37.png" alt="Captura 37 del tute 22"></figure>
+<p>Una vez que hicimos lo mismo en ambas, volvemos a abrir el diaphora.py en la versión vulnerable pero esta vez.</p>
+<figure><img loading="lazy" src="img/22/38.png" alt="Captura 38 del tute 22"></figure>
+<p>En el segundo lugar buscamos la SQL database del parcheado que exportó antes .</p>
+<p>Vemos que cuando vamos a la carpeta parece no haber nada</p>
+<figure><img loading="lazy" src="img/22/39.png" alt="Captura 39 del tute 22"></figure>
+<p>Pero es por el filtro de archivos lo cambiamos para que muestre todo.</p>
+<figure><img loading="lazy" src="img/22/40.png" alt="Captura 40 del tute 22"></figure>
+<p>Y buscamos el de la no vulnerable.</p>
+<figure><img loading="lazy" src="img/22/41.png" alt="Captura 41 del tute 22"></figure>
+<p>Apreto OK así como esta.</p>
+<figure><img loading="lazy" src="img/22/42.png" alt="Captura 42 del tute 22"></figure>
+<p>Vemos que hay una pestaña BEST MATCHES con las que no hay duda de que son iguales.</p>
+<figure><img loading="lazy" src="img/22/43.png" alt="Captura 43 del tute 22"></figure>
+<p>En la pestaña PARTIAL MATCHES vemos las que posiblemente se cambiaron.</p>
+<figure><img loading="lazy" src="img/22/44.png" alt="Captura 44 del tute 22"></figure>
+<p>Allí está la versión cambiada, vemos que encontró dos cambiadas, una de las cosas que tiene diaphora es que es muy preciso a veces eso es bueno, pero a veces cuando tienes cientos de funciones, quieres que sea un poco más relajado y no muestre tantas pavadas como cambios.</p>
+<figure><img loading="lazy" src="img/22/45.png" alt="Captura 45 del tute 22"></figure>
+<p>Vemos que tiene varias opciones para graficar la primera DIFF ASSEMBLY.</p>
+<figure><img loading="lazy" src="img/22/46.png" alt="Captura 46 del tute 22"></figure>
+<p>Es como muy preciso y detallado pero cuando ves cien funciones así, te quieres matar jeje, veamos la segunda opción DIFF ASSEMBLY IN A GRAPH.</p>
+<figure><img loading="lazy" src="img/22/47.png" alt="Captura 47 del tute 22"></figure>
+<p>Este gráfico es un poco mejor, aunque no es interactivo, el bloque importante cambiado está en rojo y en amarillo los que tienen cambios menores como el nombre de una variable.</p>
+<p>La otra opción DIFF PSEUDO CODE usa el plugin HEX RAYS que trae el IDA incluido que trata de armar un código fuente a partir del ejecutable.</p>
+<figure><img loading="lazy" src="img/22/48.png" alt="Captura 48 del tute 22"></figure>
+<p>Vemos que en el vulnerable que habíamos reverseado nosotros a mano y determinado que había un buffer de 16 bytes, a esa variable Buf la detecta como buffer, pero en el otro como no hicimos el mismo trabajo no lo detecta sino como una variable char nada más, también muestra que la variable es signed en el vulnerable y en el otro no dice nada lo que supone que será unsigned.</p>
+<p>Otra característica de diaphora es que es el más lento (está programado en python contra C del turbodiff) y en ejecutables grandes es muy largo el análisis y macheo.</p>
+<p>Adjunte el archivo IDA1.exe me gustaría que lo analicen y vean si es vulnerable y además si se puede desbordar el buffer y modificar el flujo del programa para que nos muestre el cartel de chico bueno.</p>
+<p>Se discute abiertamente el ejercicio tanto en la lista de correo crackslatinos como en nuestro grupo de telegram.</p>
+<p>https://telegram.me/CLSExploits</p>
+<p>Hasta la parte 23 donde estará la solución del ejercicio.</p>
+<p>Ricardo Narvaja</p>
+</main>
+<footer class="pie">
+  <p>Material educativo y defensivo. Las prácticas se limitan a programas propios, software abierto o crackmes diseñados para aprender. No se enseña a eludir licencias, DRM ni controles de acceso.</p>
+  <p><a href="../00_EMPEZAR_AQUI.html">Inicio</a> · <a href="../guia/etapa-0.html">Etapas</a> · <a href="../fuentes_y_limites.html">Fuentes y límites</a> · <a href="../registro_de_cobertura.csv">Registro de cobertura</a></p>
+</footer>
+<script>
+(function(){
+  function abrir(src){
+    var o=document.createElement('div'); o.className='lightbox-ov';
+    var i=document.createElement('img'); i.src=src; o.appendChild(i);
+    function cerrar(){o.remove(); document.removeEventListener('keydown', onkey);}
+    function onkey(e){ if(e.key==='Escape') cerrar(); }
+    o.addEventListener('click', cerrar);
+    document.addEventListener('keydown', onkey);
+    document.body.appendChild(o);
+  }
+  document.addEventListener('DOMContentLoaded', function(){
+    document.querySelectorAll('figure img, main img').forEach(function(img){
+      img.style.cursor='zoom-in';
+      img.addEventListener('click', function(){ abrir(img.currentSrc||img.src); });
+    });
+  });
+})();
+</script>
+</body>
+</html>

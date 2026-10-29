@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>2D.11 · Excepciones de Windows y debugging</title>
+<meta name="description" content="Leer SEH x86, unwind x64 y metadatos .pdata/.xdata; seguir el despacho de una excepción (depurador, VEH, handlers por marco, segunda oportunidad) y depurar una excepción controlada en un programa propio.">
+<link rel="stylesheet" href="../guia/estilo.css">
+</head>
+<body>
+<a class="salto" href="#contenido">Saltar al contenido</a>
+<header class="cabecera">
+  <div class="marca"><a href="../00_EMPEZAR_AQUI.html">CLS · Curso de reversing</a> <span class="edicion">edición 5 · 27/10/2026</span></div>
+  <nav class="principal" aria-label="Navegación principal">
+    <a href="../00_EMPEZAR_AQUI.html">Inicio</a>
+    <a href="../guia/index.html">Curso</a>
+    <a href="../materiales.html">Materiales</a>
+    <a href="../fichas/index.html">Fichas</a>
+    <a href="../glosario.html">Glosario</a>
+    <a href="../preguntas_y_respuestas.html">Repaso</a>
+    <a href="../buscar.html">Buscar</a>
+  </nav>
+</header>
+<main id="contenido">
+<nav class="migas" aria-label="Ubicación"><a href="../00_EMPEZAR_AQUI.html">Inicio</a><span aria-hidden="true">›</span><a href="../guia/index.html">Curso</a><span aria-hidden="true">›</span><span>Etapa 2 · 2D · Windows internals (optativa)</span></nav><h1 id="excepciones-de-windows-y-debugging">Excepciones de Windows y debugging</h1>
+<aside class="callout aviso"><p class="callout-titulo">Rama optativa 2D</p><p>La práctica usa una excepción esperada en un programa propio. No busca provocar corrupción ni explotar un fallo.</p></aside>
+<aside class="callout nota"><p class="callout-titulo">Propósito</p><p>Entender cómo el depurador reconstruye el stack y cómo Windows transfiere el control cuando una función falla, distinguiendo el modelo histórico x86 del unwind x64. Al terminar deberías poder explicar <strong>quién</strong> vio una excepción, <strong>en qué orden</strong> y <strong>por qué</strong> una excepción de primera oportunidad no significa que el programa haya fallado.</p></aside>
+<p><strong>Prerrequisitos</strong></p>
+<ul><li><em>Obligatorios:</em> stack y llamadas (<a href="01-memoria.html">1.2</a>, <a href="02-llamadas.html">2.5</a>); <a href="2d-02-memoria-loader.html">2D.2 memoria/loader</a>.</li><li><em>Recomendados:</em> WinDbg/TTD (<a href="02-windbg-heap.html">2.19</a>); C++ profundo (<a href="02-cpp-profundo.html">2.18</a>); taxonomía anti-análisis (<a href="02-anti-analisis.html">2.15</a>).</li></ul>
+<h2 id="modelos">Modelos</h2>
+<p>En x86, SEH usa registros/estructuras de excepción y el runtime del compilador puede agregar handlers de lenguaje; los detalles dependen del compilador y de mitigaciones como SafeSEH/SEHOP. En x64, el unwinder consulta metadatos de funciones: <code>.pdata</code> indexa entradas <code>RUNTIME_FUNCTION</code> y <code>.xdata</code> describe cómo deshacer prólogos y recuperar registros; algunas funciones hoja no requieren entrada.</p>
+<p>WinDbg puede mostrar el evento de excepción, contexto y stack. En TTD, una traza de user mode permite avanzar o retroceder por esa ejecución, pero no reemplaza símbolos, documentación ni comprensión del estado. La salida cambia con arquitectura, build y símbolos disponibles.</p>
+<h2 id="qué-guarda-el-sistema-cuando-ocurre-una-excepción">Qué guarda el sistema cuando ocurre una excepción</h2>
+<p>Cuando el procesador o el software genera una excepción, Windows guarda dos estructuras:</p>
+<ul><li>el <strong>registro de contexto</strong> (<code>CONTEXT</code>): el estado de la máquina del hilo en ese momento, dependiente de la arquitectura;</li><li>el <strong>registro de excepción</strong> (<code>EXCEPTION_RECORD</code>): el <strong>código</strong> de excepción, si es <strong>continuable</strong>, un puntero a otro registro (excepciones anidadas), la <strong>dirección</strong> donde ocurrió y un arreglo de <strong>parámetros</strong> adicionales.</li></ul>
+<p>Para el análisis, el par contexto + registro es la evidencia primaria: la dirección y el código dicen qué pasó; el contexto dice con qué registros. En WinDbg, <code>.exr</code> muestra un registro de excepción y <code>.ecxr</code> cambia el contexto al de la excepción guardada, para que <code>k</code> muestre el stack <strong>de ese momento</strong> y no el del depurador.</p>
+<h2 id="orden-de-despacho-en-user-mode">Orden de despacho en user mode</h2>
+<p>Microsoft documenta este orden para buscar quién maneja una excepción de user mode:</p>
+<ol><li><strong>Depurador, primera oportunidad.</strong> Si el proceso está siendo depurado, el sistema notifica al depurador.</li><li><strong>Vectored exception handlers (VEH).</strong> Se registran con <code>AddVectoredExceptionHandler</code>, no dependen del marco de llamada, se aplican a todo el proceso y se llaman en el orden en que se agregaron, <strong>después</strong> de la primera oportunidad del depurador y <strong>antes</strong> de que comience el desenrollado.</li><li><strong>Handlers basados en marcos.</strong> El sistema recorre los marcos del hilo desde el actual hacia atrás: en x86, la cadena SEH; en x64, la información de <code>.pdata</code>/<code>.xdata</code>. Aquí entran <code>__try/__except</code> y los handlers de lenguaje como el de C++.</li><li><strong>Depurador, segunda oportunidad.</strong> Si nadie la manejó y hay depurador, se lo notifica de nuevo.</li><li><strong>Manejo por defecto.</strong> Sin depurador o si este no la maneja, el sistema aplica la acción por defecto, que para la mayoría de las excepciones es terminar el proceso.</li></ol>
+<p>En kernel mode el sistema busca handlers en la pila del kernel; si no hay ninguno, el sistema se detiene (bugcheck, ver <a href="6-03-debug-kernel.html">6.3</a>).</p>
+<p>Un filtro de <code>__try/__except</code> decide con su valor de retorno si el bloque maneja la excepción, si se sigue buscando o si se continúa la ejecución. Cuando un handler acepta la excepción, el sistema <strong>desenrolla</strong> los marcos intermedios y ejecuta los bloques <code>__finally</code>/destructores que correspondan antes de llegar al handler.</p>
+<h2 id="primera-y-segunda-oportunidad-en-el-depurador">Primera y segunda oportunidad en el depurador</h2>
+<p>Para WinDbg, cada tipo de excepción tiene un <strong>estado de corte</strong>: cortar en la primera oportunidad (<code>sxe</code>), cortar solo en la segunda (<code>sxd</code>), solo informar (<code>sxn</code>) o ignorar (<code>sxi</code>). Por defecto, por ejemplo, una violación de acceso corta en la primera oportunidad, mientras que la excepción de C++ (<code>eh</code>) corta solo en la segunda. <code>.lastevent</code> muestra el último evento.</p>
+<p>Consecuencias para leer evidencia:</p>
+<ul><li>Una <strong>excepción de primera oportunidad</strong> es normal en muchos programas: excepciones C++ lanzadas y atrapadas, sondeos de memoria protegidos por <code>__try</code>, mecanismos de runtime. <strong>No</strong> significa un fallo.</li><li>Una <strong>segunda oportunidad</strong> sí significa que nadie la manejó.</li><li>Un <strong>VEH</strong> registrado por el programa ve todas las excepciones del proceso. Si al analizar un binario encontrás <code>AddVectoredExceptionHandler</code>, anotá qué hace el handler: puede ser diagnóstico legítimo (registro de fallos) o una técnica anti-depuración que usa excepciones a propósito (2.15). La llamada sola no decide cuál.</li></ul>
+<p>En binarios MSVC, las excepciones de C++ se lanzan como una excepción de Windows con un código propio del runtime (habitualmente <code>0xE06D7363</code>, conocimiento externo de reversing); reconocerlo evita confundir un <code>throw</code> controlado con un fallo.</p>
+<h2 id="ejemplo-trabajado">Ejemplo trabajado</h2>
+<p><em>(Secuencia ilustrativa de un programa C++ propio que lanza y captura una excepción documentada.)</em></p>
+<pre><code class="lenguaje-text">app!RunCase -&gt; app!ParseOwnInput -&gt; throw/catch controlado
+WinDbg: evento de excepción -&gt; handler del runtime -&gt; app!RunCase
+x64: .pdata señala RuntimeFunction; .xdata describe unwind del prólogo</code></pre>
+<p>Al recorrer el stack, identificá qué frames son la ruta de llamada y cuál maneja el evento. La mera presencia de <code>.pdata</code> no demuestra que una excepción haya ocurrido; es metadata disponible para unwind.</p>
+<p>Cronología de lectura (ilustrativa) del mismo caso, en el orden en que aparece cada dato:</p>
+<div class="tabla"><table>
+<thead><tr>
+<th>Paso</th>
+<th>Qué se ve</th>
+<th>Herramienta</th>
+<th>Interpretación prudente</th>
+</tr></thead><tbody>
+<tr><td>1</td><td>Evento de primera oportunidad, código de excepción C++</td><td>Mensaje de WinDbg / <code>.lastevent</code></td><td>Se lanzó una excepción; todavía no se sabe si alguien la maneja</td></tr>
+<tr><td>2</td><td>Registro de excepción con dirección dentro del runtime</td><td><code>.exr -1</code></td><td>El <code>throw</code> pasa por el runtime de C++</td></tr>
+<tr><td>3</td><td>Stack de la excepción hasta <code>app!ParseOwnInput</code></td><td><code>.ecxr</code> + <code>k</code></td><td>Ruta de llamada al momento del <code>throw</code></td></tr>
+<tr><td>4</td><td>El programa continúa y no hay segunda oportunidad</td><td>Ejecución</td><td>Un <code>catch</code> la manejó</td></tr>
+<tr><td>5</td><td>Ejecución reanudada en <code>app!RunCase</code></td><td>Breakpoint en el <code>catch</code></td><td>Coincide con el handler esperado</td></tr>
+</tbody></table></div>
+<h2 id="práctica">Práctica</h2>
+<ol><li>Compilá o usá un programa propio mínimo que lance/capture una excepción prevista, sin leer datos externos.</li><li>En WinDbg, anotá arquitectura, evento, excepción y <code>k</code>/<code>kv</code> antes y después del handler. Usá <code>.exr -1</code> y <code>.ecxr</code> para leer el registro y el contexto de la excepción.</li><li>Cambiá <strong>solo para tu sesión</strong> el estado de corte de la excepción C++ (<code>sxe eh</code>) para verla en primera oportunidad, y comparalo con el comportamiento por defecto.</li><li>En x64, inspeccioná la entrada de función/unwind con símbolos y comandos documentados para tu build; en x86, describe el frame SEH observado sin modificar la cadena.</li><li>Opcional: agregá a tu programa un VEH que solo registre el código de excepción y verificá en qué momento se llama respecto del depurador y del <code>catch</code>.</li><li>Opcional: grabá el mismo caso de user mode con TTD y navega a la excepción. Guardá el trace solo mientras lo necesites y borrá la copia al finalizar.</li></ol>
+<h2 id="entregable">Entregable</h2>
+<p>Diagrama de control antes/después de la excepción, arquitectura, stack, handler y límites de símbolos; la cronología con primera/segunda oportunidad y, si lo hiciste, el momento en que actúa el VEH. Separá información observada de interpretación del compilador.</p>
+<h2 id="repaso">Repaso</h2>
+<details class="qa"><summary>¿Qué función cumplen <code>.pdata</code> y <code>.xdata</code> en x64?</summary><div class="respuesta"><p><code>.pdata</code> localiza metadata de funciones; <code>.xdata</code> describe información de unwind/handlers necesaria para recuperar estado y recorrer el stack.</p></div></details>
+<details class="qa"><summary>¿x86 SEH y x64 unwind son el mismo mecanismo?</summary><div class="respuesta"><p>No. Tienen representación y reglas distintas; el compilador y las mitigaciones también afectan lo observable.</p></div></details>
+<details class="qa"><summary>¿Un frame de stack prueba que esa función lanzó la excepción?</summary><div class="respuesta"><p>No. Es una pista del camino actual; se confirma con instrucción, contexto y flujo de control.</p></div></details>
+<details class="qa"><summary>¿En qué orden se buscan handlers en user mode?</summary><div class="respuesta"><p>Depurador (primera oportunidad), handlers vectorizados, handlers basados en marcos, depurador (segunda oportunidad) y manejo por defecto.</p></div></details>
+<details class="qa"><summary>¿Una excepción de primera oportunidad indica que el programa falló?</summary><div class="respuesta"><p>No. Muchas se lanzan y se manejan normalmente; solo la segunda oportunidad indica que nadie la manejó.</p></div></details>
+<details class="qa"><summary>¿Para qué sirve <code>.ecxr</code>?</summary><div class="respuesta"><p>Pone el contexto del depurador en el registro de contexto de la excepción, para que el stack corresponda al momento del fallo.</p></div></details>
+<details class="qa"><summary>Encontrás <code>AddVectoredExceptionHandler</code> en un binario. ¿Qué concluís?</summary><div class="respuesta"><p>Que el programa ve todas las excepciones del proceso antes que los handlers por marco. Hay que leer qué hace el handler: puede ser diagnóstico o anti-depuración.</p></div></details>
+<aside class="callout nota"><p class="callout-titulo">Puerta optativa</p><p>Podés describir una excepción propia en WinDbg, leer registro y contexto, explicar el orden de despacho (incluidos VEH y primera/segunda oportunidad), leer el stack y explicar la diferencia general entre SEH x86 y unwind x64.</p></aside>
+<aside class="callout nota"><p class="callout-titulo">Lo que queda fuera</p><p>El formato completo de <code>UNWIND_INFO</code>, los manejadores de lenguaje en detalle, SafeSEH/SEHOP y CFG por dentro, WER y la depuración post mortem configurada en el sistema no se desarrollan. No se cambia ninguna configuración global de depuración.</p></aside>
+<h2 id="fuentes">Fuentes</h2>
+<ul><li>Microsoft Learn: <a href="https://learn.microsoft.com/en-us/cpp/build/exception-handling-x64" rel="noopener" target="_blank">x64 exception handling</a>, <a href="https://learn.microsoft.com/en-us/windows/win32/debug/structured-exception-handling" rel="noopener" target="_blank">Structured Exception Handling</a>, <a href="https://learn.microsoft.com/en-us/windows-hardware/drivers/debugger/debugging-a-user-mode-process-using-windbg" rel="noopener" target="_blank">Debugging a user-mode process using WinDbg</a>.</li><li>Microsoft Learn, despacho y depurador: <a href="https://learn.microsoft.com/en-us/windows/win32/debug/exception-dispatching" rel="noopener" target="_blank">Exception Dispatching</a>, <a href="https://learn.microsoft.com/en-us/windows/win32/debug/vectored-exception-handling" rel="noopener" target="_blank">Vectored Exception Handling</a>, <a href="https://learn.microsoft.com/en-us/cpp/cpp/try-except-statement" rel="noopener" target="_blank">try-except statement</a>, <a href="https://learn.microsoft.com/en-us/windows-hardware/drivers/debugger/controlling-exceptions-and-events" rel="noopener" target="_blank">Controlling Exceptions and Events</a>, <a href="https://learn.microsoft.com/en-us/windows-hardware/drivers/debuggercmds/-exr--display-exception-record-" rel="noopener" target="_blank">.exr</a>, <a href="https://learn.microsoft.com/en-us/windows-hardware/drivers/debuggercmds/-ecxr--display-exception-context-record-" rel="noopener" target="_blank">.ecxr</a>.</li><li><strong>CLS:</strong> stack en <a href="01-memoria.html">1.2</a>, unwind C++ en <a href="02-cpp-profundo.html">2.18</a>, WinDbg en <a href="02-windbg-heap.html">2.19</a>, anti-análisis en <a href="02-anti-analisis.html">2.15</a>.</li></ul>
+<aside class="callout nota"><p class="callout-titulo">Etiquetas</p><p><strong>Observado en CLS:</strong> excepciones y stack como conceptos generales. <strong>Conocimiento externo:</strong> SEH/unwind, despacho de excepciones, VEH y control de excepciones en WinDbg; el código de excepción C++ de MSVC como dato de reversing. <strong>Ejemplo ilustrativo:</strong> flujo y cronología de excepción. <strong>Laboratorio verificado:</strong> no.</p></aside>
+</main>
+<footer class="pie">
+  <p>Material educativo y defensivo. Las prácticas se limitan a programas propios, software abierto o crackmes diseñados para aprender. No se enseña a eludir licencias, DRM ni controles de acceso.</p>
+  <p><a href="../00_EMPEZAR_AQUI.html">Inicio</a> · <a href="../guia/etapa-0.html">Etapas</a> · <a href="../fuentes_y_limites.html">Fuentes y límites</a> · <a href="../registro_de_cobertura.csv">Registro de cobertura</a></p>
+</footer>
+</body>
+</html>

@@ -1,0 +1,472 @@
+---
+title: "Teorias_Numeradas · clasificación por título"
+description: "Los 2.017 tutoriales de la colección Teorias_Numeradas separados en educativos vs cracking de software comercial."
+---
+
+# Teorias_Numeradas — clasificación por título
+
+:::{aviso} Clasificación por título, no por contenido
+La colección tiene **2.017 tutoriales** en contenedores (`.rar`/`.zip`/`.7z`. varios con contraseña). ~3.5 GB. **sin abrir**. Esta separación es **por el título** de cada uno. no por haber leído el contenido. Un título no demuestra lo que enseña: tomalo como orientación para buscar. no como material revisado.
+:::
+
+De los 2017 títulos, **~1591 (78%) apuntan a cracking de software comercial** (práctica sobre programas comerciales, unpacking de protectores, seriales/keygen, parcheo, dongles, anti-debug) y quedan **fuera del recorrido base**. Los **~426 restantes** son candidatos educativos (fundamentos, herramientas, .NET, crackmes de práctica, criptografía, y ramas avanzadas).
+
+## Distribución por categoría (etiqueta del título)
+
+| Categoría | Cantidad | Clase |
+|---|---|---|
+| E4 Práctica sobre software comercial | 800 | cracking comercial (fuera de scope) |
+| E4 Unpacking | 456 | cracking comercial (fuera de scope) |
+| E4 Seriales/keygen | 195 | cracking comercial (fuera de scope) |
+| E3 .NET/Java/VB | 122 | educativo / candidato |
+| E4 Parcheo | 83 | cracking comercial (fuera de scope) |
+| E4 Crackmes/retos | 70 | educativo / candidato |
+| E4 Criptografía | 60 | educativo / candidato |
+| E2 Herramientas | 56 | educativo / candidato |
+| E4 Dongles/protecciones | 44 | cracking comercial (fuera de scope) |
+| E2 Intro | 37 | educativo / candidato |
+| E5 Kernel/drivers | 27 | educativo / candidato |
+| E1 Fundamentos | 26 | educativo / candidato |
+| E5 Android | 15 | educativo / candidato |
+| E4 Anti-debug | 13 | cracking comercial (fuera de scope) |
+| E5 Exploiting | 13 | educativo / candidato |
+
+## Candidatos educativos (no cracking)
+
+Son los que, por su título, no apuntan a cracking de software comercial. Igual hay que abrir y revisar cada uno antes de recomendarlo.
+
+**E1 Fundamentos**
+- 001 — 001-ASSEMBLER por CAOS REPTANTE
+- 044 — 044-ESTUDIO DE LOS ENCABEZADOS PE parte 1 POR SICK TROEN
+- 045 — 045-ESTUDIANDO PE-LOCK 1.06 primera parte
+- 048 — 048-ESTUDIO DE LOS ENCABEZADOS PE parte 2 POR SICK TROEN
+- 102 — 102-Tutorial_Delphi parte 1 por The_Chameleon
+- 106 — 106-Tutorial_Delphi parte 2 por The_Chameleon
+- 243 — 243-Punto magico en Delphi por ARAPUMK
+- 258 — 258-Punto magico en Delphi_II
+- 283 — 283-Introduction in delphi ENGLISH
+- 372 — 372-asm Universidad de Guadalajara
+- 394 — 394-PE-Lock v1.06_by_ NCR
+- 395 — 395-PE-Lock v1.06_ANEXO_by_ NCR
+- 587 — 587-Programacion en Handheld Basic   para PalmOS - por marciano
+- 821 — 821-Activando botones en Delphi 6 por karmany
+- 845 — 845-Solucionando un DELPHI
+- 896 — 896-Punto E(ventos) en ejecutables Delphi - por marciano
+- 901 — 901-PeLock_DELPHI_por GUAN DE DIO
+- 901 — 901-PeLock_DELPHI_por GUAN DE DIO
+- 1019 — 1019-Crackeo en Delphi Elegante, COn Estilo
+- 1124 — 1124-Incrustar musica xm en delphi by ZELT@
+- 1169 — 1169-Delphi_y_el_API_de_Windows_Capitulo_1
+- 1363 — 1363-Formato de ficheros ejecutables _Formato PE_
+- 1395 — 1395-Parchando_AIDA64_v1.80.1450_[Delphi_6.0_7.0]_por_Nox
+- 1525 — 1525-Studiosi-TinyAsm
+- 1622 — 1622-Atacando un delphi by Abeln@v
+- 1855 — 1855-Hackeando Delphi
+**E2 Herramientas**
+- 002 — 002-CRACKEANDO CON OLLYDBG
+- 029 — 029-MESSAGESPY en OLLY
+- 030 — 030-PUNTO HMEMCPY EN OLLYDBG EN XP
+- 035 — 035- IDA LOS PRIMEROS PASOS
+- 036 — 036-IDA MAS OLLYDBG LA UNION HACE LA FUERZA
+- 037 — 037-OLLYDBG Y DELPHI por COCO
+- 091 — 091-COMO DESATACHEAR EL OLLYDBG DE UN PROCESO
+- 092 — 092-OLLYDBG Y DELPHI 2 por COCO
+- 093 — 093-OLLYDBG Y DELPHI 3 por COCO
+- 176 — 176-MessageSpy II en Olly por JuanJose
+- 202 — 202-tutescripts por KAOD
+- 212 — 212-tutescripts2 por kaoD
+- 241 — 241-Tutorial SUPER- BASICON Programacion de Plugins OllyDbg por TheKluger
+- 284 — 284-IDA The First Steps ENGLISH
+- 286 — 286-IDA and Ollydbg the Union Makes the Strength ENGLISH
+- 295 — 295- COMO PROGRAMAR EN Olly_script por ARAPUMK
+- 297 — 297-TUTES CON IDA MAS DEBUGGER
+- 301 — 301-SEGUIMOS MOLESTANDO CON IDA
+- 544 — 544-Ollydbg_hardware_breakpoint hoy to bypass and plugin ENGLISH
+- 594 — 594-Como_hacer_un_Olly_que_se_oculte_a_si_mismo_sin_usar_plugins_-_por_marciano
+- 620 — 620-RVLCN-Ollydbg_parte_1_v1_VIDEO
+- 629 — 629-RVLCN_-Ollydb_part_II_v1_VIDEO
+- 633 — 633-Como hacer un plugin para ImpREC - por marciano
+- 674 — 674-SND.CoolCrypt.ImportREC.Plugin.by. NCR
+- 698 — 698-Haciendo un plugin para PEiD - por marciano
+- 707 — 707-Otro.plugin.para.PEiD.por. NCR
+- 815 — 815-COMO CRACKEAR CON OLLYDBG
+- 827 — 827-IDA 1 por RicNar
+- 830 — 830-IDA 2 por ricnar
+- 831 — 831-Olly contra un password de ESS
+- 860 — 860-Olly contra un PDF protegido - por marciano
+- 975 — 975-PAIMEI-PARTE6-EMPEZANDO A GRAFICAR DESDE UN SCRIPT O SHELL DE PYTHON CON PAIMEI
+- 975 — 975-PAIMEI-PARTE6-EMPEZANDO A GRAFICAR DESDE UN SCRIPT O SHELL DE PYTHON CON PAIMEI
+- 977 — 977-PAIMEI-PARTE 7-CONTINUAMOS GRAFICANDO DESDE UN SCRIPT O SHELL DE PYTHON CON PAIMEI
+- 977 — 977-PAIMEI-PARTE 7-CONTINUAMOS GRAFICANDO DESDE UN SCRIPT O SHELL DE PYTHON CON PAIMEI
+- 1005 — 1005-USANDO PYDBG- Script de Python por ABSSHA
+- 1140 — 1140-Plugin Methodist
+- 1173 — 1173-antiolly parte 1 de 4 Apuromafo
+- 1174 — 1174-antiolly parte 2 de 4 Apuromafo
+- 1175 — 1175-antiolly parte 3 de 4 Apuromafo
+- 1176 — 1176-antiolly parte 4 de 4 Apuromafo
+- 1235 — 1235-proyecto odbgscript,para multiple busqueda by Apuromafo
+- 1287 — 1287-Debugging a Windows service startup with Olly by Saccopharynx
+- 1345 — 1345-Nopeando el expired de IDA demo by hugo 2008
+- 1405 — 1405-Como utilizar los script en OllyDbg
+- 1413 — 1413-Tutorial-Trainer con OllyDBG y CE por UND3R
+- 1444 — 1444-Cracking basico con Ida Pro
+- 1609 — 1609-BreakPoint Condicional Log en Ollydbg 1.10 - 2.01 por Neutrino
+- 1699 — 1699-Crackeando con IDA en 1 minuto por Solid
+- 1727 — 1727-Tuto 023 - Unistall Tool v3.5.10 (Built 5670) [x64DBG][MVC++][CRACK][LUISFECAB]
+- 1742 — 1742-IntelCodeTable_es - favoritos x64dbg - by QwErTy
+- 1764 — 1764-Jugando con X64DBG y Mgosoft PDF Security
+- 1864 — 1864-BreakPoint condicionales y de logeo en x64dbg por Neutrino
+- 1867 — 1867-Desafio RicNar2 en x64dbg por Neutrino
+- 1876 — 1876-Scripting en x64dbg por Neutrino(a)
+- 1905 — 1905-Puntos_de_Ruptura_en_Memoria_Condicionados_Dinamicos_y_Scripts_en_Neurtrino
+**E2 Intro**
+- 004 — 004-INICIANDONOS EN DELPHI
+- 010 — 010-INICIANDONOS EN REVIRGIN
+- 119 — 119-Iniciandonos EnASPROTECTporAnsGariYunllet parte 1
+- 125 — 125-Iniciandonos EnASPROTECTporAnsGariYunllet parte 2
+- 259 — 259-ASM4Newbie
+- 279 — 279-Iniciandose en PalmOS Cracking by Eddy
+- 446 — 446-Newbie Vs UnknowPacker_I__by_ NCR
+- 447 — 447-Newbie Vs UnknowPacker_II_by_ NCR
+- 452 — 452-Newbie Vs UnkNowPacker_III_by_ NCR
+- 453 — 453-Newbie Vs UnknowPacker_IV_by_ NCR
+- 472 — 472-Newbie Vs UnknowPacker_V_by_ NCR
+- 555 — 555-Iniciandonos en PalmOS_by_ NCR
+- 600 — 600-Iniciandonos en PalmOS_ANEXO_by_ NCR
+- 847 — 847-Armadillo 4.62   Debug Blocker   CopyMem II   Import Table Elimination   Code Splicing   Nanomites PARA PRINCIPIANTES USANDO TOOLS  Por Solid
+- 871 — 871-Inline Patching desde cero - karmany
+- 874 — 874-Desempaquetando un UPX para RE-Newbies por Shaddy
+- 978 — 978-TotalCommander7paranewbies_tincopasan
+- 978 — 978-TotalCommander7paranewbies_tincopasan
+- 982 — 982-Hexic_paranewbies_tincopasan
+- 982 — 982-Hexic_paranewbies_tincopasan
+- 987 — 987-mahjonggparasupernewbies_tincopasan
+- 987 — 987-mahjonggparasupernewbies_tincopasan
+- 989 — 989-Coding_Loaders_in_C_for_Newbies_by_DCrack
+- 989 — 989-Coding_Loaders_in_C_for_Newbies_by_DCrack
+- 996 — 996-fonttwister_newbies
+- 996 — 996-fonttwister_newbies
+- 1300 — 1300-Newbie_Vs_UnknowPacker_Revisitado_by_El_Cid
+- 1602 — 1602-Cracking para bebes Capitulo 1 by Ivinson
+- 1603 — 1603-Cracking para bebes Capitulo 2 by Ivinson
+- 1604 — 1604-Cracking para bebes Capitulo 4 by Ivinson
+- 1605 — 1605-Cracking para bebes Capitulo 5 by Ivinson
+- 1606 — 1606-Cracking para bebes Test 1-5  by Ivinson
+- 1607 — 1607-Cracking para bebes Capitulo 3 by Ivinson
+- 1608 — 1608-Cracking Para Bebes II CAP 1 by Ivinson
+- 1689 — 1689-Tuto 018 - Neofito Reversando #1][LUISFECAB]
+- 1691 — 1691-Tuto 020 - Neofito Reversando #3][LUISFECAB]
+- 1784 — 1784-Tutorial_rabioso_y_despechado_para_principiantes_Eusing_Software
+**E3 .NET/Java/VB**
+- 003 — 003-INICIANDONOS EN VISUAL BASIC
+- 006 — 006-INICIANDONOS CON P-CODE
+- 007 — 007-INICIANDONOS CON P-CODE  2da parte
+- 008 — 008-INICIANDONOS CON P-CODE 3ra parte
+- 009 — 009-INICIANDONOS CON P-CODE 4ta parte
+- 011 — 011- OLLY y VISUAL BASIC por COCO
+- 012 — 012- OLLY y VISUAL BASIC por COCO 2da parte
+- 061 — 061-OLLYDBG Y VISUAL BASIC III por COCO
+- 108 — 108-TERRIBLE CRACKME EN VISUAL BASIC- INVENCIBLE 1 DE DANIEL parte 1
+- 109 — 109-TERRIBLE CRACKME EN VISUAL BASIC- INVENCIBLE 1 DE DANIEL parte 2
+- 116 — 116-Como mejorar el ollydbg para visual basic
+- 131 — 131-Tute sobre VB por Daniel
+- 136 — 136-Como hacer un parche en VB por Daniel
+- 190 — 190-OLLYDBG Y VISUAL BASIC IV por COCO
+- 219 — 219-BIENVENIDOS A LAS APIS DE WINDOWS EN VISUAL BASIC
+- 302 — 302-CRACKEANDO APLICACIONES .NET PARTE I por Emadicius
+- 418 — 418-unpackando hprot de vb - by rumble
+- 437 — 437-CRACKEO_VBNET por sequeyo
+- 487 — 487-EZIRIZ .NET Reactor 1.2.0.0
+- 589 — 589-Cracking en Java sin elegancia - por marciano
+- 676 — 676-Un_.NET_con_OLLY_by_dapaf
+- 725 — 725 - Cracking en NET - por marciano
+- 755 — 755-RDG CrackMe .NET
+- 758 — 758-OCX en VB6 y Subclaves (CLSID) - karmany
+- 759 — 759-CRACKEANDO NET por Jelb_sv
+- 769 — 769-Manual.Unpacking.NET.Applications
+- 790 — 790-P-CODE-DocCF por SEQUEYO
+- 796 — 796-KEYGEN EN VISUAL BASIC tuto_d4ph1
+- 802 — 802-Cracking en Java - Keygeneando una aplicacion - por marciano
+- 816 — 816-Quitando nagscreen en vb
+- 852 — 852-COMO UTILIZAR EL PLUGIN DE IDA PARA VER PCODE 6
+- 894 — 894-Un .NET por karmany
+- 897 — 897-LaBBa - How To Crack .NET
+- 903 — 903-Notes_on_reversing_and_cracking_Java_target_by_ThunderPwr
+- 903 — 903-Notes_on_reversing_and_cracking_Java_target_by_ThunderPwr
+- 908 — 908-ActiveLock 1.5 Proteccion VB por Blasito
+- 908 — 908-ActiveLock 1.5 Proteccion VB por Blasito
+- 911 — 911-Evadiendo StrongNames de .NET con OllyDbg - por marciano
+- 911 — 911-Evadiendo StrongNames de .NET con OllyDbg - por marciano
+- 913 — 913-Estudiando la cabecera CLR de aplicaciones .NET - por marciano
+- 913 — 913-Estudiando la cabecera CLR de aplicaciones .NET - por marciano
+- 919 — 919-Notes_on_reversing_and_cracking_Java_target_Part1_by_ThunderPwr
+- 919 — 919-Notes_on_reversing_and_cracking_Java_target_Part1_by_ThunderPwr
+- 920 — 920-Notes_on_reversing_and_cracking_Java_target_Part2_by_ThunderPwr
+- 920 — 920-Notes_on_reversing_and_cracking_Java_target_Part2_by_ThunderPwr
+- 937 — 937-Notes_on_reversing_and_cracking_Java_target_Part3_by_ThunderPwr
+- 937 — 937-Notes_on_reversing_and_cracking_Java_target_Part3_by_ThunderPwr
+- 984 — 984-HASP4 .NET_en_mi_mochila_por_Mintaka
+- 984 — 984-HASP4 .NET_en_mi_mochila_por_Mintaka
+- 998 — 998-Unpacking_.NET_Reactor_3.5
+- 998 — 998-Unpacking_.NET_Reactor_3.5
+- 1039 — 1039-Modificar un NET con Reflexil
+- 1052 — 1052-tutorial_principiante_NET+tool_RSA
+- 1081 — 1081-P-Code y sus secretos
+- 1089 — 1089-Covert_Java_-_Techniques_For_Decompiling__Patching__And_Reverse_Engineering__2004_
+- 1105 — 1105-Un Poco de Cracking en Java - Kotoba 4.5 By.[AmeRiK@nO]
+- 1114 — 1114-StringsDecoding_NET
+- 1115 — 1115-SA_Patching_NET
+- 1167 — 1167-Asprotect VB por GUAN
+- 1171 — 1171-Asprotect VB por GUAN
+- 1202 — 1202-NovaMind 4 Platinum un NET por sequeyo
+- 1205 — 1205-Ease Cd Ripper 1.30_2a parte keygen vb6 por zabulon_crk
+- 1222 — 1222-Un NET_By_InDuLgEo
+- 1224 — 1224-Cracking.en.Java.NCR
+- 1230 — 1230-LaTV - .NET - por ZiKaTRiZ
+- 1251 — 1251-Quitar-trialware-VB por LSL_
+- 1257 — 1257-Un NET solo con OLLY - BUTTON SHOP 4 por Torrescrack 
+- 1263 — 1263-CRACKEAR APLICACIONES net con OLLY 
+- 1272 — 1272-YoGen Vocal Remover 3.3.9_NET_By_InDuLgEo
+- 1277 — 1277-Aprendiendo a tratar (crackear) P-CODE
+- 1297 — 1297-EsTudio & UnPack_Dot_Net_Reactor 4.2.7.5_By_InDuLgEo
+- 1303 — 1303-MANUAL PARA REALIZAR KEYGENS EN VISUAL .NET BY CrAmEr
+- 1312 — 1312-Eyecopia 2 NET por Codelive
+- 1313 — 1313-Operaciones matemáticas básicas en vb6
+- 1317 — 1317-Haciendo un Keygen para Crackme vb de Hendrix por blackngel
+- 1337 — 1337-Activedesktop un  .net by Apuromafo
+- 1340 — 1340-Tutorial Net por Guillermo
+- 1369 — 1369-Solvermedia peluqueria -VB6- by Apuromafo
+- 1377 — 1377-UnPacking_KeyGening_KeygenME3 (VB) ASProtect SKE v2.56   [Script]_By_InDuLgEo
+- 1409 — 1409-Introduccion al cracking en P-Code parte I por UND3R
+- 1410 — 1410-Introduccion al cracking en P-Code parte II por UND3R
+- 1419 — 1419-Cracking_VisualSVN_(.NET)_by_Mancu
+- 1423 — 1423-Crackeando_Componente_AspPDF.NET_by_Mancu
+- 1462 — 1462-UnPacking_Ultimate UnPackME_(.NET) WinLicense VMProtect PCGuard SmartAssembly_By_InDuLgEo 
+- 1497 — 1497-Serialme1 vb.net  soluciones by Apuromafo
+- 1508 — 1508-reto .net themida-lastdragon by torrescrack
+- 1539 — 1539-vb_p-code dongle_hardkey_by_torrescrack_
+- 1551 — 1551-stnotepad_hallar serial con olly en un .net
+- 1571 — 1571-Desempacando Themida en un .NET por SNAT
+- 1572 — 1572-Jugando con java por Alberto Fernandez
+- 1574 — 1574-Sleepy Crackme 3 dnSpy Punto Net  by Ivinson
+- 1575 — 1575-Jugando con un .NET en dnSpy por SNAT
+- 1581 — 1581-Armadillo 9 DJ Java  02-12-15 by Apuromafo 
+- 1584 — 1584-Tute  Formulario de Formas y Tranparente  en Visual Basic 6  By Necroxia
+- 1592 — 1592-Reverseando software VB con  Ollydbg  Vbdecompiler By NecROxia parte1
+- 1643 — 1643-Tuto002 - Fotosizer v3.5.2.558 (Crypto Obfuscator for .NET v5.x)(dnSpy)(Crack Patch)
+- 1657 — 1657-Tuto005 - CrackME_@1 by QwErTy CLS (.NET)(.NET Reflector)(SERIAL)
+- 1671 — 1671-Tuto012 - muvee Reveal Encore v13.0.0.29340 Build 3157 (.NET)(Crack-Patch)(dnsSpy v5.0.7)
+- 1673 — 1673-Tuto013 - YouTubeByClick v2.2.87 (.NET)(Crack-Patch)(dnSpy v5.0.7)
+- 1674 — 1674-Vocal_Remover_Pro_v2_0_NET_Keygenning
+- 1676 — 1676-AnyCam v2.4.5 (.NET Keygenning) - By KarMa [954] ©Full
+- 1688 — 1688 - Activador Productos Movavi 2019 [x64DBG][MVC  ][PROGRAMAR NUESTRO PROPIO ACTIVADOR-PATCH][VB.NET][LUISFECAB]
+- 1690 — 1690-Tuto 019 - Neofito Reversando .NET [Entrega #2][LUISFECAB]
+- 1695 — 1695-CracksLatinos_NET_sequeyo__ByteFence
+- 1701 — 1701-iDecrypt un .net by Apuromafo
+- 1717 — 1717-CracMe18 -Crackeando un net en 5 minutos By Ismael Tun
+- 1720 — 1720-Tutorial AoRE_Keygenme1.Net by Ismael Tun
+- 1724 — 1724-Tuto 021 - Neofito Reversando .NET [Entrega #4][LUISFECAB]
+- 1747 — 1747-Tuto_024_Neofito_Reversando_NET_Entrega_#5eComprobante_v1_0_0_13WEB
+- 1762 — 1762-Tuto 025 - GOM Player Plus v2.3.xx -Generar Licencia--MD5--BLOWFISH--C#--LUISFECAB--1
+- 1773 — 1773-reto_challenge_5_flareon_flare_FireEye_net_ilspy__c#_acronys
+- 1777 — 1777-Cracking WebSpy Vantage Ultimate 3.0 con .NET Reflector
+- 1801 — 1801-sequeyo wintools.net 20.9
+- 1803 — 1803-sequeyo wintools.net 20.12_Asprotect 2.56 build 03.17
+- 1806 — 1806-sequeyo wintools.net RAM Saver Profesional 20.9
+- 1812 — 1812-SEQUEYO_ANTIPLAGIARISM.NET 4.107.0.0
+- 1833 — 1833-VOCAL REMOVER  2 by IvinsonCLS_.NET
+- 1862 — 1862-Registrando Expresso 3.1(.net) por Alberto Fernandez
+- 1871 — 1871-_v3n0M-Activando PTZ Controller-.Net 
+- 1882 — 1882-Cazando seriales en VB por Neutrino
+- 1885 — 1885-Cazando seriales en VB por Neutrino(Parte2)
+- 1893 — 1893-Cracking RSCONCAR 14.22 SQL VB P-CODE by IvinsonCLS
+**E4 Crackmes/retos**
+- 073 — 073-Crackme v 1.0 Blasito hecho en FOX Tutorial-profesor x 
+- 076 — 076-Crackme de Blasito en OLLYDBG
+- 169 — 169-TUTE CRACKME DE ODRAUDE por NARVAJA
+- 179 — 179- 2do tute de CRACKSLATINOS sobre el crackme imposible en olly de marmota
+- 228 — 228-USO DE VBDE en el Crackme-RedHawk por ARAPUMK
+- 282 — 282-Tute Xgrimator CrackMe by Eddy PALM OS 
+- 288 — 288-Tute Xgrimator CrackMe (II parte) by kaoD
+- 438 — 438-Crackme10 por bruteforce
+- 568 — 568-Crackme 1.0_by_ NCR
+- 575 — 575-Crackme 4_Yllera_by_ NCR
+- 681 — 681-[RVLCN]-Crackme_Matematico_I_por_Mekatrix_47
+- 683 — 683-Mekatrix_045-Crackme_Trigonometrico
+- 684 — 684-Crackme_Matematico_II_por_Mekatrix_48
+- 685 — 685-SQYNETCrackme_sequeyo
+- 690 — 690-Crackme_Matematico_II_por_Mekatrix_48
+- 691 — 691-Crackme_Matematico_III_por_Mekatrix_49
+- 694 — 694-SQYNETCrackme_enOlly_dapaf
+- 695 — 695-Creando un Crackme en Handheld Basic    by marciano &  NCR
+- 715 — 715- Crackme con critografia por stzwei
+- 817 — 817-Webservercrackme
+- 878 — 878-Crackme con Matrices
+- 991 — 991-Tutorial No.19 CrackMe No.1 Tincopasan By.AmeRiK@nO
+- 991 — 991-Tutorial No.19 CrackMe No.1 Tincopasan By.AmeRiK@nO
+- 999 — 999-White.Crackme.HMX0101.by.PARTE.I.by. NCR
+- 999 — 999-White.Crackme.HMX0101.by.PARTE.I.by. NCR
+- 1001 — 1001-DCrack(FOFF).Crackme.v1.0.By.AbsshA
+- 1077 — 1077-Crackme Hispasec (Sherab Giovannini)
+- 1131 — 1131-Reto_Panda_P2_By.Guan_y_AbsshA
+- 1135 — 1135-Tutorial Crackme Kalimoxo Team
+- 1141 — 1141-Net Crackme-1
+- 1152 — 1152-Humilde CrackMe YST 0.2 por AmeRiK@nO
+- 1247 — 1247-Crackme No.3 Tincopasan por Amerikano
+- 1262 — 1262-Reto 1 Panda 2010 by GUAN
+- 1296 — 1296-resolviendo crackme linux 1 aprendiz.tar.gz
+- 1372 — 1372-crackme 2  Bocvk by Apuromafo
+- 1373 — 1373-crackme 3 Bocvk by Apuromafo
+- 1384 — 1384-Tutorial CrackMe1 de Karcrack por UND3R
+- 1394 — 1394-Tutorial-Crackme Tinkipinki v4.0 por UND3R
+- 1397 — 1397-Tutorial-crackme1 nitr0k1ller por UND3R
+- 1398 — 1398-Tutorial-CrackMe 1 by kaiser1313 por UND3R
+- 1411 — 1411-Tutorial-Crackme3 flamer por UND3R
+- 1412 — 1412-Tutorial-crackme edu por UND3R
+- 1470 — 1470-Solu-reto-ESET_ekoparty2012[pasta]
+- 1499 — 1499-tutorial crackme.exe cornel065
+- 1510 — 1510-Solucion - Crackme Chall9 [ELF - ARM] por Nox & Daniel Garcia
+- 1547 — 1547-Tutorial_Del_Reto_Hackapulco
+- 1554 — 1554-dctf5CrackmeVB_sequeyo
+- 1598 — 1598-Solución QwErTy Crackme DRm_OK
+- 1610 — 1610-Soluci(o)n_Al_Reto_Cracknival_1_2_y_3_Por_D3m0n3vX_Pass=CLS
+- 1647 — 1647-Duelist´s_Crackme #4 - by  QwErTy
+- 1650 — 1650-Crackmes_AbelJM_by_QwErTy_CLS
+- 1680 — 1680-Crackme_cruehead_1.0 -X32dbg- by QwErTy
+- 1684 — 1684-Crackme_cruehead_1.0 -IDA- by QwErTy
+- 1687 — 1687-Tuto 016 - Ret0 by Bym24v [OllyDBG v1.10][MVC  ][CTF][LUISFECAB]
+- 1705 — 1705-Solucion CrackMe#2.YouCan por Cristian Pereyra
+- 1715 — 1715-fp2_original_crackme_solucion_F9_COSEC
+- 1719 — 1719-CrackMe2 tutorial por Ismael Tun
+- 1765 — 1765-tNp Crackme by Zack v1.0 - crackme3 - by QwErTy
+- 1769 — 1769-Crackme SoftDat#3 - by QwErTy
+- 1772 — 1772-SuperEasy CrackMe by IvinsonCLS - by QwErTy
+- 1776 — 1776-CTF_HTB_reversing_bysantatecla
+- 1813 — 1813-Challenge_8_Flare_on_acronys_CLS
+- 1841 — 1841-Cm_Id12_crackme_basico
+- 1879 — 1879-Crackme_03_karasu
+- 1881 — 1881-CrackmeKeyMeBySlayer- karasu
+- 1887 — 1887-Gizmo_crackme
+- 1888 — 1888-DLL Proxying al CrackMe v1.0 de Cruehead por EdSon
+- 1892 — 1892-Tutorial Del Crackme Tr4ceflow Por Flamer
+- 1894 — 1894-Estructura TLS y Llamadas de Retorno - Por Neutrino
+- 1896 — 1896_Tecnicas_basicas_AntiDepuracion_con_reto_Depurame_Por_Neutrino
+**E4 Criptografía**
+- 185 — 185-NADANDO EN AGUAS MUY COMPLEJAS-CRIPTO 1
+- 186 — 186-PRACTICA RESOLVIENDO El CRIPTOGRAMA DE LA TEORIA 1
+- 187 — 187-FRECUENCIA DE LAS LETRAS EN TEXTOS ESPANOLES- CRIPTO 2
+- 188 — 188-SOLUCION ALCRIPTODESAFIO2 POR FLIPI
+- 191 — 191-ALGORITMOS CLASICOS VIGENERE-CRIPTO 3
+- 192 — 192-NUMEROS PRIMOS, TEORIA  Y PRACTICA-CRIPTO 4
+- 193 — 193-SOLUCION AL CRIPTODESAFIO 3.mht by RedH@wK
+- 194 — 194-ENCRIPTACION POR SUMA DE BYTES o Byte Addition-CRIPTO 5
+- 196 — 196-OPERACIONES CON MATRICES-CRIPTO 5
+- 197 — 197-Matriz inversa, adjuntos, menor complementario, identidad, determinantes-CRIPTO 6
+- 199 — 199-Criptografia por AKIRA y mas crackers -ver creditos
+- 209 — 209.Estudio completo de algoritmos criptograficos por AKIRA
+- 222 — 222-KeyGenMe_crc32out_by_ NCR
+- 223 — 223-KeyGenMe_crc32out_by_ NCR_parte2
+- 224 — 224-AkirA crc32
+- 261 — 261-CRC32 por AKIRA ENGLISH
+- 375 — 375-IID_IMAGE_IMPORT_DESCRIPTOR_by_ NCR
+- 376 — 376-IID_IMAGE_IMPORT_DESCRIPTOR_II_by_ NCR
+- 377 — 377-IID_IMAGE_IMPORT_DESCRIPTOR_III_by_ NCR
+- 457 — 457-Tuto setool2G execryptor 2 por GUAN
+- 462 — 462-EXECryptor v2.1.15_by_ NCR
+- 468 — 468-EXECryptor v2.15_CrackmeNoOficial
+- 474 — 474-AkirAExecryptor
+- 478 — 478-EXECryptor v2.15_CrackmeNoOficial_I_by_ NCR
+- 479 — 479-EXECryptor v2.15_CrackmeNoOficial_II_by_ NCR
+- 504 — 504-[RVLCN]-Criptografia_I_by_ NCR
+- 521 — 521-ExeCryptor v2.2.5.b4_by_ NCR
+- 540 — 540-Execryptor_a_look_on
+- 547 — 547-[RVLCN]_Criptografia_MD5_by_ NCR
+- 548 — 548-Detalles sobre EXEcryptor_JuanJose_1Parte
+- 552 — 552-Detalles sobre EXEcryptor_JuanJose_2Parte
+- 557 — 557-[RVLCN]_Criptografia_II_RSA_by_ NCR
+- 595 — 595-Doblegando al invencible MD5 de NCR
+- 597 — 597-Unpacking_And_Dumping_ExeCryptor_and_Coding_Loader_by_deroko
+- 598 — 598-ExeCryptor v2.2.x_by_ NCR_doc
+- 601 — 601-Criptografia_RSA_ANEXO_by_ NCR
+- 643 — 643-Desempacado de COOLcryptor v0.2 - por marciano
+- 645 — 645-[RVLCN].VGCryptPEEncryptor.v.075.by. NCR
+- 724 — 724-Desempacando ExeCryptor 2.2.x - 2.3.x por RAIN
+- 783 — 783-CRC de archivo en ACProtect - por marciano
+- 801 — 801-Desempacado de CRYPToCRACk's v0.9.2 - por marciano
+- 826 — 826-EncriptacionCRC32
+- 837 — 837-Introduccion a las cryptos por HMX0101
+- 915 — 915-ExeCryptor_2.2.x_-_2.3.x_Unpacking_tutorial_-_By_EvOlUtIoN
+- 915 — 915-ExeCryptor_2.2.x_-_2.3.x_Unpacking_tutorial_-_By_EvOlUtIoN
+- 950 — 950-tute_flvtoavi_execryptor_para_newbies_tincopasan
+- 950 — 950-tute_flvtoavi_execryptor_para_newbies_tincopasan
+- 1040 — 1040-EXECryptor 2.2.50_todos_Solid Tena
+- 1048 — 1048-Unpack EXEcryptor 2.2.x En Familiar Keylogger 2.80 por ^Munit[0]
+- 1109 — 1109-EXECRYPTOR_ INTERNALS_MEGA_PROJECT
+- 1138 — 1138-SmartEncryptor_v2.11_Tute By Thunder
+- 1148 — 1148-ExeCryptor 2.2.6 (Unpacking)
+- 1299 — 1299-Keygenning md5 Spy Emergency by Zelt@
+- 1309 — 1309-EC quick 3d execryptor  painter   by Apuromafo
+- 1338 — 1338-Un execryptor funsoundplayer by Apuromafo
+- 1387 — 1387-LogicNP Crypto Obfuscator 2010 R2 y otros Ofuscadores
+- 1564 — 1564-Inline Patching CRC Themida - Ivinson Edition
+- 1568 — 1568-Keygening_md5_Zelt@
+- 1664 — 1664-Tuto009 - Complemento Teoría 1663. Utilizando HASH MD5 (KeyGen)(x64DBG)
+- 1669 — 1669-Tuto010 - Xylitol Crypto-KeyGenMe 1, BarbecueMe (BLOWFISH)(HASH.256)(KeyGen)(ASM)(OllyDBG v1.10)
+**E5 Android**
+- 1354 — 1354-HeaderDex Dalvik por Bigundill@
+- 1432 — 1432-Android Ida por Bigundill@
+- 1526 — 1526-Aleatorizacion no tan aleatoria en Android 4.1.2 [Samsung Galaxy S3] por Nox
+- 1637 — 1637-ExploitAndroidDirtyCow
+- 1660 — 1660-Resolviendo el crackme android 0x01 de num1r0 by AbelJM
+- 1661 — 1661-Resolviendo el crackme android 0x02 de num1r0 by AbelJM
+- 1700 — 1700-TallerSeguridadAndroid_por_lior
+- 1849 — 1849-Reversing y Cracking Aplicaciones Android_Ahmed
+- 1850 — 1850-Parte 02. Reversing y Cracking en Apps Android_Ahmed
+- 1861 — 1861-03. Reversing y Cracking en Apps Android - Cifrados_Ahmed
+- 1880 — 1880-Tutorial modificando Duolingo apk by oxandy
+- 1883 — 1883-Modificando APK
+- 1883 — 1883-Modificando APK.7z.001
+- 1883 — 1883-Modificando APK.7z.002
+- 1883 — 1883-Modificando APK.7z.003
+**E5 Exploiting**
+- 835 — 835-Advanced Buffer Overflows by  NCR
+- 981 — 981-PAIMEI-PARTE 8-HEAP TRACE CON PAIMEI
+- 981 — 981-PAIMEI-PARTE 8-HEAP TRACE CON PAIMEI
+- 1045 — 1045-Desarrollo de exploits con Metasploit 3 desde cero - Parte 1 - Boken
+- 1079 — 1079-Aproximación a la Shellcode en Linux
+- 1085 — 1085-Desarrollo de un Fuzzer generico para binarios PE con PyDbg - Boken
+- 1086 — 1086-Desarrollo de exploits con Metasploit 3 desde cero - Parte 2 - Boken
+- 1087 — 1087-Desarrollo de Exploits para Metasploit 3 desde cero - Parte 3 -  NCR_CRC!
+- 1236 — 1236-Introduccion a shellcodes por Javier
+- 1244 — 1244-AbsshA.Exploiting_FTPs
+- 1267 — 1267-Exploiting_PhotoFiltreStudio.8.x.x
+- 1678 — 1678-ACTIVACION DE ALLOKSOFT VIDEO JOINER Y STACKOVERFLOW(SEH)
+- 1758 — 1758-tuto fuzzing 7zip
+**E5 Kernel/drivers**
+- 290 — 290-Tutoriales sobre Ring0 por Saccopharynx
+- 700 — 700-TheMida_defeating_ring0_by_deroko
+- 719 — 719-TRABAJANDO CON WINDBG 
+- 722 — 722-COMO COMENZAR A TRABAJAR CON WINDBG y VMWARE en RING0
+- 723 — 723-SEGUIMOS CON EL WINDBG y el VMWARE
+- 729 — 729-PATRICK EN WINDBG
+- 733 — 733-Emulacion de HASP4 con el nuevo driver HASP HL por Lionel
+- 736 — 736-DIVIRTIENDONOS MAS CON WINDBG
+- 737 — 737-WinDBG_y_UPX_Scrambler
+- 738 — 738-MAS TRUCOS CON WINDBG
+- 749 — 749-INTERRUPCIONES Y WINDBG
+- 767 — 767-COMO USAR OLLYBONE EN WINDBG (metodo experimental)
+- 814 — 814-TRABAJANDO SIN WINDBG NI OLLY NI SOFTICE
+- 930 — 930-ORCA OLLY VMWARE WINDBG OK
+- 930 — 930-ORCA OLLY VMWARE WINDBG OK
+- 940 — 940-Parte 2 ORCA olly windbg vm.
+- 940 — 940-Parte 2 ORCA olly windbg vm.
+- 1145 — 1145-Haciendo WinDbg mas manejable
+- 1155 — 1155-Haciendo_WinDbg_mas_manejable_II_stzwei
+- 1164 — 1164-PACE.Ilok.Resolving.The.Hooked.Ring0.Int3.Stolen.Calls-SND
+- 1191 — 1191-EL_PASTOR_MY DRIVERS 2,11_Escudriñando
+- 1241 — 1241-Explotando Arbitrary Memory Overwrite en Drivers en Windows by  NCR
+- 1269 — 1269-Debuggeando aplicaciones .NET con WinDbg - por marciano
+- 1271 — 1271-Simbolos_MAP_WinDbg_stzwei
+- 1425 — 1425-DriverEasy 3.11.2.0_NET_By_InDuLgEo
+- 1498 — 1498-tutorial_facil_mydrivers_tincopasan pass =a
+- 1501 — 1501-otro programa de drivers_tincopasan

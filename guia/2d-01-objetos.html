@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>2D.1 · Objetos, handles, tokens, privilegios e integridad</title>
+<meta name="description" content="El modelo de objetos de Windows: handles, el token de acceso (SIDs, privilegios, nivel de integridad) y las ACL. Reconocer contexto de seguridad en el análisis. Rama optativa 2D.">
+<link rel="stylesheet" href="../guia/estilo.css">
+</head>
+<body>
+<a class="salto" href="#contenido">Saltar al contenido</a>
+<header class="cabecera">
+  <div class="marca"><a href="../00_EMPEZAR_AQUI.html">CLS · Curso de reversing</a> <span class="edicion">edición 5 · 27/10/2026</span></div>
+  <nav class="principal" aria-label="Navegación principal">
+    <a href="../00_EMPEZAR_AQUI.html">Inicio</a>
+    <a href="../guia/index.html">Curso</a>
+    <a href="../materiales.html">Materiales</a>
+    <a href="../fichas/index.html">Fichas</a>
+    <a href="../glosario.html">Glosario</a>
+    <a href="../preguntas_y_respuestas.html">Repaso</a>
+    <a href="../buscar.html">Buscar</a>
+  </nav>
+</header>
+<main id="contenido">
+<nav class="migas" aria-label="Ubicación"><a href="../00_EMPEZAR_AQUI.html">Inicio</a><span aria-hidden="true">›</span><a href="../guia/index.html">Curso</a><span aria-hidden="true">›</span><span>Etapa 2 · 2D · Windows internals (optativa)</span></nav><h1 id="objetos-handles-tokens-privilegios-e-integridad">Objetos, handles, tokens, privilegios e integridad</h1>
+<aside class="callout aviso"><p class="callout-titulo">Rama optativa 2D</p><p>Lección de la <a href="../2d.html">rama optativa 2D</a>, fuera del recorrido obligatorio. Defensiva: entender el contexto de seguridad para <strong>analizar</strong>, no para escalar privilegios.</p></aside>
+<aside class="callout nota"><p class="callout-titulo">Propósito</p><p>Entender cómo Windows modela el acceso: todo es un <strong>objeto</strong> al que se llega por <strong>handle</strong>, y lo que un proceso puede hacer lo define su <strong>token</strong> (SIDs, privilegios, nivel de integridad) contra la <strong>ACL</strong> del objeto. Saber leer ese contexto en Process Explorer/WinDbg.</p></aside>
+<p><strong>Prerrequisitos</strong></p>
+<ul><li><em>Obligatorios:</em> procesos e hilos (<a href="01-procesos.html">1.3</a>), debugger (<a href="02-debugger.html">2.6</a>).</li><li><em>Recomendados:</em> anti-análisis/PEB (<a href="02-anti-analisis.html">2.15</a>), WinDbg (<a href="02-windbg-heap.html">2.19</a>).</li></ul>
+<h2 id="el-modelo-de-objetos">El modelo de objetos</h2>
+<p>En Windows casi todo recurso del kernel —procesos, hilos, archivos, claves de registro, eventos, secciones— es un <strong>objeto</strong> gestionado por el <em>Object Manager</em>. Un proceso no toca el objeto directamente: pide un <strong>handle</strong> (un índice en su tabla de handles privada) y opera a través de él. Cada handle guarda, además, los <strong>permisos concedidos</strong> (access mask) con los que se abrió. <strong>Conocimiento externo</strong> (Microsoft Learn).</p>
+<p>Para el análisis, los handles abiertos de un proceso son una <strong>radiografía de qué toca</strong>: qué archivos, qué claves, qué objetos de sincronización (un <strong>mutex</strong> con nombre suele ser el "ya estoy corriendo" de un malware).</p>
+<h2 id="el-token-de-acceso">El token de acceso</h2>
+<p>Cuando un proceso quiere hacer algo sobre un objeto, Windows compara el <strong>token</strong> del proceso con la <strong>ACL</strong> del objeto. El token contiene:</p>
+<ul><li><strong>SID de usuario y grupos:</strong> quién sos y a qué grupos pertenecés.</li><li><strong>Privilegios:</strong> capacidades con nombre (<code>SeDebugPrivilege</code>, <code>SeBackupPrivilege</code>, <code>SeLoadDriverPrivilege</code>…) que el token puede tener <strong>habilitadas</strong> o solo presentes.</li><li><strong>Nivel de integridad (IL):</strong> Low / Medium / High / System. Con la política obligatoria predeterminada de Windows, un proceso de IL bajo normalmente no puede escribir en objetos de IL mayor (no es una regla universal para toda operación; también intervienen las etiquetas y políticas del objeto). Es una de las barreras usadas por sandboxes.</li></ul>
+<h2 id="acl-quién-puede-qué">ACL: quién puede qué</h2>
+<p>Un objeto asegurable tiene un <strong>descriptor de seguridad</strong> con su <strong>DACL</strong> (lista de ACEs: a qué SID se permite/niega qué acceso) y su <strong>SACL</strong> (auditoría). El chequeo de acceso recorre la DACL con el token del que pide. Para el reversing defensivo: una DACL <strong>demasiado permisiva</strong> en un servicio, una clave o un objeto con nombre es una debilidad a <strong>reportar</strong> (no a explotar).</p>
+<h2 id="ejemplo-trabajado">Ejemplo trabajado</h2>
+<p><em>(Ejemplo <strong>ilustrativo</strong>: vista típica de Process Explorer / <code>!token</code> en WinDbg; valores construidos.)</em></p>
+<pre><code class="lenguaje-text">bloc_lab.exe (PID 4312)   Integrity: Medium       ← editor de texto propio de laboratorio
+  Token:
+    User:  PC\lab  (S-1-5-21-...-1001)
+    Grupos: BUILTIN\Users, ...
+    Privilegios (habilitados en MAYÚSCULA):
+       SeChangeNotifyPrivilege (ON)   SeShutdownPrivilege (off)
+       SeDebugPrivilege (off)         ← presente pero deshabilitado
+  Handles (extracto):
+    0x0F8  File   C:\Users\lab\Documents\notas.txt              (el archivo que abriste)
+    0x120  Key    HKCU\Software\BlocLab\Settings                (su propia config)
+    0x134  Mutant \Sessions\1\BaseNamedObjects\BlocLab_SingleInstance</code></pre>
+<p>Lectura: proceso propio de integridad <strong>Medium</strong>, con <code>SeDebugPrivilege</code> <strong>presente pero apagado</strong> (no está usando debug de otros procesos ahora). Los handles muestran el documento que abriste, su <strong>propia</strong> clave de configuración y un <strong>mutex</strong> de instancia única. En un análisis real, el nombre del mutex o una ruta son <strong>pistas</strong> a corroborar, no evidencia por sí solos.</p>
+<h2 id="práctica-segura">Práctica segura</h2>
+<p>En tu VM, con un <strong>programa propio</strong> (o Process Explorer sobre uno benigno):</p>
+<ol><li>Con <strong>Process Explorer</strong>, abrí un proceso propio y mirá su cuenta y sus <strong>handles</strong>. Para los grupos y privilegios de tu sesión, ejecutá <code>whoami /all</code>; anotá cuáles figuran habilitados y cuáles no.</li><li>Identificá handles a un archivo, una clave y un objeto con nombre (evento/mutex). Si el proceso no tiene uno de esos objetos, anotalo: no hace falta crearlo para completar la observación.</li><li>Compará el token del proceso propio con el de la sesión solo si ambos pertenecen a la misma cuenta y nivel de integridad; no eleves privilegios para la práctica.</li><li>Mirá la <strong>DACL</strong> de un objeto propio (p. ej. <code>icacls</code> sobre un archivo tuyo) y explicá quién tiene qué.</li></ol>
+<h2 id="entregable">Entregable</h2>
+<p>Una ficha del proceso: nivel de integridad, privilegios habilitados, 3–5 handles relevantes (con qué objeto) y una observación sobre la DACL de uno de esos objetos. Solo observación, sin modificar permisos.</p>
+<h2 id="preguntas-de-repaso">Preguntas de repaso</h2>
+<details class="qa"><summary>¿Qué es un handle y qué guarda además del objeto?</summary><div class="respuesta"><p>Un índice en la <strong>tabla de handles</strong> privada del proceso que apunta a un objeto del kernel; guarda también la <strong>access mask</strong> (los permisos con que se abrió). El proceso opera por el handle, no sobre el objeto directo.</p></div></details>
+<details class="qa"><summary>¿Qué define lo que un proceso puede hacer sobre un objeto?</summary><div class="respuesta"><p>La comparación de su <strong>token</strong> (SIDs, privilegios, nivel de integridad) contra la <strong>DACL</strong> del objeto. Si la DACL no concede el acceso pedido para ese SID, se rechaza.</p></div></details>
+<details class="qa"><summary>¿Qué diferencia hay entre un privilegio "presente" y uno "habilitado"?</summary><div class="respuesta"><p>Presente = el token lo tiene en su lista; habilitado = está <strong>activo</strong> ahora. Muchos privilegios potentes vienen presentes pero deshabilitados y hay que habilitarlos para usarlos; en el análisis te fijás cuáles están <strong>ON</strong>.</p></div></details>
+<details class="qa"><summary>¿Para qué sirve el nivel de integridad?</summary><div class="respuesta"><p>Es una barrera: un proceso de integridad <strong>baja</strong> no puede escribir en objetos de integridad <strong>mayor</strong>. Es la base de los sandboxes (p. ej. el del navegador).</p></div></details>
+<details class="qa"><summary>¿Por qué un mutex con nombre es interesante al analizar, y qué cuidado hay que tener?</summary><div class="respuesta"><p>Suele ser el mecanismo de <strong>instancia única</strong> ("ya estoy corriendo"), así que es una <strong>pista</strong> útil. Pero su nombre <strong>por sí solo no es un IOC</strong>: un nombre genérico puede coincidir con software legítimo; sirve como indicio a <strong>corroborar</strong> con más contexto.</p></div></details>
+<aside class="callout nota"><p class="callout-titulo">Puerta de salida (optativa)</p><p>Podés: (1) explicar el modelo objeto/handle/access-mask; (2) leer un token (SIDs, privilegios ON/off, integridad); (3) relacionar token + DACL en un chequeo de acceso; (4) sacar evidencia (handles, mutex) de un proceso propio sin modificarlo.</p></aside>
+<h2 id="fuentes">Fuentes</h2>
+<ul><li><strong>Conocimiento externo</strong> (Microsoft Learn; páginas concretas): <a href="https://learn.microsoft.com/en-us/windows/win32/sysinfo/handles-and-objects" rel="noopener" target="_blank">Handles and Objects</a>, <a href="https://learn.microsoft.com/en-us/sysinternals/downloads/process-explorer" rel="noopener" target="_blank">Process Explorer</a>, <a href="https://learn.microsoft.com/en-us/windows/win32/secauthz/access-tokens" rel="noopener" target="_blank">Access Tokens</a>, <a href="https://learn.microsoft.com/en-us/windows/win32/secauthz/privileges" rel="noopener" target="_blank">Privileges</a>, <a href="https://learn.microsoft.com/en-us/windows/win32/secauthz/mandatory-integrity-control" rel="noopener" target="_blank">Mandatory Integrity Control</a> y <a href="https://learn.microsoft.com/en-us/windows/win32/secauthz/access-control-lists" rel="noopener" target="_blank">Access Control Lists</a>. No se citan versiones ni valores reales: el ejemplo es ilustrativo.</li><li><strong>Tie con CLS:</strong> la lectura del <strong>PEB</strong> y el contexto de proceso aparecen en <a href="02-anti-analisis.html">2.15 Anti-análisis</a>; el robo de token en kernel se menciona (de forma ofensiva, fuera de alcance) en los tutes 49–69 del Curso IDA, que acá <strong>no</strong> se usan como guía.</li></ul>
+<aside class="callout nota"><p class="callout-titulo">Etiquetas</p><p><strong>Observado en CLS:</strong> solo el PEB/contexto de 2.15 (referencia). <strong>Conocimiento externo:</strong> todo el modelo de seguridad. <strong>Ejemplo ilustrativo:</strong> la vista de token/handles. <strong>Laboratorio verificado:</strong> ninguno en esta edición (no hay binario compilado con datos reales); la práctica se hace sobre procesos propios en tu VM.</p></aside>
+</main>
+<footer class="pie">
+  <p>Material educativo y defensivo. Las prácticas se limitan a programas propios, software abierto o crackmes diseñados para aprender. No se enseña a eludir licencias, DRM ni controles de acceso.</p>
+  <p><a href="../00_EMPEZAR_AQUI.html">Inicio</a> · <a href="../guia/etapa-0.html">Etapas</a> · <a href="../fuentes_y_limites.html">Fuentes y límites</a> · <a href="../registro_de_cobertura.csv">Registro de cobertura</a></p>
+</footer>
+</body>
+</html>

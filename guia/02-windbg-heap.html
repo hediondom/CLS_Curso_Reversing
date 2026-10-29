@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>2.19 · WinDbg, TTD y heap</title>
+<meta name="description" content="WinDbg de punta a punta, Time Travel Debugging para ir hacia atrás, y heap: Page Heap y LFH para encontrar corrupción en un programa propio.">
+<link rel="stylesheet" href="../guia/estilo.css">
+</head>
+<body>
+<a class="salto" href="#contenido">Saltar al contenido</a>
+<header class="cabecera">
+  <div class="marca"><a href="../00_EMPEZAR_AQUI.html">CLS · Curso de reversing</a> <span class="edicion">edición 5 · 27/10/2026</span></div>
+  <nav class="principal" aria-label="Navegación principal">
+    <a href="../00_EMPEZAR_AQUI.html">Inicio</a>
+    <a href="../guia/index.html">Curso</a>
+    <a href="../materiales.html">Materiales</a>
+    <a href="../fichas/index.html">Fichas</a>
+    <a href="../glosario.html">Glosario</a>
+    <a href="../preguntas_y_respuestas.html">Repaso</a>
+    <a href="../buscar.html">Buscar</a>
+  </nav>
+</header>
+<main id="contenido">
+<nav class="migas" aria-label="Ubicación"><a href="../00_EMPEZAR_AQUI.html">Inicio</a><span aria-hidden="true">›</span><a href="../guia/index.html">Curso</a><span aria-hidden="true">›</span><span>Etapa 2 · Windows avanzado (2C)</span></nav><h1 id="windbg-ttd-y-heap">WinDbg, TTD y heap</h1>
+<aside class="callout nota"><p class="callout-titulo">Objetivo de la lección</p><p>Manejar <strong>WinDbg</strong> para lo que x64dbg no da cómodo: <strong>time-travel</strong> (ir hacia atrás) y <strong>diagnóstico de heap</strong>. Encontrar la causa de un error de memoria en un programa <strong>propio</strong>. <strong>Prerrequisitos:</strong> debugger (2.6), llamadas y pila (2.5), memoria (1.2).</p></aside>
+<h2 id="windbg-por-qué-y-lo-mínimo">WinDbg: por qué y lo mínimo</h2>
+<p>El Curso IDA integra <strong>WinDbg con IDA</strong>: lo instala y lo maneja desde la interfaz de IDA porque es "un gran debugger" aunque incómodo, casi todo por comandos (<a class="fuente" href="../../CLS_Guia/_trabajo/extraido_ida/32-INTRODUCCION%20AL%20REVERSING%20CON%20IDA%20PRO%20DESDE%20CERO.txt">Curso IDA, tute 32</a>). Comandos que vas a usar siempre:</p>
+<div class="tabla"><table>
+<thead><tr>
+<th>Comando</th>
+<th>Qué hace</th>
+</tr></thead><tbody>
+<tr><td><code>g</code> / <code>p</code> / <code>t</code></td><td>correr / step over / step into</td></tr>
+<tr><td><code>bp dir</code> / <code>ba r4 dir</code></td><td>breakpoint de software / de acceso (hardware)</td></tr>
+<tr><td><code>k</code></td><td>call stack</td></tr>
+<tr><td><code>dt tipo dir</code></td><td>volcar una estructura con sus campos</td></tr>
+<tr><td><code>!address dir</code></td><td>a qué región pertenece una dirección</td></tr>
+<tr><td><code>!heap</code></td><td>estado del heap (ver abajo)</td></tr>
+</tbody></table></div>
+<h2 id="ttd-grabar-y-rebobinar">TTD: grabar y rebobinar</h2>
+<p><strong>Time Travel Debugging</strong> (TTD, de Microsoft; <strong>conocimiento externo</strong>, es posterior al material de CLS) graba <strong>toda</strong> la ejecución en un trace y después la reproducís <strong>hacia adelante y hacia atrás</strong>. Cambia el método: en vez de "¿quién va a escribir este valor?" y reiniciar mil veces, ponés un breakpoint de acceso y hacés <strong><code>g-</code></strong> (go back) hasta la escritura que lo rompió. Para "¿quién corrompió este buffer?", TTD es la herramienta: encontrás la dirección mala y <strong>retrocedés</strong> hasta la instrucción culpable.</p>
+<h2 id="heap-page-heap-y-lfh">Heap: Page Heap y LFH</h2>
+<p>El heap es donde más cuesta ver la corrupción, porque el síntoma (un crash) aparece <strong>lejos</strong> de la causa. Dos ayudas:</p>
+<ul><li><strong>Page Heap / Application Verifier</strong> (se activan con <code>gflags</code>; <strong>conocimiento externo</strong>): ponen cada bloque al <strong>final de una página</strong>, con una página de guardia detrás. Así un overflow de heap <strong>crashea en el acto</strong>, en la instrucción que escribe de más, no páginas después. El modo <em>full</em> consume más memoria, pero te da el crash exacto.</li><li><strong>LFH</strong> (<em>Low Fragmentation Heap</em>): Windows agrupa las alocaciones chicas en <em>buckets</em>. El Curso IDA dedica una parte a distinguir si una alocación cae en el <strong>LFH o en el heap estándar</strong>, porque cambia cómo se ven los bloques (<a class="fuente" href="../../CLS_Guia/_trabajo/extraido_ida/48-INTRODUCCION%20AL%20REVERSING%20CON%20IDA%20PRO%20DESDE%20CERO.txt">Curso IDA, tute 48</a>). En WinDbg lo mirás con <code>!heap</code>.</li></ul>
+<p>El tute 44 muestra justamente <strong>qué info de heap se obtiene con WinDbg dentro de IDA</strong> (<a class="fuente" href="../../CLS_Guia/_trabajo/extraido_ida/44-INTRODUCCION%20AL%20REVERSING%20CON%20IDA%20PRO%20DESDE%20CERO.txt">Curso IDA, tute 44</a>).</p>
+<aside class="callout aviso"><p class="callout-titulo">Heap spraying: solo como concepto</p><p>El <em>heap spraying</em> (rellenar el heap con muchas copias de un dato para que una dirección sea predecible) se explica <strong>para reconocerlo en un informe</strong> —qué dice y qué evidencia buscar—, no se practica su construcción. Esta lección es de <strong>diagnóstico defensivo</strong>.</p></aside>
+<h2 id="ejemplo-paso-a-paso-cazar-un-overflow-de-heap-con-page-heap-ttd">Ejemplo paso a paso: cazar un overflow de heap con Page Heap + TTD</h2>
+<p><em>(Ejemplo <strong>ilustrativo</strong>: salida construida para mostrar el flujo.)</em></p>
+<p>Programa propio que hace <code>memcpy</code> de 40 bytes en un buffer de 32 del heap. Con Page Heap activo (<code>gflags /p /enable prog.exe /full</code>), crashea <strong>en el <code>memcpy</code></strong>:</p>
+<pre><code class="lenguaje-text">(1a2c.0b30): Access violation - code c0000005
+prog!copiar+0x2e:
+  mov byte ptr [eax], cl      ; escribe en la página de guardia → crash acá
+
+0:000&gt; !heap -p -a eax
+    address 0019f000 found in _DPH_HEAP ... 32 bytes allocated
+    stack:  prog!reservar+0x1c   ← dónde se pidió el bloque de 32
+
+0:000&gt; k                        ; cómo llegué
+  prog!copiar+0x2e
+  prog!procesar+0x51
+  prog!main+0x22</code></pre>
+<p>Con TTD, si no tuvieras el crash exacto, pondrías <code>ba w1 &lt;fin del buffer&gt;</code> y harías <code>g-</code> hasta la escritura. En los dos casos llegás a <code>copiar+0x2e</code> y, por <code>!heap -p -a</code>, al bloque de 32 pedido en <code>reservar</code>: la causa, no solo el síntoma.</p>
+<h2 id="práctica">Práctica</h2>
+<p>En tu VM, con un <strong>programa propio</strong> con un bug de heap (un <code>memcpy</code>/<code>strcpy</code> que escribe de más en un bloque del heap):</p>
+<ol><li>Reproducí el crash "normal": vas a ver que explota lejos de la causa.</li><li>Activá <strong>Page Heap</strong> (<code>gflags /p /enable prog.exe /full</code>) y volvé a correrlo: ahora crashea en la escritura culpable.</li><li>Con <code>!heap -p -a &lt;dir&gt;</code> encontrá dónde se pidió ese bloque y con <code>k</code> el camino.</li><li>(Si tenés TTD) grabá, poné <code>ba w</code> en el fin del buffer y <code>g-</code> hasta la escritura.</li><li><strong>Apagá Page Heap al terminar</strong>: <code>gflags /p /disable prog.exe</code>. La configuración de GFlags <strong>persiste en el registro</strong> (<code>Image File Execution Options</code>); si no la sacás, el programa queda siempre con page heap (más lento y con más consumo). Verificá con <code>gflags /p</code> que no quede ninguno activo.</li></ol>
+<h2 id="preguntas-de-repaso">Preguntas de repaso</h2>
+<details class="qa"><summary>¿Qué problema del heap resuelve Page Heap?</summary><div class="respuesta"><p>Que el crash aparece <strong>lejos</strong> de la causa. Page Heap pone cada bloque pegado a una <strong>página de guardia</strong>, así un overflow crashea <strong>en el acto</strong>, en la instrucción que escribe de más.</p></div></details>
+<details class="qa"><summary>¿En qué cambia TTD el análisis de "¿quién escribió este valor?"</summary><div class="respuesta"><p>Deja <strong>retroceder</strong> (<code>g-</code>) en una ejecución grabada hasta la escritura culpable, sin reiniciar una y otra vez. Grabás una vez y navegás hacia adelante y atrás.</p></div></details>
+<details class="qa"><summary>¿Qué es el LFH y por qué importa?</summary><div class="respuesta"><p>El <em>Low Fragmentation Heap</em>: Windows agrupa alocaciones chicas en buckets. Importa porque un bloque en LFH se ve distinto de uno en el heap estándar, y eso cambia cómo interpretás la memoria.</p></div></details>
+<details class="qa"><summary>¿Qué te da <code>!heap -p -a &lt;dir&gt;</code> en WinDbg?</summary><div class="respuesta"><p>La información del bloque de heap que contiene esa dirección: tamaño y, con Page Heap, el <strong>stack de dónde se alocó</strong>. Te lleva del síntoma a dónde se pidió la memoria.</p></div></details>
+<details class="qa"><summary>¿Por qué el heap spraying está solo como concepto?</summary><div class="respuesta"><p>Porque esta lección es de <strong>diagnóstico defensivo</strong>: interesa reconocer de qué habla un informe y qué evidencia buscar, no construir la técnica.</p></div></details>
+<aside class="callout nota"><p class="callout-titulo">Puerta de salida</p><p>Podés: (1) moverte en WinDbg con <code>g/p/t</code>, <code>bp/ba</code>, <code>k</code>, <code>dt</code>, <code>!heap</code>; (2) explicar qué resuelve Page Heap y usarlo para cazar un overflow de heap propio; (3) decir cómo TTD ayuda a ir a la causa; (4) distinguir LFH de heap estándar; (5) explicar qué es el heap spraying sin construirlo.</p></aside>
+<h2 id="fuentes-de-esta-lección">Fuentes de esta lección</h2>
+<ul><li><a class="fuente" href="../../CLS_Guia/_trabajo/extraido_ida/32-INTRODUCCION%20AL%20REVERSING%20CON%20IDA%20PRO%20DESDE%20CERO.txt">Curso IDA, tute 32</a> — WinDbg manejado desde IDA.</li><li><a class="fuente" href="../../CLS_Guia/_trabajo/extraido_ida/44-INTRODUCCION%20AL%20REVERSING%20CON%20IDA%20PRO%20DESDE%20CERO.txt">Curso IDA, tute 44</a> — info de heap con WinDbg dentro de IDA.</li><li><a class="fuente" href="../../CLS_Guia/_trabajo/extraido_ida/48-INTRODUCCION%20AL%20REVERSING%20CON%20IDA%20PRO%20DESDE%20CERO.txt">Curso IDA, tute 48</a> — alocación en LFH vs. heap estándar.</li></ul>
+<aside class="callout nota"><p class="callout-titulo">Capas de esta lección</p><p><strong>Contenido observado en CLS:</strong> WinDbg+IDA (tute 32), heap con WinDbg (tute 44) y LFH (tute 48). <strong>Conocimiento externo:</strong> TTD, Page Heap/Application Verifier (<code>gflags</code>) y el concepto de heap spraying. <strong>Recomendación editorial:</strong> el ejemplo ilustrativo y la práctica con un bug de heap propio (sin laboratorio compilado con hashes en esta edición).</p></aside>
+
+<aside class="ampliacion-ext">
+<p class="callout-titulo">Ampliación editorial basada en fuentes externas — NT Heap (0xEEFFEEFF) vs. Segment Heap (0xDDEEDDEE) en Windows 10/11</p>
+<p>En Windows 10 y 11 coexisten dos backends de heap en user mode (<a href="https://learn.microsoft.com/en-us/windows/win32/sbscs/application-manifests#segmentHeap" rel="noopener" target="_blank">Microsoft Learn: Segment Heap</a> y <a href="https://learn.microsoft.com/en-us/windows-hardware/drivers/debuggercmds/-heap" rel="noopener" target="_blank">!heap</a>) <em>(Hecho confirmado)</em>: el <strong>NT Heap</strong> clásico (firma <code>0xEEFFEEFF</code>) y el <strong>Segment Heap</strong> (firma <code>0xDDEEDDEE</code>, activo en servicios del sistema, apps MSIX y ejecutables con <code>&lt;segmentHeap&gt;true&lt;/segmentHeap&gt;</code> en su manifiesto). En WinDbg moderno, <code>!heap</code> muestra la columna <code>Type</code> (<code>NT Heap</code> vs. <code>Segment Heap</code>); cuando activás <strong>Full Page Heap</strong> (<code>gflags /p /enable prog.exe /full</code>), las reservas pasan por <code>_DPH_HEAP_ROOT</code> y <code>!heap -p -a &lt;dir&gt;</code> funciona de forma idéntica en ambos casos (podés practicarlo con <code>heap_bug.c</code> del <a href="../hilo-conductor-y-plantillas.html">Kit de plantillas C/C++</a>).</p>
+</aside>
+</main>
+<footer class="pie">
+  <p>Material educativo y defensivo. Las prácticas se limitan a programas propios, software abierto o crackmes diseñados para aprender. No se enseña a eludir licencias, DRM ni controles de acceso.</p>
+  <p><a href="../00_EMPEZAR_AQUI.html">Inicio</a> · <a href="../guia/etapa-0.html">Etapas</a> · <a href="../fuentes_y_limites.html">Fuentes y límites</a> · <a href="../registro_de_cobertura.csv">Registro de cobertura</a></p>
+</footer>
+</body>
+</html>

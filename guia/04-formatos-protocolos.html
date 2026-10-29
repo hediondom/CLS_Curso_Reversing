@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>4.5 · Reconstruir formatos y protocolos propios</title>
+<meta name="description" content="Deducir estructura, framing, estados y transformaciones a partir de muestras controladas de programas propios en Windows.">
+<link rel="stylesheet" href="../guia/estilo.css">
+</head>
+<body>
+<a class="salto" href="#contenido">Saltar al contenido</a>
+<header class="cabecera">
+  <div class="marca"><a href="../00_EMPEZAR_AQUI.html">CLS · Curso de reversing</a> <span class="edicion">edición 5 · 27/10/2026</span></div>
+  <nav class="principal" aria-label="Navegación principal">
+    <a href="../00_EMPEZAR_AQUI.html">Inicio</a>
+    <a href="../guia/index.html">Curso</a>
+    <a href="../materiales.html">Materiales</a>
+    <a href="../fichas/index.html">Fichas</a>
+    <a href="../glosario.html">Glosario</a>
+    <a href="../preguntas_y_respuestas.html">Repaso</a>
+    <a href="../buscar.html">Buscar</a>
+  </nav>
+</header>
+<main id="contenido">
+<nav class="migas" aria-label="Ubicación"><a href="../00_EMPEZAR_AQUI.html">Inicio</a><span aria-hidden="true">›</span><a href="../guia/index.html">Curso</a><span aria-hidden="true">›</span><span>Etapa 4 · Práctica guiada</span></nav><h1 id="reconstruir-formatos-y-protocolos-propios">Reconstruir formatos y protocolos propios</h1>
+<aside class="callout nota"><p class="callout-titulo">Objetivo de la lección</p><p>Dado un conjunto pequeño de archivos o mensajes generados por un programa propio, formular y comprobar una estructura: campos, offsets, longitudes, endianness, framing y estados. Distinguir checksum, hash, MAC, compresión y cifrado como hipótesis diferentes, y anotar qué evidencia sostiene cada conclusión.</p></aside>
+<p><strong>Prerrequisitos:</strong> <a href="01-numeros.html">Bits y endianness</a> (1.1), <a href="01-pe.html">formato PE</a> (1.4), <a href="04-metodo.html">método de análisis</a> (4.1), <a href="2d-10-ipc.html">IPC de Windows</a> como referencia. <strong>Duración sugerida:</strong> 6 horas.</p>
+<aside class="callout aviso"><p class="callout-titulo">Alcance y muestras</p><p>Usá archivos y programas <strong>propios</strong> o diseñados para la práctica. Para un protocolo, trabajá con dos procesos tuyos en una VM, una named pipe local o loopback. No envíes datos a servicios de terceros. <strong>Capas:</strong> conocimiento externo; ejemplo CLSF ilustrativo y sintético; laboratorio no verificado. La práctica propuesta usa programas propios y comunicación local.</p></aside>
+<h2 id="del-síntoma-a-una-pregunta-comprobable">Del síntoma a una pregunta comprobable</h2>
+<p>«¿Qué significa este blob?» es demasiado amplio. Convertí la duda en una pregunta que permita diseñar una prueba:</p>
+<ul><li>¿Los primeros cuatro bytes son una firma constante?</li><li>¿Este entero describe la longitud del cuerpo, del encabezado o del archivo completo?</li><li>¿Dos mensajes consecutivos se separan por longitud, delimitador o estado de la conexión?</li><li>¿Qué campo cambia cuando cambia solo el contenido?</li><li>¿El bloque final detecta corrupción accidental, autentica el mensaje o solo parece aleatorio?</li></ul>
+<p>Conservá cada muestra original sin modificarla, calculá su hash y anotá cómo se obtuvo. Trabajá sobre copias. Una tabla de diferencias entre muestras vale más que una interpretación basada en un solo archivo.</p>
+<h2 id="procedimiento-de-reconstrucción">Procedimiento de reconstrucción</h2>
+<ol><li><strong>Inventario.</strong> Anotá tamaño, hash, origen de laboratorio, herramienta que lo produjo y si el espécimen es archivo, mensaje, flujo o captura. Identificá la envoltura conocida y separala del formato interno.</li><li><strong>Muestras controladas.</strong> Generá pares que difieran en una sola propiedad: una cadena más larga, otro valor, un registro adicional o una versión distinta. Incluí casos válidos vacíos y límites que tu programa admita.</li><li><strong>Mapa de bytes.</strong> Numera offsets desde cero; registra bytes, ASCII/UTF-16, enteros little-endian/big-endian, alineación y regiones repetidas. No decidas el tipo de un campo por su apariencia aislada.</li><li><strong>Hipótesis.</strong> Para cada campo escribe hipótesis, evidencia, alternativa y prueba que la refutaría. «Parece una longitud» no es conclusión hasta comprobar varios tamaños.</li><li><strong>Framing y estructura.</strong> Separa cabecera, registros, cuerpo y tráiler. Prueba longitudes prefijadas, tamaños fijos, delimitadores, terminadores, conteos y esquemas TLV. Comprueba si las longitudes incluyen o excluyen cabecera/tráiler.</li><li><strong>Estado y secuencia.</strong> Dibuja estados y transiciones: conexión, saludo, petición, respuesta, error y cierre. Relaciona cada mensaje con el estado previo; un opcode puede significar cosas distintas según el estado.</li><li><strong>Transformaciones.</strong> Investiga por separado codificación, compresión, checksum/CRC, hash, MAC y cifrado. Usa perturbaciones controladas y evidencia del programa propio; entropía alta por sí sola no demuestra cifrado ni compresión.</li><li><strong>Validación independiente.</strong> Comprueba la hipótesis con muestras no usadas para formularla, límites y entradas malformadas inocuas. Escribe un esquema y un parser de referencia mínimo.</li></ol>
+<h2 id="endianness-longitudes-y-tlv">Endianness, longitudes y TLV</h2>
+<p>Un entero de dos bytes 05 00 vale 5 en little-endian; 00 05 vale 5 en big-endian. En tráfico IP, los campos numéricos de Winsock usan orden de red (big-endian), aunque el host x86/x64 use little-endian. Un formato puede mezclar órdenes: documenta el orden <strong>por campo</strong>.</p>
+<p>En un esquema <strong>TLV</strong> (type, length, value), cada elemento indica tipo, longitud y valor. Confirma el ancho de tipo/longitud, si la longitud incluye el encabezado y cómo se representa un elemento desconocido.</p>
+<h2 id="ejemplo-trabajado-formato-sintético-clsf">Ejemplo trabajado: formato sintético CLSF</h2>
+<p><em>(Ejemplo <strong>ilustrativo</strong>, generado para la lección; no proviene de un archivo CLS.)</em> Supongamos un programa propio que escribe estos bytes:</p>
+<pre><code class="lenguaje-text">Offset  Bytes                                      Lectura provisional
+00      43 4C 53 46                                 firma ASCII «CLSF»
+04      01                                          versión candidata = 1
+05      00                                          flags candidatos = 0
+06      0C 00                                       tamaño de cabecera candidato = 12 (LE)
+08      05 00                                       tamaño de cuerpo candidato = 5 (LE)
+0A      2A 00                                       campo variable = 42 (LE)
+0C      48 45 4C 4C 4F                              cuerpo ASCII «HELLO»</code></pre>
+<p>La muestra completa tiene 17 bytes. Es tentador llamar «secuencia» al campo en offset 0A, pero una sola muestra no lo justifica. Generamos variantes cambiando una cosa cada vez:</p>
+<div class="tabla"><table>
+<thead><tr>
+<th>Muestra</th>
+<th>Cambios controlados</th>
+<th>Observación</th>
+</tr></thead><tbody>
+<tr><td>A</td><td>Cuerpo HELLO, campo 2A 00</td><td>Longitud 5; total 17 bytes</td></tr>
+<tr><td>B</td><td>Mismo cuerpo, campo 2B 00</td><td>Solo cambia el campo en 0A; podría ser contador, ID o checksum</td></tr>
+<tr><td>C</td><td>Cuerpo BYE!!, campo 2A 00</td><td>Cambia solo el cuerpo; el campo 0A permanece</td></tr>
+<tr><td>D</td><td>Cuerpo HELLO!!!, campo 2A 00</td><td>Cuerpo crece tres bytes y el campo 08 pasa de 5 a 8</td></tr>
+</tbody></table></div>
+<p>A y D apoyan la hipótesis «offset 08 es longitud del cuerpo» y que empieza en 0C. A/B/C sugieren que 0A no es un checksum simple del cuerpo, pero no identifican su significado. Solo al observar varias operaciones del programa propio —por ejemplo, que incrementa entre mensajes— podríamos etiquetarlo como contador. Cada etiqueta queda como hipótesis hasta probarla.</p>
+<h2 id="framing-y-máquina-de-estados">Framing y máquina de estados</h2>
+<p>En un archivo, el inicio y final vienen dados por el archivo. En un protocolo hay que averiguar <strong>dónde termina cada mensaje</strong>:</p>
+<ul><li><strong>Tamaño fijo:</strong> cada mensaje tiene la misma longitud.</li><li><strong>Longitud prefijada:</strong> un encabezado anuncia cuántos bytes siguen; determina si cuenta desde el encabezado o solo el cuerpo.</li><li><strong>Delimitador:</strong> un byte o secuencia separa mensajes; prueba cómo se escapa si aparece en el cuerpo.</li><li><strong>Estado o longitud implícita:</strong> el final depende de una operación o fase del protocolo.</li></ul>
+<p>TCP es un flujo de bytes: los límites de una llamada send no son automáticamente límites de mensaje para quien recibe. El framing pertenece al protocolo de aplicación. Named pipes de Windows pueden operar en modo byte o mensaje; identifica el modo antes de interpretar lecturas, y documenta también la estructura interna definida por la aplicación.</p>
+<pre><code class="lenguaje-text">DESCONECTADO --conectar--&gt; ESPERA_SALUDO
+ESPERA_SALUDO --saludo válido--&gt; LISTO
+LISTO --petición--&gt; ESPERA_RESPUESTA
+ESPERA_RESPUESTA --respuesta/error--&gt; LISTO
+cualquier estado --cierre--&gt; DESCONECTADO</code></pre>
+<p>El diagrama es una hipótesis hasta contrastarla con trazas de una ejecución propia. Anota estado previo, bytes, respuesta y efecto observable para cada transición.</p>
+<h2 id="no-confundir-checksum-hash-mac-compresión-y-cifrado">No confundir checksum, hash, MAC, compresión y cifrado</h2>
+<ul><li><strong>Checksum/CRC:</strong> detecta ciertas corrupciones accidentales; no autentica al emisor.</li><li><strong>Hash:</strong> resumen de tamaño fijo; sin secreto no prueba quién creó el mensaje.</li><li><strong>MAC:</strong> etiqueta con clave compartida que permite verificar integridad/autenticidad bajo ese secreto.</li><li><strong>Cifrado:</strong> transforma datos usando una clave para ocultar contenido; no implica por sí mismo integridad.</li><li><strong>Compresión:</strong> transforma la representación para reducirla; firmas y cambios de tamaño dan pistas, pero entropía alta no prueba compresión ni cifrado.</li><li><strong>Codificación:</strong> cambia la representación (por ejemplo, base64 o UTF-16) sin ser cifrado.</li></ul>
+<p>Cambia un solo byte y compara el tráiler en muchas muestras. Después cambia una propiedad semántica y repite. Si no puedes validar una fórmula o identificar una llamada concreta en el programa propio, registra «campo no resuelto» en vez de adivinar CRC/AES.</p>
+<h2 id="práctica">Práctica</h2>
+<p>En una VM, con <strong>un escritor/parser propio</strong> y, si eliges la rama de protocolo, dos procesos tuyos:</p>
+<ol><li>Genera al menos cuatro muestras con una sola variable distinta por par. Conserva originales y hashes.</li><li>Completa una tabla de offsets, ancho, orden de bytes, valor observado, hipótesis y confianza.</li><li>Identifica el framing y dibuja una máquina de estados para un intercambio local. Si usas named pipe, registra su modo byte/mensaje.</li><li>Investiga un posible tráiler variando un byte y el contenido; distingue qué puedes concluir y qué no sobre checksum, hash, MAC, cifrado o compresión.</li><li>Escribe un esquema breve y un parser de referencia para muestras válidas. Añade límites y casos malformados inocuos.</li><li>Reserva dos muestras para validación: predice sus offsets, longitudes y transiciones antes de abrirlas.</li></ol>
+<h2 id="entregable">Entregable</h2>
+<p>Un mini-informe con hashes, tabla de campos/offsets, diagrama de estados si es protocolo, esquema, pruebas, hipótesis refutadas y límites. Marca cada campo como <strong>confirmado</strong>, <strong>probable</strong> o <strong>sin resolver</strong>, con su evidencia.</p>
+<h2 id="preguntas-de-repaso">Preguntas de repaso</h2>
+<details class="qa"><summary>¿Por qué un mensaje TCP no termina necesariamente donde terminó la llamada send?</summary><div class="respuesta"><p>TCP entrega un flujo de bytes; el protocolo de aplicación define el framing. Los segmentos y llamadas de envío no garantizan los límites que verá cada lectura.</p></div></details>
+<details class="qa"><summary>¿Qué experimento ayuda a identificar un campo de longitud?</summary><div class="respuesta"><p>Cambiar solo el tamaño del cuerpo en varias muestras y comprobar si el campo cambia coherentemente y si cuenta encabezado o archivo completo.</p></div></details>
+<details class="qa"><summary>¿Que un tráiler cambie al modificar el cuerpo demuestra que es un CRC?</summary><div class="respuesta"><p>No. También podría ser hash, MAC, cifrado u otro campo dependiente del contenido. Hay que probar la hipótesis con más muestras y evidencia.</p></div></details>
+<details class="qa"><summary>¿Qué diferencia hay entre minimizar una muestra y confirmar un formato?</summary><div class="respuesta"><p>Minimizar reduce una entrada manteniendo un comportamiento o cobertura; confirmar exige que una hipótesis estructural prediga muestras independientes y casos límite.</p></div></details>
+<aside class="callout nota"><p class="callout-titulo">Puerta de salida</p><p>Podés reconstruir un formato o protocolo propio desde muestras controladas: marcar campos y offsets, explicar endianness/longitudes/framing, dibujar estados cuando corresponda, separar transformaciones candidatas y validar el esquema con muestras reservadas. No hace falta adivinar todos los campos; sí declarar qué evidencia falta.</p></aside>
+<h2 id="fuentes">Fuentes</h2>
+<ul><li>Microsoft Learn: <a href="https://learn.microsoft.com/en-us/windows/win32/winsock/byte-ordering-2" rel="noopener" target="_blank">Byte Ordering</a>, <a href="https://learn.microsoft.com/en-us/windows/win32/ipc/named-pipes" rel="noopener" target="_blank">Named Pipes</a>, <a href="https://learn.microsoft.com/en-us/windows/win32/ipc/named-pipe-type-read-and-wait-modes" rel="noopener" target="_blank">Named Pipe Type, Read, and Wait Modes</a>.</li><li>IETF: <a href="https://www.rfc-editor.org/rfc/rfc9293" rel="noopener" target="_blank">RFC 9293, Transmission Control Protocol (TCP)</a>.</li><li><a href="04-metodo.html">Método de análisis</a>, <a href="2d-10-ipc.html">IPC en Windows</a> y <a href="02-opt-fuzzing.html">fuzzing/análisis simbólico</a>.</li></ul>
+</main>
+<footer class="pie">
+  <p>Material educativo y defensivo. Las prácticas se limitan a programas propios, software abierto o crackmes diseñados para aprender. No se enseña a eludir licencias, DRM ni controles de acceso.</p>
+  <p><a href="../00_EMPEZAR_AQUI.html">Inicio</a> · <a href="../guia/etapa-0.html">Etapas</a> · <a href="../fuentes_y_limites.html">Fuentes y límites</a> · <a href="../registro_de_cobertura.csv">Registro de cobertura</a></p>
+</footer>
+</body>
+</html>

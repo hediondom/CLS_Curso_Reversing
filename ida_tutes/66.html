@@ -1,0 +1,343 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tute 66 · Desafío Ekoparty 2018 (2) — Curso IDA</title>
+<meta name="description" content="Tutorial ilustrado del tute 66 del Curso IDA desde cero: Desafío Ekoparty 2018 (2).">
+<link rel="stylesheet" href="../guia/estilo.css">
+</head>
+<body>
+<a class="salto" href="#contenido">Saltar al contenido</a>
+<header class="cabecera">
+  <div class="marca"><a href="../00_EMPEZAR_AQUI.html">CLS · Curso de reversing</a> <span class="edicion">edición 5 · 27/10/2026</span></div>
+  <nav class="principal" aria-label="Navegación principal">
+    <a href="../00_EMPEZAR_AQUI.html">Inicio</a>
+    <a href="../guia/index.html">Curso</a>
+    <a href="../fichas/index.html">Fichas</a>
+    <a href="../glosario.html">Glosario</a>
+    <a href="../preguntas_y_respuestas.html">Repaso</a>
+  </nav>
+</header>
+<main id="contenido">
+<p class="migas"><a href="../ida-tutes.html">← Índice de los 69 tutes de IDA</a></p>
+<h1>Tute 66 · Desafío Ekoparty 2018 (2)</h1>
+<p class="meta-tute"><strong>⏱ 13 min de lectura</strong> · 2.315 palabras · 123 capturas · grupo: Kernel de Windows y temas avanzados (drivers, HackSys/HEVD, SSDT/syscalls, VA→física)</p>
+<aside class="callout nota"><p class="callout-titulo">Qué enseña</p><p>Script en Python del exploit del reto.</p></aside>
+<p><em>se conecta con:</em> <a href="../guia/05-fuera-de-alcance.html">Fuera de alcance</a></p>
+<aside class="callout aviso"><p class="callout-titulo">Material observado, no reescrito</p><p>Es el texto y las capturas del <code>.docx</code> original del curso, solo presentados como tutorial. Puede tener erratas de origen. El autor del curso es Ricardo Narvaja.</p></aside>
+<hr>
+<p>INTRODUCCIÓN AL REVERSING CON IDA PRO DESDE CERO PARTE 66.</p>
+<p>TUTE DEL DESAFIO DE NICO PARA LA EKOPARTY 2018 -PARTE 2.</p>
+<p>Vamos a hacer el script en Python del desafío de Nico que reverseamos en la parte anterior, el mismo esta basado en el reversing que hemos hecho y también en la solución que envió mi compañero Lucas Kow, sobre todo la parte del ROP y explicaremos como hacerlo.</p>
+<figure><img loading="lazy" src="img/66/1.png" alt="Captura 1 del tute 66"></figure>
+<p>Si corro el script de Lucas veo que se detiene el contador de la fuga de capitales y que ejecuta la calculadora, así que veamos.</p>
+<p>Obviamente lo primero es establecer la conexión con el server que estará escuchando en el puerto 41414 como habíamos visto, como IP le pondré 127.0.0.1 ya que lo tiro en la misma máquina, si el server esta en una maquina remota habrá que ponerle la IP de la maquina donde corra ese server, y poder llegar a conectar al mismo a través de firewalls.</p>
+<figure><img loading="lazy" src="img/66/2.png" alt="Captura 2 del tute 66"></figure>
+<p>Allí importa socket y realiza la conexión al mismo, recordamos que el primer paquete era el llamado handshake, había que enviarle la palabra “Hello” y si estaba todo bien me devolvía “Hi”.</p>
+<figure><img loading="lazy" src="img/66/3.png" alt="Captura 3 del tute 66"></figure>
+<p>Recordemos que eso se chequeaba en la función que yo renombre como check_handshake después del primer recv, pondremos un breakpoint en el retorno de la función recv.</p>
+<p>Ahora para que sea más cómodo le cambie el debugger a Windbg que lo usare como debugger local dentro de IDA</p>
+<figure><img loading="lazy" src="img/66/4.png" alt="Captura 4 del tute 66"></figure>
+<figure><img loading="lazy" src="img/66/5.png" alt="Captura 5 del tute 66"></figure>
+<p>Por supuesto hay que borrar en Process Options cualquier Connection String que haya.</p>
+<figure><img loading="lazy" src="img/66/6.png" alt="Captura 6 del tute 66"></figure>
+<p>Pongo el breakpoint y le doy start.</p>
+<p>Ahí paro</p>
+<figure><img loading="lazy" src="img/66/7.png" alt="Captura 7 del tute 66"></figure>
+<p>El que quiere ver la dirección en el Windbg</p>
+<figure><img loading="lazy" src="img/66/8.png" alt="Captura 8 del tute 66"></figure>
+<p>Windbg la muestra como Imagebase + rva</p>
+<p>rva es la distancia desde la imagebase será en este caso</p>
+<p>rva=0x1c59.</p>
+<p>En el IDA no está la opción de mostrar las direcciones como base mas rva, pero si como offsets a partir de la función a la que pertenece.</p>
+<figure><img loading="lazy" src="img/66/9.png" alt="Captura 9 del tute 66"></figure>
+<p>Si le ponemos esa tilde cambiara</p>
+<figure><img loading="lazy" src="img/66/10.png" alt="Captura 10 del tute 66"></figure>
+<p>De esa forma si la llamamos main nos coincidirá a todos, ya que todos allí estaremos en main + 189.</p>
+<figure><img loading="lazy" src="img/66/11.png" alt="Captura 11 del tute 66"></figure>
+<p>Y eso nos llevará a la dirección correcta, por supuesto RIP seguirá mostrando el valor numérico.</p>
+<p>Aunque al lado está la aclaración que es main +189</p>
+<figure><img loading="lazy" src="img/66/12.png" alt="Captura 12 del tute 66"></figure>
+<p>Creo que de esa forma será mas sencillo seguir los puntos donde voy mostrando, ya que si ponen los mismos nombres les coincidirá.</p>
+<figure><img loading="lazy" src="img/66/13.png" alt="Captura 13 del tute 66"></figure>
+<p>Si miro ahora que paro, veo que allí en buf, pasando el mouse por encima se ve la string Hello.</p>
+<p>Si voy allí y apreto la A me quedara como string ASCII</p>
+<figure><img loading="lazy" src="img/66/14.png" alt="Captura 14 del tute 66"></figure>
+<p>En check_handshake+27, asegúrense de haber renombrado la función al mismo nombre y podrán ir allí.</p>
+<figure><img loading="lazy" src="img/66/15.png" alt="Captura 15 del tute 66"></figure>
+<p>Esta el strncmp, si todo está bien devolverá cero, si ambas strings son iguales.</p>
+<figure><img loading="lazy" src="img/66/16.png" alt="Captura 16 del tute 66"></figure>
+<p>Como son iguales pondrá el flag_OK a 1.</p>
+<figure><img loading="lazy" src="img/66/17.png" alt="Captura 17 del tute 66"></figure>
+<p>Y luego ira a Handshake accepted respondiendo Hi con eso sabemos que hasta acá vamos bien.</p>
+<figure><img loading="lazy" src="img/66/18.png" alt="Captura 18 del tute 66"></figure>
+<p>En el script imprimo la respuesta “Hi”</p>
+<figure><img loading="lazy" src="img/66/19.png" alt="Captura 19 del tute 66"></figure>
+<p>Luego detengo el server y me fijo que a continuación iría a ejecutar esta función, la renombre ahora como recv_and_parse.</p>
+<figure><img loading="lazy" src="img/66/20.png" alt="Captura 20 del tute 66"></figure>
+<p>Si ustedes la renombran igual podrán ir a los offset a partir del inicio de la función.</p>
+<figure><img loading="lazy" src="img/66/21.png" alt="Captura 21 del tute 66"></figure>
+<p>En recv_and_parse+46 volvemos del recv, aunque sabemos que era de 16 bytes, con 4 dwords, habíamos armado la estructura y ya sabíamos aproximadamente el valor que debía tener cada uno.</p>
+<figure><img loading="lazy" src="img/66/22.png" alt="Captura 22 del tute 66"></figure>
+<figure><img loading="lazy" src="img/66/23.png" alt="Captura 23 del tute 66"></figure>
+<p>Allí vemos los cuatro valores, el primero es el largo del 3er recv que va a llamar después, en este caso pasa 0x200 porque como habíamos visto podíamos overflowdear aquí, pero pasar más hará que crashee el programa al pisar la cookie.</p>
+<figure><img loading="lazy" src="img/66/24.png" alt="Captura 24 del tute 66"></figure>
+<p>Recordemos que el buffer donde recibirá el 3er recv era de 0x200 o sea 512, así que si pasamos más se romperá el programa, justo debajo esta la cookie, por eso el valor será de justo 0x200.</p>
+<p>El próximo valor será el código de la operación que haremos, vimos que 0x22222222 nos permitirá leakear mejor, no solo return address sino también la cookie de seguridad, lo cual es muy importante, por eso el segundo dword es 0x22222222.</p>
+<figure><img loading="lazy" src="img/66/25.png" alt="Captura 25 del tute 66"></figure>
+<p>El tercer dword era el level (menor o igual que 0x200) recordamos que debía ser lo más grande posible, pues en el strncat lo usa como Count de la cantidad a copiar y como 0x200 es el máximo, lo usaremos.</p>
+<figure><img loading="lazy" src="img/66/26.png" alt="Captura 26 del tute 66"></figure>
+<p>El ultimo es el offset negativo, recordamos que no puede ser cualquier valor, pues debe sumarse al p_buffer_512_tercer_recv y la dirección resultante será donde escriba el OK en el strcpy.</p>
+<figure><img loading="lazy" src="img/66/27.png" alt="Captura 27 del tute 66"></figure>
+<p>La distancia hasta const_0 es 0x48 así que pasamos como offset -0x48.</p>
+<figure><img loading="lazy" src="img/66/28.png" alt="Captura 28 del tute 66"></figure>
+<figure><img loading="lazy" src="img/66/29.png" alt="Captura 29 del tute 66"></figure>
+<p>Que es igual a -0x48</p>
+<p>Con eso escribiremos el OK en const_0 que como sabíamos, es el mismo argumento de la función op_0x22222222.</p>
+<p>Eso nos permitirá en la primera repetición, cuando vaya saliendo por todos los return address, llegar al strncat que hará el lio.</p>
+<figure><img loading="lazy" src="img/66/30.png" alt="Captura 30 del tute 66"></figure>
+<p>Aquí esta lo que le vamos a enviar por ahora</p>
+<figure><img loading="lazy" src="img/66/31.png" alt="Captura 31 del tute 66"></figure>
+<p>Pongo un Breakpoint en el strcpy</p>
+<figure><img loading="lazy" src="img/66/32.png" alt="Captura 32 del tute 66"></figure>
+<p>Lo arranco y le envió el paquete que hicimos hasta ahora.</p>
+<p>Apenas llega al level 0 ira al strcpy como habíamos visto y parara allí, luego ira saliendo de todas las repeticiones aumentando el level cada vez que sale hasta llegar a la primera repetición que es el level 0x200, allí vemos que pisamos la const_0 de la función padre e ira al strncat.</p>
+<figure><img loading="lazy" src="img/66/33.png" alt="Captura 33 del tute 66"></figure>
+<p>Copiara 0x200 del Source que son las Aes que envie en el 3er recv y lo agregara a continuación del OK que es el Destination.</p>
+<figure><img loading="lazy" src="img/66/34.png" alt="Captura 34 del tute 66"></figure>
+<p>Source</p>
+<figure><img loading="lazy" src="img/66/35.png" alt="Captura 35 del tute 66"></figure>
+<p>Destination</p>
+<figure><img loading="lazy" src="img/66/36.png" alt="Captura 36 del tute 66"></figure>
+<p>Bueno con eso ya sabemos que pisamos el size del send que esta al salir, sigamos traceando hasta allí.</p>
+<figure><img loading="lazy" src="img/66/37.png" alt="Captura 37 del tute 66"></figure>
+<p>Veo que el size de lo que va a enviar esta pisado con mis Aes, el tema es que así va a crashear ya que no puede leer tanta cantidad y se romperá por lectura, el tema es ver bien que valor pasar para que leakee la cookie, el return address y no se rompa.</p>
+<p>Detengo el programa.</p>
+<p>Recordemos que empieza a enviarme desde el inicio del buffer_512_tercer_recv la cantidad que yo quiera.</p>
+<figure><img loading="lazy" src="img/66/38.png" alt="Captura 38 del tute 66"></figure>
+<p>Una cantidad posible seria 544 bytes desde el inicio del buffer ya que me enviaría la cookie y el return address, igual puede pasarse un valor mas alto, mientras que no rompa el stack, el que paso Lucas es 0x2ff, ya que vamos a usar su ROP pongamos ese valor.</p>
+<figure><img loading="lazy" src="img/66/39.png" alt="Captura 39 del tute 66"></figure>
+<p>¿Como podemos saber cuál de todas las Aes es la que termina pisando el size?</p>
+<p>Se puede calcular, pero más sencillo es enviar una string random imprimirla antes de enviar y fijarnos que letras cayeron en el size, así me evito de calcular.(la fiaca es lo primero)</p>
+<p>Con esta función</p>
+<p>import random, string</p>
+<p>def randomword(length):</p>
+<p>letters = string.ascii_lowercase</p>
+<p>return ''.join(random.choice(letters) for i in range(length))</p>
+<p>La agrego.</p>
+<figure><img loading="lazy" src="img/66/40.png" alt="Captura 40 del tute 66"></figure>
+<p>Cuando para a leer el size del send me fijo que caracteres caen justo allí.</p>
+<figure><img loading="lazy" src="img/66/41.png" alt="Captura 41 del tute 66"></figure>
+<p>En mi caso lojw, los busco en la string impresa por el script.</p>
+<figure><img loading="lazy" src="img/66/42.png" alt="Captura 42 del tute 66"></figure>
+<p>Copio la string hasta justo antes y me fijo su len.</p>
+<p>len("nvcrphoxkyxmbvxefyyfxuhexaldxq")</p>
+<p>es igual a 30</p>
+<figure><img loading="lazy" src="img/66/43.png" alt="Captura 43 del tute 66"></figure>
+<p>Así que coloco 30 Aes, luego el size que quiero enviar. Usare el mismo que uso Lucas 0x2ff, y luego completo los 0x200 bytes del paquete con más Aes.</p>
+<p>Tirémoslo nuevamente a ver si cae bien 0x2ff en el size del send.</p>
+<figure><img loading="lazy" src="img/66/44.png" alt="Captura 44 del tute 66"></figure>
+<p>Vemos que el size quedo bien, sigamos a ver que me devuelve a través del send, puedo darle run total no crasheara.</p>
+<p>Vemos que a continuación de las Aes leakea.</p>
+<figure><img loading="lazy" src="img/66/45.png" alt="Captura 45 del tute 66"></figure>
+<p>Recordemos que el buffer era de 0x200 (512 decimal) así que luego justo estaba la cookie.</p>
+<p>print "%r"%data[512:512+8]</p>
+<p>con eso imprimiremos el valor de la misma.</p>
+<p>Lo tiro nuevamente y cuando para en el send me fijo el valor de la cookie.</p>
+<figure><img loading="lazy" src="img/66/46.png" alt="Captura 46 del tute 66"></figure>
+<p>En este tiro en mi caso es esa, veremos si le doy RUN si imprimo en el script la misma cookie leakeada.</p>
+<figure><img loading="lazy" src="img/66/47.png" alt="Captura 47 del tute 66"></figure>
+<p>Es la cookie solo que los caracteres imprimibles los imprime como tales.</p>
+<p>Si agrego import binascii</p>
+<p>Y uso</p>
+<p>data = s.recv(1024)cookie=data[512:512+8]print "%r"%cookieprint binascii.hexlify(cookie)</p>
+<p>Lo lanzo nuevamente</p>
+<p>La cookie es este nuevo tiro.</p>
+<figure><img loading="lazy" src="img/66/48.png" alt="Captura 48 del tute 66"></figure>
+<figure><img loading="lazy" src="img/66/49.png" alt="Captura 49 del tute 66"></figure>
+<p>Veo que coinciden los valores si quiero imprimirlo con las \x.</p>
+<p>Esto no afecta para nada, no es necesario, pero divido la string de a dos caracteres y luego con join le agrego \x en el medio y delante.</p>
+<figure><img loading="lazy" src="img/66/50.png" alt="Captura 50 del tute 66"></figure>
+<p>Lo tiro nuevamente a ver que tal.</p>
+<figure><img loading="lazy" src="img/66/51.png" alt="Captura 51 del tute 66"></figure>
+<figure><img loading="lazy" src="img/66/52.png" alt="Captura 52 del tute 66"></figure>
+<p>Bueno se ve mas lindo y ya tenemos la cookie leakeada.</p>
+<p>El siguiente valor a leakear es el return address</p>
+<figure><img loading="lazy" src="img/66/53.png" alt="Captura 53 del tute 66"></figure>
+<p>Ese esta entre 536 y 536+8 así que.</p>
+<p>Para que quede mas lindo definí una función my_print para imprimir a mi gusto los valores leakeados.</p>
+<figure><img loading="lazy" src="img/66/54.png" alt="Captura 54 del tute 66"></figure>
+<p>Entonces ahora le paso el nombre de lo que leakee y la string y lo imprimirá.</p>
+<p>Cuando llega al return address me fijo donde volvería, ESP apuntara allí.</p>
+<figure><img loading="lazy" src="img/66/55.png" alt="Captura 55 del tute 66"></figure>
+<figure><img loading="lazy" src="img/66/56.png" alt="Captura 56 del tute 66"></figure>
+<p>Ya tenemos los dos valores mas importantes leakeados, la cookie y donde volvería que es una dirección del ejecutable leakeada</p>
+<p>Obviamente al salir de la función recv_and_parse volvería allí, así que tenemos leakeada esa dirección del ejecutable.</p>
+<figure><img loading="lazy" src="img/66/57.png" alt="Captura 57 del tute 66"></figure>
+<p>Si traceo con f7 desde allí</p>
+<figure><img loading="lazy" src="img/66/58.png" alt="Captura 58 del tute 66"></figure>
+<p>Llego a ese punto.</p>
+<figure><img loading="lazy" src="img/66/59.png" alt="Captura 59 del tute 66"></figure>
+<p>Para hallar la base del módulo, el Windbg me dice que restándole 0x1d31 la tendré.</p>
+<figure><img loading="lazy" src="img/66/60.png" alt="Captura 60 del tute 66"></figure>
+<figure><img loading="lazy" src="img/66/61.png" alt="Captura 61 del tute 66"></figure>
+<p>Con unpack lo convierto en un numero le resto 0x1d31 y lo imprimo veo que coincide.</p>
+<p>Lo</p>
+<figure><img loading="lazy" src="img/66/62.png" alt="Captura 62 del tute 66"></figure>
+<p>Ya teniendo la base del ejecutable deberemos apagar el flag de fuga de capitales, que estaba aquí.</p>
+<figure><img loading="lazy" src="img/66/63.png" alt="Captura 63 del tute 66"></figure>
+<p>Veamos la distancia desde la base, si no tengo ganas de restar le pongo un breakpoint y el Windbg me lo dirá.</p>
+<p>Como aclaración el Windbg te da la distancia desde la base siempre que el modulo no tenga símbolos como en este caso, sino te da a la función conocida más cercana, pero aquí nos sirve.</p>
+<figure><img loading="lazy" src="img/66/64.png" alt="Captura 64 del tute 66"></figure>
+<p>Desde la base le tengo que sumar 0xd090.</p>
+<figure><img loading="lazy" src="img/66/65.png" alt="Captura 65 del tute 66"></figure>
+<p>Veamos si funciona.</p>
+<p>En este nuevo tiro estará aquí</p>
+<figure><img loading="lazy" src="img/66/66.png" alt="Captura 66 del tute 66"></figure>
+<figure><img loading="lazy" src="img/66/67.png" alt="Captura 67 del tute 66"></figure>
+<p>Funciono.</p>
+<p>Hay varias direcciones más que podemos tener, antes renombro cookie_raw a la data que me devuelve leakeada de la misma y cookie al valor numérico para no confundir.</p>
+<figure><img loading="lazy" src="img/66/68.png" alt="Captura 68 del tute 66"></figure>
+<p>Verifiquemos todos estos leaks, ahora que paro en donde lee la cookie.</p>
+<figure><img loading="lazy" src="img/66/69.png" alt="Captura 69 del tute 66"></figure>
+<figure><img loading="lazy" src="img/66/70.png" alt="Captura 70 del tute 66"></figure>
+<p>Veo que la cookie esta correcta.</p>
+<p>La base del ejecutable también.</p>
+<figure><img loading="lazy" src="img/66/71.png" alt="Captura 71 del tute 66"></figure>
+<p>La dir_Disable es la del flag. También esta correcta.</p>
+<figure><img loading="lazy" src="img/66/72.png" alt="Captura 72 del tute 66"></figure>
+<p>Después Lucas leakeo una dirección vacía de la sección data y le puso</p>
+<p>[*]Dir_unicode_kernel32</p>
+<p>seguro armara allí la string kernel32 en el rop.</p>
+<figure><img loading="lazy" src="img/66/73.png" alt="Captura 73 del tute 66"></figure>
+<p>Después leakeo la dirección del inicio de la IAT, siempre sumando constantes de la base del ejecutable.</p>
+<p>[*]Dir_Import_Data:13faea000</p>
+<figure><img loading="lazy" src="img/66/74.png" alt="Captura 74 del tute 66"></figure>
+<p>También leakeo una dirección del stack</p>
+<p>Dir_stack:1fe848</p>
+<figure><img loading="lazy" src="img/66/75.png" alt="Captura 75 del tute 66"></figure>
+<p>Que esta debajo de la cookie y el return address.</p>
+<p>También leakea el handle del socket que estaba justo debajo del return address ya que era un argumento.</p>
+<figure><img loading="lazy" src="img/66/76.png" alt="Captura 76 del tute 66"></figure>
+<figure><img loading="lazy" src="img/66/77.png" alt="Captura 77 del tute 66"></figure>
+<figure><img loading="lazy" src="img/66/78.png" alt="Captura 78 del tute 66"></figure>
+<p>También leakea una dirección medio perdida por ahí en el stack.</p>
+<figure><img loading="lazy" src="img/66/79.png" alt="Captura 79 del tute 66"></figure>
+<p>Allí lo acomode para que su rop coincida con lo que ya vimos, ya que en el script de el se basa en dir_modulo que es la dir_base + 0x1000.</p>
+<figure><img loading="lazy" src="img/66/80.png" alt="Captura 80 del tute 66"></figure>
+<p>Luego de tener estos valores leakeados ya tira para realizar el overflow.</p>
+<figure><img loading="lazy" src="img/66/81.png" alt="Captura 81 del tute 66"></figure>
+<p>Allí crea una nueva conexión y le manda el handshake y el segundo paquete esta vez tiene como primer campo 0x1660 que será el largo del 3er recv con lo que overflowdeara.</p>
+<figure><img loading="lazy" src="img/66/82.png" alt="Captura 82 del tute 66"></figure>
+<figure><img loading="lazy" src="img/66/83.png" alt="Captura 83 del tute 66"></figure>
+<p>Pongo un breakpoint allí parara dos veces la primera vez con el paquete que leakea, la segunda vez con el que overflowdea.</p>
+<p>Allí adjunto el script completo que detiene el flag fuga y ejecuta la calculadora, traceemoslo.</p>
+<p>La segunda vez que para recibió 0x1660 bytes como vimos, así que ya overflowdeo, veamos el rop</p>
+<figure><img loading="lazy" src="img/66/84.png" alt="Captura 84 del tute 66"></figure>
+<p>Vemos que como operación le paso 0xCAFECAFE para que no entre en las operaciones op_0x11111111 o op_0x22222222</p>
+<figure><img loading="lazy" src="img/66/85.png" alt="Captura 85 del tute 66"></figure>
+<p>Por eso imprime Invalid Operation</p>
+<figure><img loading="lazy" src="img/66/86.png" alt="Captura 86 del tute 66"></figure>
+<p>La cookie ya está pisada, pero si se leakeo correctamente debería pasar el chequeo de la misma.</p>
+<figure><img loading="lazy" src="img/66/87.png" alt="Captura 87 del tute 66"></figure>
+<p>Lo paso perfectamente y llega al return address para comenzar el ROP.</p>
+<figure><img loading="lazy" src="img/66/88.png" alt="Captura 88 del tute 66"></figure>
+<p>Aquí vemos que el return address es pisado por el ROP.</p>
+<figure><img loading="lazy" src="img/66/89.png" alt="Captura 89 del tute 66"></figure>
+<p>Vemos que salta al XOR RAX, RAX-RET</p>
+<figure><img loading="lazy" src="img/66/90.png" alt="Captura 90 del tute 66"></figure>
+<p>Luego a POP RBX-RET donde mueve a RBX el valor de dir_disable para parar el flag de fuga</p>
+<figure><img loading="lazy" src="img/66/91.png" alt="Captura 91 del tute 66"></figure>
+<figure><img loading="lazy" src="img/66/92.png" alt="Captura 92 del tute 66"></figure>
+<p>Luego se ve que lo pone a cero al flag.</p>
+<figure><img loading="lazy" src="img/66/93.png" alt="Captura 93 del tute 66"></figure>
+<p>Con eso ya se detuvo la fuga de capitales, esta cumplido el paso 1.</p>
+<p>Luego pasa la dirección vacía en la sección data a EBX allí mismo, ya que hace POP RBX -RET antes de volver.</p>
+<p>[*]Dir_unicode_kernel32:13f1dd4bb</p>
+<figure><img loading="lazy" src="img/66/94.png" alt="Captura 94 del tute 66"></figure>
+<p>Vemos que va a armar la string allí.</p>
+<figure><img loading="lazy" src="img/66/95.png" alt="Captura 95 del tute 66"></figure>
+<figure><img loading="lazy" src="img/66/96.png" alt="Captura 96 del tute 66"></figure>
+<p>Para abrir la ventanita que nos muestre adonde apunta RBX.</p>
+<figure><img loading="lazy" src="img/66/97.png" alt="Captura 97 del tute 66"></figure>
+<p>Allí va armando la string Unicode kernel32</p>
+<figure><img loading="lazy" src="img/66/98.png" alt="Captura 98 del tute 66"></figure>
+<p>Allí sigue armándola</p>
+<figure><img loading="lazy" src="img/66/99.png" alt="Captura 99 del tute 66"></figure>
+<figure><img loading="lazy" src="img/66/100.png" alt="Captura 100 del tute 66"></figure>
+<p>Después arma la string WinExec, un poco más adelante en la sección data, en dir_system</p>
+<figure><img loading="lazy" src="img/66/101.png" alt="Captura 101 del tute 66"></figure>
+<figure><img loading="lazy" src="img/66/102.png" alt="Captura 102 del tute 66"></figure>
+<figure><img loading="lazy" src="img/66/103.png" alt="Captura 103 del tute 66"></figure>
+<p>De la IAT saca la dirección de GetModuleHandleA y de GetProcAddress</p>
+<figure><img loading="lazy" src="img/66/104.png" alt="Captura 104 del tute 66"></figure>
+<p>Y la dir_WinExec es otro lugar vacío en la sección data donde guardara.</p>
+<p>Luego carga en RCX el nombre kernel32 en Unicode y salta a GetModuleHandleA</p>
+<figure><img loading="lazy" src="img/66/105.png" alt="Captura 105 del tute 66"></figure>
+<figure><img loading="lazy" src="img/66/106.png" alt="Captura 106 del tute 66"></figure>
+<p>En la ventana de RCX vemos</p>
+<figure><img loading="lazy" src="img/66/107.png" alt="Captura 107 del tute 66"></figure>
+<p>Al volver de la función me devuelve la base de kernel32</p>
+<figure><img loading="lazy" src="img/66/108.png" alt="Captura 108 del tute 66"></figure>
+<figure><img loading="lazy" src="img/66/109.png" alt="Captura 109 del tute 66"></figure>
+<p>Llegamos aquí</p>
+<figure><img loading="lazy" src="img/66/110.png" alt="Captura 110 del tute 66"></figure>
+<figure><img loading="lazy" src="img/66/111.png" alt="Captura 111 del tute 66"></figure>
+<p>Guarda la string calc en dir_calc</p>
+<p>Luego llama a GetProcAddress</p>
+<figure><img loading="lazy" src="img/66/112.png" alt="Captura 112 del tute 66"></figure>
+<p>En RDX tiene la string Winexec y en RCX la base de kernel32</p>
+<figure><img loading="lazy" src="img/66/113.png" alt="Captura 113 del tute 66"></figure>
+<p>Cuando vuelve devuelve la dirección de WinExec</p>
+<figure><img loading="lazy" src="img/66/114.png" alt="Captura 114 del tute 66"></figure>
+<p>Luego la guarda</p>
+<figure><img loading="lazy" src="img/66/115.png" alt="Captura 115 del tute 66"></figure>
+<figure><img loading="lazy" src="img/66/116.png" alt="Captura 116 del tute 66"></figure>
+<p>Luego va a ejecutar la calculadora llamando a WinExec, RCX apunta a la string calc</p>
+<figure><img loading="lazy" src="img/66/117.png" alt="Captura 117 del tute 66"></figure>
+<figure><img loading="lazy" src="img/66/118.png" alt="Captura 118 del tute 66"></figure>
+<figure><img loading="lazy" src="img/66/119.png" alt="Captura 119 del tute 66"></figure>
+<p>Con eso ya ejecuta la calculadora y se cierra el socket, por eso lo había leakeado al handle del mismo, para que no de error al pisarlo con fruta y tenga el valor correcto.</p>
+<p>+</p>
+<figure><img loading="lazy" src="img/66/120.png" alt="Captura 120 del tute 66"></figure>
+<p>Con eso ya estaría listo, para los que no saben con que hacer ROP en 64 bits les recomiendo este ejecutable.</p>
+<p>https://drive.google.com/file/d/15cR6WkcE3Wvk-3pjdet7PFa6TOKsKQZ0/view?usp=sharing</p>
+<p>RP++</p>
+<p>Copio el ejecutable o modulo donde quiera buscar gadgets en la misma carpeta de la tool.</p>
+<figure><img loading="lazy" src="img/66/121.png" alt="Captura 121 del tute 66"></figure>
+<p>Ejecuto en este caso ya que es de 64 bits.</p>
+<figure><img loading="lazy" src="img/66/122.png" alt="Captura 122 del tute 66"></figure>
+<p>Listo abro el resultado en el Notepad++ o lo que quieran y podrán buscar con el find entre los miles de gadgets que salen</p>
+<p>Por ejemplo quiero un pop rax, ret</p>
+<figure><img loading="lazy" src="img/66/123.png" alt="Captura 123 del tute 66"></figure>
+<p>Y podrán armar el ROP y encontrar los gadgets que quieran entre todos los disponibles.</p>
+<p>Hasta la próxima parte espero que la hayan pasado lindo con el tute</p>
+<p>Saludos</p>
+<p>Ricardo Narvaja</p>
+</main>
+<footer class="pie">
+  <p>Material educativo y defensivo. Las prácticas se limitan a programas propios, software abierto o crackmes diseñados para aprender. No se enseña a eludir licencias, DRM ni controles de acceso.</p>
+  <p><a href="../00_EMPEZAR_AQUI.html">Inicio</a> · <a href="../guia/etapa-0.html">Etapas</a> · <a href="../fuentes_y_limites.html">Fuentes y límites</a> · <a href="../registro_de_cobertura.csv">Registro de cobertura</a></p>
+</footer>
+<script>
+(function(){
+  function abrir(src){
+    var o=document.createElement('div'); o.className='lightbox-ov';
+    var i=document.createElement('img'); i.src=src; o.appendChild(i);
+    function cerrar(){o.remove(); document.removeEventListener('keydown', onkey);}
+    function onkey(e){ if(e.key==='Escape') cerrar(); }
+    o.addEventListener('click', cerrar);
+    document.addEventListener('keydown', onkey);
+    document.body.appendChild(o);
+  }
+  document.addEventListener('DOMContentLoaded', function(){
+    document.querySelectorAll('figure img, main img').forEach(function(img){
+      img.style.cursor='zoom-in';
+      img.addEventListener('click', function(){ abrir(img.currentSrc||img.src); });
+    });
+  });
+})();
+</script>
+</body>
+</html>

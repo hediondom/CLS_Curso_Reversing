@@ -1,0 +1,184 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tute 10 · Loader + debugger — Curso IDA</title>
+<meta name="description" content="Tutorial ilustrado del tute 10 del Curso IDA desde cero: Loader + debugger.">
+<link rel="stylesheet" href="../guia/estilo.css">
+</head>
+<body>
+<a class="salto" href="#contenido">Saltar al contenido</a>
+<header class="cabecera">
+  <div class="marca"><a href="../00_EMPEZAR_AQUI.html">CLS · Curso de reversing</a> <span class="edicion">edición 5 · 27/10/2026</span></div>
+  <nav class="principal" aria-label="Navegación principal">
+    <a href="../00_EMPEZAR_AQUI.html">Inicio</a>
+    <a href="../guia/index.html">Curso</a>
+    <a href="../fichas/index.html">Fichas</a>
+    <a href="../glosario.html">Glosario</a>
+    <a href="../preguntas_y_respuestas.html">Repaso</a>
+  </nav>
+</header>
+<main id="contenido">
+<p class="migas"><a href="../ida-tutes.html">← Índice de los 69 tutes de IDA</a></p>
+<h1>Tute 10 · Loader + debugger</h1>
+<p class="meta-tute"><strong>⏱ 11 min de lectura</strong> · 1.997 palabras · 49 capturas · grupo: Base de IDA, assembly y primeras prácticas</p>
+<aside class="callout nota"><p class="callout-titulo">Qué enseña</p><p>Complementar estático y dinámico; IDA soporta varios debuggers.</p></aside>
+<p><em>▶ video afín (mismo autor, en x64dbg):</em> <a href="../videos.html">«07 Breakpoints»</a> · <em>se conecta con:</em> <a href="../guia/02-herramientas.html">Herramientas</a> · <a href="../guia/02-ida.html">IDA</a> · <a href="../guia/02-instrucciones.html">Instrucciones</a> · <a href="../guia/02-flujo.html">Flujo</a> · <a href="../guia/02-debugger.html">Debugger</a> · <a href="../guia/01-numeros.html">Números</a></p>
+<aside class="callout aviso"><p class="callout-titulo">Material observado, no reescrito</p><p>Es el texto y las capturas del <code>.docx</code> original del curso, solo presentados como tutorial. Puede tener erratas de origen. El autor del curso es Ricardo Narvaja.</p></aside>
+<hr>
+<p>INTRODUCCIÓN AL REVERSING CON IDA PRO DESDE CERO PARTE 10</p>
+<p>LOADER Y DEBUGGER</p>
+<p>Bueno hemos visto algo del LOADER y seguiremos viendo, pero veremos algunos aspectos del DEBUGGER para poder ir complementando ambos.</p>
+<p>IDA soporta múltiples DEBUGGERS para verlo abrimos el CRACKME DE CRUEHEAD original sin parchear en el IDA.</p>
+<p>Obviamente elegimos OVERWRITE si nos pregunta si queremos crear una nueva database y sobrescribir la vieja, para que haga un análisis nuevo, si ya teníamos en el mismo lugar la anterior database o archivo idb del parcheado.</p>
+<figure><img loading="lazy" src="img/10/1.png" alt="Captura 1 del tute 10"></figure>
+<p>No ponemos la tilde en MANUAL LOAD, así que aceptamos las ventanas que siguen hasta que abra.</p>
+<figure><img loading="lazy" src="img/10/2.png" alt="Captura 2 del tute 10"></figure>
+<p>Obviamente para empezar por el principio entre las diferentes posibilidades de DEBUGGERS elegiremos LOCAL WIN32 DEBUGGER servirá para comenzar, más adelante veremos las otras.</p>
+<figure><img loading="lazy" src="img/10/3.png" alt="Captura 3 del tute 10"></figure>
+<p>Veremos algunos puntos del DEBUGGER incluido en IDA que tiene sus particularidades y que si uno no lo aprende a usar ya que es un poco diferente del resto de los debuggers se puede complicar.</p>
+<p>La diferencia surge creo yo en que IDA comenzó siendo solo lo que hoy llamamos el LOADER o sea un muy buen desensamblador estático y con grandes posibilidades de interactividad para el reversing, luego se le añadió el DEBUGGER sobre el mismo lo cual trajo algunos problemas que se fueron solventando pero que hacen que la forma de trabajar a veces sea un poco distinta a DEBUGGERS como OLLYDBG.</p>
+<p>En DEBUGGERS – DEBUGGERS OPTIONS tenemos las opciones para el DEBUGGER.</p>
+<figure><img loading="lazy" src="img/10/4.png" alt="Captura 4 del tute 10"></figure>
+<p>Pondremos la tilde en SUSPEND ON PROCESS ENTRY POINT para que pare en el punto de entrada del mismo.</p>
+<p>Haremos los cambios en el análisis que habíamos hecho antes, COLOREAREMOS y RENOMBRAREMOS la zona de los saltos decisivos.</p>
+<figure><img loading="lazy" src="img/10/5.png" alt="Captura 5 del tute 10"></figure>
+<p>Allí ponemos un BREAKPOINT con F2 en el salto que toma la decisión en 0x401243 y vamos al otro salto que habíamos parcheado y también F2.</p>
+<figure><img loading="lazy" src="img/10/6.png" alt="Captura 6 del tute 10"></figure>
+<p>Ya estamos como lo habíamos dejado pero sin cambiar código, ahora podemos arrancar el DEBUGGER con DEBUGGER-START PROCESS.</p>
+<figure><img loading="lazy" src="img/10/7.png" alt="Captura 7 del tute 10"></figure>
+<p>Esto siempre nos aparecerá cuando vayamos a DEBUGGEAR un ejecutable en nuestra maquina local, ya que mientras analizamos en el LOADER jamás se ejecuta en nuestra máquina, pero ahora si se ejecutara, por lo tanto siempre se debe tener cuidado al ejecutar si es un VIRUS o algo potencialmente peligroso conviene usar el DEBUGGER REMOTO y ejecutarlo en una máquina virtual, ya veremos eso a su tiempo.</p>
+<p>Como el CRACKME DE CRUHEAD es más bueno que LASSIE medicada, apretamos YES.</p>
+<figure><img loading="lazy" src="img/10/8.png" alt="Captura 8 del tute 10"></figure>
+<p>Como le pusimos que se detenga en el ENTRY POINT así lo hizo, está parado en 0x401000 si apretó la barra espaciadora pasara a modo grafico como en el LOADER.</p>
+<p>El color celeste de fondo de los bloques me dice que estoy en el DEBUGGER, en el LOADER los bloques son blancos por default.</p>
+<p>Acomodo las ventanas sobre todo achicando un poco la parte del OUTPUT WINDOW, arrastrando su margen hacia abajo, agrando un poco el stack y que se vean los registros arriba a la izquierda y los flags</p>
+<figure><img loading="lazy" src="img/10/9.png" alt="Captura 9 del tute 10"></figure>
+<p>Allí está la vista de REGISTROS y FLAGS,</p>
+<p>Una vez que logre una vista cómoda, la guardare por default para el DEBUGGER en WINDOWS-SAVE DESKTOP poniendo la tilde en DEFAULT siempre que arranquemos el DEBUGGER arrancara de la forma que elegimos y si queremos volver a cambiarlo, podemos volver a hacerlo sin problemas.</p>
+<figure><img loading="lazy" src="img/10/10.png" alt="Captura 10 del tute 10"></figure>
+<p>Debajo de los registros esta la vista de STACK.</p>
+<figure><img loading="lazy" src="img/10/11.png" alt="Captura 11 del tute 10"></figure>
+<p>Y tenemos también el listado IDA-VIEW EIP y abajo el HEW VIEW o HEX DUMP la vista en hexadecimal de la memoria.</p>
+<figure><img loading="lazy" src="img/10/12.png" alt="Captura 12 del tute 10"></figure>
+<p>Si vemos en la parte inferior del listado.</p>
+<figure><img loading="lazy" src="img/10/13.png" alt="Captura 13 del tute 10"></figure>
+<p>Siempre tendremos la dirección de memoria y el FILE OFFSET que es el OFFSET en el archivo ejecutable, si lo abrimos en un editor HEXA por ejemplo el HXD.</p>
+<figure><img loading="lazy" src="img/10/14.png" alt="Captura 14 del tute 10"></figure>
+<p>Vemos que en el FILE OFFSET 0x600 están los mismos bytes.</p>
+<p>Ya sabemos que por DEFAULT en el LOADER y el DEBUGGER viene configurado el atajo de teclado G para ir a una dirección de memoria, si apretó G, y pongo 0x401389.</p>
+<figure><img loading="lazy" src="img/10/15.png" alt="Captura 15 del tute 10"></figure>
+<p>Voy a la zona donde estaba un breakpoint, vemos los colores, le quito para que no se vean los bytes, para no ensuciar la vista, y veo que todo está tal cual lo dejamos en el LOADER si reverseamos, cambiamos nombres etc, aquí en el DEBUGGER se mantienen, asimismo los cambios que hagamos aquí aparecerán en el LOADER, ya que es un módulo que está marcado como los que cargan en el LOADER.</p>
+<figure><img loading="lazy" src="img/10/16.png" alt="Captura 16 del tute 10"></figure>
+<figure><img loading="lazy" src="img/10/17.png" alt="Captura 17 del tute 10"></figure>
+<p>En VIEW-OPEN SUBVIEW-SEGMENTS vemos ahora los tres segmentos que carga el LOADER cuando no activamos MANUAL LOAD, el de código o CODE que carga en 0x401000 el de DATA e IDATA, cualquier reversing que hagamos a estos tres, se mantendrán pues cargarán en el LOADER, fuera de esos tres, los cambios se perderán pues son solo módulos cargados por el DEBUGGER y no se guardaran en la database.</p>
+<p>O sea que siempre los módulos que estemos reverseando y queremos debuggear deben estar en el LOADER o L allí, obviamente cargaran en el DEBUGGER también, pero que tengan la L significa que estarán en ambos y podre reversear estáticamente en el LOADER y DEBUGGEAR en ellos sin perder info ni mi trabajo de reversing estático.</p>
+<p>Una de las barritas que me es siempre muy útil es</p>
+<figure><img loading="lazy" src="img/10/18.png" alt="Captura 18 del tute 10"></figure>
+<p>La agrego y vuelvo a guardar el con SAVE DESKTOP para que quede por default.</p>
+<figure><img loading="lazy" src="img/10/19.png" alt="Captura 19 del tute 10"></figure>
+<p>La posibilidad de volver para atrás al lugar donde estabas antes y hacia adelante es muy cómoda tenerla a mano.</p>
+<p>Apretando la flecha para atrás vuelvo el entry point donde estaba antes.</p>
+<figure><img loading="lazy" src="img/10/20.png" alt="Captura 20 del tute 10"></figure>
+<p>También en el menú DEBUGGER.</p>
+<figure><img loading="lazy" src="img/10/21.png" alt="Captura 21 del tute 10"></figure>
+<p>Puedo ver la lista de BREAKPOINTS e ir al que quiera doble clickeando en el.</p>
+<figure><img loading="lazy" src="img/10/22.png" alt="Captura 22 del tute 10"></figure>
+<figure><img loading="lazy" src="img/10/23.png" alt="Captura 23 del tute 10"></figure>
+<p>Así que estoy parado en el Entry Point y tengo los dos BREAKPOINTS puestos, así que podría apretar f9 para que corra.</p>
+<figure><img loading="lazy" src="img/10/24.png" alt="Captura 24 del tute 10"></figure>
+<p>Vamos a HELP-REGISTER y pongamos una clave.</p>
+<figure><img loading="lazy" src="img/10/25.png" alt="Captura 25 del tute 10"></figure>
+<p>Al dar OK.</p>
+<figure><img loading="lazy" src="img/10/26.png" alt="Captura 26 del tute 10"></figure>
+<p>Queda titilando la flecha de la izquierda que es por donde va a seguir, vemos que EAX vale 0x72</p>
+<figure><img loading="lazy" src="img/10/27.png" alt="Captura 27 del tute 10"></figure>
+<p>Si tipeo en la barra de Python chr(0x72) veo que es la r de ricnar.</p>
+<figure><img loading="lazy" src="img/10/28.png" alt="Captura 28 del tute 10"></figure>
+<p>Y va a comparar si es más bajo que 0x41.</p>
+<figure><img loading="lazy" src="img/10/29.png" alt="Captura 29 del tute 10"></figure>
+<p>Podemos también ver con chr(0x41) en la barra de Python que es la A.</p>
+<figure><img loading="lazy" src="img/10/30.png" alt="Captura 30 del tute 10"></figure>
+<p>Pero también podemos para que quede más claro hacer click derecho en el 41h del listado y entre las opciones que podemos elegir de visualización me aparece la A.</p>
+<figure><img loading="lazy" src="img/10/31.png" alt="Captura 31 del tute 10"></figure>
+<figure><img loading="lazy" src="img/10/32.png" alt="Captura 32 del tute 10"></figure>
+<p>Vemos que compara contra A y contra Z por ahora no buscamos solucionar completamente el crackme, pero vemos que 0x72 es más grande que 0x41 por lo tanto no va al bloque rojo del cartel de error. Obviamente saltaría al bloque rojo si es más bajo, pero también se puede evaluar mirando los flags.</p>
+<figure><img loading="lazy" src="img/10/33.png" alt="Captura 33 del tute 10"></figure>
+<p>Allí vemos el salto JB el cual salta o sea sigue la flecha verde en IDA si es el primero es menor, pero también al realizar la comparación se activa el flag C  (también llamado CF o C) , allí dice salta si C=1, si vemos en el IDA los flags.</p>
+<figure><img loading="lazy" src="img/10/34.png" alt="Captura 34 del tute 10"></figure>
+<p>El flag C está a CERO por lo cual el salto no se tomará e ira por el camino de la flecha roja.</p>
+<p>Ahora cual es la condición matemática en la cual se activa el CARRY FLAG?.</p>
+<p>EL CARRY FLAG nos da información de que algo salió mal en una operación entre unsigned integers, si hago la resta ya que el CMP es una resta sin guardar el resultado, 0x72-0x41 el resultado será 0x31 que  es positivo y no hubo problemas, sin embargo si mi valor fura 0x30 por ejemplo al restarle 0x41, me dará -0x11.</p>
+<figure><img loading="lazy" src="img/10/35.png" alt="Captura 35 del tute 10"></figure>
+<p>Lo cual es un valor negativo y no es aceptado como resultado de una operación de números positivos, pues si lo continua trabajando como hexadecimal.</p>
+<figure><img loading="lazy" src="img/10/36.png" alt="Captura 36 del tute 10"></figure>
+<p>Sera 0xFFFFFFFEF y eso como positivo es un valor muy grande 4294967279 y de ninguna manera restar 0x30 – 0x41 es igual a 0xFFFFFFEF positivo.</p>
+<p>¿Como sabemos si en una operación se considera el signo o no?</p>
+<p>Eso está dado por el tipo de salto en este caso JB es un salto que se usa luego de una comparación SIN SIGNO para las operaciones entre números CON SIGNO usara JL.</p>
+<p>Si comparo 0xFFFFFFFF contra 0x40 en un salto sin signo obviamente es mayor pues es el máximo positivo, pero si es un salto donde se consideran los signos será -1 y será menor a 0x40.</p>
+<p>O sea que para evaluar si una comparación usa signo o no debemos ver el salto siguiente que toma la decisión.</p>
+<figure><img loading="lazy" src="img/10/37.png" alt="Captura 37 del tute 10"></figure>
+<p>Si el salto es cualquiera de estos se evalúa SIN SIGNO, mientras que cada uno tiene su contraparte como JB y JL en la tabla de los saltos CON SIGNO.</p>
+<figure><img loading="lazy" src="img/10/38.png" alt="Captura 38 del tute 10"></figure>
+<p>Vemos que JE que evalúa si son iguales está en ambas tablas pues en ese caso no importa el signo si son iguales se activará poniéndose a 1 el ZF.</p>
+<p>Vemos también que JG que salta si es mayor en la tabla de los con signo tiene su contraparte con el JA que salta si es mayor en la tabla de los SIN SIGNO.</p>
+<p>Igual en el análisis diario uno no se pone a mirar las flags demasiado, ve un salto JB y sabe que es una comparación entre números positivos o SIN SIGNO y que si el primero es menor saltara, pero es bueno ver lo que hay debajo.</p>
+<p>Si continúo parando en todos los breakpoints veré que estoy en un loop que va leyendo uno a uno mis caracteres del nombre y compara todos con 0x41 si hay alguno menor saldrá el cartel de error, como puse todas letras (ricnar) no será el caso, pero restarteemos el proceso con TERMÍNATE PROCESS y START PROCESS nuevamente y ahora pongamos como nombre 22ricnar y clave 98989898.</p>
+<figure><img loading="lazy" src="img/10/39.png" alt="Captura 39 del tute 10"></figure>
+<p>Al aceptar parara en el breakpoint.</p>
+<figure><img loading="lazy" src="img/10/40.png" alt="Captura 40 del tute 10"></figure>
+<p>Vemos que ahora mi primer carácter es el 0x32 que corresponde al 2 de 22ricnar.</p>
+<p>Veo que como 0x22 es menor que 0x41 se activa la flecha verde o sea que el salto se tomara y vemos que el flag C está activado porque al restar 0x32 menos 0x41 en una resta sin considerar signo nos da negativo el resultado y eso es un error que activa el flag C.</p>
+<p>Si hago click derecho en el FLAG C</p>
+<figure><img loading="lazy" src="img/10/41.png" alt="Captura 41 del tute 10"></figure>
+<p>Podemos ponerlo a cero</p>
+<p>En ese mismo momento que lo cambiamos empieza a titilar la flecha roja porque lo invertimos.</p>
+<figure><img loading="lazy" src="img/10/42.png" alt="Captura 42 del tute 10"></figure>
+<p>Si damos RUN volverá a parar cuando evalué el siguiente 2 de 22ricnar y volverá a titilar la flecha verde que llevaría al cartel de error, invertimos de nuevo CF poniéndolo a cero.</p>
+<p>Las siguientes veces que para en este salto corresponden a ricnar por lo cual como son mayores que 0x41 no activan el CF y siguen por la flecha roja.</p>
+<p>Después de pasar el chequeo de cada carácter del nombre llegamos al salto final.</p>
+<figure><img loading="lazy" src="img/10/43.png" alt="Captura 43 del tute 10"></figure>
+<p>Allí compara que EAX y EBX sean iguales aquí no importa signo ni nada, ya me prendió la flecha roja de que no son iguales y me va a tirar al cartel de error.</p>
+<figure><img loading="lazy" src="img/10/44.png" alt="Captura 44 del tute 10"></figure>
+<p>Ahí veo que no son iguales, y el flag Z no está activo.</p>
+<figure><img loading="lazy" src="img/10/45.png" alt="Captura 45 del tute 10"></figure>
+<p>Si lo activamos cambiara el salto e ira por la flecha verde al cartel de GOOD BOY, click derecho en el ZF y elijo INCREMENT VALUE.</p>
+<figure><img loading="lazy" src="img/10/46.png" alt="Captura 46 del tute 10"></figure>
+<figure><img loading="lazy" src="img/10/47.png" alt="Captura 47 del tute 10"></figure>
+<p>Hicimos lo mismo que cuando parcheamos, pero sin hacer modificaciones solo cambiando los flags en el DEBUGGER.</p>
+<p>Muchas veces cuando uno no tiene ganas de invertir saltos directamente va al bloque bueno donde quiere continuar y pone el cursor allí y hace click derecho, aunque IDA 6.8 tiene un BUG que fue resuelto en la versión 6.9 que a veces hacer click derecho crashea el IDA si les ocurre buscan el shortcut que necesitan, algunos están en:</p>
+<p>https://www.hex-rays.com/products/ida/support/freefiles/IDA_Pro_Shortcuts.pdf</p>
+<p>Sino en el mismo IDA en OPTIONS-SHORTCUTS.</p>
+<p>Si nos trae problemas el click derecho para setear EIP poner el cursor donde queremos ir por ejemplo 0x40124c y apretamos CTRL + N que es SET IP.</p>
+<figure><img loading="lazy" src="img/10/48.png" alt="Captura 48 del tute 10"></figure>
+<p>Y el programa continuara desde 0x40124c que es lo mismo que haber invertido el flag.</p>
+<figure><img loading="lazy" src="img/10/49.png" alt="Captura 49 del tute 10"></figure>
+<p>Hasta la parte 11.</p>
+<p>Ricardo Narvaja</p>
+</main>
+<footer class="pie">
+  <p>Material educativo y defensivo. Las prácticas se limitan a programas propios, software abierto o crackmes diseñados para aprender. No se enseña a eludir licencias, DRM ni controles de acceso.</p>
+  <p><a href="../00_EMPEZAR_AQUI.html">Inicio</a> · <a href="../guia/etapa-0.html">Etapas</a> · <a href="../fuentes_y_limites.html">Fuentes y límites</a> · <a href="../registro_de_cobertura.csv">Registro de cobertura</a></p>
+</footer>
+<script>
+(function(){
+  function abrir(src){
+    var o=document.createElement('div'); o.className='lightbox-ov';
+    var i=document.createElement('img'); i.src=src; o.appendChild(i);
+    function cerrar(){o.remove(); document.removeEventListener('keydown', onkey);}
+    function onkey(e){ if(e.key==='Escape') cerrar(); }
+    o.addEventListener('click', cerrar);
+    document.addEventListener('keydown', onkey);
+    document.body.appendChild(o);
+  }
+  document.addEventListener('DOMContentLoaded', function(){
+    document.querySelectorAll('figure img, main img').forEach(function(img){
+      img.style.cursor='zoom-in';
+      img.addEventListener('click', function(){ abrir(img.currentSrc||img.src); });
+    });
+  });
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,169 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tute 59 · Arbitrary overwrite — Curso IDA</title>
+<meta name="description" content="Tutorial ilustrado del tute 59 del Curso IDA desde cero: Arbitrary overwrite.">
+<link rel="stylesheet" href="../guia/estilo.css">
+</head>
+<body>
+<a class="salto" href="#contenido">Saltar al contenido</a>
+<header class="cabecera">
+  <div class="marca"><a href="../00_EMPEZAR_AQUI.html">CLS · Curso de reversing</a> <span class="edicion">edición 5 · 27/10/2026</span></div>
+  <nav class="principal" aria-label="Navegación principal">
+    <a href="../00_EMPEZAR_AQUI.html">Inicio</a>
+    <a href="../guia/index.html">Curso</a>
+    <a href="../fichas/index.html">Fichas</a>
+    <a href="../glosario.html">Glosario</a>
+    <a href="../preguntas_y_respuestas.html">Repaso</a>
+  </nav>
+</header>
+<main id="contenido">
+<p class="migas"><a href="../ida-tutes.html">← Índice de los 69 tutes de IDA</a></p>
+<h1>Tute 59 · Arbitrary overwrite</h1>
+<p class="meta-tute"><strong>⏱ 6 min de lectura</strong> · 1.099 palabras · 19 capturas · grupo: Kernel de Windows y temas avanzados (drivers, HackSys/HEVD, SSDT/syscalls, VA→física)</p>
+<aside class="callout nota"><p class="callout-titulo">Qué enseña</p><p>Escritura arbitraria en el driver (método antiguo, XP/7).</p></aside>
+<p><em>se conecta con:</em> <a href="../guia/05-fuera-de-alcance.html">Fuera de alcance</a></p>
+<aside class="callout aviso"><p class="callout-titulo">Material observado, no reescrito</p><p>Es el texto y las capturas del <code>.docx</code> original del curso, solo presentados como tutorial. Puede tener erratas de origen. El autor del curso es Ricardo Narvaja.</p></aside>
+<hr>
+<p>INTRODUCCION AL REVERSING CON IDA PRO DESDE CERO PARTE 59</p>
+<p>ARBITRARY OVERWRITE</p>
+<p>Vamos a mirar el Arbitrary Overwrite(escribir lo que queremos donde queremos) del mismo driver vulnerable anterior. Desde ya aclaro que este es un método antiguo y que solo sirve para Windows XP y 7, y en este caso solo targets w32, EN MAQUINAS de W7 de 64 BITS NO FUNCIONA, al menos sin adaptarlo un poco, hay que revisar bien algunos valores que no son iguales.</p>
+<p>Nuestro target es Windows 7 de 32 bits.</p>
+<p>Igual nos servirá para ir tomando un poco de confianza con ctypes que es un poco complicado y ir avanzando de a poco.</p>
+<figure><img loading="lazy" src="img/59/1.png" alt="Captura 1 del tute 59"></figure>
+<p>En el dispatcher que maneja los distintos IOCTL vemos que hay uno que marca ARBITRARY OVERWRITE, asi que lo marcamos, veamos primero que valor de IOCTL nos trae aquí.</p>
+<figure><img loading="lazy" src="img/59/2.png" alt="Captura 2 del tute 59"></figure>
+<p>Vemos que viene restando a EAX la constante 4 dos veces y antes le resta 0x222003</p>
+<figure><img loading="lazy" src="img/59/3.png" alt="Captura 3 del tute 59"></figure>
+<p>Python&gt;hex(0x222003+8)</p>
+<p>0x22200b</p>
+<p>Asi que con ese IOCTL llega al bloque que necesitamos de la vulnerabilidad ya que :</p>
+<p>0x22200b - 0x222003-4-4=0</p>
+<p>y si es cero va al bloque alli.</p>
+<figure><img loading="lazy" src="img/59/4.png" alt="Captura 4 del tute 59"></figure>
+<p>Bueno ya llegamos miremos la vulnerabilidad.</p>
+<p>Recordemos que en IRP más 0x60 está el puntero a la estructura _IO_STACK_LOCATION, era 0x40 de Tail en la estructura IRP, y dentro de Tail en el offset 0x20 apunta a CurentStackLocation</p>
+<figure><img loading="lazy" src="img/59/5.png" alt="Captura 5 del tute 59"></figure>
+<figure><img loading="lazy" src="img/59/6.png" alt="Captura 6 del tute 59"></figure>
+<p>Así que 0x60 es el offset de CurentStackLocation que es del tipo _IO_STACK_LOCATION.</p>
+<figure><img loading="lazy" src="img/59/7.png" alt="Captura 7 del tute 59"></figure>
+<p>Apretando T veo el campo y que de alli lee el IOCTLCode.</p>
+<figure><img loading="lazy" src="img/59/8.png" alt="Captura 8 del tute 59"></figure>
+<p>_IO_STACK_LOCATION</p>
+<p>La pasa a los dos argumentos el puntero a IRP en EDI como primero y el puntero a la estructura _IO_STACK_LOCATION.</p>
+<figure><img loading="lazy" src="img/59/9.png" alt="Captura 9 del tute 59"></figure>
+<p>Aquí a ECX mueve el puntero a la _IO_STACK_LOCATION.</p>
+<p>dt -r4 _IO_STACK_LOCATION</p>
+<p>nt!_IO_STACK_LOCATION</p>
+<p>+0x000 MajorFunction    : UChar</p>
+<p>+0x001 MinorFunction    : UChar</p>
+<p>+0x002 Flags            : UChar</p>
+<p>+0x003 Control          : UChar</p>
+<p>+0x004 Parameters       : &lt;unnamed-tag&gt;</p>
+<p>Ya vimos que los Parameters variaban según el caso, para cuando se llama a DeviceIoControl, es</p>
+<p>+0x000 DeviceIoControl  : &lt;unnamed-tag&gt;</p>
+<p>+0x000 OutputBufferLength : Uint4B</p>
+<p>+0x004 InputBufferLength : Uint4B</p>
+<p>+0x008 IoControlCode    : Uint4B</p>
+<p>+0x00c Type3InputBuffer : Ptr32 Void</p>
+<p>En el offset 0x10 desde el inicio (recordemos que hay que sumarles los 0x4 de Parameters) para el caso DeviceIoControl esta el campo Type3InputBuffer.</p>
+<p>Alli llegan cuatro de los argumentos que se le pasan a la api DeviceIoControl.</p>
+<p>DEVICEIOCONTROL</p>
+<figure><img loading="lazy" src="img/59/10.png" alt="Captura 10 del tute 59"></figure>
+<p>+0x000 DeviceIoControl</p>
+<p>+0x000 OutputBufferLength   es  nOutBufferSize</p>
+<p>+0x004 InputBufferLength     es  nInBufferSize</p>
+<p>+0x008 IoControlCode        es  dwIoControlCode</p>
+<p>+0x00c Type3InputBuffer     es   lpInBuffer</p>
+<figure><img loading="lazy" src="img/59/11.png" alt="Captura 11 del tute 59"></figure>
+<p>Asi que ese es nuestro buffer de entrada que le pasamos a la api DeviceIoControl.</p>
+<figure><img loading="lazy" src="img/59/12.png" alt="Captura 12 del tute 59"></figure>
+<p>Vemos que a ESI se mueve la direccion de nuestro buffer que aquí lo llama UserWriteWhatWhere e imprime la direccion del mismo.</p>
+<p>Luego vemos que lee el contenido de ESI y de ESI mas 4 e imprime sus direcciones lo cual nos hace pensar que es una estructura de dos punteros, alli nos dice que su size es 8.</p>
+<figure><img loading="lazy" src="img/59/13.png" alt="Captura 13 del tute 59"></figure>
+<p>Asi que crearemos una estructura de 8 bytes, se ve que los dos campos son What y Where y que ambos son punteros asi que en 32 bits serán de 4 bytes cada uno.</p>
+<figure><img loading="lazy" src="img/59/14.png" alt="Captura 14 del tute 59"></figure>
+<p>Asi que alli imprime los valores de What y Where</p>
+<figure><img loading="lazy" src="img/59/15.png" alt="Captura 15 del tute 59"></figure>
+<p>Alli vemos la parte vulnerable</p>
+<figure><img loading="lazy" src="img/59/16.png" alt="Captura 16 del tute 59"></figure>
+<p>EDI es What, asi que debe ser un puntero, ya que busca el contenido de [EDI] y lo escribe en el contenido de Where en [EBX].</p>
+<p>Asi que What debe ser un puntero a un puntero a nuestro código, y en Where habrá que buscar una tabla donde escribir (posiblemente un CALL indirecto para que escribamos el puntero a nuestro código y termine saltando a ejecutar el mismo.</p>
+<p>Hay muchas posibilidades para explotar esto algunas mas modernas, nosotros usaremos el viejo método de la tabla HAL. (no funciona en sistemas con la protección de Intel SMEP por eso en Windows XP y 7 aun va)</p>
+<p>Intel CPU feature: Supervisor Mode Execution Protection (SMEP). This feature is enabled by toggling a bit in the cr4 register, and the result is the CPU will generate a fault whenever ring0 attempts to execute code from a page marked with the user bit.</p>
+<p>O sea que si desde kernel saltas a ejecutar una pagina marcada como perteneciente a USER da una excepción, evitando ejecutar como en el método que vamos a ver ahora.</p>
+<p>Igual pudiendo escribir en KERNEL donde quieres, podes llegar a deshabilitar con suerte, habilidad y algo mas, estas protecciones, por ahora nos concentraremos en la vieja forma de explotar que sirve para WIN XP y 7 de 32 bits y también puede servir en procesadores que no tengan SMEP en otros sistemas.</p>
+<p>http://poppopret.blogspot.com.ar/2011/07/windows-kernel-exploitation-basics-part.html</p>
+<p>HAL Dispatch</p>
+<p>Ese método se basa en la tabla HAL Dispatch</p>
+<figure><img loading="lazy" src="img/59/17.png" alt="Captura 17 del tute 59"></figure>
+<p>Bueno existe una función importada por la ntdll llamada NtQueryIntervalProfile, si abro en otro IDA la ntdll.dll de 32 bits veo en las funciones EXPORTADAS que esta alli.</p>
+<figure><img loading="lazy" src="img/59/18.png" alt="Captura 18 del tute 59"></figure>
+<p>Esa función que se puede llamar desde user llega a kernel</p>
+<figure><img loading="lazy" src="img/59/19.png" alt="Captura 19 del tute 59"></figure>
+<p>A la función nt!KeQueryIntervalProfile</p>
+<p>nt!KeQueryIntervalProfile:</p>
+<pre class='asm'>82911891 8bff             mov     edi,edi
+82911893 55              push    ebp
+82911894 8bec            mov     ebp,esp
+82911896 83ec10          sub     esp,10h
+82911899 83f801          cmp     eax,1
+8291189c 7507            jne     nt!KeQueryIntervalProfile+0x14 (829118a5)
+8291189e a188ca7a82      mov     eax,dword ptr [nt!KiProfileAlignmentFixupInterval (827aca88)]
+829118a3 c9              leave</pre>
+<p>Luego sigue aquí</p>
+<pre class='asm'>829118a4 c3              ret
+829118a5 8945f0          mov     dword ptr [ebp-10h],eax
+829118a8 8d45fc          lea     eax,[ebp-4]
+829118ab 50              push    eax
+829118ac 8d45f0          lea     eax,[ebp-10h]
+829118af 50              push    eax
+829118b0 6a0c            push    0Ch
+829118b2 6a01            push    1</pre>
+<p>kd&gt; u</p>
+<p>nt!KeQueryIntervalProfile+0x23:</p>
+<pre class='asm'>829118b4 ff15bc237782    call    dword ptr [nt!HalDispatchTable+0x4 (827723bc)]
+829118ba 85c0            test    eax,eax
+829118bc 7c0b            jl      nt!KeQueryIntervalProfile+0x38 (829118c9)
+829118be 807df400        cmp     byte ptr [ebp-0Ch],0
+829118c2 7405            je      nt!KeQueryIntervalProfile+0x38 (829118c9)
+829118c4 8b45f8          mov     eax,dword ptr [ebp-8]
+829118c7 c9              leave
+829118c8 c3              ret</pre>
+<p>Y salta a una direccion de KERNEL que esta en la tabla HAL Dispatch mas 4.</p>
+<p>El método es ese, ya que desde user no podemos escribir dicha tabla, la vulnerabilidad en kernel nos permite escribir donde queramos asi que la direccion a escribir sera el contenido de nt!HalDispatchTable+0x4 y lo debemos hacer pisándolo con el puntero a un buffer con nuestro código.</p>
+<p>Lo bueno es que despues podemos triggerear cuando queremos, ya que la api se puede llamar desde user, asi que con llamarla normalmente desde nuestro script al final llegara aquí</p>
+<pre class='asm'>829118b4 ff15bc237782    call    dword ptr [nt!HalDispatchTable+0x4 (827723bc)]</pre>
+<p>Y saltara a código al no haber SMEP ya que no se verifica que la pagina donde salta no es de kernel sino esta marcada como pagina user.</p>
+<p>Si SMEP estuviera activado se generaría una excepción y no saltaría a nuestro código.</p>
+<p>Adjunto el script para el que lo quiera probar igual es bastante largo asi que lo explicaremos en la parte siguiente, recuerden que solo va en un target Windows 7 de 32 bits.</p>
+<p>Hasta la parte siguiente.</p>
+<p>Ricardo Narvaja</p>
+</main>
+<footer class="pie">
+  <p>Material educativo y defensivo. Las prácticas se limitan a programas propios, software abierto o crackmes diseñados para aprender. No se enseña a eludir licencias, DRM ni controles de acceso.</p>
+  <p><a href="../00_EMPEZAR_AQUI.html">Inicio</a> · <a href="../guia/etapa-0.html">Etapas</a> · <a href="../fuentes_y_limites.html">Fuentes y límites</a> · <a href="../registro_de_cobertura.csv">Registro de cobertura</a></p>
+</footer>
+<script>
+(function(){
+  function abrir(src){
+    var o=document.createElement('div'); o.className='lightbox-ov';
+    var i=document.createElement('img'); i.src=src; o.appendChild(i);
+    function cerrar(){o.remove(); document.removeEventListener('keydown', onkey);}
+    function onkey(e){ if(e.key==='Escape') cerrar(); }
+    o.addEventListener('click', cerrar);
+    document.addEventListener('keydown', onkey);
+    document.body.appendChild(o);
+  }
+  document.addEventListener('DOMContentLoaded', function(){
+    document.querySelectorAll('figure img, main img').forEach(function(img){
+      img.style.cursor='zoom-in';
+      img.addEventListener('click', function(){ abrir(img.currentSrc||img.src); });
+    });
+  });
+})();
+</script>
+</body>
+</html>

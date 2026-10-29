@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tute 23 · Ejercicio IDA1.exe — Curso IDA</title>
+<meta name="description" content="Tutorial ilustrado del tute 23 del Curso IDA desde cero: Ejercicio IDA1.exe.">
+<link rel="stylesheet" href="../guia/estilo.css">
+</head>
+<body>
+<a class="salto" href="#contenido">Saltar al contenido</a>
+<header class="cabecera">
+  <div class="marca"><a href="../00_EMPEZAR_AQUI.html">CLS · Curso de reversing</a> <span class="edicion">edición 5 · 27/10/2026</span></div>
+  <nav class="principal" aria-label="Navegación principal">
+    <a href="../00_EMPEZAR_AQUI.html">Inicio</a>
+    <a href="../guia/index.html">Curso</a>
+    <a href="../fichas/index.html">Fichas</a>
+    <a href="../glosario.html">Glosario</a>
+    <a href="../preguntas_y_respuestas.html">Repaso</a>
+  </nav>
+</header>
+<main id="contenido">
+<p class="migas"><a href="../ida-tutes.html">← Índice de los 69 tutes de IDA</a></p>
+<h1>Tute 23 · Ejercicio IDA1.exe</h1>
+<p class="meta-tute"><strong>⏱ 8 min de lectura</strong> · 1.518 palabras · 30 capturas · grupo: Crackmes, differ y ejercicios</p>
+<aside class="callout nota"><p class="callout-titulo">Qué enseña</p><p>Función basada en EBP compilada con DevC++; resolverla.</p></aside>
+<p><em>▶ video afín (mismo autor, en x64dbg):</em> <a href="../videos.html">«18 Funciones basadas en EBP vs basadas en ESP»</a> · <em>se conecta con:</em> <a href="../guia/02-ida.html">IDA</a> · <a href="../guia/02-llamadas.html">Llamadas y pila</a> · <a href="../guia/02-flujo.html">Flujo</a> · <a href="../guia/05-vulnerabilidades.html">Vulnerabilidades (defensivo)</a></p>
+<aside class="callout aviso"><p class="callout-titulo">Material observado, no reescrito</p><p>Es el texto y las capturas del <code>.docx</code> original del curso, solo presentados como tutorial. Puede tener erratas de origen. El autor del curso es Ricardo Narvaja.</p></aside>
+<hr>
+<p>INTRODUCCIÓN AL REVERSING CON IDA PRO DESDE CERO PARTE 23</p>
+<p>EJERCICIO IDA1.exe</p>
+<p>Había quedado para solucionar el ejercicio pendiente IDA1.exe</p>
+<figure><img loading="lazy" src="img/23/1.png" alt="Captura 1 del tute 23"></figure>
+<p>La función es basada en EBP como los anteriores, lo que tiene de diferente este ejemplo que está compilado con DEVC++, que tiene una forma particular de compilar las llamadas a las apis, diferente de lo acostumbrado y que al que no lo vio nunca lo puede marear.</p>
+<p>Bueno vamos por partes dijo Jack, lo primero que vemos es la función main, si no les aparece también pueden llegar a la función importante mirando las strings.</p>
+<figure><img loading="lazy" src="img/23/2.png" alt="Captura 2 del tute 23"></figure>
+<p>Haciendo doble click en la string “You are a winner man je”, llegamos a.</p>
+<figure><img loading="lazy" src="img/23/3.png" alt="Captura 3 del tute 23"></figure>
+<p>Pasando el mouse por la flechita de la referencia podemos ver de dónde se la llama.</p>
+<figure><img loading="lazy" src="img/23/4.png" alt="Captura 4 del tute 23"></figure>
+<p>Pero mejor haciendo CTRL + X vamos a donde esta ese código.</p>
+<figure><img loading="lazy" src="img/23/5.png" alt="Captura 5 del tute 23"></figure>
+<p>Yendo allí clickeando en la referencia.</p>
+<figure><img loading="lazy" src="img/23/6.png" alt="Captura 6 del tute 23"></figure>
+<p>Cambio a color verde la parte donde debo llegar que sería el CHICO BUENO.</p>
+<p>Vemos que justo antes hay una comparación de una variable var_C con una constante 0x51525354.</p>
+<p>Si hacemos click derecho en ese valor 0x51525354, salen las alternativas para representarlo.</p>
+<figure><img loading="lazy" src="img/23/7.png" alt="Captura 7 del tute 23"></figure>
+<p>Puedo cambiarlo por las letras QRST que son los caracteres ASCII de ese valor hexadecimal.</p>
+<p>Algo que podemos darnos cuenta, es que este compilador no utiliza el CANARY de protección, pues al inicio de la función se debería leer el mismo de una dirección de la sección data y se xorea con EBP y se guarda justo arriba del STORED EBP en el stack y además se lo lee nuevamente justo antes de finalizar la función para llamar al CALL que lo chequea, nada de eso pasa aquí, si vemos el análisis estático del stack, haciendo doble click en cualquier variable.</p>
+<figure><img loading="lazy" src="img/23/8.png" alt="Captura 8 del tute 23"></figure>
+<p>Vemos que lo único que hay en el stack, justo arriba del STORED EBP,  es la variable var_C que la compara con la string QRST para ir a chico bueno, con lo cual se descarta que sea el CANARY, pues en este caso es un chequeo que es código original del programa, un CANARY no se mezcla con decisiones del código original del programa, es algo agregado por el compilador, externo al código original.</p>
+<p>Podemos renombrarla a esa variable para no confundirla con el CANARY cómo var_DECISION.</p>
+<figure><img loading="lazy" src="img/23/9.png" alt="Captura 9 del tute 23"></figure>
+<p>La cual se usa dos veces en la función, pero realmente nosotros podemos cambiar el valor de dicha variable para hacer que el programa vaya a chico bueno?</p>
+<p>Los que miran este código lo primero que les llama la atención es que hay variables y argumentos relativos a EBP y hay otras que están tomadas con ESP como referencia.</p>
+<figure><img loading="lazy" src="img/23/10.png" alt="Captura 10 del tute 23"></figure>
+<p>Todo ese código inicial es agregado por el compilador para setear ESP justo arriba de las variables y buffers locales, luego del SUB ESP, 0B8 se ajusta con esto, aunque nunca lo varía mucho más que alinearlo y redondearlo, podríamos hacer las cuentas, pero si no queremos complicarnos la vida, podemos debuggear para ver a qué valor queda ESP justo al terminar todo esto y empezar con el código original de la función.</p>
+<p>El que tenga ganas de debuggear lo puede hacer pero tenemos otra ayuda de IDA que es muy útil que es la variación de ESP a partir del inicio de la función que se toma como 0.</p>
+<figure><img loading="lazy" src="img/23/11.png" alt="Captura 11 del tute 23"></figure>
+<p>Si vemos el código ahora.</p>
+<figure><img loading="lazy" src="img/23/12.png" alt="Captura 12 del tute 23"></figure>
+<p>Vemos la influencia de cada instrucción en el stack a partir de cero que es el inicio, luego de ejecutar el PUSH EBP, el stack disminuye en 4, por eso la segunda línea tiene el 004 a la derecha.</p>
+<p>La segunda instrucción es MOV EBP,ESP lo cual no cambia el stack porque es solo un MOV y por lo tanto ESP queda igual, el que cambia es EBP.</p>
+<figure><img loading="lazy" src="img/23/13.png" alt="Captura 13 del tute 23"></figure>
+<p>Por eso la tercera línea tiene el mismo 004 porque no cambió ESP.</p>
+<p>Recordemos que ESP y EBP quedan iguales y EBP será a partir de aquí la referencia quedando ambos a 4 del ESP del inicio.</p>
+<p>La siguiente línea le resta 0xB8 a ESP con lo cual queda a 0xBC del inicio y como EBP quedó en 4 la diferencia entre EBP y ESP será justo 0xB8.</p>
+<figure><img loading="lazy" src="img/23/14.png" alt="Captura 14 del tute 23"></figure>
+<p>Vemos que luego la distancia no cambia más ni siquiera al pasar el CALL ALLOCA  y CALL _MAIN que son agregados por el procesador, así que podemos concluir que no le afecta todo eso, y que la distancia entre EBP y ESP es de 0xb8 que es el espacio para la variables locales y buffers.</p>
+<figure><img loading="lazy" src="img/23/15.png" alt="Captura 15 del tute 23"></figure>
+<p>Allí ya empieza el código de la función en sí, y la distancia de ESP con respecto al inicio quedó en 0xBC y 0xB8 es la zona reservada para variables y buffers.</p>
+<p>A la variable var_9c como es una variable temporal creada por el compilador y no se usa más le pondremos TEMP.</p>
+<figure><img loading="lazy" src="img/23/16.png" alt="Captura 16 del tute 23"></figure>
+<p>Debajo de TEMP tenemos el Buffer, haciendo click derecho ARRAY vemos que el largo es 140 decimal por el largo 1 byte de cada elemento, así que el largo del Buffer es 140 decimal.</p>
+<figure><img loading="lazy" src="img/23/17.png" alt="Captura 17 del tute 23"></figure>
+<figure><img loading="lazy" src="img/23/18.png" alt="Captura 18 del tute 23"></figure>
+<p>Si lográramos desbordar el Buffer copiando al mismo más de 140 bytes, el mismo tendría una vulnerabilidad del tipo Buffer Overflow, explotando la cual se podría pisar la variable var_DECISION y si pudiéramos escribir más hacia abajo aun, llegaríamos a pisar el STORED EBP y el RETURN ADDRESS dependiendo de cuanto podamos copiar.</p>
+<p>Continuemos con el reversing, el punto más álgido de la compilación es la forma como pasa los argumentos a las funciones, en vez de usar PUSH para guardar los argumentos en el stack, los guarda directamente con MOV, veremos esto.</p>
+<p>Ahí se ve claro en este caso printf tiene un solo argumento que es el la dirección a la string “You are a winner je”, y ningún otro argumento más.</p>
+<figure><img loading="lazy" src="img/23/19.png" alt="Captura 19 del tute 23"></figure>
+<p>Vemos que guarda esa dirección ya que usa la palabra OFFSET delante, y la guarda en el stack, pero dónde? la notación no nos ayuda mucho pero si hacemos click derecho veremos alguna notación alternativa.</p>
+<figure><img loading="lazy" src="img/23/20.png" alt="Captura 20 del tute 23"></figure>
+<p>Si cambiamos por esto</p>
+<figure><img loading="lazy" src="img/23/21.png" alt="Captura 21 del tute 23"></figure>
+<p>Vemos que lo que realmente está haciendo es colocar en el contenido de ESP (que es la posición superior del stack) la dirección de la string para usarla como argumento, o sea que este programa en vez de hacer PUSH a la posición superior del stack, mueve los argumentos a las posiciones del stack con MOV, y lógicamente el PUSH cambiaría el valor de ESP, mientras que un MOV no, se puede apreciar en el valor BC justo antes de la función.</p>
+<figure><img loading="lazy" src="img/23/22.png" alt="Captura 22 del tute 23"></figure>
+<p>Lo mismo pasa en todas las otras apis si aplicamos el mismo criterio solo en las que pueden ser argumentos de apis, haciendo click derecho y cambiando por la notación alternativa, nos queda mucho más entendible el código.</p>
+<figure><img loading="lazy" src="img/23/23.png" alt="Captura 23 del tute 23"></figure>
+<p>Vemos que el primer printf el cual tiene tres argumentos pues hace format string reemplazando en la string “buf : %08x cookie : %08x\n”.], por los dos argumentos superiores.</p>
+<figure><img loading="lazy" src="img/23/24.png" alt="Captura 24 del tute 23"></figure>
+<p>El primer argumento es la dirección de la variable var_DECISION que obtiene con el LEA, lo mueve a EAX y lo guarda en el contenido de ESP + 8.</p>
+<p>El segundo argumento es la dirección de la variable Buffer que la obtiene con el LEA, la mueve a EAX y la guarda al contenido de ESP+4 como siguiente argumento y el tercero lo guarda en el contenido de ESP y será la dirección de la string en este caso con el formato.</p>
+<p>Si uno lo ejecuta fuera de IDA vemos que es la impresión en la consola de las direcciones de ambas variables, ya que reemplaza en la string original haciendo format string, por el valor hexadecimal de ambas direcciones porque usa %x que es la conversión para imprimir el valor hexa.</p>
+<figure><img loading="lazy" src="img/23/25.png" alt="Captura 25 del tute 23"></figure>
+<figure><img loading="lazy" src="img/23/26.png" alt="Captura 26 del tute 23"></figure>
+<p>Luego continúa llamando a la función gets la cual ingresa caracteres por teclado sin ningún límite, por lo cual puede escribir más de 140 caracteres sin problema.</p>
+<figure><img loading="lazy" src="img/23/27.png" alt="Captura 27 del tute 23"></figure>
+<p>Aquí también le pasa como argumento al contenido de ESP, la dirección del Buffer que es donde escribirá.</p>
+<p>Así que sabemos que si escribo por ejemplo 140 Aes y luego TSQR ya que debe estar al revés por el little endian, el programa me debería saltar a chico bueno ya que pisaremos la variable var_DECISION que está justo debajo del Buffer, con el valor QRST, probemos primero a mano, antes de hacer el script.</p>
+<figure><img loading="lazy" src="img/23/28.png" alt="Captura 28 del tute 23"></figure>
+<p>Imprimí la string en IDA y la copio al portapapeles, la pego aquí.</p>
+<p>AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAATSRQ</p>
+<p>Lo corro en una consola sino se cerrará y no veré la string si sale, cuando queda esperando le pego la string y...</p>
+<figure><img loading="lazy" src="img/23/29.png" alt="Captura 29 del tute 23"></figure>
+<p>El script es muy sencillo también es igual que el anterior en este caso no tiene dos entradas por stdin sino solo una</p>
+<p>from subprocess import *</p>
+<p>p = Popen([r'C:\Users\ricna\Desktop\New folder (6)\IDA1.exe', 'f'], stdout=PIPE, stdin=PIPE, stderr=STDOUT)</p>
+<p>print "ATACHEA EL DEBUGGER Y APRETA ENTER\n"</p>
+<p>raw_input()</p>
+<p>primera="A" *140 + "TSRQ\n"</p>
+<p>p.stdin.write(primera)</p>
+<p>testresult = p.communicate()[0]</p>
+<p>print primera</p>
+<p>print(testresult)</p>
+<figure><img loading="lazy" src="img/23/30.png" alt="Captura 30 del tute 23"></figure>
+<p>Ahí se ve el resultado, muchos no habrán podido hacerlo por la forma de pasar los argumentos, pero ahora les será más sencillo hacer el ejercicio 2 ya que es muy parecido y esta compilado en forma similar, pero ya saben el truco.</p>
+<p>El siguiente ejercicio se llama IDA2.exe</p>
+<p>Hasta la parte 24</p>
+<p>Ricardo Narvaja</p>
+<p>.</p>
+</main>
+<footer class="pie">
+  <p>Material educativo y defensivo. Las prácticas se limitan a programas propios, software abierto o crackmes diseñados para aprender. No se enseña a eludir licencias, DRM ni controles de acceso.</p>
+  <p><a href="../00_EMPEZAR_AQUI.html">Inicio</a> · <a href="../guia/etapa-0.html">Etapas</a> · <a href="../fuentes_y_limites.html">Fuentes y límites</a> · <a href="../registro_de_cobertura.csv">Registro de cobertura</a></p>
+</footer>
+<script>
+(function(){
+  function abrir(src){
+    var o=document.createElement('div'); o.className='lightbox-ov';
+    var i=document.createElement('img'); i.src=src; o.appendChild(i);
+    function cerrar(){o.remove(); document.removeEventListener('keydown', onkey);}
+    function onkey(e){ if(e.key==='Escape') cerrar(); }
+    o.addEventListener('click', cerrar);
+    document.addEventListener('keydown', onkey);
+    document.body.appendChild(o);
+  }
+  document.addEventListener('DOMContentLoaded', function(){
+    document.querySelectorAll('figure img, main img').forEach(function(img){
+      img.style.cursor='zoom-in';
+      img.addEventListener('click', function(){ abrir(img.currentSrc||img.src); });
+    });
+  });
+})();
+</script>
+</body>
+</html>

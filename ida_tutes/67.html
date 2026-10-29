@@ -1,0 +1,542 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tute 67 · HackSys pisando SEH (32-bit) — Curso IDA</title>
+<meta name="description" content="Tutorial ilustrado del tute 67 del Curso IDA desde cero: HackSys pisando SEH (32-bit).">
+<link rel="stylesheet" href="../guia/estilo.css">
+</head>
+<body>
+<a class="salto" href="#contenido">Saltar al contenido</a>
+<header class="cabecera">
+  <div class="marca"><a href="../00_EMPEZAR_AQUI.html">CLS · Curso de reversing</a> <span class="edicion">edición 5 · 27/10/2026</span></div>
+  <nav class="principal" aria-label="Navegación principal">
+    <a href="../00_EMPEZAR_AQUI.html">Inicio</a>
+    <a href="../guia/index.html">Curso</a>
+    <a href="../fichas/index.html">Fichas</a>
+    <a href="../glosario.html">Glosario</a>
+    <a href="../preguntas_y_respuestas.html">Repaso</a>
+  </nav>
+</header>
+<main id="contenido">
+<p class="migas"><a href="../ida-tutes.html">← Índice de los 69 tutes de IDA</a></p>
+<h1>Tute 67 · HackSys pisando SEH (32-bit)</h1>
+<p class="meta-tute"><strong>⏱ 29 min de lectura</strong> · 5.246 palabras · 147 capturas · grupo: Kernel de Windows y temas avanzados (drivers, HackSys/HEVD, SSDT/syscalls, VA→física)</p>
+<aside class="callout nota"><p class="callout-titulo">Qué enseña</p><p>Método para bypassear la cookie vía SEH.</p></aside>
+<p><em>se conecta con:</em> <a href="../guia/05-fuera-de-alcance.html">Fuera de alcance</a></p>
+<aside class="callout aviso"><p class="callout-titulo">Material observado, no reescrito</p><p>Es el texto y las capturas del <code>.docx</code> original del curso, solo presentados como tutorial. Puede tener erratas de origen. El autor del curso es Ricardo Narvaja.</p></aside>
+<hr>
+<p>INTRODUCCION AL REVERSING CON IDA PRO DESE CERO PARTE 67.</p>
+<p>Un método que no habíamos visto para explotar una de las vulnerabilidades del HACKSYS driver PISANDO SEH en 32 BITS.</p>
+<p>En este caso un amigo me pidió varias aclaraciones sobre el método usado para bypasear la cookie en maquinas de 32 bits, cuando tenemos un stack overflow en kernel, y podemos pisar el return address, pero hay una cookie que impide que podamos terminar ejecutando código.</p>
+<p>Obviamente si tenemos otra vulnerabilidad que permita leakear, podríamos leer el valor de la cookie y después usarlo al enviar nuestra data para pisarla, pero hay un método que nunca había usado en la práctica, que es un poco viejito y en sistemas que no sean windows 7 de 32 bits no va, pero estaría bueno mirarlo, para aclararle a mi amigo y al que lo quiera leer (y a mí mismo jeje) como es la idea.</p>
+<p>Ya sabemos que el driver vulnerable se puede bajar de acá</p>
+<p>https://github.com/hacksysteam/HackSysExtremeVulnerableDriver/releases/download/v1.20/HEVD.1.20.zip</p>
+<p>y la tool para cargarlo de aquí</p>
+<p>http://www.osronline.com/OsrDown.cfm/osrloaderv30.zip?name=osrloaderv30.zip&amp;id=157</p>
+<p>antes de copiarlo al target abriremos el driver en el loader de IDA para analizarlo.</p>
+<p>Dentro del zip</p>
+<p>HEVD.1.20\drv\vulnerable\i386</p>
+<figure><img loading="lazy" src="img/67/1.png" alt="Captura 1 del tute 67"></figure>
+<p>Esta el driver y los símbolos.</p>
+<figure><img loading="lazy" src="img/67/2.png" alt="Captura 2 del tute 67"></figure>
+<p>Al abrirlo en IDA vemos el DriverEntry, cuyo primer argumento siempre es un puntero a _DRIVER_OBJECT.</p>
+<figure><img loading="lazy" src="img/67/3.png" alt="Captura 3 del tute 67"></figure>
+<p>ESI es el puntero a _DRIVER_OBJECT.</p>
+<p>Si vamos a LOCAL TYPES</p>
+<figure><img loading="lazy" src="img/67/4.png" alt="Captura 4 del tute 67"></figure>
+<p>Vemos que esta dicha estructura, si buscamos _IRP nos aparecen las más usadas para reversear.</p>
+<figure><img loading="lazy" src="img/67/5.png" alt="Captura 5 del tute 67"></figure>
+<p>Marcaremos _DRIVER_OBJECT, _IRP, _DEVICE_OBJECT, _IO_STACK_LOCATION y PIRP y las sincronizamos pues son las que más usamos.</p>
+<p>Lo que nos falta es agregar MajorFunction que nunca esta.</p>
+<p>Recordamos que la podemos agregar en Local Types, usando click derecho-insert y pegamos esto.</p>
+<p>struct __MajorFunction</p>
+<p>{</p>
+<p>SIZE_T _MJ_CREATE;</p>
+<p>SIZE_T _MJ_CREATE_NAMED_PIPE;</p>
+<p>SIZE_T _MJ_CLOSE;</p>
+<p>SIZE_T _MJ_READ;</p>
+<p>SIZE_T _MJ_WRITE;</p>
+<p>SIZE_T _MJ_QUERY_INFORMATION;</p>
+<p>SIZE_T _MJ_SET_INFORMATION;</p>
+<p>SIZE_T _MJ_QUERY_EA;</p>
+<p>SIZE_T _MJ_SET_EA;</p>
+<p>SIZE_T _MJ_FLUSH_BUFFERS;</p>
+<p>SIZE_T _MJ_QUERY_VOLUME_INFORMATION;</p>
+<p>SIZE_T _MJ_SET_VOLUME_INFORMATION;</p>
+<p>SIZE_T _MJ_DIRECTORY_CONTROL;</p>
+<p>SIZE_T _MJ_FILE_SYSTEM_CONTROL;</p>
+<p>SIZE_T _MJ_DEVICE_CONTROL;</p>
+<p>SIZE_T _MJ_INTERNAL_DEVICE_CONTROL;</p>
+<p>SIZE_T _MJ_SCSI;</p>
+<p>SIZE_T _MJ_SHUTDOWN;</p>
+<p>SIZE_T _MJ_LOCK_CONTROL;</p>
+<p>SIZE_T _MJ_CLEANUP;</p>
+<p>SIZE_T _MJ_CREATE_MAILSLOT;</p>
+<p>SIZE_T _MJ_QUERY_SECURITY;</p>
+<p>SIZE_T _MJ_SET_SECURITY;</p>
+<p>SIZE_T _MJ_POWER;</p>
+<p>SIZE_T _MJ_SYSTEM_CONTROL;</p>
+<p>SIZE_T _MJ_DEVICE_CHANGE;</p>
+<p>SIZE_T _MJ_QUERY_QUOTA;</p>
+<p>SIZE_T _MJ_SET_QUOTA;</p>
+<p>SIZE_T _MJ_PNP;</p>
+<p>SIZE_T _MJ_PNP_POWER;</p>
+<p>SIZE_T _MJ_MAXIMUM_FUNCTION;</p>
+<p>};</p>
+<figure><img loading="lazy" src="img/67/6.png" alt="Captura 6 del tute 67"></figure>
+<p>La agregamos y sincronizamos y lo ultimo es abrir en el mismo Local Types la estructura _DRIVER_OBJECT y cambiar para que el ultimo campo sea una estructura del tipo _MajorFunction.</p>
+<figure><img loading="lazy" src="img/67/7.png" alt="Captura 7 del tute 67"></figure>
+<p>Vemos que originalmente es un array de punteros a funciones, pero si lo cambiamos a una estructura con punteros a funciones conocidas con sus nombres, será más fácil y funcionará igual y nos dará la info que necesitamos en forma más clara.</p>
+<figure><img loading="lazy" src="img/67/8.png" alt="Captura 8 del tute 67"></figure>
+<p>Así en vez de ser un array de punteros a funciones que no sabemos cuál es cada una, será una estructura del mismo largo que el array, pero con los punteros a funciones ya conocidas según la especificación.</p>
+<p>Vemos que ESI mantiene el valor del puntero a _DRIVER_OBJECT en esa zona, en 0x160cf ya pierde ese valor.</p>
+<figure><img loading="lazy" src="img/67/9.png" alt="Captura 9 del tute 67"></figure>
+<p>Así que marcamos esa zona (puede ser con ALT +L, bajando con la flecha del cursor y luego de nuevo con ALT+L para terminar) o si es una zona chica con el mismo mouse.</p>
+<figure><img loading="lazy" src="img/67/10.png" alt="Captura 10 del tute 67"></figure>
+<p>Una vez marcada la zona apretamos T.</p>
+<figure><img loading="lazy" src="img/67/11.png" alt="Captura 11 del tute 67"></figure>
+<p>Por supuesto elegimos ESI como el registro base de la estructura y offset ponemos cero pues apunta al inicio de esta, y elegimos _DRIVER_OBJECT y nos detecta los 4 usos que renombrara.</p>
+<figure><img loading="lazy" src="img/67/12.png" alt="Captura 12 del tute 67"></figure>
+<p>El que nos importa es el que maneja los IOCTL que es _MJ_DEVICE_CONTROL</p>
+<p>Si no hubiéramos tenido símbolos, se hace el mismo trabajo importando el archivo .h con las estructuras de 32 bits para reversear drivers.</p>
+<p>El archivo .h con las estructuras de 32 bits está aquí</p>
+<p>https://drive.google.com/file/d/1VXwR45uvw1FtvzW2b9eNO1DLid9CIdx8/view?usp=sharing</p>
+<p>y se importa en IDA desde aquí.</p>
+<figure><img loading="lazy" src="img/67/13.png" alt="Captura 13 del tute 67"></figure>
+<p>Con eso nos aparecerían las estructuras necesarias DRIVER_OBJECT, _IRP, _DEVICE_OBJECT, _IO_STACK_LOCATION y PIRP y _MajorFunction en Local Types, las sincronizaríamos y llegaríamos a reconocer de la misma forma la función que maneja los IOCTL.</p>
+<p>En este caso al tener símbolos dicha función ya tenía nombre, el que nos daba una idea de que era la función buscada, pero como acá estamos aprendiendo es bueno saber encontrarla para todos los casos reverseando, sea con símbolos o sin símbolos.</p>
+<figure><img loading="lazy" src="img/67/14.png" alt="Captura 14 del tute 67"></figure>
+<p>Dentro de dicha función que maneja los IOCTL, están las diferentes funciones vulnerables, en este caso la que vamos a intentar explotar es la de StackOverflowGs.</p>
+<figure><img loading="lazy" src="img/67/15.png" alt="Captura 15 del tute 67"></figure>
+<p>Esto va aquí</p>
+<figure><img loading="lazy" src="img/67/16.png" alt="Captura 16 del tute 67"></figure>
+<p>Y luego aquí.</p>
+<p>Vemos que hay un memcpy que copia un a un buffer en el stack, la cantidad MaxCount de bytes, reverseemosla en forma completa, aunque ya vemos antes del return address que a diferencia del otro stack overflow que ya habíamos explotado, este tiene cookie.</p>
+<figure><img loading="lazy" src="img/67/17.png" alt="Captura 17 del tute 67"></figure>
+<p>Antes del retn</p>
+<figure><img loading="lazy" src="img/67/18.png" alt="Captura 18 del tute 67"></figure>
+<p>Esta ese chequeo y al inicio de la función esta</p>
+<figure><img loading="lazy" src="img/67/19.png" alt="Captura 19 del tute 67"></figure>
+<p>Volviendo al inicio de la función que maneja los IOCTL llamada IrpDeviceIoCtlHandler, pasa a EDI el puntero a la estructura IRP, ya habíamos visto en tutes anteriores que en 32 bits en el offset 0x60 era el puntero a una estructura IO_STACK_LOCATION que quedara en ESI.</p>
+<p>Y apretando T en ESI+0xC.</p>
+<figure><img loading="lazy" src="img/67/20.png" alt="Captura 20 del tute 67"></figure>
+<p>Como ya vimos IO_STACK_LOCATION varía según cual sea la función en que se usa, como acá estamos usándolo en el caso de la función que maneja los IOCTL, debemos elegir ese. (DeviceIoControl)</p>
+<figure><img loading="lazy" src="img/67/21.png" alt="Captura 21 del tute 67"></figure>
+<p>Quedo entonces así, en esta función ESI tiene el puntero a IO_STACK_LOCATION, EDX el IOCTL CODE (IoControlCode) y EDI el puntero a _IRP.</p>
+<figure><img loading="lazy" src="img/67/22.png" alt="Captura 22 del tute 67"></figure>
+<p>Serán ESI y EDI los dos argumentos de la llamada a la función StackOverflowGSIoctlHandler</p>
+<figure><img loading="lazy" src="img/67/23.png" alt="Captura 23 del tute 67"></figure>
+<p>Por supuesto como tenemos símbolos, se puede ver los mismos dos argumentos en la definición de la función, uno el puntero a _IRP y el otro un puntero a IO_STACK_LOCATION.</p>
+<figure><img loading="lazy" src="img/67/24.png" alt="Captura 24 del tute 67"></figure>
+<p>Otra vez al tratar de determinar un campo de _IO_STACK_LOCATION, debemos elegir el caso de DeviceIoControl que es el que estamos usando.</p>
+<figure><img loading="lazy" src="img/67/25.png" alt="Captura 25 del tute 67"></figure>
+<p>Vemos que lo que determinamos reverseando, coincide con lo que nos muestran los símbolos.</p>
+<figure><img loading="lazy" src="img/67/26.png" alt="Captura 26 del tute 67"></figure>
+<p>El campo InputBufferLenght es el size del buffer de entrada en user, y el Type3InputBuffer es el puntero a ese buffer de entrada en user que también le pasamos.</p>
+<p>Renombre los dos argumentos, recordemos que al que le llamamos size_buffer_user es un numero arbitrario que le pasamos que debería ser el size del buffer, pero puede ser cualquier valor, ya que no se ve ningún chequeo del mismo.</p>
+<figure><img loading="lazy" src="img/67/27.png" alt="Captura 27 del tute 67"></figure>
+<p>Vemos que ambos son usados sin chequeo ni modificación en el memcpy</p>
+<figure><img loading="lazy" src="img/67/28.png" alt="Captura 28 del tute 67"></figure>
+<p>El destination del memcpy es un buffer en el stack podemos pisarlo entero el problema es que aquí no nos sirve pisar todo el stack hasta que termine, porque en ese caso no se llama al SEH como en user sino que se produce un BSOD, hay que usar otra técnica.</p>
+<figure><img loading="lazy" src="img/67/29.png" alt="Captura 29 del tute 67"></figure>
+<figure><img loading="lazy" src="img/67/30.png" alt="Captura 30 del tute 67"></figure>
+<p>Aunque en la inicialización del buffer solo se realiza sobre 0x1ff, igual no hay problema que sobren algunos bytes.</p>
+<figure><img loading="lazy" src="img/67/31.png" alt="Captura 31 del tute 67"></figure>
+<p>Al inicio de la función vemos que encima del return address hay una estructura CPPEH_RECORD.</p>
+<figure><img loading="lazy" src="img/67/32.png" alt="Captura 32 del tute 67"></figure>
+<p>Esa justo debajo del buffer y encima del return address.</p>
+<figure><img loading="lazy" src="img/67/33.png" alt="Captura 33 del tute 67"></figure>
+<p>Vemos que pushea dos argumentos una contante 0x210 y un puntero a una estructura, el puntero a la constante 0x210, como es el primer push quedara justo arriba del return address r que guardo al entrar en esta misma función prologo.</p>
+<figure><img loading="lazy" src="img/67/34.png" alt="Captura 34 del tute 67"></figure>
+<p>Sin embargo, vemos que IDA nos muestra que allí justo arriba del “r” esta el stored ebp o sea “s”.</p>
+<figure><img loading="lazy" src="img/67/35.png" alt="Captura 35 del tute 67"></figure>
+<p>Igual si entramos en la función __SEH_prolog4_GS</p>
+<figure><img loading="lazy" src="img/67/36.png" alt="Captura 36 del tute 67"></figure>
+<p>Vemos que después de mover a EAX el valor de la variable cons_0x210, luego guarda allí el ebp, por lo cual realmente arriba de “r”, queda finalmente “s” o stored ebp.</p>
+<p>Luego arriba del stored EBP quedara el puntero a esa estructura que pasa justo después del push 0x210.</p>
+<figure><img loading="lazy" src="img/67/37.png" alt="Captura 37 del tute 67"></figure>
+<p>A esa dirección de una estructura 0x12218 la guarda justo arriba del “s”.</p>
+<figure><img loading="lazy" src="img/67/38.png" alt="Captura 38 del tute 67"></figure>
+<p>Y justo arriba del “s” está ms_exc que es una estructura del tipo CPPEH_RECORD, así que esa dirección será el último campo de dicha estructura ya veremos eso.</p>
+<p>a.</p>
+<figure><img loading="lazy" src="img/67/39.png" alt="Captura 39 del tute 67"></figure>
+<p>Aquí después de guardar el stored ebp en const_0x210, mueve la dirección de dicha variable a EBP, esto seria mas o menos similar a que en el inicio de una función se haga PUSH EBP, MOV EBP,ESP.</p>
+<p>Ambos son guardar el valor de EBP de la función padre de TriggerStackOverflowGS y setear el nuevo EBP para la misma en el LEA.</p>
+<figure><img loading="lazy" src="img/67/40.png" alt="Captura 40 del tute 67"></figure>
+<p>Luego hace espacio para las variables haciendo SUB ESP, EAX siendo el valor de EAX 0x210.</p>
+<p>Y también vemos que en ebp-4 xorea el valor que había allí con la cookie que lee de la sección data.</p>
+<p>Recordemos que en ebp-4 está 0x12218, con eso xorea la cookie de data y lo guarda allí mismo.</p>
+<figure><img loading="lazy" src="img/67/41.png" alt="Captura 41 del tute 67"></figure>
+<p>Además, xorea la cookie de data con ebp y lo guarda en ebp-1c.</p>
+<figure><img loading="lazy" src="img/67/42.png" alt="Captura 42 del tute 67"></figure>
+<p>Esta es la que chequeara en el epilogo.</p>
+<figure><img loading="lazy" src="img/67/43.png" alt="Captura 43 del tute 67"></figure>
+<p>Y dentro de __security_check_cookie</p>
+<figure><img loading="lazy" src="img/67/44.png" alt="Captura 44 del tute 67"></figure>
+<p>Las compara si son iguales y si no te tira a blue screen directo.</p>
+<p>Iremos armando el stack desde el inicio según el orden que va pusheando antes de entrar al prologo:</p>
+<pre class='asm'>Push 0x210
+Push 0x12218</pre>
+<p>Luego entra al prologo lo que hace que guarde el return address en el stack de donde volverá, eso sería la dirección 0x148e9 ya que al salir del prólogo volvería allí.</p>
+<figure><img loading="lazy" src="img/67/45.png" alt="Captura 45 del tute 67"></figure>
+<p>Así que al entrar en el prólogo tenemos en el stack los dos push de los argumentos y el return address donde volverá.</p>
+<figure><img loading="lazy" src="img/67/46.png" alt="Captura 46 del tute 67"></figure>
+<p>Sigamos mirando como va pusheando en el mismo.</p>
+<p>Luego hay dos PUSH más, la dirección de la función exception_handler4 y el valor que contiene fs:0</p>
+<figure><img loading="lazy" src="img/67/47.png" alt="Captura 47 del tute 67"></figure>
+<p>Arriba del return address entonces quedaran estos dos</p>
+<figure><img loading="lazy" src="img/67/48.png" alt="Captura 48 del tute 67"></figure>
+<p>Luego el 0x210 es pisado por el stored_ebp</p>
+<figure><img loading="lazy" src="img/67/49.png" alt="Captura 49 del tute 67"></figure>
+<p>Sabemos que debajo del stored ebp estaba el return address de TriggerStackOverflowGS, lo agregamos a nuestra representación del stack.</p>
+<figure><img loading="lazy" src="img/67/50.png" alt="Captura 50 del tute 67"></figure>
+<p>EBP actual queda con la dirección de stored_ebp (ojo con la dirección no con el valor)</p>
+<p>A ESP se le resta 0x210 para el espacio de las variables o sea que arriba de la dirección de fs:0 menos 0x210 quedara ESP.</p>
+<figure><img loading="lazy" src="img/67/51.png" alt="Captura 51 del tute 67"></figure>
+<p>Luego arriba hay tres push mas de EBX, ESI y EDI</p>
+<figure><img loading="lazy" src="img/67/52.png" alt="Captura 52 del tute 67"></figure>
+<figure><img loading="lazy" src="img/67/53.png" alt="Captura 53 del tute 67"></figure>
+<p>Luego el contenido de EBP-4 lo xorea con la cookie.</p>
+<p>Como EBP ACTUAL quedo apuntando a la dirección de stored_ebp, ebp-4 apunta a 0x12218 ese valor lo xorea con la cookie.</p>
+<p>VALOR DE EBX</p>
+<p>VALOR DE ESI</p>
+<p>VALOR DE EDI</p>
+<p>…</p>
+<p>…</p>
+<p>…</p>
+<p>fs:0</p>
+<p>__except_handler4</p>
+<p>0x148e9             &lt;---- RETURN ADDRESS PROLOGO</p>
+<p>0x12218 --------XORED CON COOKIE</p>
+<p>stored_ebp      ----- EBP ACTUAL DIRECCION DE STORED_EBP</p>
+<p>return address TriggerStackOverflowGS</p>
+<p>Si le agregamos para clarificar una primera columna, con las direcciones referidas al valor de EBP ACTUAL.</p>
+<p>VALOR DE EBX</p>
+<p>VALOR DE ESI</p>
+<p>VALOR DE EDI</p>
+<p>…</p>
+<p>…</p>
+<p>…</p>
+<p>EBP-10   fs:0</p>
+<p>EBP-C    __except_handler4</p>
+<p>EBP-8   0x148e9             &lt;---- RETURN ADDRESS PROLOGO</p>
+<p>EBP-4   0x12218 --------XORED CON COOKIE</p>
+<p>EBP       stored_ebp      ----- EBP ACTUAL DIRECCION DE STORED_EBP</p>
+<p>return address TriggerStackOverflowGS</p>
+<p>Un tema aquí es que esta no es una función normal que al entrar y salir ESP queda igual que antes de PUSHEAR sus argumentos bien balanceada, esta es una función que es el prólogo de TriggerStackOverflowGS este código debería ser parte de la misma función y no estar en un CALL aparte.</p>
+<p>Luego le resta al valor de ESP para hacer espacio para las variables para dicha función y va armando el stack, pero después no vuelve como en una función normal, buscando el return address y volviendo al valor de ESP donde este había quedado, eso no sirve aquí pues ESP debe quedar con el valor que tiene ya habiéndose restado y hecho espacio para las variables.</p>
+<p>En una función normal, ESP queda valiendo el mismo valor al volver, que el que tenia antes de pasar los argumentos.</p>
+<figure><img loading="lazy" src="img/67/54.png" alt="Captura 54 del tute 67"></figure>
+<p>Pero en este caso particular esta es una función especial es como una parte de la función TriggerStackOverflowGS, hecha en un CALL aparte.</p>
+<p>Si a ESP lo tomo como cero al inicio de la función, veo que al salir aumento 0x234 porque dentro de la función prologo se fueron haciendo varios PUSH, se hizo SUB ESP, 0x210 y se volvió sin restaurar ESP.</p>
+<p>Allí lo vemos el volver ESP está a 0x234 del inicio.</p>
+<figure><img loading="lazy" src="img/67/55.png" alt="Captura 55 del tute 67"></figure>
+<p>Muchos dirán, pero si no se restaura ESP ¿cómo vuelve a encontrar el return address en el stack que está mucho más abajo del valor de ESP que devuelve la función? Jeje</p>
+<p>Habíamos dicho que  EBP-8 apuntaba al return address para volver de la función prólogo a TriggerStackOverflowGS y ESP ACTUAL después de los tres PUSH de EBX, ESI y EDI quedo allí arriba.</p>
+<figure><img loading="lazy" src="img/67/56.png" alt="Captura 56 del tute 67"></figure>
+<p>Si vemos en la función prologo fuerza el return address con un PUSH -RET</p>
+<figure><img loading="lazy" src="img/67/57.png" alt="Captura 57 del tute 67"></figure>
+<p>Pushea el valor apuntado por EBP-8 que es el return address, lo vuelve a colocar en el stack y luego hace RET volviendo a la función TriggerStackOverflowGS sin restaurar ESP y dejando todo el stack armado como estaba dentro de prologo.</p>
+<p>Entre el PUSH y el RET solo hay MOV y LEA, así que el stack no es afectado, es similar a UN PUSH -RET.</p>
+<p>Ya sabemos como empieza, como va acomodando las cosas en el stack y como vuelve, nos quedan algunas cosas que hace en el medio después de los tres PUSH antes del volver.</p>
+<p>Habíamos armado el stack hasta aquí.</p>
+<figure><img loading="lazy" src="img/67/58.png" alt="Captura 58 del tute 67"></figure>
+<p>Hasta ese punto estaba armado así</p>
+<p>VALOR DE EBX</p>
+<p>VALOR DE ESI</p>
+<p>VALOR DE EDI</p>
+<p>…</p>
+<p>…</p>
+<p>…</p>
+<p>EBP-10   fs:0</p>
+<p>EBP-C    __except_handler4</p>
+<p>EBP-8   0x148e9             &lt;---- RETURN ADDRESS PROLOGO</p>
+<p>EBP-4   0x12218 --------XORED CON COOKIE</p>
+<p>EBP       stored_ebp      ----- EBP ACTUAL DIRECCION DE STORED_EBP</p>
+<p>return address TriggerStackOverflowGS</p>
+<p>Ya sabemos que nada de esto se va a perder, todo lo que agrego o modifico dentro de prólogo en el stack, no lo quitara ya que el PUSH RET dejara el stack como estaba para la función TriggerStackOverflowGS.</p>
+<p>Otra de las cosas que ya quedo configurada para TriggerStackOverflowGS es EBP</p>
+<figure><img loading="lazy" src="img/67/59.png" alt="Captura 59 del tute 67"></figure>
+<p>El mismo desde el LEA en adelante sirve como base para las variables y argumentos no solo del prologo sino de TriggerStackOverflowGS ya que desde aquí en adelante, su valor se mantiene constante, incluso después de volver.</p>
+<p>Miro TriggerStackOverflowGS para tratar de ver donde corresponde este EBP-1c donde guarda la COOKIE.</p>
+<figure><img loading="lazy" src="img/67/60.png" alt="Captura 60 del tute 67"></figure>
+<p>Vemos que ms_exc es EBP-0x18 o sea que el lugar donde guarda la cookie que va a chequear, esta justo arriba de la estructura ms_exc.</p>
+<p>Recordemos que el buffer Dst se inicializaba solo con 0x1ff y dijimos que sobraban unos bytes justo debajo del el, así que, si reajustamos Dst a que su size sea 0x1ff, tendremos la variable donde guarda la COOKIE en el stack.</p>
+<figure><img loading="lazy" src="img/67/61.png" alt="Captura 61 del tute 67"></figure>
+<p>Allí lo reajusto y me quedan cuatro bytes vacíos en medio, apreto D hasta que cambie a DWORD (dd) y la renombro a COOKIE.</p>
+<figure><img loading="lazy" src="img/67/62.png" alt="Captura 62 del tute 67"></figure>
+<p>Veo que queda en EBP-1c (a la izquierda del nombre, está la posición relativa a EBP o sea 0000001c).</p>
+<p>Luego PUSHEA EAX y guarda el valor actual de ESP en EBP-18, eso era dentro de la estructura ms_exc que empieza allí, es el primer campo de la misma.</p>
+<figure><img loading="lazy" src="img/67/63.png" alt="Captura 63 del tute 67"></figure>
+<p>Si miramos dentro de la estructura el primer campo es OLD ESP</p>
+<figure><img loading="lazy" src="img/67/64.png" alt="Captura 64 del tute 67"></figure>
+<p>Así que el stack quedo</p>
+<p>VALOR DE EAX</p>
+<p>VALOR DE EBX</p>
+<p>VALOR DE ESI</p>
+<p>VALOR DE EDI</p>
+<p>…</p>
+<p>…</p>
+<p>…</p>
+<p>EBP-10   fs:0</p>
+<p>EBP-C    __except_handler4</p>
+<p>EBP-8   0x148e9             &lt;---- RETURN ADDRESS PROLOGO</p>
+<p>EBP-4   0x12218 --------XORED CON COOKIE</p>
+<p>EBP       stored_ebp      ----- EBP ACTUAL DIRECCION DE STORED_EBP</p>
+<p>return address TriggerStackOverflowGS</p>
+<p>Como ahora ambas funciones comparten el stack, si comparamos, vemos que arriba de STORED_EBP, está ms_exc, por lo tanto lo que PUSHEO dentro de prologo justo arriba de “s” son campos de dicha estructura también.</p>
+<figure><img loading="lazy" src="img/67/65.png" alt="Captura 65 del tute 67"></figure>
+<p>Esos 4 DWORDS son los 4 campos inferiores de la estructura ms_exc.</p>
+<figure><img loading="lazy" src="img/67/66.png" alt="Captura 66 del tute 67"></figure>
+<p>Recordamos que los últimos 4 campos de la estructura, es otra estructura de 0x10 bytes o sea 16 bytes decimal (4 DWORDS), así que justo son esos 4 DWORDS que están marcados allí en la imagen.</p>
+<figure><img loading="lazy" src="img/67/67.png" alt="Captura 67 del tute 67"></figure>
+<p>Los dos importantes son el NEXT y el EXCEPTION HANDLER, ya sabemos su posición en el stack, vemos que el NEXT en la estructura tiene el valor de fs:0 y el EXCEPTION HANDLER por ahora tiene el valor de __except_handler4, aunque aún no están agregados a la cadena de SEHs.</p>
+<p>Así que si uno lo acomoda mejor al stack</p>
+<p>VALOR DE EAX</p>
+<p>VALOR DE EBX</p>
+<p>VALOR DE ESI</p>
+<p>VALOR DE EDI</p>
+<p>…</p>
+<p>…</p>
+<p>…</p>
+<p>EBP-10   fs:0                                                                                         (NEXT)</p>
+<p>EBP-C    __except_handler4                                                           (EXCEPTION_HANDLER)</p>
+<p>EBP-8   0x148e9             &lt;---- RETURN ADDRESS PROLOGO    (SCOPETABLE)</p>
+<p>EBP-4   0x12218 --------XORED CON COOKIE                             (TRYLEVEL)</p>
+<p>EBP       stored_ebp      ----- EBP ACTUAL DIRECCION DE STORED_EBP</p>
+<p>return address TriggerStackOverflowGS</p>
+<p>Bueno ya lo tenemos mejor armado y vemos a la derecha en azul los campos de la estructura.</p>
+<p>Como el return address ya está pusheado al stack, que después cambie el valor de la variable que lo guardaba no tiene importancia.</p>
+<figure><img loading="lazy" src="img/67/68.png" alt="Captura 68 del tute 67"></figure>
+<p>Vemos que en EBP-8 (SCOPETABLE) guarda el valor de la cookie de data xoreada con el valor 0x12218 que estaba en EBP-4, y luego en el mismo EBP-4 que es TRYLEVEL guarda 0xFFFFFFFE.</p>
+<p>Al final guarda la dirección del NEXT ebp-10 en fS:0 quedando configurado el manejador de excepciones.</p>
+<p>Sabemos que fs:0 apunta al ultimo elemento de la lista de la cadena de excepciones, o sea al superior de toda la cadena.</p>
+<p>Recordemos que agregar un nuevo elemento a la lista se hace mediante este código</p>
+<pre class='asm'>PUSH  OFFSET Handler
+PUSH  FS:[0]
+MOV  FS:[0], ESP</pre>
+<p>Así que como acá hace</p>
+<pre class='asm'>mov     large fs:0, eax</pre>
+<p>Ese EAX es una dirección del stack donde estará el nuevo NEXT y debajo el SEH.</p>
+<p>Así que como EAX es la dirección de EBP-10, allí estará el NEXT y justo debajo el SEH como habíamos dicho.</p>
+<p>Si lo debuggeo y le envió con el mismo exploit que anda por ahí público el IOCTL correcto para que llegue a la función vulnerable (ya veremos más adelante como hacer eso, por ahora es solo para verificar).</p>
+<figure><img loading="lazy" src="img/67/69.png" alt="Captura 69 del tute 67"></figure>
+<p>Veo que el fs:0 apunta al elemento superior de la cadena de SEH, en mi caso 9CCEFCC0 si miro allí debe estar el NEXT y el SEH, el NEXT es 0xFFFFFFFF porque es el último NEXT de la cadena de excepciones.</p>
+<figure><img loading="lazy" src="img/67/70.png" alt="Captura 70 del tute 67"></figure>
+<p>La función es un típico manejador genérico, si voy a ver se ven solo los bytes pero apretando C y Create Function la armo.</p>
+<figure><img loading="lazy" src="img/67/71.png" alt="Captura 71 del tute 67"></figure>
+<p>Si sigo traceando el prólogo, llego a donde se guarda EAX en fs:0</p>
+<figure><img loading="lazy" src="img/67/72.png" alt="Captura 72 del tute 67"></figure>
+<p>Aquí vemos el nuevo manejador agregado a la cadena.</p>
+<figure><img loading="lazy" src="img/67/73.png" alt="Captura 73 del tute 67"></figure>
+<p>Como habíamos reverseado, ebp-10 será el nuevo NEXT y debajo está el SEH que va a ser _except_handler4, ese es el valor que tendremos que pisar para poder explotarlo.</p>
+<figure><img loading="lazy" src="img/67/74.png" alt="Captura 74 del tute 67"></figure>
+<p>Bueno ya tenemos todo bien ubicado es hora de empezar a hacer el exploit.</p>
+<p>El método consiste en que como copiamos desde un buffer de user que es el source y proveemos nosotros, en vez de crashear el stack llenándolo completamente, debemos calcular que el source copie el seh en el stack y luego se agote, su size debe ser justo y debe estar calculado para agotarse justo después de copiar el SEH.</p>
+<p>La idea es que como el crash se produce en un acceso de lectura a un buffer en user, eso hará que se maneje como un crash en user y saltara al SEH, en vez de manejarse como un crash de kernel que provocara un BSOD.</p>
+<p>El método funciona, pero el exploit publico crashea con BSOD, así que habrá que ver en que fallo el que lo hizo, seguramente alguna pavada, veremos.</p>
+<p>La explicación básica de este método está aquí:</p>
+<p>http://poppopret.blogspot.com/2011/07/windows-kernel-exploitation-basics-part_16.html</p>
+<p>y el código fuente del exploit público está aquí:</p>
+<p>https://github.com/hacksysteam/HackSysExtremeVulnerableDriver/tree/master/Exploit</p>
+<p>no lo voy a hacer todo en Python porque no vale la pena, pero vamos a mirar como lo hace explicarlo y arreglarlo jeje ya que no funciona.</p>
+<p>Primero que nada, si lo hiciéramos en Python tendríamos un problema mas que se puede resolver pero, compilándolo en C++, ya tenemos un módulo que además de ejecutarse y explotar la elevación de privilegios, podremos compilarlo a nuestro gusto, por ejemplo sin SAFESEH, ni DEP, ni ASLR en las opciones del VISUAL STUDIO nos dejaran trabajar mas tranquilos, así que si alguien carga la solución o sea el archivo sln en visual studio, tendrá que cambiar las opciones por default.</p>
+<figure><img loading="lazy" src="img/67/75.png" alt="Captura 75 del tute 67"></figure>
+<p>Un poco más arriba esta</p>
+<figure><img loading="lazy" src="img/67/76.png" alt="Captura 76 del tute 67"></figure>
+<p>Bueno yo adjuntare el archivo compilado con sus símbolos HackSysEVDExploit.exe y HackSysEVDExploit.pdb, así se puede ver fácilmente en IDA.</p>
+<p>El ejecutable se compila para todas las vulnerabilidades que tiene el driver, ejecutándolo en consola en windows 7 32 bits con los argumentos -g -c xxx.exe es suficiente pues ya le agregue al final de este método que ejecute una calculadora como system después de elevar, en los otros en vez de xxx.exe habrá que poner calc.exe o cmd.exe</p>
+<p>Bueno vamos a la función que explota esta vulnerabilidad en este caso StackOverflowGSThread.</p>
+<figure><img loading="lazy" src="img/67/77.png" alt="Captura 77 del tute 67"></figure>
+<p>Después de arreglar algunos temas de consola que no vienen al caso, analicemos el exploit los abrimos el mismo en IDA vemos que la explotación empieza aquí:</p>
+<figure><img loading="lazy" src="img/67/78.png" alt="Captura 78 del tute 67"></figure>
+<p>Dentro vemos el llamado a CreateFile para obtener el handle del driver.</p>
+<figure><img loading="lazy" src="img/67/79.png" alt="Captura 79 del tute 67"></figure>
+<p>Todo esto es igual que los casos que ya vimos de kernel anteriores.</p>
+<p>EBX queda con el handle del driver, solo se usa cuando llama mas abajo a DeviceIoControl.</p>
+<figure><img loading="lazy" src="img/67/80.png" alt="Captura 80 del tute 67"></figure>
+<p>Bueno luego va a Crear un File Mapping que puede ser un espacio de memoria virtual que estará asociado al contenido de un archivo. (no reserva aun la memoria solo crea el objeto y devuelve un handle)</p>
+<p>https://docs.microsoft.com/en-us/windows/desktop/memory/file-mapping</p>
+<figure><img loading="lazy" src="img/67/81.png" alt="Captura 81 del tute 67"></figure>
+<p>Pero si vemos en la api CreateFileMapping, vemos que el primer argumento es el handle del archivo, pero también dice que se puede pasar INVALID_HANDLE_VALUE, en dicho caso creara el file mapping sin asociarlo a un archivo y será una memoria anónima compartida.</p>
+<figure><img loading="lazy" src="img/67/82.png" alt="Captura 82 del tute 67"></figure>
+<figure><img loading="lazy" src="img/67/83.png" alt="Captura 83 del tute 67"></figure>
+<p>Bueno este es el caso, así que vemos que cuando llama a dicha api le pasa 0xFFFFFFFF que es el valor de INVALID_HANDLE_VALUE</p>
+<figure><img loading="lazy" src="img/67/84.png" alt="Captura 84 del tute 67"></figure>
+<p>En el código fuente lo llama SHARED MEMORY y lo crea aquí, vemos que tiene permiso de ejecución y de lectura y escritura.</p>
+<figure><img loading="lazy" src="img/67/85.png" alt="Captura 85 del tute 67"></figure>
+<p>Bueno esto nos devuelve el handle del file mapping.</p>
+<figure><img loading="lazy" src="img/67/86.png" alt="Captura 86 del tute 67"></figure>
+<p>Luego llama a MapViewOfFile que mapeara el objeto en la memoria reservando el espacio necesario para ello.</p>
+<figure><img loading="lazy" src="img/67/87.png" alt="Captura 87 del tute 67"></figure>
+<figure><img loading="lazy" src="img/67/88.png" alt="Captura 88 del tute 67"></figure>
+<p>Bueno eso devuelve la dirección del inicio de la sección creada para el file mapping.</p>
+<p>Para debuggear el exploit en user sin mirar el driver, copio server de IDA  win32_remote.exe al target y lo arranco.</p>
+<figure><img loading="lazy" src="img/67/89.png" alt="Captura 89 del tute 67"></figure>
+<p>Lo arranco al server con permisos de administrador en el target y en la maquina donde estoy reverseando el exploit cambio el debugger a remote windows debugger, en Process Options pongo la IP y el puerto que escucha.</p>
+<figure><img loading="lazy" src="img/67/90.png" alt="Captura 90 del tute 67"></figure>
+<figure><img loading="lazy" src="img/67/91.png" alt="Captura 91 del tute 67"></figure>
+<p>Recordemos que podemos debuggear perfectamente este exploit la parte de user pero en el shellcode que se lo llama desde kernel no podremos poner breakpoints ni nada porque producirá una excepción INT3 en el kernel que no se maneja desde user y se producirá un BSOD.</p>
+<p>Si lo arrancamos sin argumentos nos muestra las opciones.</p>
+<figure><img loading="lazy" src="img/67/92.png" alt="Captura 92 del tute 67"></figure>
+<p>Arranco el exploit con los argumentos -g para que se explote la vulnerabilidad Stack Overflow GS,</p>
+<figure><img loading="lazy" src="img/67/93.png" alt="Captura 93 del tute 67"></figure>
+<p>Ahí quedo esperando</p>
+<figure><img loading="lazy" src="img/67/94.png" alt="Captura 94 del tute 67"></figure>
+<p>Así que puedo atachear el IDA donde reversee el exploit (no el que analice el driver)</p>
+<figure><img loading="lazy" src="img/67/95.png" alt="Captura 95 del tute 67"></figure>
+<p>Al apretar una tecla en el target para saltear la pausa, para en el breakpoint que puse después de la pausa</p>
+<figure><img loading="lazy" src="img/67/96.png" alt="Captura 96 del tute 67"></figure>
+<p>Llego hasta el CreateFileMapping</p>
+<figure><img loading="lazy" src="img/67/97.png" alt="Captura 97 del tute 67"></figure>
+<p>Al pasarlo con F8 me devuelve el handle del mismo.</p>
+<figure><img loading="lazy" src="img/67/98.png" alt="Captura 98 del tute 67"></figure>
+<p>Como habíamos dicho le pasa ese handle en este caso está en ESI</p>
+<figure><img loading="lazy" src="img/67/99.png" alt="Captura 99 del tute 67"></figure>
+<p>Allí nos devolverá la dirección del File mapping.</p>
+<figure><img loading="lazy" src="img/67/100.png" alt="Captura 100 del tute 67"></figure>
+<p>Es una sección como se pidió de 0x1000 bytes.</p>
+<figure><img loading="lazy" src="img/67/101.png" alt="Captura 101 del tute 67"></figure>
+<p>El tema es que esta sección la voy a user de source y tiene que copiar hasta el seh y luego terminar, así crashea en read antes de que se copie todo el stack y crashee en el stack de kernel.</p>
+<p>Dejo este IDA pausado un minuto y abro el otro donde tengo el driver.</p>
+<p>Una cosa que no había visto y me había equivocado es que el buffer de destino</p>
+<figure><img loading="lazy" src="img/67/102.png" alt="Captura 102 del tute 67"></figure>
+<p>Vemos que inicializa 0x1ff bytes, pero justo antes pone a cero el byte que esta justo arriba, y el destination empieza en var_21c, por lo cual hay que arreglar el buffer de destino para poder calcular bien y ahora empezara en var_0x21c y será de 0x200 de largo.</p>
+<figure><img loading="lazy" src="img/67/103.png" alt="Captura 103 del tute 67"></figure>
+<p>Ahora si quedo bien lo renombro como buffer_destino.</p>
+<p>Quedo bien, ahí está justo en el memcpy y podemos copiar la cantidad de bytes que queremos</p>
+<figure><img loading="lazy" src="img/67/104.png" alt="Captura 104 del tute 67"></figure>
+<p>Obviamente no debemos copiar desde el inicio de la sección del File mapping porque debe copiar solo hasta el seh y terminarse, debo ver cuántos bytes debo copiar.</p>
+<p>Tenemos que copiar desde ya 0x200 para llenar el buffer, 4 mas para pisar la cookie y luego está la estructura ms_exc.</p>
+<p>Dentro de la estructura hay 8 bytes y luego el NEXT y el SEH, así que seria</p>
+<p>Total a copiar= 0x200 + 4 + 8 + NEXT+ SEH</p>
+<figure><img loading="lazy" src="img/67/105.png" alt="Captura 105 del tute 67"></figure>
+<p>O sea, con 0x214 bytes pisamos el SEH.</p>
+<figure><img loading="lazy" src="img/67/106.png" alt="Captura 106 del tute 67"></figure>
+<p>Como la sección es de 0x1000 de largo, para saber qué dirección pasarle para que empiece a copiar, a la dirección inicial de la sección le suma 0x1000 y luego le resta 0x214, con eso utilizara esa nueva dirección como un buffer de entrada justo para pisar el seh y crashear en lectura.</p>
+<p>Veámoslo en el debugger que quedo corriendo en el exploit.</p>
+<figure><img loading="lazy" src="img/67/107.png" alt="Captura 107 del tute 67"></figure>
+<p>Vemos que a la dirección del file mapping que quedo en ESI, le suma 0xdec que es 0x1000 menos 0x214.</p>
+<figure><img loading="lazy" src="img/67/108.png" alt="Captura 108 del tute 67"></figure>
+<figure><img loading="lazy" src="img/67/109.png" alt="Captura 109 del tute 67"></figure>
+<p>En mi maquina 0x2c0dec será la dirección que le pasara para que empiece a copiar 0x214 desde ahí, el source del memcpy al stack.</p>
+<p>Luego queda copiarle al buffer lo necesario, eso lo hace a continuación.</p>
+<p>Con memset llena toda la sección de Aes (0x41)</p>
+<figure><img loading="lazy" src="img/67/110.png" alt="Captura 110 del tute 67"></figure>
+<p>Allí se lleno el buffer de entrada</p>
+<figure><img loading="lazy" src="img/67/111.png" alt="Captura 111 del tute 67"></figure>
+<p>Vemos que en la posición 0x0204 escribe 0x42424242, eso supuestamente dice que pisa la COOKIE ya que el buffer ocupaba 0x200 y la cookie esta debajo, para mi como es 0x204 pisa el DWORD justo debajo de la cookie el primer campo de la estructura ms_exc.</p>
+<p>Después escribe en ESI+4, el valor 0x43434343</p>
+<figure><img loading="lazy" src="img/67/112.png" alt="Captura 112 del tute 67"></figure>
+<p>Luego le suma 8 al ESI original y escribe el NEXT y el SEH.</p>
+<figure><img loading="lazy" src="img/67/113.png" alt="Captura 113 del tute 67"></figure>
+<p>Vemos que quedo como dije yo la COOKIE no fue pisada con los últimos 0x41414141y piso justo debajo los 4 DWORDs de la estructura ms_exc .</p>
+<figure><img loading="lazy" src="img/67/114.png" alt="Captura 114 del tute 67"></figure>
+<p>Estos son los 4 que piso, así que el ultimo es el SEH.</p>
+<figure><img loading="lazy" src="img/67/115.png" alt="Captura 115 del tute 67"></figure>
+<p>Justo debajo del SEH se acaba la sección, como queremos que crashee por lectura al tratar de seguir leyendo, le pasaremos un size un poco más grande que 0x214.</p>
+<p>Pongo un breakpoint antes de llegar a DeviceIoControl y al dar RUN me queda apretar una tecla en el target para pasar el siguiente system  pause.</p>
+<figure><img loading="lazy" src="img/67/116.png" alt="Captura 116 del tute 67"></figure>
+<p>Veamos los argumentos que le pasa.</p>
+<figure><img loading="lazy" src="img/67/117.png" alt="Captura 117 del tute 67"></figure>
+<p>El puntero a bytes returned lo pasa con el LEA, luego 0 y 0 para el buffer de salida y su size pues no tiene, y luego vemos que la cantidad de bytes que le pasa para que copie del buffer de entrada es 0x218 o sea 4 bytes más que el largo del buffer de entrada que era de 0x214, esto lo hará crashear en lectura al acabarse el source.</p>
+<p>La dirección del buffer de entrada había quedado en EDI</p>
+<figure><img loading="lazy" src="img/67/118.png" alt="Captura 118 del tute 67"></figure>
+<p>Y luego el IOCTL code 0x222007 del bug este Stack Overflow GS y el handle al device que esta en EBX como vimos.</p>
+<p>Ya tenemos analizado el exploit, así que ahora podemos cerrarlo y atachear el IDA con el análisis del driver al KERNEL y mirar como copia los datos.</p>
+<p>Antes de atachearlo pongo un breakpoint al inicio de la función vulnerable.</p>
+<figure><img loading="lazy" src="img/67/119.png" alt="Captura 119 del tute 67"></figure>
+<figure><img loading="lazy" src="img/67/120.png" alt="Captura 120 del tute 67"></figure>
+<p>Listo ya detecto que es el mismo archivo que tenia analizado y si acepto lo rebaseara, le digo que es el mismo.</p>
+<p>Arranco el exploit en el target.</p>
+<figure><img loading="lazy" src="img/67/121.png" alt="Captura 121 del tute 67"></figure>
+<figure><img loading="lazy" src="img/67/122.png" alt="Captura 122 del tute 67"></figure>
+<p>A apretar la tecla para que pase la pausa, para en el breakpoint.</p>
+<figure><img loading="lazy" src="img/67/123.png" alt="Captura 123 del tute 67"></figure>
+<p>Como habíamos dicho allí copiara el NEXT y el SEH que deberemos pisar más adelante en el memcpy.</p>
+<figure><img loading="lazy" src="img/67/124.png" alt="Captura 124 del tute 67"></figure>
+<p>Ya que cuando demos RUN copiara y seguirá sin que podamos pararlo, podemos poner un BREAKPOINT MEMORY ON WRITE para que pare cuando copie el NEXT un poco antes de crashear, así vemos si queda todo bien.</p>
+<figure><img loading="lazy" src="img/67/125.png" alt="Captura 125 del tute 67"></figure>
+<p>Lo pongo en la barra de Windbg.</p>
+<figure><img loading="lazy" src="img/67/126.png" alt="Captura 126 del tute 67"></figure>
+<p>Creo un segmento y lo convierto en código</p>
+<figure><img loading="lazy" src="img/67/127.png" alt="Captura 127 del tute 67"></figure>
+<p>O si no tengo ganas lo miro en la barra del Windbg</p>
+<figure><img loading="lazy" src="img/67/128.png" alt="Captura 128 del tute 67"></figure>
+<p>Veamos como quedo la dirección donde supuestamente estará copiando el NEXT, recordemos que cuando armaba el source ponemos 0x44444444 para que pise el NEXT y la dirección del SEH seria 0x4037f0.</p>
+<figure><img loading="lazy" src="img/67/129.png" alt="Captura 129 del tute 67"></figure>
+<p>Ese de la imagen de arriba era el source veamos si quedo bien pisado en el stack.</p>
+<figure><img loading="lazy" src="img/67/130.png" alt="Captura 130 del tute 67"></figure>
+<p>Allí esta, paro en el breakpoint on write justo después de copiar el NEXT y ahora copiara el SEH, apreto f7.</p>
+<figure><img loading="lazy" src="img/67/131.png" alt="Captura 131 del tute 67"></figure>
+<p>Ahí copio el SEH</p>
+<p>También puedo verlo en IDA</p>
+<figure><img loading="lazy" src="img/67/132.png" alt="Captura 132 del tute 67"></figure>
+<p>Por supuesto el modulo del exploit donde saltara lo compile sin DEP y sin SAFE SEH pues es parte de la explotación, si lo hiciera de Python no habría problema, habría que crear una zona de memoria darle permiso de ejecución con VirtualAlloc, copiar el código allí, y poner la dirección de dicha zona como SEH.</p>
+<p>No olvidemos que esto es un Privilege Escalation, así que nosotros ya tenemos ejecución de código en la maquina pero con un usuario normal, la idea es escalar a system, así que podemos hacer cosas en la maquina limitadas por nuestro privilegio, pero correr un exe del mismo privilegio es una de ellas, y eso es el exploit, lo mismo si fuera en Python, ahí deberíamos instalar Python para poder ejecutar el .py.</p>
+<p>Veamos la rutina del manejador de excepciones.</p>
+<figure><img loading="lazy" src="img/67/133.png" alt="Captura 133 del tute 67"></figure>
+<p>Ya había creado el segmento lo transformo en código con C y creo la función.</p>
+<figure><img loading="lazy" src="img/67/134.png" alt="Captura 134 del tute 67"></figure>
+<p>Allí no puedo poner breakpoints en un debugger en USER en el target, pero aquí sí.</p>
+<figure><img loading="lazy" src="img/67/135.png" alt="Captura 135 del tute 67"></figure>
+<p>Lo pongo en el Windbg, podría ponerlo en el IDA también, luego doy RUN.</p>
+<p>Allí paro, nuestro manejador de excepciones funciono.</p>
+<figure><img loading="lazy" src="img/67/136.png" alt="Captura 136 del tute 67"></figure>
+<p>Por supuesto el código es el shellcode ya visto de Token Stealer que ya ha sido analizado en tutoriales anteriores.</p>
+<p>El error en el código fuente estaba en la zona marcada después de volver de robar el token de system y guardarlo para elevar nuestro proceso, hay un POPAD que restaura los registros guardados al inicio con PUSHAD, y luego no es tan sencillo volver de kernel de una excepción a user sin romperse, por eso seguimos el consejo de la página original, usar SYSEXIT.</p>
+<figure><img loading="lazy" src="img/67/137.png" alt="Captura 137 del tute 67"></figure>
+<p>A EDX hay que mover el EIP donde volverá al retornar a USER y en ECX el ESP, en mi caso como lo compile sin ASLR le puse en EDX la dirección justo debajo del call a DeviceIoControl y en ESP una dirección del stack principal 0x12ff00 que no es el mismo valor que estaba ejecutando antes de la llamada a DeviceIoControl, pero como lo guarde en la sección data al valor de ESP que tenía, al volver podre restaurar el ESP correcto.</p>
+<p>En el otro IDA con el análisis del módulo del exploit veo la dirección donde volveré.</p>
+<figure><img loading="lazy" src="img/67/138.png" alt="Captura 138 del tute 67"></figure>
+<p>En el IDA actual que estoy debuggeando puedo ver la misma parte del código.</p>
+<figure><img loading="lazy" src="img/67/139.png" alt="Captura 139 del tute 67"></figure>
+<p>Puedo poner un breakpoint allí.</p>
+<figure><img loading="lazy" src="img/67/140.png" alt="Captura 140 del tute 67"></figure>
+<p>Borro los breakpoints anteriores</p>
+<figure><img loading="lazy" src="img/67/141.png" alt="Captura 141 del tute 67"></figure>
+<p>Doy RUN</p>
+<figure><img loading="lazy" src="img/67/142.png" alt="Captura 142 del tute 67"></figure>
+<p>Veo que volví a USER con EIP y ESP que yo había seteado antes del SYSEXIT.</p>
+<p>Ahí restaure el ESP leyéndolo de donde lo había guardado en la sección data 0x4212b0.</p>
+<figure><img loading="lazy" src="img/67/143.png" alt="Captura 143 del tute 67"></figure>
+<p>Ahora ejecutare la calculadora o el código que quiera como system aquí, podría por ejemplo inyectar código en algún proceso SYSTEM y saldré.</p>
+<figure><img loading="lazy" src="img/67/144.png" alt="Captura 144 del tute 67"></figure>
+<p>Quito todos los breakpoints y doy RUN</p>
+<figure><img loading="lazy" src="img/67/145.png" alt="Captura 145 del tute 67"></figure>
+<figure><img loading="lazy" src="img/67/146.png" alt="Captura 146 del tute 67"></figure>
+<p>Veamos que usuario es el owner.</p>
+<figure><img loading="lazy" src="img/67/147.png" alt="Captura 147 del tute 67"></figure>
+<p>Listo ya terminé, pude elevar privilegios a SYSTEM.</p>
+<p>Adjunto un zip con el código fuente modificado y el ejecutable compilado, recuerden que si lo compilan por ustedes mismos deben hacerlo sin DEP sin SAFE SEH y sin ASLR y que corre en windows 7 32 bits y ajustar si le agregan código el valor de retorno o sea EIP y ESP antes del SYSEXIT sino se romperá al volver.</p>
+<p>Nos vemos en la parte 68</p>
+<p>Un abrazo</p>
+<p>Ricardo Narvaja</p>
+</main>
+<footer class="pie">
+  <p>Material educativo y defensivo. Las prácticas se limitan a programas propios, software abierto o crackmes diseñados para aprender. No se enseña a eludir licencias, DRM ni controles de acceso.</p>
+  <p><a href="../00_EMPEZAR_AQUI.html">Inicio</a> · <a href="../guia/etapa-0.html">Etapas</a> · <a href="../fuentes_y_limites.html">Fuentes y límites</a> · <a href="../registro_de_cobertura.csv">Registro de cobertura</a></p>
+</footer>
+<script>
+(function(){
+  function abrir(src){
+    var o=document.createElement('div'); o.className='lightbox-ov';
+    var i=document.createElement('img'); i.src=src; o.appendChild(i);
+    function cerrar(){o.remove(); document.removeEventListener('keydown', onkey);}
+    function onkey(e){ if(e.key==='Escape') cerrar(); }
+    o.addEventListener('click', cerrar);
+    document.addEventListener('keydown', onkey);
+    document.body.appendChild(o);
+  }
+  document.addEventListener('DOMContentLoaded', function(){
+    document.querySelectorAll('figure img, main img').forEach(function(img){
+      img.style.cursor='zoom-in';
+      img.addEventListener('click', function(){ abrir(img.currentSrc||img.src); });
+    });
+  });
+})();
+</script>
+</body>
+</html>

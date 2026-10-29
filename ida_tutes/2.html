@@ -1,0 +1,189 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tute 2 · Sistemas de numeración — Curso IDA</title>
+<meta name="description" content="Tutorial ilustrado del tute 2 del Curso IDA desde cero: Sistemas de numeración.">
+<link rel="stylesheet" href="../guia/estilo.css">
+</head>
+<body>
+<a class="salto" href="#contenido">Saltar al contenido</a>
+<header class="cabecera">
+  <div class="marca"><a href="../00_EMPEZAR_AQUI.html">CLS · Curso de reversing</a> <span class="edicion">edición 5 · 27/10/2026</span></div>
+  <nav class="principal" aria-label="Navegación principal">
+    <a href="../00_EMPEZAR_AQUI.html">Inicio</a>
+    <a href="../guia/index.html">Curso</a>
+    <a href="../fichas/index.html">Fichas</a>
+    <a href="../glosario.html">Glosario</a>
+    <a href="../preguntas_y_respuestas.html">Repaso</a>
+  </nav>
+</header>
+<main id="contenido">
+<p class="migas"><a href="../ida-tutes.html">← Índice de los 69 tutes de IDA</a></p>
+<h1>Tute 2 · Sistemas de numeración</h1>
+<p class="meta-tute"><strong>⏱ 8 min de lectura</strong> · 1.464 palabras · 32 capturas · grupo: Base de IDA, assembly y primeras prácticas</p>
+<aside class="callout nota"><p class="callout-titulo">Qué enseña</p><p>Repaso base para arrancar de cero: binario, decimal, hexadecimal, bits y bytes.</p></aside>
+<p><em>▶ video afín (mismo autor, en x64dbg):</em> <a href="../videos.html">«03 Registros, Flags y Números»</a> · <em>se conecta con:</em> <a href="../guia/02-herramientas.html">Herramientas</a> · <a href="../guia/02-ida.html">IDA</a> · <a href="../guia/02-instrucciones.html">Instrucciones</a> · <a href="../guia/02-flujo.html">Flujo</a> · <a href="../guia/02-debugger.html">Debugger</a> · <a href="../guia/01-numeros.html">Números</a></p>
+<aside class="callout aviso"><p class="callout-titulo">Material observado, no reescrito</p><p>Es el texto y las capturas del <code>.docx</code> original del curso, solo presentados como tutorial. Puede tener erratas de origen. El autor del curso es Ricardo Narvaja.</p></aside>
+<hr>
+<p>INTRODUCCIÓN AL REVERSING CON IDA PRO DESDE CERO PARTE 2.</p>
+<p>Como este es un curso desde cero hay cosas que al inicio muchos ya sabrán, podrán saltearlas si quieren, pero para la mayoría que no lo saben, será creo yo importante y por eso las agregamos.</p>
+<p>SISTEMA NUMERICO</p>
+<p>Los tres sistemas numéricos que más se utilizan son el binario el decimal y el hexadecimal.</p>
+<p>El concepto básico que deben tener de ellos es el siguiente:</p>
+<p>BINARIO: Se representa los números con dos caracteres el 0 y 1 por eso se llama BINARIO.</p>
+<p>DECIMAL: Se representa todos los números con 10 caracteres (del 0 al 9) por eso se llama decimal.</p>
+<p>HEXADECIMAL: Se representa todos los números con caracteres del 0 al F (del 0 al 9,  mas A, B, C, D, E  y F, o sea serian 16 caracteres en total).</p>
+<p>Vemos en la IDA en la parte inferior una barra para ejecutar comandos de PYTHON esto nos servirá para poder pasar de uno a otro fácilmente.</p>
+<p>Si no le aparece la barra de Python, desinstalar IDA, desinstalar Python y volver a instalar IDA y el Python que trae incluido.</p>
+<figure><img loading="lazy" src="img/2/1.png" alt="Captura 1 del tute 2"></figure>
+<p>Si tipeo por ejemplo 0x45 lo interpreta al tener el 0x delante como un numero hexadecimal, podremos convertir de hexadecimal a decimal solo apretando ENTER.</p>
+<figure><img loading="lazy" src="img/2/2.png" alt="Captura 2 del tute 2"></figure>
+<p>Al apretar</p>
+<figure><img loading="lazy" src="img/2/3.png" alt="Captura 3 del tute 2"></figure>
+<p>Nos da 69 que es 0x45 hexadecimal pasado a decimal.</p>
+<p>Si queremos hacer la conversión al revés debemos usar la función hex()</p>
+<figure><img loading="lazy" src="img/2/4.png" alt="Captura 4 del tute 2"></figure>
+<p>Para pasar a binario usando bin()</p>
+<figure><img loading="lazy" src="img/2/5.png" alt="Captura 5 del tute 2"></figure>
+<figure><img loading="lazy" src="img/2/6.png" alt="Captura 6 del tute 2"></figure>
+<p>El resultado es 1000101 el 0b delante significa binario, podemos pasar de binario a decimal o a hexadecimal.</p>
+<figure><img loading="lazy" src="img/2/7.png" alt="Captura 7 del tute 2"></figure>
+<figure><img loading="lazy" src="img/2/8.png" alt="Captura 8 del tute 2"></figure>
+<p>O sea como resumen cualquier numero escrito directamente al apretar ENTER se mostrara el resultado en decimal, para pasarlo a HEXA o BINARIO deberemos usar las funciones de Python hex() o bin().</p>
+<p>Para manejarnos en la conversión también IDA posee una calculadora integrada para convertir, en VIEW-CALCULATOR con lo cual podremos ver un número convertido a todos los sistemas numéricos a la vez, además de si corresponde el valor a algún carácter ascII, como en este caso 0x45 es la E.</p>
+<figure><img loading="lazy" src="img/2/9.png" alt="Captura 9 del tute 2"></figure>
+<p>NUMEROS NEGATIVOS en HEXADECIMAL</p>
+<p>Ahora en casi todo momento trabajaremos en hexadecimal, pero la pregunta es cómo se representa un numero hexadecimal negativo en 32 bits?</p>
+<p>Si en un número binario de 32 bits usamos el primer bit para significar si es cero que es positivo y si es uno que es negativo.</p>
+<figure><img loading="lazy" src="img/2/10.png" alt="Captura 10 del tute 2"></figure>
+<p>Vemos que un valor como por ejemplo -0x45 en hexadecimal se puede representar como 0xffffffbb y que su primer byte en binario es 1.</p>
+<p>De esta forma el mínimo valor positivo obviamente es cero (aunque cero no es positivo ni negativo jeje) pero cuál sería el mayor valor positivo que podemos representar?</p>
+<figure><img loading="lazy" src="img/2/11.png" alt="Captura 11 del tute 2"></figure>
+<p>Vemos que en binario, si llenamos todo con 1 menos el primer bit que usamos para el signo,  el 0x7fffffff es el máximo positivo si consideramos el signo, además al sumarle uno ya estando todos los otros bits a uno, deberá cambiar el bit de signo a 1.</p>
+<p>Si le sumamos uno</p>
+<figure><img loading="lazy" src="img/2/12.png" alt="Captura 12 del tute 2"></figure>
+<p>Vemos que el primer bit cambia a 1 y todos los restantes se ponen a cero.</p>
+<p>El tema es que este evaluador considera los números como todos positivos al dar el resultado salvo que le pasemos nosotros el valor negativo, por ejemplo.</p>
+<figure><img loading="lazy" src="img/2/13.png" alt="Captura 13 del tute 2"></figure>
+<p>Vemos que el valor mínimo negativo o sea -1 corresponde a 0xFFFFFFFF y el valor máximo negativo será 0x80000000.</p>
+<p>O sea que cuando en una operación no se considere el signo entonces los valores serán todos positivos desde 0 hasta 0xFFFFFFFF.</p>
+<p>Mientras que si una operación considera el signo tendremos los positivos desde 0x0 a 0x7FFFFFFF y los negativos desde 0xFFFFFFFF a 0x80000000.</p>
+<p>POSITIVOS</p>
+<pre class='asm'>000000000 es igual a 0 decimal
+000000001 es igual a 1 decimal</pre>
+<p>………………………………..</p>
+<p>………………………………..</p>
+<pre class='asm'>7FFFFFFF es igual a 2147483647 decimal (que sería el máximo positivo)</pre>
+<p>NEGATIVOS</p>
+<pre class='asm'>FFFFFFFF sería el -1 decimal
+FFFFFFFE seria el -2 decimal</pre>
+<p>………………………………</p>
+<p>………………………………</p>
+<pre class='asm'>80000000  seria -2147483648 decimal (que sería el máximo negativo)</pre>
+<figure><img loading="lazy" src="img/2/14.png" alt="Captura 14 del tute 2"></figure>
+<p>CARACTERES ASCII</p>
+<p>Uno de los temas que debemos conocer también es la forma en que nuestro sistema escribe datos en la pantalla, para eso asigna a cada carácter un valor hexadecimal, de forma que puede interpretar los mismos como si fueran letras, números símbolos etc.</p>
+<p>Vemos a continuación en la primera columna el valor decimal, en la segunda columna el valor hexadecimal y en la tercera el carácter o sea por ejemplo si quiero escribir un espacio, tengo que usar el 0x20 o 32 decimal, cualquier carácter que necesitemos, sea letra o numero podemos verlo en esta tablita.</p>
+<p>Dec.Hex.Caract.Dec.Hex.Caract.Dec.Hex.Caract.3220esp6440@9660`3321!6541A9761a3422"6642B9862b3523#6743C9963c3624$6844D10064d3725%6945E10165e3826&amp;7046F10266f3927'7147G10367g4028(7248H10468h4129)7349I10569i422A*744AJ1066Aj432B+754BK1076Bk442C,764CL1086Cl452D-774DM1096Dm462E.784EN1106En472F/794FO1116Fo483008050P11270p493118151Q11371q503228252R11472r513338353S11573s523448454T11674t533558555U11775u543668656V11876v553778757W11977w563888858X12078x573998959Y12179y583A:905AZ1227Az593B;915B[1237B{603C&lt;925C\1247C|613D=935D]1257D}623E&gt;945E^1267E~633F?955F_1277F</p>
+<p>Como vimos IDA en esa calculadora que evalúa expresiones tiene para mostrar los caracteres correspondientes como vimos en el caso del 0x45 que era el carácter ascII correspondiente a  E.</p>
+<figure><img loading="lazy" src="img/2/15.png" alt="Captura 15 del tute 2"></figure>
+<figure><img loading="lazy" src="img/2/16.png" alt="Captura 16 del tute 2"></figure>
+<p>También en la barra de Python usando la función chr() obtenemos el carácter ascII.</p>
+<figure><img loading="lazy" src="img/2/17.png" alt="Captura 17 del tute 2"></figure>
+<p>En la ventana HEX DUMP también tenemos una columna que muestra  los caracteres ascII.</p>
+<figure><img loading="lazy" src="img/2/18.png" alt="Captura 18 del tute 2"></figure>
+<p>Allí vemos el 45 que se encuentra en la columna de la derecha que corresponde al caracter E.</p>
+<p>POSIBILIDADES DE BUSQUEDA</p>
+<p>Vemos que en el menú esta SEARCH y si estamos en la pestaña del desensamblado o IDA-VIEW, allí podemos ver múltiples opciones de búsqueda que con muy sencillas de interpretar.</p>
+<p>Si cambiamos a la ventana de desensamblado y no aparecen los submenús de SEARCH, deberemos clickear en alguna instrucción para que se cambie el foco y aparezcan.</p>
+<p>Algunas opciones que se ven en la imagen siguiente corresponden a plugins agregados a mi IDA y no les aparecerán en la versión 6.8 sin tenerlos instalados.</p>
+<figure><img loading="lazy" src="img/2/19.png" alt="Captura 19 del tute 2"></figure>
+<p>NEXT CODE</p>
+<p>Buscará la próxima instrucción que haya sido interpretada como CODIGO, si hay una parte que no es detectada como código la salteara.</p>
+<p>Search completed. Found at 004011A1.</p>
+<p>Search completed. Found at 004011A3.</p>
+<p>Search completed. Found at 004011A5.</p>
+<p>Search completed. Found at 004011AA.</p>
+<p>Search completed. Found at 004011AC.</p>
+<p>Search completed. Found at 004011AF.</p>
+<p>Search completed. Found at 004011B6.</p>
+<p>NEXT DATA</p>
+<p>Buscará la próxima dirección donde haya detectado data o manejo de datos en cualquier sección.</p>
+<figure><img loading="lazy" src="img/2/20.png" alt="Captura 20 del tute 2"></figure>
+<p>Como en ese caso detecto un dword (dd) en esa dirección que no corresponde a ninguna instrucción, obviamente si seguimos buscando buscara la siguiente data en este caso se ve debajo la sección data si vuelvo a buscar.</p>
+<figure><img loading="lazy" src="img/2/21.png" alt="Captura 21 del tute 2"></figure>
+<p>Veo que para en una dirección donde a la derecha hay una referencia por lo tanto es un lugar donde trabajara con datos.</p>
+<p>Y así va salteando las direcciones que solo contienen ceros y no hay ninguna referencia, y nos va mostrando donde hay datos que posiblemente el programa use.</p>
+<p>Search completed. Found at 00402004.</p>
+<p>Search completed. Found at 00402048.</p>
+<figure><img loading="lazy" src="img/2/22.png" alt="Captura 22 del tute 2"></figure>
+<p>Así que salteara lo que no está detectado como data usada por el programa y buscara la siguiente.</p>
+<p>SEARCH EXPLORED Y UNEXPLORED</p>
+<p>En el primero salteara por código o data que detecto y en el segundo por las zonas no detectadas como código o data valido.</p>
+<figure><img loading="lazy" src="img/2/23.png" alt="Captura 23 del tute 2"></figure>
+<p>La zona con ceros que están en 0x402000 la halla con SEARCH UNEXPLORED.</p>
+<p>Search completed. Found at 00402000.</p>
+<p>Search completed. Found at 00402000.</p>
+<p>Search completed. Found at 00402001.</p>
+<p>Search completed. Found at 00402001.</p>
+<p>Search completed. Found at 00402002.</p>
+<p>Search completed. Found at 00402003.</p>
+<p>Search completed. Found at 00402008</p>
+<p>Repitiendo vemos que saltea la data de 0x402004 pues es la considera EXPLORED.</p>
+<p>SEARCH INMEDIATE VALUE - SEARCH NEXT INMEDIATE VALUE</p>
+<p>Buscará la constante que le escribamos entre las instrucciones y la data.</p>
+<figure><img loading="lazy" src="img/2/24.png" alt="Captura 24 del tute 2"></figure>
+<p>Si tipeamos FIND ALL OCURRENCES buscara todas y sino buscara una a una, en este caso para repetir deberé usar SEARCH NEXT INMEDIATE VALUE.</p>
+<figure><img loading="lazy" src="img/2/25.png" alt="Captura 25 del tute 2"></figure>
+<p>SEARCH TEXT –SEARCH NEXT TEXT</p>
+<p>Buscará el texto que le tipeemos inclusive regular expressions si queremos.</p>
+<figure><img loading="lazy" src="img/2/26.png" alt="Captura 26 del tute 2"></figure>
+<figure><img loading="lazy" src="img/2/27.png" alt="Captura 27 del tute 2"></figure>
+<p>Si ponemos buscar solo una necesitaremos SEARCH NEXT TEXT para buscar la siguiente.</p>
+<p>SEARCH SEQUENCE OF BYTES</p>
+<figure><img loading="lazy" src="img/2/28.png" alt="Captura 28 del tute 2"></figure>
+<p>Buscará la secuencia de bytes hexadecimal que tipeemos entre los bytes del ejecutable.</p>
+<figure><img loading="lazy" src="img/2/29.png" alt="Captura 29 del tute 2"></figure>
+<p>Si hacemos doble click en la primera por ejemplo</p>
+<p>Y en las opciones del IDA marcamos 6 para que nos muestre por ejemplo solo 6 bytes como máximo correspondientes a cada instrucción.</p>
+<figure><img loading="lazy" src="img/2/30.png" alt="Captura 30 del tute 2"></figure>
+<p>Vemos que encontró los 90 90 que le pedimos.</p>
+<figure><img loading="lazy" src="img/2/31.png" alt="Captura 31 del tute 2"></figure>
+<p>SEARCH NOT FUNCTION</p>
+<p>Busca hasta la siguiente dirección donde encuentra algo no interpretado como función completa.</p>
+<p>Search completed. Found at 004013D7.</p>
+<figure><img loading="lazy" src="img/2/32.png" alt="Captura 32 del tute 2"></figure>
+<p>Allí hay un RET suelto no interpretado como función así que lo halla, a veces hay funciones que IDA no logro determinar que son funciones pero son código valido.</p>
+<p>Esas son las funciones más importantes de búsqueda que trae en el menú el IDA, por supuesto al tener la posibilidad de manejar scripts de Python, siempre se puede crear mayores posibilidades con algunas líneas de código.</p>
+<p>Vemos que cada búsqueda que realizamos no se perderá pues se abre una pestaña con el resultado y siempre quedara allí hasta que cerremos la pestaña correspondiente.</p>
+<p>Vamos paso a paso sin apurar para que nadie se complique que hay mucho para ver.</p>
+<p>Hasta la parte 3</p>
+<p>Ricardo Narvaja</p>
+</main>
+<footer class="pie">
+  <p>Material educativo y defensivo. Las prácticas se limitan a programas propios, software abierto o crackmes diseñados para aprender. No se enseña a eludir licencias, DRM ni controles de acceso.</p>
+  <p><a href="../00_EMPEZAR_AQUI.html">Inicio</a> · <a href="../guia/etapa-0.html">Etapas</a> · <a href="../fuentes_y_limites.html">Fuentes y límites</a> · <a href="../registro_de_cobertura.csv">Registro de cobertura</a></p>
+</footer>
+<script>
+(function(){
+  function abrir(src){
+    var o=document.createElement('div'); o.className='lightbox-ov';
+    var i=document.createElement('img'); i.src=src; o.appendChild(i);
+    function cerrar(){o.remove(); document.removeEventListener('keydown', onkey);}
+    function onkey(e){ if(e.key==='Escape') cerrar(); }
+    o.addEventListener('click', cerrar);
+    document.addEventListener('keydown', onkey);
+    document.body.appendChild(o);
+  }
+  document.addEventListener('DOMContentLoaded', function(){
+    document.querySelectorAll('figure img, main img').forEach(function(img){
+      img.style.cursor='zoom-in';
+      img.addEventListener('click', function(){ abrir(img.currentSrc||img.src); });
+    });
+  });
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>2D.10 · IPC en Windows: named pipes, RPC y ALPC</title>
+<meta name="description" content="Distinguir mecanismos de comunicación entre procesos y revisar nombres, permisos, instancias, impersonación, endpoints y controles RPC sin explotación.">
+<link rel="stylesheet" href="../guia/estilo.css">
+</head>
+<body>
+<a class="salto" href="#contenido">Saltar al contenido</a>
+<header class="cabecera">
+  <div class="marca"><a href="../00_EMPEZAR_AQUI.html">CLS · Curso de reversing</a> <span class="edicion">edición 5 · 27/10/2026</span></div>
+  <nav class="principal" aria-label="Navegación principal">
+    <a href="../00_EMPEZAR_AQUI.html">Inicio</a>
+    <a href="../guia/index.html">Curso</a>
+    <a href="../materiales.html">Materiales</a>
+    <a href="../fichas/index.html">Fichas</a>
+    <a href="../glosario.html">Glosario</a>
+    <a href="../preguntas_y_respuestas.html">Repaso</a>
+    <a href="../buscar.html">Buscar</a>
+  </nav>
+</header>
+<main id="contenido">
+<nav class="migas" aria-label="Ubicación"><a href="../00_EMPEZAR_AQUI.html">Inicio</a><span aria-hidden="true">›</span><a href="../guia/index.html">Curso</a><span aria-hidden="true">›</span><span>Etapa 2 · 2D · Windows internals (optativa)</span></nav><h1 id="ipc-en-windows-named-pipes-rpc-y-alpc">IPC en Windows: named pipes, RPC y ALPC</h1>
+<aside class="callout aviso"><p class="callout-titulo">Rama optativa 2D</p><p>Se analizan mecanismos en programas propios o didácticos. No se buscan endpoints de terceros para enviarles datos ni se enseña a abusarlos.</p></aside>
+<aside class="callout nota"><p class="callout-titulo">Propósito</p><p>Reconocer IPC por evidencia estática/dinámica y explicar qué controles separan al cliente del servidor. Al terminar deberías poder decir, para un canal propio, <strong>quién puede abrirlo</strong>, <strong>quién puede hacerse pasar por servidor</strong>, <strong>con qué identidad actúa</strong> el servidor al atender y <strong>qué valida</strong> antes de procesar un mensaje.</p></aside>
+<p><strong>Prerrequisitos</strong></p>
+<ul><li><em>Obligatorios:</em> procesos e hilos (<a href="01-procesos.html">1.3</a>); objetos, handles, tokens y ACL (<a href="2d-01-objetos.html">2D.1</a>).</li><li><em>Recomendados:</em> COM/RPC (<a href="2d-06-com-interfaces.html">2D.6</a>, <a href="2d-08-dcom-rpc.html">2D.8</a>).</li></ul>
+<h2 id="diferencias">Diferencias</h2>
+<ul><li><strong>Named pipe:</strong> canal nombrado, local o de red según configuración; el nombre no es secreto. El servidor decide acceso con ACL y puede autenticar/impersonar clientes; revisá también framing, longitud y validación de mensajes.</li></ul>
+<p>Para reconstruir la estructura de los mensajes más allá del mecanismo IPC, seguí <a href="../guia/04-formatos-protocolos.html">4.5 · Reconstruir formatos y protocolos propios</a>.</p>
+<ul><li><strong>RPC:</strong> contrato de operaciones que puede comunicarse local o remotamente; el runtime gestiona transporte/marshalling según binding. Analizá interfaz, endpoint, identidad y autorización.</li><li><strong>ALPC:</strong> mecanismo local de bajo nivel usado por componentes de Windows. En reversing suele reconocerse por módulos, estructuras y trazas; la documentación pública del contrato es limitada y varía por versión. Se cubre conceptualmente, sin construir clientes de endpoints del sistema.</li></ul>
+<div class="tabla"><table>
+<thead><tr>
+<th></th>
+<th>Named pipe</th>
+<th>RPC</th>
+<th>ALPC</th>
+</tr></thead><tbody>
+<tr><td>Qué transporta</td><td>Bytes o mensajes</td><td>Llamadas a operaciones de una interfaz (IDL)</td><td>Mensajes locales del sistema</td></tr>
+<tr><td>Dónde se ve</td><td>Nombre <code>\\.\pipe\…</code>, handles de tipo archivo</td><td>UUID y versión de interfaz, secuencia de protocolo, endpoint</td><td>Módulos y trazas; poca documentación pública</td></tr>
+<tr><td>Control de acceso principal</td><td>Descriptor de seguridad del pipe</td><td>Autenticación + callback de seguridad + chequeos en cada operación</td><td>Interno del sistema</td></tr>
+<tr><td>Lo que lees en un análisis</td><td>Creación, apertura, ACL, modo, impersonación</td><td>Registro de interfaz, flags, protocolos, autenticación</td><td>Que existe, quién lo usa y qué evento registra</td></tr>
+</tbody></table></div>
+<h2 id="named-pipes-en-detalle">Named pipes en detalle</h2>
+<p><strong>Nombres y alcance.</strong> Un servidor crea <code>\\.\pipe\nombre</code> con <code>CreateNamedPipe</code>; el nombre no distingue mayúsculas y cualquiera que lo conozca puede <strong>intentar</strong> abrirlo. Un cliente de otro equipo puede llegar por la red con <code>\\servidor\pipe\nombre</code>, salvo que el servidor cree la instancia con <code>PIPE_REJECT_REMOTE_CLIENTS</code>, que rechaza automáticamente las conexiones remotas.</p>
+<p><strong>Descriptor de seguridad.</strong> Si el servidor pasa <code>NULL</code>, el pipe recibe un descriptor por defecto que, según la documentación, da control total a LocalSystem, a los administradores y al creador, y <strong>lectura</strong> a Everyone y a la cuenta anónima. Un servidor que atiende solo a su sesión puede restringir el acceso con el <em>logon SID</em>; Microsoft lo recomienda para impedir accesos desde otras sesiones o equipos.</p>
+<p><strong>Quién puede ser servidor.</strong> Para crear una instancia hace falta el derecho <code>FILE_CREATE_PIPE_INSTANCE</code> sobre el pipe. La documentación advierte que <code>FILE_GENERIC_WRITE</code> incluye ese derecho (comparte valor con <code>FILE_APPEND_DATA</code>), así que una ACL que da “escritura genérica” también deja <strong>crear instancias</strong>. Si el servidor real crea la primera con <code>FILE_FLAG_FIRST_PIPE_INSTANCE</code>, la llamada falla con <code>ERROR_ACCESS_DENIED</code> cuando el nombre ya existe: es la forma documentada de detectar que otro proceso ocupó el nombre antes.</p>
+<p><strong>Modo.</strong> Un pipe de tipo <strong>mensaje</strong> conserva los límites de cada escritura; uno de tipo <strong>byte</strong> no. El lado cliente arranca en modo byte aunque el servidor sea de mensajes. Para el análisis, esto define cómo hay que leer el protocolo: con mensajes, cada <code>WriteFile</code> es una unidad; con bytes, el protocolo necesita su propio <em>framing</em> (longitud, delimitador) y es ahí donde se validan tamaños.</p>
+<p><strong>Impersonación.</strong> El servidor puede llamar a <code>ImpersonateNamedPipeClient</code> para actuar con el token del cliente y volver a su propia identidad con <code>RevertToSelf</code>. Por defecto la impersonación es al nivel <code>SecurityImpersonation</code>, pero el <strong>cliente</strong> puede limitarla al abrir el pipe con <code>CreateFile</code> y la bandera <code>SECURITY_SQOS_PRESENT</code> (por ejemplo, a nivel identificación). Para el análisis importan tres preguntas: ¿el servidor impersona? ¿revierte en todas las rutas, incluidos los errores? ¿qué nivel pidió el cliente?</p>
+<div class="tabla"><table>
+<thead><tr>
+<th>Qué revisar en un pipe propio</th>
+<th>Evidencia</th>
+<th>Señal a explicar</th>
+</tr></thead><tbody>
+<tr><td>Nombre y proceso creador</td><td>Handle en el proceso servidor, argumentos de <code>CreateNamedPipe</code></td><td>Nombre predecible usado por un servicio privilegiado</td></tr>
+<tr><td>Descriptor de seguridad</td><td>DACL pasada al crear (o <code>NULL</code>)</td><td>Descriptor por defecto o ACL con <code>FILE_GENERIC_WRITE</code> amplio</td></tr>
+<tr><td>Primera instancia</td><td><code>FILE_FLAG_FIRST_PIPE_INSTANCE</code> en la primera creación</td><td>Sin la bandera, otro proceso pudo ocupar el nombre antes</td></tr>
+<tr><td>Clientes remotos</td><td><code>PIPE_REJECT_REMOTE_CLIENTS</code></td><td>Aceptación remota sin necesidad</td></tr>
+<tr><td>Modo y framing</td><td>Tipo byte/mensaje, prefijo de longitud</td><td>Longitud leída del mensaje sin tope</td></tr>
+<tr><td>Impersonación</td><td><code>ImpersonateNamedPipeClient</code> / <code>RevertToSelf</code></td><td>Rutas de error sin <code>RevertToSelf</code></td></tr>
+</tbody></table></div>
+<h2 id="rpc-en-detalle">RPC en detalle</h2>
+<p>Una interfaz RPC se define en <strong>IDL</strong> con un UUID y una versión; MIDL genera los stubs de cliente y servidor. El servidor registra la interfaz y elige <strong>secuencias de protocolo</strong>: <code>ncalrpc</code> (local), <code>ncacn_np</code> (sobre named pipes) o <code>ncacn_ip_tcp</code> (TCP, normalmente con endpoint dinámico resuelto por el mapeador de 2D.8).</p>
+<p>Tres lecturas de seguridad que Microsoft documenta y que cambian conclusiones:</p>
+<ul><li><strong>Los endpoints no aíslan interfaces.</strong> En un proceso con varios servidores RPC, <em>todas</em> las interfaces son invocables por <em>todos</em> los endpoints del proceso. Que tu componente registre solo <code>ncalrpc</code> no impide que lo llamen por un pipe o un socket que abrió otro componente del mismo proceso. Por eso un descriptor de seguridad sobre un endpoint no es un control efectivo; la recomendación es un <strong>callback de seguridad</strong> que verifique protocolo e identidad en cada llamada.</li><li><strong>Registrar autenticación no la exige.</strong> <code>RpcServerRegisterAuthInfo</code> agrega una <strong>opción</strong> de autenticación, no un requisito: un cliente no autenticado que podía conectarse sigue pudiendo, aunque luego fallen funciones como <code>RpcImpersonateClient</code>.</li><li><strong>Flags de registro.</strong> Con <code>RpcServerRegisterIf2</code>/<code>Ex</code>/<code>3</code>, <code>RPC_IF_ALLOW_LOCAL_ONLY</code> rechaza clientes remotos (con las excepciones que detalla la documentación para <code>ncacn_np</code>), y <code>RPC_IF_ALLOW_SECURE_ONLY</code> exige un nivel de autenticación mayor que <em>none</em>, <strong>sin</strong> garantizar que el usuario sea privilegiado: puede ser una cuenta de invitado.</li></ul>
+<p>Microsoft remarca que <code>ncalrpc</code> no es “seguro por ser local”: en un servidor de terminales, cientos de usuarios pueden llegar a un servicio local.</p>
+<h2 id="alpc">ALPC</h2>
+<p>ALPC es el mecanismo de mensajes locales que usan muchos componentes de Windows. Su contrato no está documentado para uso general y cambia entre versiones, así que el curso solo pide <strong>reconocerlo</strong>: qué proceso lo usa, que existe una clase de eventos ETW para ALPC (ver <a href="2d-12-etw.html">2D.12</a>) y que, si un análisis llega a ALPC, la conclusión debe apoyarse en la documentación del componente, no en suposiciones sobre el formato de los mensajes.</p>
+<h2 id="ejemplo-trabajado">Ejemplo trabajado</h2>
+<p><em>(Ejemplo ilustrativo de una app propia; los valores no son una captura.)</em></p>
+<pre><code class="lenguaje-text">BlocClient -&gt; \\.\pipe\BlocLab.Status -&gt; BlocService
+Mensaje: {version=1, request=GET_STATUS}
+Respuesta: {status=READY}
+Seguridad: ACL permite al usuario de la sesión; no acepta datos arbitrarios</code></pre>
+<p>El pipe sugiere el transporte, pero hay que confirmar el proceso propietario, ACL, modo de lectura y formato del protocolo. Un nombre predecible no implica vulnerabilidad por sí solo.</p>
+<p>Ficha del análisis, separando observación de inferencia:</p>
+<div class="tabla"><table>
+<thead><tr>
+<th>Dato</th>
+<th>Valor (ilustrativo)</th>
+<th>Tipo</th>
+</tr></thead><tbody>
+<tr><td>Creador del pipe</td><td><code>BlocService.exe</code>, cuenta de servicio de laboratorio</td><td>Observación (handle y proceso)</td></tr>
+<tr><td>Flags de creación</td><td><code>PIPE_ACCESS_DUPLEX</code>, <code>FILE_FLAG_FIRST_PIPE_INSTANCE</code>, <code>PIPE_TYPE_MESSAGE</code>, <code>PIPE_REJECT_REMOTE_CLIENTS</code></td><td>Observación (argumentos en el código o el depurador)</td></tr>
+<tr><td>DACL</td><td>Lectura/escritura al <em>logon SID</em> de la sesión; control total a SYSTEM</td><td>Observación (<code>GetSecurityInfo</code> en el lab)</td></tr>
+<tr><td>Impersonación</td><td><code>ImpersonateNamedPipeClient</code> antes de leer la configuración del usuario; <code>RevertToSelf</code> en salida normal y en error</td><td>Observación en código propio</td></tr>
+<tr><td>Validación</td><td>Mensaje de tamaño fijo; versión distinta de 1 se rechaza</td><td>Observación en código propio</td></tr>
+<tr><td>“Ningún otro proceso puede hacerse pasar por servidor”</td><td>—</td><td>Inferencia: la sostiene la primera instancia con bandera, no el nombre</td></tr>
+</tbody></table></div>
+<h2 id="práctica">Práctica</h2>
+<p>Con un cliente/servidor propios ya preparados:</p>
+<ol><li>Listá los pipes visibles en la VM solo para ubicar el tuyo (en PowerShell, <code>Get-ChildItem \\.\pipe\</code> muestra nombres) y no abras pipes ajenos.</li><li>Inspeccioná en Process Explorer/Procmon la apertura del endpoint y seguí una sola solicitud inocua. Capturá nombre, PID, operación, respuesta y ACL observada.</li><li>Completá la tabla “Qué revisar en un pipe propio” con evidencia del código o del depurador.</li><li>Para RPC, usá el propio contrato local: anotá UUID/versión, secuencias de protocolo registradas, flags de registro y si hay callback de seguridad.</li><li>Para ALPC, describí una traza/documentación existente, sin enviar mensajes.</li></ol>
+<h2 id="entregable">Entregable</h2>
+<p>Diagrama de dos procesos, mecanismo IPC, endpoint, identidad, controles, esquema del mensaje y evidencia. Incluí la tabla de revisión del pipe (o del registro RPC) con observación/inferencia. Ocultá datos personales; no registres payloads sensibles.</p>
+<h2 id="repaso">Repaso</h2>
+<details class="qa"><summary>¿Un named pipe siempre es local?</summary><div class="respuesta"><p>No. Puede ser local o accesible por red según cómo se publique y la configuración del sistema/servidor; <code>PIPE_REJECT_REMOTE_CLIENTS</code> rechaza clientes remotos.</p></div></details>
+<details class="qa"><summary>¿Qué diferencia RPC de un pipe?</summary><div class="respuesta"><p>RPC expresa una llamada mediante una interfaz; un pipe es un canal de bytes/mensajes. RPC puede usar distintos transportes.</p></div></details>
+<details class="qa"><summary>¿Qué derecho permite crear instancias de un pipe y por qué importa una ACL con escritura genérica?</summary><div class="respuesta"><p><code>FILE_CREATE_PIPE_INSTANCE</code>. <code>FILE_GENERIC_WRITE</code> lo incluye, así que esa ACL también permite crear instancias, es decir, actuar como servidor.</p></div></details>
+<details class="qa"><summary>¿Para qué sirve <code>FILE_FLAG_FIRST_PIPE_INSTANCE</code>?</summary><div class="respuesta"><p>Hace que la creación falle si el nombre ya existe, así el servidor detecta que otro proceso ocupó el pipe antes.</p></div></details>
+<details class="qa"><summary>¿Quién controla hasta dónde puede impersonar un servidor de pipe?</summary><div class="respuesta"><p>El cliente, con <code>SECURITY_SQOS_PRESENT</code> y el nivel elegido al abrir el pipe; por defecto es <code>SecurityImpersonation</code>.</p></div></details>
+<details class="qa"><summary>Un servidor RPC registra solo <code>ncalrpc</code>. ¿Queda accesible solo localmente?</summary><div class="respuesta"><p>No necesariamente: en un proceso con otros servidores RPC, la interfaz es invocable por cualquier endpoint del proceso. Se controla con un callback de seguridad.</p></div></details>
+<details class="qa"><summary>¿<code>RpcServerRegisterAuthInfo</code> impide que se conecten clientes no autenticados?</summary><div class="respuesta"><p>No. Agrega una opción de autenticación, no un requisito; hacen falta chequeos propios.</p></div></details>
+<details class="qa"><summary>¿Por qué ALPC se trata como concepto?</summary><div class="respuesta"><p>Es una interfaz interna de bajo nivel con contratos menos estables; el curso enseña reconocimiento, no clientes de endpoints del sistema.</p></div></details>
+<aside class="callout nota"><p class="callout-titulo">Puerta optativa</p><p>Podés distinguir pipe, RPC y ALPC, seguir un intercambio propio, revisar ACL, primera instancia, clientes remotos, modo e impersonación de un pipe, y explicar por qué en RPC el control debe estar en el callback de seguridad y no en el endpoint.</p></aside>
+<aside class="callout nota"><p class="callout-titulo">Lo que queda fuera</p><p>El protocolo de red de los pipes remotos, el formato interno de RPC (NDR), los mensajes ALPC, mailslots, memoria compartida y otros mecanismos IPC no se desarrollan. No se enseña a enviar datos a pipes ni a endpoints RPC ajenos.</p></aside>
+<h2 id="fuentes">Fuentes</h2>
+<ul><li>Microsoft Learn: <a href="https://learn.microsoft.com/en-us/windows/win32/ipc/interprocess-communications" rel="noopener" target="_blank">Interprocess Communications</a>, <a href="https://learn.microsoft.com/en-us/windows/win32/ipc/named-pipes" rel="noopener" target="_blank">Named Pipes</a>, <a href="https://learn.microsoft.com/en-us/windows/win32/rpc/rpc-start-page" rel="noopener" target="_blank">RPC</a>, <a href="https://learn.microsoft.com/en-us/windows/win32/etw/alpc" rel="noopener" target="_blank">ALPC ETW class</a>.</li><li>Microsoft Learn, pipes: <a href="https://learn.microsoft.com/en-us/windows/win32/api/winbase/nf-winbase-createnamedpipea" rel="noopener" target="_blank">CreateNamedPipe</a>, <a href="https://learn.microsoft.com/en-us/windows/win32/ipc/named-pipe-security-and-access-rights" rel="noopener" target="_blank">Named Pipe Security and Access Rights</a>, <a href="https://learn.microsoft.com/en-us/windows/win32/ipc/impersonating-a-named-pipe-client" rel="noopener" target="_blank">Impersonating a Named Pipe Client</a>, <a href="https://learn.microsoft.com/en-us/windows/win32/ipc/named-pipe-type-read-and-wait-modes" rel="noopener" target="_blank">Named Pipe Type, Read, and Wait Modes</a>.</li><li>Microsoft Learn, RPC seguro: <a href="https://learn.microsoft.com/en-us/windows/win32/rpc/writing-a-secure-rpc-client-or-server" rel="noopener" target="_blank">Writing a Secure RPC Client or Server</a>, <a href="https://learn.microsoft.com/en-us/windows/win32/rpc/be-wary-of-other-rpc-endpoints-running-in-the-same-process" rel="noopener" target="_blank">Be Wary of Other RPC Endpoints Running in the Same Process</a>, <a href="https://learn.microsoft.com/en-us/windows/win32/rpc/common-mistake-assuming-rpcserverregisterauthinfo-prevents-unauthorized-users-from-calling-your-server" rel="noopener" target="_blank">RpcServerRegisterAuthInfo doesn't deny unauthorized users</a>, <a href="https://learn.microsoft.com/en-us/windows/win32/rpc/interface-registration-flags" rel="noopener" target="_blank">Interface Registration Flags</a>, <a href="https://learn.microsoft.com/en-us/windows/win32/rpc/protocol-sequence-constants" rel="noopener" target="_blank">Protocol Sequence Constants</a>.</li><li><strong>CLS:</strong> call stack y procesos en <a href="01-procesos.html">1.3</a>; DCOM/RPC en <a href="2d-08-dcom-rpc.html">2D.8</a>.</li></ul>
+<aside class="callout nota"><p class="callout-titulo">Etiquetas</p><p><strong>Observado en CLS:</strong> procesos e IPC general. <strong>Conocimiento externo:</strong> IPC Windows, seguridad de named pipes y RPC. <strong>Ejemplo ilustrativo:</strong> protocolo y ficha BlocLab. <strong>Laboratorio verificado:</strong> no; ejemplo propio propuesto.</p></aside>
+</main>
+<footer class="pie">
+  <p>Material educativo y defensivo. Las prácticas se limitan a programas propios, software abierto o crackmes diseñados para aprender. No se enseña a eludir licencias, DRM ni controles de acceso.</p>
+  <p><a href="../00_EMPEZAR_AQUI.html">Inicio</a> · <a href="../guia/etapa-0.html">Etapas</a> · <a href="../fuentes_y_limites.html">Fuentes y límites</a> · <a href="../registro_de_cobertura.csv">Registro de cobertura</a></p>
+</footer>
+</body>
+</html>

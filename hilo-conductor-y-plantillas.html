@@ -1,0 +1,352 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hilo conductor multi-nivel y kit de plantillas C/C++</title>
+<meta name="description" content="Evolución de un mismo binario a través de los niveles Principiante, Intermedio y Avanzado, y 5 plantillas mínimas en C/C++ listas para compilar.">
+<link rel="stylesheet" href="guia/estilo.css">
+</head>
+<body>
+<a class="salto" href="#contenido">Saltar al contenido</a>
+<header class="cabecera">
+  <div class="marca"><a href="00_EMPEZAR_AQUI.html">CLS · Curso de reversing</a> <span class="edicion">edición 5 · rev. 5.2</span></div>
+  <nav class="principal" aria-label="Navegación principal">
+    <a href="00_EMPEZAR_AQUI.html">Inicio</a>
+    <a href="guia/index.html">Curso</a>
+    <a href="materiales.html">Materiales</a>
+    <a href="fichas/index.html">Fichas</a>
+    <a href="glosario.html">Glosario</a>
+    <a href="preguntas_y_respuestas.html">Repaso</a>
+    <a href="buscar.html">Buscar</a>
+  </nav>
+</header>
+<main id="contenido">
+<h1 id="hilo-conductor-multi-nivel-y-kit-de-plantillas-c-c">Hilo conductor multi-nivel y kit de plantillas C/C++</h1>
+<aside class="callout nota"><p class="callout-titulo">Propósito de esta sección transversal</p><p>Conectar de forma práctica los tres niveles del curso (Principiante, Intermedio y Avanzado). En la <strong>Parte I</strong> vemos cómo un único programa de validación (desde el <code>check.c</code> básico de la Etapa 1 hasta el componente <code>BlocLab</code> de las Etapas 2C, 2D y 6) cambia en el desensamblador y en el debugger a medida que evoluciona. En la <strong>Parte II</strong> tenés <strong>5 plantillas mínimas en C y C++</strong> listas para copiar y compilar en tu VM para practicar todas las lecciones intermedias y avanzadas sin depender de muestras externas.</p></aside>
+
+<h2 id="parte-i-el-hilo-conductor-un-mismo-binario-a-través-de-los-tres-niveles">Parte I · El hilo conductor: un mismo binario a través de los tres niveles</h2>
+<p>Una de las dificultades más comunes al estudiar reversing es sentir que cada tema nuevo (optimizaciones, TLS callbacks, packers, C++ con vtables, named pipes o drivers KMDF) pertenece a un mundo desconectado del anterior. Para unirlos, sigamos <strong>la misma regla de negocio</strong> en sus tres estadios de evolución:</p>
+<blockquote><p><strong>Regla de negocio constante:</strong> aceptar dos enteros <code>a</code> y <code>b</code> tales que <code>a &lt;= 50</code> (<code>0x32</code>), <code>b &gt;= 50</code> (<code>0x32</code>) y <code>(a + b) * 4 == 480</code> (<code>0x1E0</code>).</p></blockquote>
+
+<h3 id="estadio-1-nivel-principiante-check-v1-c-con-o0-frente-a-o2">Estadio 1 · Nivel Principiante: <code>check_v1.c</code> con <code>-O0</code> frente a <code>-O2</code> (Etapas 1, 2A y 4.1)</h3>
+<p>En el nivel Principiante escribimos la función en C puro y comparamos qué genera el compilador en x64 sin optimizaciones (<code>-O0</code> / <code>/Od</code>) frente a compilación optimizada (<code>-O2</code>):</p>
+<pre><code class="lenguaje-c">// Regla base en C (Lecciones 1.5, 2.4, 2.8 y 4.1)
+int validar_pares(int a, int b) {
+    if (a &gt; 50 || b &lt; 50) return 0;
+    return ((a + b) * 4) == 480;
+}</code></pre>
+<pre><code class="lenguaje-text">Compilación sin optimizar (-O0, x64)          Compilación optimizada (-O2, x64)
+──────────────────────────────────────────    ──────────────────────────────────────────
+validar_pares:                                validar_pares:
+  mov   dword ptr [rsp+8], ecx   ; guarda a     xor   eax, eax          ; resultado = 0 por defecto
+  mov   dword ptr [rsp+10h], edx ; guarda b     cmp   ecx, 32h          ; ¿a &gt; 50? (ECX = a)
+  cmp   dword ptr [rsp+8], 32h   ; ¿a &gt; 50?     jg    short salir       ; si a &gt; 50, retorna 0
+  jg    short fallo                             cmp   edx, 32h          ; ¿b &lt; 50? (EDX = b)
+  cmp   dword ptr [rsp+10h], 32h ; ¿b &lt; 50?     jl    short salir       ; si b &lt; 50, retorna 0
+  jl    short fallo                             lea    ecx, [rcx+rdx]    ; ecx = a + b (con LEA, 2.2)
+  mov   eax, dword ptr [rsp+8]                  cmp   ecx, 78h          ; ¡480 / 4 = 120 (0x78)!
+  add   eax, dword ptr [rsp+10h] ; eax = a+b    sete  al                ; AL = 1 si (a+b)==120 (2.4)
+  shl   eax, 2                   ; eax *= 4   salir:
+  cmp   eax, 1E0h                ; ¿== 480?     ret
+  jne   short fallo
+  mov   eax, 1
+  ret
+fallo:
+  xor   eax, eax
+  ret</code></pre>
+<p><strong>Qué aprende el alumno al comparar ambos listados:</strong></p>
+<ul>
+<li>Con <code>-O0</code> (izquierda) cada variable baja al <em>shadow space</em> (<code>[rsp+8]</code>, <code>[rsp+10h]</code>, <a href="guia/01-memoria.html">1.2</a> y <a href="guia/02-llamadas.html">2.5</a>) y la multiplicación por 4 se ve como <code>shl eax, 2</code> seguida de <code>cmp eax, 1E0h</code>.</li>
+<li>Con <code>-O2</code> (derecha) el compilador aplica reducción algebraica (<a href="guia/02-optimizaciones.html">2.8</a>): en lugar de multiplicar <code>(a + b) * 4</code> y comparar contra <code>480</code>, suma con <code>lea ecx, [rcx+rdx]</code> y compara directamente contra <code>120</code> (<code>0x78 = 480 / 4</code>), usando <code>sete al</code> en vez de un salto condicional. Si en <code>main</code> se elige entre <code>"Correcto"</code> e <code>"Incorrecto"</code>, <code>-O2</code> carga ambas direcciones con <code>lea</code> y selecciona una con <code>cmovne</code> (<a href="guia/04-metodo.html">4.1</a>).</li>
+</ul>
+
+<h3 id="estadio-2-nivel-intermedio-check-v2-c-con-tls-callback-xor-y-upx">Estadio 2 · Nivel Intermedio: <code>check_v2.c</code> con TLS Callback, XOR y UPX (Etapas 2B, 2.17, 2.21 y 4.2)</h3>
+<p>En el nivel Intermedio, el mismo programa incorpora tres capas que frustran el camino directo de Principiante:</p>
+<ol>
+<li><strong>Un TLS Callback previo a <code>main</code> (<a href="guia/02-tls.html">2.11</a> y <a href="guia/02-anti-analisis.html">2.15</a>):</strong> una función registrada en <code>.CRT$XLB</code> se ejecuta antes del entry point y consulta <code>IsDebuggerPresent()</code> (o lee <code>gs:[60h] &rarr; [peb+2]</code>). En lugar de mostrar un cartel evidente, si detecta un depurador cambia una variable global <code>g_objetivo</code> de <code>480</code> (<code>0x1E0</code>) a <code>999</code> (<code>0x3E7</code>). Quien pone el breakpoint directamente en <code>main</code> ve que <code>40</code> y <code>80</code> fallan sin entender quién alteró <code>g_objetivo</code>.</li>
+<li><strong>Cadenas ocultas con XOR (<a href="guia/02-ofuscacion.html">2.10</a> y <a href="guia/04-cripto.html">4.2</a>):</strong> la cadena <code>"Correcto"</code> ya no está en texto claro en <code>.rdata</code>; se almacena como <code>{0x19, 0x35, 0x28, 0x28, 0x3F, 0x39, 0x2E, 0x35, 0x00}</code> y un bucle corto aplica <code>xor byte ptr [rcx+rax], 5Ah</code> justo antes de imprimir.</li>
+<li><strong>Empaquetado didáctico con UPX (<a href="guia/02-packers.html">2.17</a>):</strong> al pasar el ejecutable por <code>upx -9 check_v2.exe</code>, las secciones originales se comprimen dentro de <code>UPX1</code> y la IAT queda reducida a <code>LoadLibraryA</code> y <code>GetProcAddress</code>.</li>
+</ol>
+<pre><code class="lenguaje-text"> Secuencia de resolución en el Nivel Intermedio:
+ 1. Triage PE-bear (1.4 / 2.17) ──► Secciones UPX0 (RawSize=0) y UPX1 (entropía 7,8)
+ 2. Desempaquetado en x64dbg (2.17) ──► Breakpoint de ejecución en memoria sobre UPX0
+                                    ──► F9 hasta caer en el OEP ──► Dump + Scylla IAT Fix
+ 3. Inspección del Dump en IDA/Ghidra (2.11 / 2.16) ──► Directorio TLS apunta a tls_callback_0
+                                                    ──► Se observa escritura a g_objetivo si BeingDebugged != 0
+ 4. Recuperación de cadena XOR (2.10 / 2.21) ──► Bucle xor [reg], 0x5A antes de puts
+                                             ──► Breakpoint de log en x64dbg: "msg={s:rcx}"</code></pre>
+
+<h3 id="estadio-3-nivel-avanzado-bloclab-en-c-ipc-y-kernel">Estadio 3 · Nivel Avanzado: <code>BlocLab</code> en C++, IPC y Kernel (Etapas 2C, 2D, 4.5, 5.2 y 6)</h3>
+<p>En el nivel Avanzado, la misma verificación vive dentro de una arquitectura realista de Windows:</p>
+<ul>
+<li><strong>Polimorfismo C++, RTTI, SSO y Excepciones (<a href="guia/02-cpp-profundo.html">2.18</a> y <a href="guia/2d-11-excepciones.html">2D.11</a>):</strong> un objeto derivado <code>ValidadorBloc</code> implementa el método virtual <code>verificar(const std::string&amp; etiqueta, const MensajeCLSF* m)</code>. En el listado vemos <code>mov rax, [rcx] ; call qword ptr [rax+8]</code>. Inspeccionando <code>vtable[-1]</code> en <code>.rdata</code> encontramos el <code>_RTTICompleteObjectLocator</code> (con RVAs en x64) que lleva al nombre <code>.?AVValidadorBloc@@</code>. Si los parámetros violan el rango, lanza una excepción C++ despachada por <code>__CxxFrameHandler4</code> a través de <code>.pdata</code> y <code>.xdata</code>.</li>
+<li><strong>Protocolo binario <code>CLSF</code> sobre Named Pipe (<a href="guia/04-formatos-protocolos.html">4.5</a> y <a href="guia/2d-10-ipc.html">2D.10</a>):</strong> en lugar de pedir números por consola con <code>scanf</code>, un proceso servidor crea <code>\.\pipe\BlocLabPipe</code> (con <code>FILE_FLAG_FIRST_PIPE_INSTANCE</code> y <code>PIPE_REJECT_REMOTE_CLIENTS</code>) y recibe una trama <code>CLSF</code> cuyos campos en offset <code>0x08</code> y <code>0x0A</code> transportan <code>a</code> y <code>b</code> en little-endian.</li>
+<li><strong>Auditoría de memoria y Kernel (<a href="guia/02-windbg-heap.html">2.19</a>, <a href="guia/02-patch-diffing.html">2.20</a> y <a href="guia/6-02-kmdf-ioctl.html">6.2</a>):</strong> si el parser copia el cuerpo del mensaje sin validar <code>body_len</code> contra el tamaño del buffer reservado en el heap, diagnosticamos el desborde con <strong>Full Page Heap</strong> y <strong>WinDbg TTD</strong> (<code>!heap -p -a</code> y <code>g-</code>), comparamos el binario vulnerable (<code>v1</code>) contra el corregido (<code>v2</code>) con <strong>BinDiff / Version Tracking</strong>, y verificamos cómo el servidor consulta la versión del subsistema mediante <code>DeviceIoControl(IOCTL_BLOCLAB_QUERY_VERSION = 0x80006000)</code> hacia el driver KMDF de laboratorio.</li>
+</ul>
+
+<div class="tabla"><table>
+<thead><tr>
+<th>Aspecto observable</th>
+<th>Estadio 1 · Principiante (<code>check_v1</code>)</th>
+<th>Estadio 2 · Intermedio (<code>check_v2</code>)</th>
+<th>Estadio 3 · Avanzado (<code>BlocLab</code>)</th>
+</tr></thead><tbody>
+<tr><td><strong>Punto de entrada a la lógica</strong></td><td><code>main</code> &rarr; <code>validar_pares</code> hallado por xref desde la string <code>"Correcto"</code></td><td>OEP tras desempaquetar UPX + <code>tls_callback</code> en directorio <code>.tls</code></td><td>Slot de <code>vtable</code> de <code>ValidadorBloc</code> invocado tras <code>ReadFile</code> del Named Pipe</td></tr>
+<tr><td><strong>Cómo llega la entrada</strong></td><td><code>scanf("%d", ...)</code> en variables locales del stack</td><td>Argumentos de consola + variable global condicionada por el TLS callback</td><td>Estructura binaria <code>CLSF</code> en el heap o buffer de <code>IRP</code> (<code>SystemBuffer</code> en KMDF)</td></tr>
+<tr><td><strong>Cómo se ven los textos</strong></td><td>ASCII plano terminado en <code>0</code> en <code>.rdata</code></td><td>Arreglo de bytes cifrado con <code>XOR 0x5A</code> descifrado en un bucle local</td><td><code>std::string</code> con <em>Small String Optimization</em> (SSO, 16B unión + 8B size + 8B cap)</td></tr>
+<tr><td><strong>Herramienta que destraba el caso</strong></td><td>IDA Free / Ghidra + breakpoint simple en x64dbg</td><td>PE-bear + x64dbg (breakpoint de memoria / Scylla) + traza condicional</td><td>RTTI en IDA/Ghidra + Frida + WinDbg (Page Heap / TTD) + revisión de <code>CTL_CODE</code></td></tr>
+</tbody></table></div>
+
+<hr>
+
+<h2 id="parte-ii-kit-de-5-plantillas-de-código-mínimo-boilerplates-listos-para-compilar">Parte II · Kit de 5 plantillas de código mínimo (Boilerplates listos para compilar)</h2>
+<p>Todas las prácticas del curso están pensadas para ejecutarse sobre <strong>programas propios en tu VM aislada</strong> (Etapa 0). Para que no tengas que escribir desde cero cada escenario técnico, acá tenés cinco esqueletos autocontenidos de ~35 líneas en C y C++ estándar (también guardados como archivos sueltos en la carpeta <code>plantillas_codigo/</code> del paquete HTML). Compilalos en la VM con <strong>Visual Studio Developer Command Prompt (<code>cl.exe</code>)</strong> o con <strong>MinGW-w64 (<code>gcc</code> / <code>g++</code>)</strong>.</p>
+
+<h3 id="plantilla-1-check-evolucion-c-práctica-para-1-5-2-4-2-8-2-10-2-11-2-15-2-17-y-4-1">Plantilla 1 · <code>check_evolucion.c</code> (Práctica para 1.5, 2.4, 2.8, 2.10, 2.11, 2.15, 2.17 y 4.1)</h3>
+<p>Un único archivo en C que podés compilar en modo Principiante (por defecto) o en modo Intermedio (pasando <code>/DMODO_INTERMEDIO</code> o <code>-DMODO_INTERMEDIO</code>), lo que activa un <strong>TLS Callback</strong> que comprueba <code>IsDebuggerPresent()</code> y una rutina de descifrado <strong>XOR</strong> sobre el mensaje de éxito:</p>
+<pre><code class="lenguaje-c">// Archivo: plantillas_codigo/check_evolucion.c
+// Compilar Principiante (MSVC): cl /Zi /Od check_evolucion.c /Fe:check_v1_O0.exe
+// Compilar Optimizado   (MSVC): cl /Zi /O2 check_evolucion.c /Fe:check_v1_O2.exe
+// Compilar Intermedio   (MSVC): cl /Zi /O1 /DMODO_INTERMEDIO check_evolucion.c /Fe:check_v2.exe
+// Compilar en MinGW-w64 (GCC) : gcc -O0 -g check_evolucion.c -o check_v1_O0.exe
+#include &lt;windows.h&gt;
+#include &lt;stdio.h&gt;
+#include &lt;stdlib.h&gt;
+
+static int g_objetivo = 480; // 0x1E0 en condiciones normales
+
+#ifdef MODO_INTERMEDIO
+static void NTAPI tls_antidebug(PVOID h, DWORD reason, PVOID res) {
+    (void)h; (void)res;
+    if (reason == DLL_PROCESS_ATTACH &amp;&amp; IsDebuggerPresent()) {
+        g_objetivo = 999; // Desvía la constante antes de entrar a main (Lecciones 2.11 y 2.15)
+    }
+}
+#ifdef _MSC_VER
+#pragma comment(linker, "/INCLUDE:_tls_used")
+#pragma section(".CRT$XLB", long, read)
+__declspec(allocate(".CRT$XLB")) PIMAGE_TLS_CALLBACK p_tls = tls_antidebug;
+#else
+PIMAGE_TLS_CALLBACK p_tls __attribute__((used, section(".CRT$XLB"))) = tls_antidebug;
+#endif
+#endif
+
+int validar_pares(int a, int b) {
+    if (a &gt; 50 || b &lt; 50) return 0;
+    return ((a + b) * 4) == g_objetivo;
+}
+
+int main(int argc, char** argv) {
+    int a = (argc &gt; 2) ? atoi(argv[1]) : 0;
+    int b = (argc &gt; 2) ? atoi(argv[2]) : 0;
+    if (argc &lt;= 2) {
+        printf("Primer valor: ");  if (scanf("%d", &amp;a) != 1) return 1;
+        printf("Segundo valor: "); if (scanf("%d", &amp;b) != 1) return 1;
+    }
+    if (validar_pares(a, b)) {
+#ifdef MODO_INTERMEDIO
+        // "Correcto" cifrado con XOR 0x5A (Lecciones 2.10 y 4.2)
+        unsigned char enc[] = {0x19, 0x35, 0x28, 0x28, 0x3F, 0x39, 0x2E, 0x35, 0x00};
+        for (int i = 0; enc[i] != 0; ++i) enc[i] ^= 0x5A;
+        puts((const char*)enc);
+#else
+        puts("Correcto");
+#endif
+        return 0;
+    }
+    puts("Incorrecto");
+    return 1;
+}</code></pre>
+
+<h3 id="plantilla-2-cpp-rtti-sso-cpp-práctica-para-2-18-y-2d-11">Plantilla 2 · <code>cpp_rtti_sso.cpp</code> (Práctica para 2.18 y 2D.11)</h3>
+<p>Genera en un solo binario: una jerarquía con herencia múltiple (para observar la <code>vtable</code>, el <code>_RTTICompleteObjectLocator</code> en <code>vtable[-1]</code> y un <em>adjustor thunk</em> <code>sub rcx, 8</code>), dos objetos <code>std::string</code> (uno corto en el buffer SSO de 16 bytes y otro largo en el heap), un <code>std::vector&lt;int&gt;</code> y un bloque <code>try/catch</code> con tablas en <code>.pdata</code>/<code>.xdata</code>:</p>
+<pre><code class="lenguaje-cpp">// Archivo: plantillas_codigo/cpp_rtti_sso.cpp
+// Compilar (MSVC FH4 actual): cl /EHsc /GR /Zi /O1 cpp_rtti_sso.cpp /Fe:cpp_fh4.exe
+// Compilar (MSVC FH3 clásico): cl /EHsc /GR /Zi /O1 /d2FH4- cpp_rtti_sso.cpp /Fe:cpp_fh3.exe
+// Compilar (MinGW ABI Itanium): g++ -O1 -g cpp_rtti_sso.cpp -o cpp_itanium.exe
+#include &lt;iostream&gt;
+#include &lt;string&gt;
+#include &lt;vector&gt;
+#include &lt;stdexcept&gt;
+#include &lt;typeinfo&gt;
+
+struct Componente {
+    int id = 0x10;
+    virtual ~Componente() = default;
+    virtual int evaluar(int a, int b) const = 0;
+};
+struct Auditable {
+    int nivel_log = 2;
+    virtual void registrar(const char* evento) const { std::cout &lt;&lt; "[LOG] " &lt;&lt; evento &lt;&lt; "\n"; }
+};
+class ValidadorBloc : public Componente, public Auditable {
+    std::string etiqueta_corta = "BLOC_SSO";                        // &lt; 16B: queda inline (SSO)
+    std::string etiqueta_larga = "BLOC_CADENA_LARGA_EN_EL_HEAP_2026"; // &gt;= 16B: reserva en heap
+    std::vector&lt;int&gt; historial = {40, 80, 120};
+public:
+    int evaluar(int a, int b) const override {
+        if (a &lt; 0 || b &lt; 0) throw std::runtime_error("Valores negativos no permitidos");
+        return (a &lt;= 50 &amp;&amp; b &gt;= 50 &amp;&amp; (a + b) * 4 == (int)historial[2] * 4) ? 1 : 0;
+    }
+    void registrar(const char* ev) const override {
+        std::cout &lt;&lt; "[" &lt;&lt; etiqueta_corta &lt;&lt; "|" &lt;&lt; etiqueta_larga.size() &lt;&lt; "] " &lt;&lt; ev &lt;&lt; "\n";
+    }
+};
+
+int main(int argc, char** argv) {
+    Componente* obj = new ValidadorBloc();
+    std::cout &lt;&lt; "RTTI: " &lt;&lt; typeid(*obj).name() &lt;&lt; "\n";
+    try {
+        int res = obj-&gt;evaluar(argc &gt; 1 ? std::stoi(argv[1]) : 40, 80);
+        dynamic_cast&lt;Auditable*&gt;(obj)-&gt;registrar(res ? "OK" : "FALLO");
+    } catch (const std::exception&amp; ex) {
+        std::cerr &lt;&lt; "Excepcion capturada: " &lt;&lt; ex.what() &lt;&lt; "\n";
+    }
+    delete obj;
+    return 0;
+}</code></pre>
+
+<h3 id="plantilla-3-heap-bug-c-práctica-para-2-19-2-20-y-5-2">Plantilla 3 · <code>heap_bug.c</code> (Práctica para 2.19, 2.20 y 5.2)</h3>
+<p>Diseñada con un doble propósito: (1) activar <strong>Full Page Heap</strong> (<code>gflags /p /enable heap_bug_v1.exe /full</code>) y ver en <strong>WinDbg</strong> cómo el proceso se detiene exactamente en la instrucción que escribe más allá de los 16 bytes reservados (en vez de fallar más tarde en <code>free</code>), y (2) compilar una versión vulnerable (<code>heap_bug_v1.exe</code>) y una corregida con <code>/DPARCHE_SEGURO</code> (<code>heap_bug_v2.exe</code>) para comparar ambas en <strong>BinDiff / Ghidra Version Tracking</strong> (<a href="guia/02-patch-diffing.html">2.20</a>):</p>
+<pre><code class="lenguaje-c">// Archivo: plantillas_codigo/heap_bug.c
+// Compilar v1 (vulnerable): cl /Zi /O1 heap_bug.c /Fe:heap_bug_v1.exe
+// Compilar v2 (parcheada) : cl /Zi /O1 /DPARCHE_SEGURO heap_bug.c /Fe:heap_bug_v2.exe
+// En la VM con Page Heap  : gflags /p /enable heap_bug_v1.exe /full
+// Ejecutar en WinDbg      : heap_bug_v1.exe AAAAAAAAAAAAAAAAAAAA  --&gt; !heap -p -a @rcx
+#include &lt;stdio.h&gt;
+#include &lt;stdlib.h&gt;
+#include &lt;string.h&gt;
+
+typedef struct {
+    char etiqueta[12];
+    unsigned int estado;
+} RegistroBloc; // sizeof(RegistroBloc) == 16 bytes exactos
+
+int procesar_entrada(const char* entrada) {
+    size_t len = strlen(entrada);
+    RegistroBloc* reg = (RegistroBloc*)malloc(sizeof(RegistroBloc));
+    if (!reg) return -1;
+    reg-&gt;estado = 0xCAFE0001u;
+
+#ifdef PARCHE_SEGURO
+    // Versión v2 corregida: valida el límite antes de copiar (Lecciones 2.20 y 5.2)
+    if (len &gt;= sizeof(reg-&gt;etiqueta)) {
+        puts("Error: entrada excede el buffer de 12 bytes");
+        free(reg);
+        return 1;
+    }
+    memcpy(reg-&gt;etiqueta, entrada, len + 1);
+#else
+    // Versión v1 con defecto didáctico: copia hasta 20 bytes en un bloque de 16 bytes (Lección 2.19)
+    if (len &gt; 20) len = 20;
+    memcpy(reg-&gt;etiqueta, entrada, len);
+    reg-&gt;etiqueta[11] = '\0';
+#endif
+    printf("Registro: %s | Estado: 0x%08X\n", reg-&gt;etiqueta, reg-&gt;estado);
+    free(reg);
+    return 0;
+}
+
+int main(int argc, char** argv) {
+    const char* dato = (argc &gt; 1) ? argv[1] : "BLOC_NORMAL";
+    return procesar_entrada(dato);
+}</code></pre>
+
+<h3 id="plantilla-4-parser-clsf-c-práctica-para-4-1-4-5-y-2-24">Plantilla 4 · <code>parser_clsf.c</code> (Práctica para 4.1, 4.5 y 2.24)</h3>
+<p>Implementa el escritor y el lector del formato binario sintético <strong><code>CLSF</code></strong> de la lección <a href="guia/04-formatos-protocolos.html">4.5</a> (12 bytes de cabecera + cuerpo variable). Si lo ejecutás con <code>--gen muestra.clsf</code>, genera la muestra exacta de 17 bytes vista en la teoría; si le pasás un archivo, valida cada campo y devuelve un código de estado distinto por cada fallo (ideal para confirmación diferencial en <a href="guia/04-metodo.html">4.1</a>/<a href="guia/04-formatos-protocolos.html">4.5</a> y como <em>harness</em> en <a href="guia/02-opt-fuzzing.html">2.24</a>):</p>
+<pre><code class="lenguaje-c">// Archivo: plantillas_codigo/parser_clsf.c
+// Compilar (MSVC) : cl /Zi /O1 parser_clsf.c /Fe:parser_clsf.exe
+// Compilar (MinGW): gcc -O1 -g parser_clsf.c -o parser_clsf.exe
+// Generar muestra : parser_clsf.exe --gen muestra_A.clsf
+// Analizar muestra: parser_clsf.exe muestra_A.clsf
+#include &lt;stdio.h&gt;
+#include &lt;stdint.h&gt;
+#include &lt;string.h&gt;
+
+#pragma pack(push, 1)
+typedef struct {
+    uint8_t  magic[4];   // +0x00: "CLSF" (43 4C 53 46)
+    uint8_t  version;    // +0x04: 1
+    uint8_t  flags;      // +0x05: 0
+    uint16_t hdr_len;    // +0x06: 12 (0x000C LE)
+    uint16_t body_len;   // +0x08: longitud del cuerpo (LE)
+    uint16_t seq_id;     // +0x0A: campo variable / secuencia (0x002A = 42 LE)
+} CabeceraCLSF;          // Total cabecera: 12 bytes
+#pragma pack(pop)
+
+int main(int argc, char** argv) {
+    if (argc == 3 &amp;&amp; strcmp(argv[1], "--gen") == 0) {
+        CabeceraCLSF h = {{'C','L','S','F'}, 1, 0, 12, 5, 42};
+        FILE* f = fopen(argv[2], "wb");
+        if (!f) return 1;
+        fwrite(&amp;h, sizeof(h), 1, f);
+        fwrite("HELLO", 1, 5, f);
+        fclose(f);
+        puts("Muestra CLSF de 17 bytes generada.");
+        return 0;
+    }
+    if (argc &lt; 2) { puts("Uso: parser_clsf [--gen salida.clsf | entrada.clsf]"); return 1; }
+    FILE* f = fopen(argv[1], "rb");
+    if (!f) return 2;
+    uint8_t buf[256] = {0};
+    size_t n = fread(buf, 1, sizeof(buf), f);
+    fclose(f);
+    if (n &lt; sizeof(CabeceraCLSF)) { puts("Error: archivo truncado"); return 3; }
+    const CabeceraCLSF* h = (const CabeceraCLSF*)buf;
+    if (memcmp(h-&gt;magic, "CLSF", 4) != 0) { puts("Error: magic invalido"); return 4; }
+    if (h-&gt;version != 1)                  { puts("Error: version no soportada"); return 5; }
+    if (h-&gt;hdr_len != 12)                 { puts("Error: hdr_len != 12"); return 6; }
+    if ((size_t)h-&gt;hdr_len + h-&gt;body_len &gt; n) { puts("Error: body_len excede archivo"); return 7; }
+    printf("CLSF OK | ver=%u flags=0x%02X seq=%u body(%u)=\"%.*s\"\n",
+           h-&gt;version, h-&gt;flags, h-&gt;seq_id, h-&gt;body_len, h-&gt;body_len, (const char*)(buf + h-&gt;hdr_len));
+    return 0;
+}</code></pre>
+
+<h3 id="plantilla-5-pipe-server-min-c-práctica-para-2d-1-2d-10-4-5-y-2-21">Plantilla 5 · <code>pipe_server_min.c</code> (Práctica para 2D.1, 2D.10, 4.5 y 2.21)</h3>
+<p>Servidor local de <strong>Named Pipe</strong> en modo mensaje que aplica las banderas defensivas estudiadas en <a href="guia/2d-10-ipc.html">2D.10</a> (<code>FILE_FLAG_FIRST_PIPE_INSTANCE</code> y <code>PIPE_REJECT_REMOTE_CLIENTS</code>) e implementa la máquina de estados de <a href="guia/04-formatos-protocolos.html">4.5</a> (<code>ESPERA_SALUDO &rarr; LISTO</code>). Podés conectarte desde un script de Python en la misma VM e inspeccionar las llamadas con Process Explorer, WinDbg o Frida:</p>
+<pre><code class="lenguaje-c">// Archivo: plantillas_codigo/pipe_server_min.c
+// Compilar (MSVC) : cl /Zi /O1 pipe_server_min.c /Fe:pipe_server_min.exe
+// Compilar (MinGW): gcc -O1 -g pipe_server_min.c -o pipe_server_min.exe
+// Probar en Python: open(r'\\.\pipe\BlocLabPipe', 'r+b', buffering=0)
+#include &lt;windows.h&gt;
+#include &lt;stdio.h&gt;
+#include &lt;string.h&gt;
+
+int main(void) {
+    const wchar_t* nombre = L"\\\\.\\pipe\\BlocLabPipe";
+    HANDLE hPipe = CreateNamedPipeW(
+        nombre,
+        PIPE_ACCESS_DUPLEX | FILE_FLAG_FIRST_PIPE_INSTANCE,
+        PIPE_TYPE_MESSAGE | PIPE_READMODE_MESSAGE | PIPE_WAIT | PIPE_REJECT_REMOTE_CLIENTS,
+        1, 256, 256, 0, NULL);
+    if (hPipe == INVALID_HANDLE_VALUE) {
+        printf("CreateNamedPipeW fallo (GLE=%lu)\n", GetLastError());
+        return 1;
+    }
+    puts("[ESPERA_SALUDO] Escuchando en \\\\.\\pipe\\BlocLabPipe ...");
+    if (ConnectNamedPipe(hPipe, NULL) || GetLastError() == ERROR_PIPE_CONNECTED) {
+        char buf[128] = {0};
+        DWORD leidos = 0, escritos = 0;
+        if (ReadFile(hPipe, buf, sizeof(buf) - 1, &amp;leidos, NULL) &amp;&amp; leidos &gt;= 4 &amp;&amp; memcmp(buf, "CLSF", 4) == 0) {
+            puts("[LISTO] Saludo CLSF valido recibido; enviando respuesta fija.");
+            const char resp[] = "CLSF_ACK_V1_READY";
+            WriteFile(hPipe, resp, (DWORD)strlen(resp), &amp;escritos, NULL);
+        } else {
+            const char err[] = "CLSF_ERR_BAD_HELLO";
+            WriteFile(hPipe, err, (DWORD)strlen(err), &amp;escritos, NULL);
+        }
+        FlushFileBuffers(hPipe);
+        DisconnectNamedPipe(hPipe);
+    }
+    CloseHandle(hPipe);
+    return 0;
+}</code></pre>
+<aside class="callout nota"><p class="callout-titulo">Volver</p><p><a href="guia/index.html">Mapa del curso</a> · <a href="00_EMPEZAR_AQUI.html">Inicio</a></p></aside>
+</main>
+<footer class="pie">
+  <p>Material educativo y defensivo. Las prácticas se limitan a programas propios, software abierto o crackmes diseñados para aprender. No se enseña a eludir licencias, DRM ni controles de acceso.</p>
+  <p><a href="00_EMPEZAR_AQUI.html">Inicio</a> · <a href="guia/etapa-0.html">Etapas</a> · <a href="fuentes_y_limites.html">Fuentes y límites</a> · <a href="registro_de_cobertura.csv">Registro de cobertura</a></p>
+</footer>
+</body>
+</html>

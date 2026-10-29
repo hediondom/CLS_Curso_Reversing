@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>2D.3 · Registro de Windows: hives, permisos, WOW64 y análisis defensivo</title>
+<meta name="description" content="Qué es el registro, cómo se organiza en hives, permisos y redirección WOW64, y cómo observar cambios y persistencia de forma defensiva. Rama optativa 2D.">
+<link rel="stylesheet" href="../guia/estilo.css">
+</head>
+<body>
+<a class="salto" href="#contenido">Saltar al contenido</a>
+<header class="cabecera">
+  <div class="marca"><a href="../00_EMPEZAR_AQUI.html">CLS · Curso de reversing</a> <span class="edicion">edición 5 · 27/10/2026</span></div>
+  <nav class="principal" aria-label="Navegación principal">
+    <a href="../00_EMPEZAR_AQUI.html">Inicio</a>
+    <a href="../guia/index.html">Curso</a>
+    <a href="../materiales.html">Materiales</a>
+    <a href="../fichas/index.html">Fichas</a>
+    <a href="../glosario.html">Glosario</a>
+    <a href="../preguntas_y_respuestas.html">Repaso</a>
+    <a href="../buscar.html">Buscar</a>
+  </nav>
+</header>
+<main id="contenido">
+<nav class="migas" aria-label="Ubicación"><a href="../00_EMPEZAR_AQUI.html">Inicio</a><span aria-hidden="true">›</span><a href="../guia/index.html">Curso</a><span aria-hidden="true">›</span><span>Etapa 2 · 2D · Windows internals (optativa)</span></nav><h1 id="registro-de-windows-hives-permisos-wow64-y-análisis-defensivo">Registro de Windows: hives, permisos, WOW64 y análisis defensivo</h1>
+<aside class="callout aviso"><p class="callout-titulo">Rama optativa 2D</p><p>Lección de la <a href="../2d.html">rama optativa 2D</a>. Defensiva: <strong>observar y detectar</strong> cambios en el registro; no crear persistencia encubierta.</p></aside>
+<aside class="callout nota"><p class="callout-titulo">Propósito</p><p>Entender cómo está organizado el registro (hives, claves, valores), quién puede escribir dónde (permisos), la redirección <strong>WOW64</strong> para apps de 32 bits, y cómo <strong>observar</strong> qué toca un programa propio (configuración y persistencia) con evidencia.</p></aside>
+<p><strong>Prerrequisitos</strong></p>
+<ul><li><em>Obligatorios:</em> objetos y ACL (<a href="2d-01-objetos.html">2D.1</a>), procesos (<a href="01-procesos.html">1.3</a>).</li><li><em>Recomendados:</em> malware estático (<a href="05-malware.html">5.1</a>).</li></ul>
+<h2 id="hives-y-organización">Hives y organización</h2>
+<p>El registro es una base jerárquica de <strong>claves</strong> (carpetas) y <strong>valores</strong> (datos tipados). Las cinco raíces predefinidas (<code>HKLM</code>, <code>HKCU</code>, <code>HKCR</code>, <code>HKU</code>, <code>HKCC</code>) no corresponden todas a archivos físicos uno a uno: los <strong>hives</strong> son unidades cargadas desde archivos como <code>SYSTEM</code>, <code>SOFTWARE</code> y el <code>NTUSER.DAT</code> de cada usuario; algunas raíces son alias o vistas. <code>HKCU</code> apunta al hive del usuario actual; <code>HKCR</code> combina las clases de máquina y usuario (<code>HKLM\Software\Classes</code> y <code>HKCU\Software\Classes</code>); <code>HKCC</code> representa la configuración de hardware actual. <strong>Conocimiento externo</strong> (Microsoft Learn).</p>
+<p>Zonas que importan en el análisis defensivo:</p>
+<ul><li><strong>Persistencia:</strong> <code>...\CurrentVersion\Run</code>/<code>RunOnce</code> (en <code>HKLM</code> y <code>HKCU</code>), servicios (<code>HKLM\SYSTEM\CurrentControlSet\Services</code>), y otras claves de autoarranque.</li><li><strong>Configuración de apps:</strong> cada programa suele guardar lo suyo bajo <code>HKCU\Software\&lt;Fabricante&gt;\&lt;App&gt;</code>.</li></ul>
+<h2 id="permisos">Permisos</h2>
+<p>Cada clave es un <strong>objeto asegurable</strong> con su DACL (como viste en <a href="2d-01-objetos.html">2D.1</a>). Por eso <code>HKLM</code> (de máquina) normalmente requiere administrador y <code>HKCU</code> (del usuario) lo puede escribir el propio usuario. Una clave de autoarranque con permisos <strong>demasiado abiertos</strong> (escribible por usuarios sin privilegio) es una debilidad a <strong>reportar</strong>.</p>
+<h2 id="redirección-wow64">Redirección WOW64</h2>
+<p>Un proceso de <strong>32 bits</strong> en Windows de 64 bits usa la vista de 32 bits para determinadas claves. Por ejemplo, <code>HKLM\Software</code> está redirigida en las versiones actuales de Windows: una app x86 que acceda a <code>HKLM\Software\BlocLab</code> puede aparecer en la vista de 32 bits que Regedit muestra bajo <code>HKLM\Software\WOW6432Node\BlocLab</code>. <strong>No todas las claves se redirigen</strong>; algunas son compartidas, y el resultado depende de la clave y de la versión de Windows. Para un caso real, consultá la tabla oficial de claves afectadas y no agregues <code>WOW6432Node</code> a mano en código nuevo.</p>
+<h2 id="observar-cambios-defensivo">Observar cambios (defensivo)</h2>
+<ul><li><strong>Diferencial:</strong> <strong>Regshot</strong> saca un snapshot antes y después de ejecutar; te da la lista exacta de claves/valores creados o cambiados.</li><li><strong>En vivo:</strong> <strong>Process Monitor</strong> con filtro de operaciones de registro (<code>RegSetValue</code>, <code>RegCreateKey</code>) muestra quién tocó qué y cuándo, con el stack.</li></ul>
+<h2 id="ejemplo-trabajado">Ejemplo trabajado</h2>
+<p><em>(Ejemplo <strong>ilustrativo</strong>: salida resumida de Regshot sobre una app de laboratorio; valores construidos.)</em></p>
+<pre><code class="lenguaje-text">Regshot — diff antes/después de correr bloc_lab.exe (x86) en la VM:
+  Valores agregados:
+    HKCU\Software\BlocLab\Settings\Theme = "dark"        ← su config propia (vista compartida)
+    HKLM\Software\WOW6432Node\BlocLab\Build = "lab-1"    ← vista x86 de HKLM\Software (app 32-bit)
+  (sin cambios en HKLM ni en claves Run)</code></pre>
+<p>Lectura: la app guardó su configuración de usuario en <code>HKCU</code> y, en este ejemplo, escribió también en la vista x86 de su clave de máquina <code>HKLM\Software</code>. El diff aparece resumido con la ruta física <code>WOW6432Node</code>; el acceso de la app fue a la vista lógica de 32 bits. <strong>No</strong> tocó <code>Run</code>: el ejemplo no muestra cambios de autoarranque. Es una ilustración de las vistas, no una regla aplicable a cualquier clave.</p>
+<h2 id="práctica-segura">Práctica segura</h2>
+<p>En tu VM, con un <strong>programa propio</strong> que guarde configuración en el registro:</p>
+<ol><li><strong>Regshot:</strong> snapshot → corré el programa → segundo snapshot → <em>compare</em>. Anotá qué claves/valores agregó.</li><li>Si es de 32 bits, confirmá la <strong>redirección WOW64</strong> (aparece bajo <code>WOW6432Node</code>).</li><li>En Regedit, abrí <strong>Permisos</strong> de la clave propia y observá su <strong>DACL</strong>. No cambies permisos. <code>icacls</code> trabaja con archivos y no es la herramienta para inspeccionar claves del registro.</li><li>Confirmá que la práctica no cambió claves de autoarranque. Si necesitás practicar la lectura de una clave <code>Run</code>, usá una captura o exportación de ejemplo; no la crees ni la modifiques en el equipo.</li></ol>
+<h2 id="entregable">Entregable</h2>
+<p>Lista de claves/valores de configuración que tu programa propio creó o modificó (con su tipo), si hubo redirección WOW64, y una observación de permisos de una clave propia. Incluí evidencia de que no cambiaste claves de autoarranque.</p>
+<h2 id="preguntas-de-repaso">Preguntas de repaso</h2>
+<details class="qa"><summary>¿Qué es un hive y cómo se relaciona con <code>HKCU</code>/<code>HKLM</code>?</summary><div class="respuesta"><p>Una unidad lógica de datos del registro que Windows carga y respalda, por ejemplo, con <code>NTUSER.DAT</code> o <code>SOFTWARE</code>. Las raíces predefinidas no son todas archivos ni hives uno a uno: <code>HKCU</code> apunta al usuario actual y <code>HKCR</code> es una vista combinada.</p></div></details>
+<details class="qa"><summary>¿Por qué <code>HKLM</code> suele requerir administrador y <code>HKCU</code> no?</summary><div class="respuesta"><p>Por la <strong>DACL</strong> de cada clave: las de máquina (<code>HKLM</code>) conceden escritura a administradores; el hive del usuario (<code>HKCU</code>) lo puede escribir el propio usuario. Son objetos asegurables.</p></div></details>
+<details class="qa"><summary>Una app de 32 bits dice escribir en <code>HKLM\Software\Foo</code> pero no la ves ahí. ¿Dónde está?</summary><div class="respuesta"><p>Si esa clave está entre las afectadas, la app x86 accede a la vista de 32 bits y Regedit de 64 bits suele mostrarla bajo <code>HKLM\Software\WOW6432Node\Foo</code>. Hay que confirmar el comportamiento para la clave concreta: WOW64 también tiene claves compartidas.</p></div></details>
+<details class="qa"><summary>¿Cómo obtenés la lista exacta de lo que tocó un programa en el registro?</summary><div class="respuesta"><p>Con un <strong>diferencial</strong> (Regshot: snapshot antes/después) o en vivo con <strong>Process Monitor</strong> filtrando operaciones de registro. El diff te da claves/valores agregados o cambiados.</p></div></details>
+<details class="qa"><summary>¿Qué hace "peligrosa" a una clave de autoarranque?</summary><div class="respuesta"><p>Que su <strong>DACL</strong> permita escribir a usuarios sin privilegio: cualquiera podría poner algo que se ejecute al inicio. Es una debilidad a <strong>reportar</strong>, no a aprovechar.</p></div></details>
+<aside class="callout nota"><p class="callout-titulo">Puerta de salida (optativa)</p><p>Podés: (1) explicar hives y las vistas <code>HKCU</code>/<code>HKLM</code>/<code>HKCR</code>; (2) relacionar permisos de clave con su DACL; (3) reconocer la redirección WOW64; (4) sacar con Regshot/Procmon la lista de cambios de un programa propio y dejar el sistema limpio.</p></aside>
+<h2 id="fuentes">Fuentes</h2>
+<ul><li><strong>Conocimiento externo</strong> (Microsoft Learn): <a href="https://learn.microsoft.com/en-us/windows/win32/sysinfo/registry-hives" rel="noopener" target="_blank">Registry Hives</a>, <a href="https://learn.microsoft.com/en-us/windows/win32/sysinfo/structure-of-the-registry" rel="noopener" target="_blank">Structure of the Registry</a>, <a href="https://learn.microsoft.com/en-us/windows/win32/sysinfo/registry-key-security-and-access-rights" rel="noopener" target="_blank">Registry Key Security and Access Rights</a>, <a href="https://learn.microsoft.com/en-us/windows/win32/winprog64/registry-redirector" rel="noopener" target="_blank">Registry Redirector (WOW64)</a> y <a href="https://learn.microsoft.com/en-us/windows/win32/winprog64/shared-registry-keys" rel="noopener" target="_blank">Registry Keys Affected by WOW64</a>.</li><li><strong>Tie con CLS:</strong> objetos asegurables y DACL en <a href="2d-01-objetos.html">2D.1</a>; la persistencia por <code>Run</code> también aparece como IOC en la rama de malware.</li></ul>
+<aside class="callout nota"><p class="callout-titulo">Etiquetas</p><p><strong>Observado en CLS:</strong> solo el marco de ACL (2D.1) y la noción de persistencia. <strong>Conocimiento externo:</strong> estructura del registro, permisos y WOW64. <strong>Ejemplo ilustrativo:</strong> el diff de Regshot. <strong>Laboratorio verificado:</strong> ninguno en esta edición; la práctica se hace sobre un programa propio en tu VM, con limpieza.</p></aside>
+</main>
+<footer class="pie">
+  <p>Material educativo y defensivo. Las prácticas se limitan a programas propios, software abierto o crackmes diseñados para aprender. No se enseña a eludir licencias, DRM ni controles de acceso.</p>
+  <p><a href="../00_EMPEZAR_AQUI.html">Inicio</a> · <a href="../guia/etapa-0.html">Etapas</a> · <a href="../fuentes_y_limites.html">Fuentes y límites</a> · <a href="../registro_de_cobertura.csv">Registro de cobertura</a></p>
+</footer>
+</body>
+</html>

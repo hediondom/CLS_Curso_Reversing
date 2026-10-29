@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tute 7 · Control de flujo — Curso IDA</title>
+<meta name="description" content="Tutorial ilustrado del tute 7 del Curso IDA desde cero: Control de flujo.">
+<link rel="stylesheet" href="../guia/estilo.css">
+</head>
+<body>
+<a class="salto" href="#contenido">Saltar al contenido</a>
+<header class="cabecera">
+  <div class="marca"><a href="../00_EMPEZAR_AQUI.html">CLS · Curso de reversing</a> <span class="edicion">edición 5 · 27/10/2026</span></div>
+  <nav class="principal" aria-label="Navegación principal">
+    <a href="../00_EMPEZAR_AQUI.html">Inicio</a>
+    <a href="../guia/index.html">Curso</a>
+    <a href="../fichas/index.html">Fichas</a>
+    <a href="../glosario.html">Glosario</a>
+    <a href="../preguntas_y_respuestas.html">Repaso</a>
+  </nav>
+</header>
+<main id="contenido">
+<p class="migas"><a href="../ida-tutes.html">← Índice de los 69 tutes de IDA</a></p>
+<h1>Tute 7 · Control de flujo</h1>
+<p class="meta-tute"><strong>⏱ 7 min de lectura</strong> · 1.313 palabras · 26 capturas · grupo: Base de IDA, assembly y primeras prácticas</p>
+<aside class="callout nota"><p class="callout-titulo">Qué enseña</p><p>Saltos condicionales e incondicionales y las comparaciones que los disparan.</p></aside>
+<p><em>▶ video afín (mismo autor, en x64dbg):</em> <a href="../videos.html">«09 Instrucciones 5»</a> · <em>se conecta con:</em> <a href="../guia/02-herramientas.html">Herramientas</a> · <a href="../guia/02-ida.html">IDA</a> · <a href="../guia/02-instrucciones.html">Instrucciones</a> · <a href="../guia/02-flujo.html">Flujo</a> · <a href="../guia/02-debugger.html">Debugger</a> · <a href="../guia/01-numeros.html">Números</a></p>
+<aside class="callout aviso"><p class="callout-titulo">Material observado, no reescrito</p><p>Es el texto y las capturas del <code>.docx</code> original del curso, solo presentados como tutorial. Puede tener erratas de origen. El autor del curso es Ricardo Narvaja.</p></aside>
+<hr>
+<p>INTRODUCCIÓN AL REVERSING CON IDA PRO DESDE CERO PARTE 7</p>
+<p>INSTRUCIONES DE CONTROL DE FLUJO</p>
+<p>Vamos terminando con las instrucciones que siempre es la parte más pesada, tráguense esta dura píldora que luego vendrá lo mejor.</p>
+<p>Las siguientes instrucciones controlan el flujo del programa. Sabemos que EIP apunta a la siguiente instrucción a ejecutarse, y cuando se ejecute la misma EIP pasara a apuntar a la siguiente.</p>
+<p>Pero el programa en si tiene instrucciones que controlan el flujo del mismo pudiendo desviar la ejecución a una instrucción deseada, veremos estos casos.</p>
+<pre class='asm'>JMP A</pre>
+<p>A será una dirección de memoria donde queremos que el programa salte incondicionalmente.</p>
+<figure><img loading="lazy" src="img/7/1.png" alt="Captura 1 del tute 7"></figure>
+<p>JMP SHORT es un salto corto que está compuesto por dos bytes y como solamente la posibilidad de saltar hacia adelante y hacia atrás está dada por el valor del segundo byte ya que el primero será el OPCODE del salto, no podremos saltar muy lejos.</p>
+<figure><img loading="lazy" src="img/7/2.png" alt="Captura 2 del tute 7"></figure>
+<p>Si ponemos en las opciones que se vean los bytes que componen las instrucciones vemos el opcode EB que corresponde al JMP y que saltara 5 lugares hacia adelante desde donde termina la instrucción, o sea que la dirección de destino hacia adelante se podría calcular como.</p>
+<figure><img loading="lazy" src="img/7/3.png" alt="Captura 3 del tute 7"></figure>
+<p>La dirección de inicio de la instrucción más 2 que es la cantidad de bytes que ocupa la instrucción y luego le sumo el 5 que me muestra el segundo byte.</p>
+<p>Obviamente saltar para adelante y para atrás con un solo byte no nos da mucho alcance, el máximo salto positivo hacia adelante será 0x7f, veremos un ejemplo.</p>
+<p>Como vamos a hacer algunos cambios que romperán la función conviene hacer un snapshot de la database la cual nos permitirá retornar al estado anterior a la rotura, siempre que tengamos dudas de lo que vamos a realizar si puede romper alguna función y no sabemos restaurarlo conviene hacer un snapshot.</p>
+<figure><img loading="lazy" src="img/7/4.png" alt="Captura 4 del tute 7"></figure>
+<p>Nos pedirá un nombre y listo.</p>
+<p>EN VIEW-DATABASE SNAPSHOT MANAGER</p>
+<figure><img loading="lazy" src="img/7/5.png" alt="Captura 5 del tute 7"></figure>
+<p>Nos permitirá ver la lista de todos los snapshot y la fecha en que fueron hechos y con el botón RESTORE podremos volver al estado que queramos de los que habíamos guardado.</p>
+<p>Veamos qué pasa si cambio el 05 por 7f.</p>
+<figure><img loading="lazy" src="img/7/6.png" alt="Captura 6 del tute 7"></figure>
+<p>Usando el PATCH BYTE del IDA cambio el 05 por 7f.</p>
+<p>El salto es un poco más largo y se va fuera de la función si apretó la barra espaciadora para salir del modo gráfico.</p>
+<figure><img loading="lazy" src="img/7/7.png" alt="Captura 7 del tute 7"></figure>
+<figure><img loading="lazy" src="img/7/8.png" alt="Captura 8 del tute 7"></figure>
+<p>Vemos que la cuenta nos da bien y salta a 0x4013a5 hacia adelante, veamos qué pasa si cambiamos el 0x7f por 0x80.</p>
+<p>Volvemos al modo gráfico con la barra y cambiamos por 0x80.</p>
+<figure><img loading="lazy" src="img/7/9.png" alt="Captura 9 del tute 7"></figure>
+<p>Vemos que ahora hacemos el máximo salto hacia arriba, aquí al pasar de 0x7f que es el máximo salto hacia adelante, pasamos a 0x80 que es el máximo salto hacia atrás.</p>
+<figure><img loading="lazy" src="img/7/10.png" alt="Captura 10 del tute 7"></figure>
+<p>En este caso como vamos hacia atrás para que nos dé bien la cuenta en la formula y solo para propósitos matemáticos ya que Python no sabe de esto de que los saltos pueden ir hacia adelante o hacia atrás a partir de un valor, debemos pasar el -0x80 a su valor hexadecimal en dword que es 0xFFFFFF80 y luego como vimos al hacer el AND 0xFFFFFFFF del resultado limpiamos todos los bits mayores que los necesarios para un numero de 32 bits y listo nos da la misma dirección 0x4012a6.</p>
+<p>Si uso como segundo byte 0xFF sería un salto mínimo, que pasado a dword hexa es -1 o sea le sumo 0xFFFFFFFF para que me de la cuenta, recordemos que siempre le sumamos los dos del largo de la instrucción, así que no saltara para atrás ya que ese dos que le sumamos hace que se tome como inicio del cálculo hacia atrás la dirección final donde termina la instrucción y volver uno hacia atrás desde allí nos deja en 0x401325.</p>
+<p>Si seguimos hacia atrás una posición más o sea el segundo byte seria FE esto es saltar -2 para atrás desde donde termina la instrucción, eso sería en la formula sumarle 0xFFFFFFFE.</p>
+<figure><img loading="lazy" src="img/7/11.png" alt="Captura 11 del tute 7"></figure>
+<p>Esto salta al mismo inicio de la instrucción es lo que se conoce como LOOP INFINITO pues siempre vuelve a repetirse y no se puede salir de él.</p>
+<p>Y así sucesivamente saltar -3 desde donde termina la instrucción para atrás será FD o sea que saltara a 0x401323.</p>
+<figure><img loading="lazy" src="img/7/12.png" alt="Captura 12 del tute 7"></figure>
+<p>Obviamente con los saltos cortos no podemos saltar a cualquier dirección pues estamos limitados a pocos bytes alrededor de donde nos encontramos para ello usamos el salto largo.</p>
+<figure><img loading="lazy" src="img/7/13.png" alt="Captura 13 del tute 7"></figure>
+<p>Ahí vemos un par de saltos largos recordemos que loc_ nos dice que esa instrucción es una instrucción cualquiera.</p>
+<figure><img loading="lazy" src="img/7/14.png" alt="Captura 14 del tute 7"></figure>
+<p>Allí vemos el salto largo, la distancia entre 0x4026ae y 0x4029b3 es mucho más grande de lo que podemos alcanzar con un salto corto.</p>
+<figure><img loading="lazy" src="img/7/15.png" alt="Captura 15 del tute 7"></figure>
+<p>Allí vemos que la distancia se calcula con la formula dirección final menos dirección inicial – 5 que es el largo de la instrucción eso me da 0x300 que es el dword al lado del opcode del salto largo 0xe9.</p>
+<figure><img loading="lazy" src="img/7/16.png" alt="Captura 16 del tute 7"></figure>
+<figure><img loading="lazy" src="img/7/17.png" alt="Captura 17 del tute 7"></figure>
+<p>Si con el KEYPATCH cambio la dirección de destino del salto a una dirección hacia atrás por ejemplo 0x400000.</p>
+<figure><img loading="lazy" src="img/7/18.png" alt="Captura 18 del tute 7"></figure>
+<p>Aunque me marca en rojo porque no es una dirección valida en este momento, veré si puedo armar en PYTHON una fórmula para ir hacia atrás.</p>
+<figure><img loading="lazy" src="img/7/19.png" alt="Captura 19 del tute 7"></figure>
+<p>Eso me da -0x26b3 de distancia usando la misma fórmula anterior.</p>
+<figure><img loading="lazy" src="img/7/20.png" alt="Captura 20 del tute 7"></figure>
+<p>Pasados a bytes hexa es FFFFD94D que son los bytes al lado del opcode 0xe9 obviamente al revés.</p>
+<figure><img loading="lazy" src="img/7/21.png" alt="Captura 21 del tute 7"></figure>
+<p>SALTOS CONDICIONALES</p>
+<p>Normalmente los programas tienen que tomar decisiones y según la comparación de ciertos valores desviar la ejecución del programa a un punto o a otro.</p>
+<p>Tomemos por ejemplo CMP A,B</p>
+<p>Puedo necesitar que el programa compare A y B según la relación entre ellos el programa haga algo y si no haga otra cosa diferente.</p>
+<p>Así que normalmente después de la comparación que cambia los famosos FLAGS, según el estado de ellos, la instrucción de salto condicional decidirá qué hacer.</p>
+<figure><img loading="lazy" src="img/7/22.png" alt="Captura 22 del tute 7"></figure>
+<p>Allí vemos un ejemplo de salto condicional JZ el mismo salta si el flag Z o cero está activado. Eso ocurre cuando en la CMP anterior EAX y EBX son iguales ya que internamente CMP es similar a SUB pero sin guardar el resultado.</p>
+<p>CMP resta ambos registros  y si son iguales dará cero lo que activara el FLAG Z o cero que es lo que mira el salto JZ para saltar, si el FLAG Z está activado va por el camino de la flecha verde y si no ira por la flecha roja si son distintos.</p>
+<p>Ya veremos al debuggear ejemplos de cómo se encienden los flags al realizar diferentes operaciones, por ahora lo importante es que si hay una comparación pueden a continuación existir estos diferentes saltos.</p>
+<figure><img loading="lazy" src="img/7/23.png" alt="Captura 23 del tute 7"></figure>
+<p>Bueno salvo el JMP y el NOP que están colados en la tabla, el resto son saltos condicionales que evalúan diferentes estados de una comparación, si el primero es mayor, o si es mayor o igual, si es menor etc, hay diversas posibilidades, las cuales veremos más adelante con mayor profundidad al ver el DEBUGGER.</p>
+<pre class='asm'>CALL Y RET</pre>
+<p>Otras instrucciones que mencionaremos son el CALL para llamar a una función y el RET para volver de la misma a la instrucción siguiente del punto de llamada.</p>
+<figure><img loading="lazy" src="img/7/24.png" alt="Captura 24 del tute 7"></figure>
+<p>Allí vemos un ejemplo de un CALL, el mismo saltara a 0x4013d8 a ejecutar dicha función (vemos el sub_ delante de la dirección 0x4013D8 que nos indica esto).</p>
+<p>El CALL guarda en el TOP del stack el valor donde retornara o return address en este caso 0x40123d, dentro de la función a la cual puedo entrar haciendo ENTER en el CALL.</p>
+<figure><img loading="lazy" src="img/7/25.png" alt="Captura 25 del tute 7"></figure>
+<p>Al terminar la función la misma llegara a un RET que toma la dirección de retorno guardada en el stack 0x40123d y salta allí, continuando la ejecución luego del CALL.</p>
+<figure><img loading="lazy" src="img/7/26.png" alt="Captura 26 del tute 7"></figure>
+<p>Bueno con esto terminamos un paneo rápido de las instrucciones principales, algunas las detallaremos más adelante, cuando haya que tener más precisión y detalle.</p>
+<p>Hasta la parte 8</p>
+<p>Ricardo Narvaja</p>
+</main>
+<footer class="pie">
+  <p>Material educativo y defensivo. Las prácticas se limitan a programas propios, software abierto o crackmes diseñados para aprender. No se enseña a eludir licencias, DRM ni controles de acceso.</p>
+  <p><a href="../00_EMPEZAR_AQUI.html">Inicio</a> · <a href="../guia/etapa-0.html">Etapas</a> · <a href="../fuentes_y_limites.html">Fuentes y límites</a> · <a href="../registro_de_cobertura.csv">Registro de cobertura</a></p>
+</footer>
+<script>
+(function(){
+  function abrir(src){
+    var o=document.createElement('div'); o.className='lightbox-ov';
+    var i=document.createElement('img'); i.src=src; o.appendChild(i);
+    function cerrar(){o.remove(); document.removeEventListener('keydown', onkey);}
+    function onkey(e){ if(e.key==='Escape') cerrar(); }
+    o.addEventListener('click', cerrar);
+    document.addEventListener('keydown', onkey);
+    document.body.appendChild(o);
+  }
+  document.addEventListener('DOMContentLoaded', function(){
+    document.querySelectorAll('figure img, main img').forEach(function(img){
+      img.style.cursor='zoom-in';
+      img.addEventListener('click', function(){ abrir(img.currentSrc||img.src); });
+    });
+  });
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Etapa 1 · Memoria: stack, heap y marcos de función</title>
+<meta name="description" content="Cómo se organiza la memoria de un proceso y por qué el stack explica casi todo lo que ves en un debugger.">
+<link rel="stylesheet" href="../guia/estilo.css">
+</head>
+<body>
+<a class="salto" href="#contenido">Saltar al contenido</a>
+<header class="cabecera">
+  <div class="marca"><a href="../00_EMPEZAR_AQUI.html">CLS · Curso de reversing</a> <span class="edicion">edición 5 · 27/10/2026</span></div>
+  <nav class="principal" aria-label="Navegación principal">
+    <a href="../00_EMPEZAR_AQUI.html">Inicio</a>
+    <a href="../guia/index.html">Curso</a>
+    <a href="../materiales.html">Materiales</a>
+    <a href="../fichas/index.html">Fichas</a>
+    <a href="../glosario.html">Glosario</a>
+    <a href="../preguntas_y_respuestas.html">Repaso</a>
+    <a href="../buscar.html">Buscar</a>
+  </nav>
+</header>
+<main id="contenido">
+<nav class="migas" aria-label="Ubicación"><a href="../00_EMPEZAR_AQUI.html">Inicio</a><span aria-hidden="true">›</span><a href="../guia/index.html">Curso</a><span aria-hidden="true">›</span><span>Etapa 1 · Fundamentos</span></nav><h1 id="memoria-stack-heap-y-marcos-de-función">Memoria: stack, heap y marcos de función</h1>
+<aside class="callout nota"><p class="callout-titulo">Objetivo de la lección</p><p>Al terminar vas a poder dibujar el stack de una función antes y después de un <code>call</code>, ubicar los argumentos, el return address, el <code>EBP</code> guardado y las variables locales, y explicar por qué en 64 bits los primeros argumentos no están en el stack.</p></aside>
+<p><strong>Prerrequisitos:</strong> números y little-endian (lección anterior). <strong>Duración sugerida:</strong> 4 horas. Estimación aproximada.</p>
+<h2 id="las-cuatro-zonas-que-importan">Las cuatro zonas que importan</h2>
+<p>Un proceso ve un espacio de direcciones dividido en regiones. Para empezar alcanza con cuatro:</p>
+<div class="tabla"><table>
+<thead><tr>
+<th>Zona</th>
+<th>Qué guarda</th>
+<th>Crece hacia</th>
+<th>Vida</th>
+</tr></thead><tbody>
+<tr><td><strong>Código</strong> (<code>.text</code>)</td><td>Instrucciones</td><td>—</td><td>Todo el proceso</td></tr>
+<tr><td><strong>Datos</strong> (<code>.data</code>, <code>.rdata</code>)</td><td>Variables globales, constantes, strings</td><td>—</td><td>Todo el proceso</td></tr>
+<tr><td><strong>Heap</strong></td><td>Memoria pedida en tiempo de ejecución (<code>malloc</code>, <code>new</code>)</td><td>Direcciones altas</td><td>Hasta que la liberás</td></tr>
+<tr><td><strong>Stack</strong></td><td>Argumentos, direcciones de retorno, variables locales</td><td>Direcciones bajas</td><td>Hasta que la función retorna</td></tr>
+</tbody></table></div>
+<p>El stack y el heap son distintos no solo por su ubicación: cambian por motivos distintos. El stack lo administra el procesador con <code>push</code>/<code>pop</code> y llamadas; el heap lo administra el runtime (la librería C, el recolector de basura, etc.). Esta lección se concentra en el stack porque es el que vas a ver todo el tiempo en un debugger.</p>
+<h2 id="el-stack-es-una-pila-lifo">El stack es una pila LIFO</h2>
+<p><strong>LIFO</strong> significa <em>last in, first out</em>: lo último que apilás es lo primero que sacás. En x86, el stack crece hacia direcciones <strong>más bajas</strong>. <code>ESP</code> (en 32 bits) o <code>RSP</code> (en 64) apunta siempre a la cima actual.</p>
+<pre><code class="lenguaje-asm">push eax      ; ESP = ESP - 4 ; [ESP] = EAX
+pop  ebx      ; EBX = [ESP] ; ESP = ESP + 4</code></pre>
+<p>En 64 bits el decremento es de 8 bytes, salvo que empujes algo más chico.</p>
+<h2 id="ejemplo-paso-a-paso-el-stack-de-una-función-de-32-bits">Ejemplo paso a paso: el stack de una función de 32 bits</h2>
+<p>Este ejemplo sale del capítulo 18, donde Ricardo compara una función basada en <code>EBP</code> con una basada en <code>ESP</code> usando un ejecutable de práctica (<a class="fuente" href="../../CLS_resultados_intermedios/transcripciones/extraidos/Reversing%20desde%20cero%20%28Ricardo%20y%20Solid%29/Ricardo%20Narvaja%20y%20Solid%20-%20Reversing%20desde%20cero_18%20Funciones%20basadas%20en%20EBP%20vs%20basadas%20en%20ESP_18%20Funciones%20basadas%20en%20EBP%20vs%20basadas%20en%20ESP.txt">Reversing desde cero, cap. 18</a>, 00:02:40–00:08:30). La función <code>main</code> recibe tres argumentos: <code>argc</code>, <code>argv</code> y <code>envp</code>.</p>
+<h3 id="antes-de-llamar">Antes de llamar</h3>
+<p>La función que llama apila los argumentos <strong>de derecha a izquierda</strong>:</p>
+<pre><code class="lenguaje-asm">push envp
+push argv
+push argc
+call main</code></pre>
+<p>El stack queda así (cada celda son 4 bytes; las direcciones bajas abajo):</p>
+<pre><code class="lenguaje-text">        +------------------+
+esp --&gt; | argc             |
+        | argv             |
+        | envp             |
+        +------------------+</code></pre>
+<h3 id="el-call">El <code>call</code></h3>
+<p><code>call</code> hace dos cosas: empuja la dirección de retorno y salta. La dirección de retorno es la de la instrucción <strong>siguiente</strong> al <code>call</code>, para que <code>ret</code> sepa dónde volver.</p>
+<pre><code class="lenguaje-text">        +------------------+
+        | argc             |
+        | argv             |
+        | envp             |
+        | return address   |  &lt;-- ESP
+        +------------------+</code></pre>
+<p>En el ejemplo del video, la dirección de retorno es <code>0x011912EA</code> (cap. 18, 00:07:16).</p>
+<h3 id="el-prólogo">El prólogo</h3>
+<p>Casi todas las funciones de 32 bits empiezan igual:</p>
+<pre><code class="lenguaje-asm">push ebp          ; guarda el EBP de la función que llamó
+mov  ebp, esp     ; fija un punto de referencia estable
+sub  esp, 0x28    ; reserva espacio para variables locales</code></pre>
+<p>Después del prólogo, el stack tiene una forma reconocible:</p>
+<pre><code class="lenguaje-text">        +------------------+  &lt;-- EBP + 0x10
+        | envp (3.er arg)  |
+        | argv (2.º arg)   |  &lt;-- EBP + 0x0C
+        | argc (1.er arg)  |  &lt;-- EBP + 0x08
+        | return address   |  &lt;-- EBP + 0x04
+        | EBP guardado     |  &lt;-- [EBP]
+        +------------------+
+        | local [EBP-4]    |
+        | local [EBP-8]    |  &lt;-- espacio reservado por sub esp, 0x28
+esp --&gt; | ...              |
+        +------------------+</code></pre>
+<p><strong>Cuidado con el orden:</strong> los argumentos se apilan de derecha a izquierda, así que el primero de la función queda en la dirección más baja, justo arriba del return address. Por eso <code>[EBP+8]</code> es <code>argc</code>, <code>[EBP+0x0C]</code> es <code>argv</code> y <code>[EBP+0x10]</code> es <code>envp</code>. Lo importante no es memorizar los números de este ejemplo, sino el método: <strong>contá desde <code>EBP</code> y verificá en el panel de stack</strong>.</p>
+<p>En el video, Ricardo muestra la correspondencia entre la vista estática del stack de IDA y la realidad del debugger: los tres <code>push</code>, el return address, el <code>push ebp</code>, el <code>mov ebp, esp</code> y el <code>sub esp, 0x28</code> aparecen en ese orden (cap. 18, 00:02:34–00:10:00).</p>
+<h3 id="el-epílogo">El epílogo</h3>
+<p>Al final, la función deshace lo que hizo:</p>
+<pre><code class="lenguaje-asm">mov esp, ebp      ; libera las variables locales
+pop  ebp          ; recupera el EBP de la función que llamó
+ret               ; saca el return address y vuelve</code></pre>
+<p><code>leave</code> es una instrucción que hace las dos primeras operaciones juntas. Si ves <code>leave; ret</code>, es el mismo patrón.</p>
+<aside class="callout nota"><p class="callout-titulo">Por qué <code>EBP</code> y no <code>ESP</code></p><p><code>ESP</code> cambia cada vez que la función empuja algo para llamar a otra función. Si las variables locales se referenciaran con <code>ESP</code>, cada <code>push</code> cambiaría sus direcciones. Por eso el prólogo copia <code>ESP</code> a <code>EBP</code> y usa <code>EBP</code> como referencia estable: <code>[EBP-4]</code>, <code>[EBP-8]</code>, etc. (cap. 18, 00:10:30–00:12:10).</p></aside>
+<h2 id="64-bits-los-argumentos-viajan-en-registros">64 bits: los argumentos viajan en registros</h2>
+<p>En x64 cambia la convención. Los primeros cuatro argumentos enteros van en registros:</p>
+<div class="tabla"><table>
+<thead><tr>
+<th>Argumento</th>
+<th>Registro</th>
+</tr></thead><tbody>
+<tr><td>1.º</td><td><code>RCX</code></td></tr>
+<tr><td>2.º</td><td><code>RDX</code></td></tr>
+<tr><td>3.º</td><td><code>R8</code></td></tr>
+<tr><td>4.º</td><td><code>R9</code></td></tr>
+</tbody></table></div>
+<p>Los demás van en el stack, y el llamador debe reservar <strong>32 bytes de shadow space</strong> (<code>0x20</code>) antes del <code>call</code>, aunque no use todos los registros. Por eso en el capítulo 18 se ve <code>sub rsp, 0x138</code> para las variables locales y referencias del tipo <code>[rsp+0x20]</code>, <code>[rsp+0x28]</code>, etc. (00:14:00–00:20:00).</p>
+<p>En 64 bits es común que las funciones sean <strong>basadas en RSP</strong>: no hay <code>push rbp; mov rbp, rsp</code> porque <code>RSP</code> no cambia tanto (los argumentos no se apilan uno por uno). Las variables locales se referencian como <code>[rsp+0xNN]</code>, y el desensamblador suele mostrar el offset relativo al valor inicial de <code>RSP</code> para que no tengas que recalcular.</p>
+<aside class="callout aviso"><p class="callout-titulo">El error de contar mal el shadow space</p><p>Cuando el quinto argumento va al stack, no va inmediatamente después del return address: va después de los 32 bytes reservados para los cuatro registros. Si ves <code>[rsp+0x28]</code> como primer argumento apilado, es porque <code>0x20</code> son los shadow slots y <code>0x28</code> el primer argumento real (cap. 18, 00:17:00–00:18:30).</p></aside>
+<h2 id="heap-la-memoria-que-pedís-vos">Heap: la memoria que pedís vos</h2>
+<p>El heap se usa cuando el tamaño no se conoce en tiempo de compilación o cuando el dato tiene que sobrevivir a la función que lo creó. En C:</p>
+<pre><code class="lenguaje-c">char *buf = malloc(64);
+if (buf == NULL) { /* error */ }
+strcpy(buf, "hola");
+free(buf);</code></pre>
+<p>En Python, <code>bytearray(64)</code> o una lista cumplen un rol parecido, pero el manejo lo hace el intérprete.</p>
+<p>Tres diferencias prácticas con el stack:</p>
+<ol><li><strong>Vos administrás la vida</strong> (en C). Si te olvidás de <code>free</code>, hay fuga de memoria; si liberás dos veces, corrupción.</li><li><strong>No tiene un orden LIFO.</strong> Podés liberar en cualquier orden.</li><li><strong>Los errores son más silenciosos.</strong> Un desborde de stack suele terminar en crash; un desborde de heap puede pasar desapercibido y explotar después.</li></ol>
+<h2 id="estructuras-y-objetos-en-memoria">Estructuras y objetos en memoria</h2>
+<p>Una <strong>estructura</strong> (<code>struct</code>) es un dato compuesto: agrupa varios campos, que pueden ser de <strong>distinto tipo</strong>, uno detrás del otro. Es la diferencia con un array, que repite el mismo tipo. En memoria, una estructura es un bloque donde cada campo vive en un <strong>offset fijo</strong> desde el inicio.</p>
+<p>Por eso, a bajo nivel, trabajar con una estructura casi siempre se ve igual: un registro tiene la <strong>dirección base</strong> de la estructura y las instrucciones le suman un offset para llegar a cada campo.</p>
+<pre><code class="lenguaje-asm">mov eax, [ebp-4]      ; EAX = dirección base de la estructura
+mov ecx, [eax+0x58]   ; lee el campo que está en el offset 0x58
+lea edx, [eax+4]      ; NO lee: deja en EDX un puntero al campo en +4</code></pre>
+<p>La distinción entre <code>mov ecx, [eax+0x58]</code> (leer el <strong>valor</strong> del campo) y <code>lea edx, [eax+4]</code> (calcular la <strong>dirección</strong> del campo, para pasarla como puntero) es la que más confunde al principio. Si no hay corchetes alrededor del resultado, es una dirección.</p>
+<aside class="callout aviso"><p class="callout-titulo">El padding cambia los offsets</p><p>El tamaño de una estructura <strong>no</strong> es siempre la suma de sus campos. Por alineación, el compilador inserta bytes de relleno (<em>padding</em>). En 32 bits la alineación por defecto es 4, así que una estructura con un <code>DWORD</code> (4) y un <code>BYTE</code> (1) no mide 5 sino <strong>8</strong>: se agregan 3 bytes para que el tamaño sea múltiplo de 4. Si al leer un listado los offsets no cierran, sospechá del padding (cap. 20b).</p></aside>
+<p>Un <strong>objeto</strong> de C++ es una estructura con un par de agregados. Cuando ves <code>new</code>, en el fondo se llama a <code>malloc</code> para reservar el tamaño de la clase (por ejemplo <code>0x3C</code> bytes) y después se llama al <strong>constructor</strong> para inicializar los campos. A los métodos, la instancia (el puntero <code>this</code>) se pasa normalmente en <strong>ECX</strong>; dentro del método, <code>[ecx+offset]</code> accede a cada campo.</p>
+<p>Si la clase tiene <strong>métodos virtuales</strong>, el primer campo del objeto (offset 0) es un puntero a la <strong>vtable</strong>: una tabla de punteros a esos métodos. Por eso, al reversear, "levanta el primer campo y llama a <code>[campo+N]</code>" es la firma de una llamada a un método virtual. El cap. 33 lo muestra con una clase propia cuyo objeto empieza con el puntero a la vtable y cuyos cuatro métodos virtuales están en la tabla, en orden.</p>
+<h2 id="buffers-strings-y-el-centinela">Buffers, strings y el centinela</h2>
+<p>Un string en C es una secuencia de bytes terminada en <code>0x00</code>. <code>"Hola"</code> ocupa cinco bytes: <code>48 6F 6C 61 00</code>. Ese cero es el que permite a <code>strlen</code> saber dónde termina.</p>
+<p>Cuando una función copia datos a un buffer sin verificar el tamaño, puede escribir más allá del final. Ese es el punto de partida de los desbordes de buffer, que en esta guía se estudian solo en programas propios y en la rama de vulnerabilidades. El capítulo 15 muestra un detalle defensivo relacionado: el <strong>security cookie</strong> que el compilador coloca en el stack y verifica antes de retornar, calculado con un XOR contra <code>RSP</code>, para detectar que alguien pisó el return address (<a class="fuente" href="../../CLS_resultados_intermedios/transcripciones/extraidos/Reversing%20desde%20cero%20%28Ricardo%20y%20Solid%29/Ricardo%20Narvaja%20y%20Solid%20-%20Reversing%20desde%20cero_15%20Ejercicio%202%20-%20An%C3%A1lisis%20est%C3%A1tico_15%20Ejercicio%202%20-%20An%C3%A1lisis%20est%C3%A1tico.txt">Reversing desde cero, cap. 15</a>, 00:07:34–00:08:00).</p>
+<h2 id="práctica">Práctica</h2>
+<ol><li>Dibujá el stack de una función <code>int suma(int a, int b)</code> en 32 bits, desde el <code>push b</code> hasta el <code>ret</code>. Marcá <code>EBP</code>, <code>ESP</code>, argumentos, return address y variable local.</li><li>Escribí en C una función que reserve un buffer de 16 bytes en el stack y otra que use <code>malloc(16)</code>. Compilalas y mirá en x64dbg dónde queda cada buffer.</li><li>En el programa anterior, poné un breakpoint en la primera instrucción de la función y anotá <code>ESP</code> y <code>EBP</code>. Después del prólogo, volvé a anotarlos. ¿Cuánto cambió <code>ESP</code>?</li><li>Escribí el mismo programa para x64 y verificá en qué registros llegan <code>a</code> y <code>b</code>.</li><li>Explicá por qué <code>[ebp+8]</code> suele ser el primer argumento en 32 bits y por qué en 64 bits no lo es.</li></ol>
+<h2 id="preguntas-de-repaso">Preguntas de repaso</h2>
+<p><strong>1. ¿Quién empuja el return address?</strong> La instrucción <code>call</code>, no la función llamada. <code>ret</code> lo consume.</p>
+<p><strong>2. ¿Por qué el stack crece hacia abajo?</strong> Es una convención de la arquitectura x86: <code>push</code> decrementa el puntero y <code>pop</code> lo incrementa. Lo importante es que el modelo mental sea consistente, no la dirección física.</p>
+<p><strong>3. ¿Qué guarda <code>push ebp</code> en el prólogo?</strong> El valor de <code>EBP</code> de la función que llamó, para poder restaurarlo al final y no romper las referencias de esa función.</p>
+<p><strong>4. ¿Dónde están las variables locales?</strong> Entre <code>EBP</code> y <code>ESP</code>, en direcciones menores que <code>EBP</code> (<code>[EBP-4]</code>, <code>[EBP-8]</code>, etc.). El <code>sub esp, N</code> reserva ese espacio.</p>
+<p><strong>5. ¿Los argumentos de una función de 64 bits siempre están en el stack?</strong> No. Los primeros cuatro enteros van en <code>RCX</code>, <code>RDX</code>, <code>R8</code> y <code>R9</code>; el resto va al stack después de 32 bytes de shadow space.</p>
+<p><strong>6. ¿Qué diferencia hay entre un desborde de stack y uno de heap?</strong> El de stack suele pisar el return address y provocar un crash inmediato; el de heap corrompe estructuras internas y puede no manifestarse hasta mucho después.</p>
+<h2 id="antes-de-avanzar">Antes de avanzar</h2>
+<p>Tenés que poder:</p>
+<ul><li>Dibujar el stack de un <code>call</code> de 32 bits con argumentos, return address, <code>EBP</code> guardado y locales.</li><li>Nombrar los registros de argumentos de x64 y explicar el shadow space.</li><li>Explicar la diferencia entre stack y heap con un ejemplo de cada uno.</li><li>Reconocer un prólogo y un epílogo en un listado de assembly.</li></ul>
+<aside class="callout nota"><p class="callout-titulo">Puerta de salida</p><p>Si podés explicar el stack sin mirar el dibujo, estás listo para verlo en vivo en el debugger. Si no, volvé al ejemplo del capítulo 18 y reconstruilo en papel.</p></aside>
+<h2 id="fuentes-de-esta-lección">Fuentes de esta lección</h2>
+<ul><li><a class="fuente" href="../../CLS_resultados_intermedios/transcripciones/extraidos/Reversing%20desde%20cero%20%28Ricardo%20y%20Solid%29/Ricardo%20Narvaja%20y%20Solid%20-%20Reversing%20desde%20cero_18%20Funciones%20basadas%20en%20EBP%20vs%20basadas%20en%20ESP_18%20Funciones%20basadas%20en%20EBP%20vs%20basadas%20en%20ESP.txt">Reversing desde cero, cap. 18</a> — stack de 32 y 64 bits, prólogo, epílogo, shadow space.</li><li><a class="fuente" href="../../CLS_resultados_intermedios/transcripciones/extraidos/Reversing%20desde%20cero%20%28Ricardo%20y%20Solid%29/Ricardo%20Narvaja%20y%20Solid%20-%20Reversing%20desde%20cero_15%20Ejercicio%202%20-%20An%C3%A1lisis%20est%C3%A1tico_15%20Ejercicio%202%20-%20An%C3%A1lisis%20est%C3%A1tico.txt">Reversing desde cero, cap. 15</a> — security cookie y protección del return address.</li><li><a class="fuente" href="../../CLS_resultados_intermedios/transcripciones/extraidos/Reversing%20desde%20cero%20%28Ricardo%20y%20Solid%29/Ricardo%20Narvaja%20y%20Solid%20-%20Reversing%20desde%20cero_01%20x64dbg%20primeros%20pasos_01%20x64dbg%20primeros%20pasos.txt">Reversing desde cero, cap. 01</a> — ventana de stack y mapa de memoria.</li><li><a class="fuente" href="../../CLS_resultados_intermedios/transcripciones/extraidos/Reversing%20desde%20cero%20%28Ricardo%20y%20Solid%29/Ricardo%20Narvaja%20y%20Solid%20-%20Reversing%20desde%20cero_20b%20Ap%C3%A9ndice%20te%C3%B3rico%203%20-%20Estructuras_20b%20Ap%C3%A9ndice%20te%C3%B3rico%203%20-%20Estructuras.txt">Reversing desde cero, cap. 20b</a> — estructuras, acceso base+offset, stack vs heap y padding/alineación (transcripción .txt, sin marcas).</li><li><a class="fuente" href="../../CLS_resultados_intermedios/transcripciones/extraidos/Reversing%20desde%20cero%20%28Ricardo%20y%20Solid%29/Ricardo%20Narvaja%20y%20Solid%20-%20Reversing%20desde%20cero_33%20C%2B%2B%20Clases_33%20C%2B%2B%20Clases.txt">Reversing desde cero, cap. 33</a> — objetos C++: <code>new</code>/<code>malloc</code>, constructor, <code>this</code> en ECX y puntero a la vtable en el offset 0 (transcripción .txt, sin marcas).</li></ul>
+<aside class="callout nota"><p class="callout-titulo">Capas de esta lección</p><p><strong>Contenido observado en CLS:</strong> el ejemplo del capítulo 18 (argumentos, return address <code>0x011912EA</code>, <code>sub esp, 0x28</code>, shadow space), la cookie del capítulo 15, el padding del 20b y el objeto con vtable del 33. <strong>Conocimiento externo:</strong> layout general del espacio de direcciones, heap y strings en C. <strong>Recomendación editorial:</strong> los diagramas y ejercicios.</p></aside>
+</main>
+<footer class="pie">
+  <p>Material educativo y defensivo. Las prácticas se limitan a programas propios, software abierto o crackmes diseñados para aprender. No se enseña a eludir licencias, DRM ni controles de acceso.</p>
+  <p><a href="../00_EMPEZAR_AQUI.html">Inicio</a> · <a href="../guia/etapa-0.html">Etapas</a> · <a href="../fuentes_y_limites.html">Fuentes y límites</a> · <a href="../registro_de_cobertura.csv">Registro de cobertura</a></p>
+</footer>
+</body>
+</html>

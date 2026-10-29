@@ -1,0 +1,239 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tute 21 · ¿Vulnerable o no? — Curso IDA</title>
+<meta name="description" content="Tutorial ilustrado del tute 21 del Curso IDA desde cero: ¿Vulnerable o no?.">
+<link rel="stylesheet" href="../guia/estilo.css">
+</head>
+<body>
+<a class="salto" href="#contenido">Saltar al contenido</a>
+<header class="cabecera">
+  <div class="marca"><a href="../00_EMPEZAR_AQUI.html">CLS · Curso de reversing</a> <span class="edicion">edición 5 · 27/10/2026</span></div>
+  <nav class="principal" aria-label="Navegación principal">
+    <a href="../00_EMPEZAR_AQUI.html">Inicio</a>
+    <a href="../guia/index.html">Curso</a>
+    <a href="../fichas/index.html">Fichas</a>
+    <a href="../glosario.html">Glosario</a>
+    <a href="../preguntas_y_respuestas.html">Repaso</a>
+  </nav>
+</header>
+<main id="contenido">
+<p class="migas"><a href="../ida-tutes.html">← Índice de los 69 tutes de IDA</a></p>
+<h1>Tute 21 · ¿Vulnerable o no?</h1>
+<p class="meta-tute"><strong>⏱ 11 min de lectura</strong> · 2.013 palabras · 38 capturas · grupo: Crackmes, differ y ejercicios</p>
+<aside class="callout nota"><p class="callout-titulo">Qué enseña</p><p>Análisis del ejercicio: decidir si hay una vulnerabilidad real.</p></aside>
+<p><em>se conecta con:</em> <a href="../guia/02-ida.html">IDA</a> · <a href="../guia/02-llamadas.html">Llamadas y pila</a> · <a href="../guia/02-flujo.html">Flujo</a> · <a href="../guia/05-vulnerabilidades.html">Vulnerabilidades (defensivo)</a></p>
+<aside class="callout aviso"><p class="callout-titulo">Material observado, no reescrito</p><p>Es el texto y las capturas del <code>.docx</code> original del curso, solo presentados como tutorial. Puede tener erratas de origen. El autor del curso es Ricardo Narvaja.</p></aside>
+<hr>
+<p>INTRODUCCIÓN AL REVERSING CON IDA PRO DESDE CERO PARTE 21</p>
+<p>¿VULNERABLE O NO?</p>
+<p>En la parte 20 dejamos un ejercicio para analizar si era vulnerable o no y en la lista de crackslatinos hubo muchas opiniones, yo no conteste y deje que discutan el tema dejando la solución del ejercicio y el análisis para ser contestados en esta parte 21.</p>
+<p>Teníamos el código fuente que nos podía ayudar, el idb y el ejecutable para poder reversear en IDA y debuggear si es necesario.</p>
+<p>El código fuente es este.</p>
+<figure><img loading="lazy" src="img/21/1.png" alt="Captura 1 del tute 21"></figure>
+<p>Igual analizaremos estáticamente en IDA primero.</p>
+<figure><img loading="lazy" src="img/21/2.png" alt="Captura 2 del tute 21"></figure>
+<p>Allí tenemos el CANARY que lo renombramos como siempre.</p>
+<p>Tenemos Buf, veremos el largo del mismo en la representación estática del stack.</p>
+<figure><img loading="lazy" src="img/21/3.png" alt="Captura 3 del tute 21"></figure>
+<p>El largo es 16 por 1 que es el largo de cada elemento o sea 16 bytes decimal.</p>
+<figure><img loading="lazy" src="img/21/4.png" alt="Captura 4 del tute 21"></figure>
+<p>O sea que si pudiéramos escribir más de 16 bytes en el BUFFER sería vulnerable.</p>
+<p>NO confundir bugs comunes o crashes con vulnerabilidades, no todo lo que hace crashear a un programa es una vulnerabilidad si hago.</p>
+<pre class='asm'>XOR ECX, ECX</pre>
+<p>DIV ECX</p>
+<p>Es un bug que pondrá a cero ECX y al dividir por cero y provocará una excepción que si no es manejada será un crash.</p>
+<p>BUFFER OVERFLOW.</p>
+<p>Eso es un simple crash, existen varios tipos de vulnerabilidades por ahora solo estamos viendo la más sencilla el BUFFER OVERFLOW.</p>
+<p>Si existe un desbordamiento de un BUFFER pudiendo escribir fuera de donde termina el espacio reservado para el mismo el programa será VULNERABLE pues podría producirse un BUFFER OVERFLOW, más adelante veremos si además de ser VULNERABLE es EXPLOTABLE o no, puede ser VULNERABLE y por ejemplo NO EXPLOTABLE por alguna mitigación del programa o del sistema como el CANARY por ejemplo que impidiera su explotación, pero eso es un tema para partes siguientes.</p>
+<p>Así que la idea es analizar si ese BUFFER de 16 bytes decimal se puede desbordar, como en este caso, justo debajo del Buf está el CANARY, si llegáramos a pisar el mismo al copiar en el buffer, es obvio que existiría un BUFFER OVERFLOW.</p>
+<figure><img loading="lazy" src="img/21/5.png" alt="Captura 5 del tute 21"></figure>
+<p>Ese código corresponde a esta línea del código fuente.</p>
+<p>while ((c = getchar()) != '\n' &amp;&amp; c != EOF);</p>
+<p>Es una línea que se usa luego del scan para que lea el 0xA del estándar input que es el salto de línea, así no molesta en una sucesiva lectura del mismo, pues si queda y no se filtra, en la siguiente llamada a leer caracteres del teclado, no funcionará.</p>
+<p>Vemos que loopea hasta que encuentra el 0xA que corresponde al SALTO DE LÍNEA o LF.</p>
+<p>Caracteres de control ASCII no imprimibles :</p>
+<p>codigo ascii 00 = NULL ( Carácter nulo )</p>
+<p>codigo ascii 01 = SOH ( Inicio de encabezado )</p>
+<p>codigo ascii 02 = STX ( Inicio de texto )</p>
+<p>codigo ascii 03 = ETX ( Fin de texto, palo corazon barajas inglesas de poker )</p>
+<p>codigo ascii 04 = EOT ( Fin de transmisión, palo diamantes barajas de poker )</p>
+<p>codigo ascii 05 = ENQ ( Consulta, palo treboles barajas inglesas de poker )</p>
+<p>codigo ascii 06 = ACK ( Reconocimiento, palo picas cartas de poker )</p>
+<p>codigo ascii 07 = BEL ( Timbre )</p>
+<p>codigo ascii 08 = BS ( Retroceso )</p>
+<p>codigo ascii 09 = HT ( Tabulador horizontal )</p>
+<p>codigo ascii 10 = LF ( Nueva línea - salto de línea )</p>
+<p>codigo ascii 11 = VT ( Tabulador vertical )</p>
+<p>codigo ascii 12 = FF ( Nueva página - salto de página )</p>
+<p>codigo ascii 13 = CR ( ENTER - retorno de carro )</p>
+<p>Creo que eso ocurre si no me equivoco porque en WINDOWS al apretar ENTER que es el 13 decimal o 0x0d, cortas la entrada de caracteres, pero queda siempre ese 0xa en el standard input que molesta en la entrada siguiente por teclado, ya que el salto de línea también cancela el ingreso.</p>
+<p>Aquí vemos un script de python que sería funcional para probar este ejercicio.</p>
+<p>from subprocess import *</p>
+<p>import time</p>
+<p>p = Popen([r'VULNERABLE_o_NO.exe','f'],stdout=PIPE,stdin=PIPE, stderr=STDOUT)</p>
+<p>print "ATACHEA EL DEBUGGER Y APRETA ENTER\n"</p>
+<p>raw_input()</p>
+<p>primera="10\n"</p>
+<p>p.stdin.write(primera)</p>
+<p>time.sleep(0.5)</p>
+<p>segunda="AAAA\n"</p>
+<p>p.stdin.write(segunda)</p>
+<p>testresult = p.communicate()[0]</p>
+<p>time.sleep(0.5)</p>
+<p>print(testresult)</p>
+<p>print primera</p>
+<p>print segunda</p>
+<p>Vemos que es un script que utiliza subprocess para arrancar el proceso.</p>
+<p>p = Popen([r'VULNERABLE_o_NO.exe','f'],stdout=PIPE,stdin=PIPE, stderr=STDOUT)</p>
+<p>r</p>
+<p>Redirecciona el standard input y output para que podamos mandarle caracteres como si hubiéramos tipeado.</p>
+<p>primera="10\n"</p>
+<p>p.stdin.write(primera)</p>
+<p>time.sleep(0.5)</p>
+<p>segunda="AAAA\n"</p>
+<p>p.stdin.write(segunda)</p>
+<p>Vemos que hay dos ingresos primero el size que me pide, le pongo 10 para probar y luego la data que ingresara con el gets_s con el size que le pasamos antes, puedo tipear menos que 10.</p>
+<p>Además le agregue un raw_input() para que una vez que arranque el proceso se detenga el script de python hasta que apreto ENTER, lo cual me permite atachear el IDA al proceso que arrancará y quedará esperando entrada por stdin.</p>
+<p>Probemos si funciona el script como pensamos.</p>
+<p>Lo arrancamos.</p>
+<figure><img loading="lazy" src="img/21/6.png" alt="Captura 6 del tute 21"></figure>
+<p>Queda ahí detenido esperando que apretemos ENTER dándonos la posibilidad de atachear el IDA.</p>
+<p>En el mismo abro el VULNERABLE_o_NO.exe para que lo analice en el LOADER sin arrancarlo en el DEBUGGER y luego elijo LOCAL WIN32 DEBUGGER y voy a DEBUGGER-ATTACH TO PROCESS.</p>
+<figure><img loading="lazy" src="img/21/7.png" alt="Captura 7 del tute 21"></figure>
+<p>Allí no se llega a ver el nombre del ejecutable porque el nombre de la carpeta es muy largo, pero es ese, apreto OK y cuando se detiene apreto f9 para que quede RUNNING.</p>
+<p>Luego antes de apretar ENTER en Python, pondré un BREAKPOINT a continuación de la primera entrada por teclado ya que estaba esperando allí el proceso, y solo podré detenerme después de cuando vuelva de esa entrada.</p>
+<figure><img loading="lazy" src="img/21/8.png" alt="Captura 8 del tute 21"></figure>
+<p>Allí pongo el BREAKPOINT y luego en Python apreto ENTER.</p>
+<p>Vemos que para en el breakpoint.</p>
+<figure><img loading="lazy" src="img/21/9.png" alt="Captura 9 del tute 21"></figure>
+<p>Si paso el mouse por encima de la variable size que es la que ingresamos el valor en el scanf_s.</p>
+<figure><img loading="lazy" src="img/21/10.png" alt="Captura 10 del tute 21"></figure>
+<p>.</p>
+<p>Allí vemos que en la variable Size ingreso el valor 10 decimal (0xA) que ingrese mediante el script.</p>
+<figure><img loading="lazy" src="img/21/11.png" alt="Captura 11 del tute 21"></figure>
+<p>Si llego al getchar la realidad es que yo no pase ningún carácter 0xA en el script.</p>
+<p>primera="10\n"</p>
+<p>p.stdin.write(primera)</p>
+<p>time.sleep(0.5)</p>
+<p>segunda="AAAA\n"</p>
+<p>p.stdin.write(segunda)</p>
+<p>ya que el “ \n” es el ENTER 0x0d</p>
+<p>pero si paso el getchar con f8 para saltear el CALL y no ingresar en el mismo.</p>
+<figure><img loading="lazy" src="img/21/12.png" alt="Captura 12 del tute 21"></figure>
+<p>Vemos que quedo un carácter 0xA que yo no pase, el cual al leerlo lo quito del stdin y me limpia para la siguiente entrada por teclado.</p>
+<p>Vemos que compara mi size 0xA con el máximo 0x10 y como es menor continua.</p>
+<figure><img loading="lazy" src="img/21/13.png" alt="Captura 13 del tute 21"></figure>
+<p>Cuando paso con f8 el gets_s</p>
+<figure><img loading="lazy" src="img/21/14.png" alt="Captura 14 del tute 21"></figure>
+<p>Si pongo el mouse encima de Buf.</p>
+<figure><img loading="lazy" src="img/21/15.png" alt="Captura 15 del tute 21"></figure>
+<p>Veo que ingresaron las siguientes A que pase en el script, así que el mismo funciona y me permite probar y debuggear lo que va pasando.</p>
+<p>Si lo vuelvo a tirar desde el script y cuando llego al getchar lo salteo cambiando el EIP para que no lea el 0xA.</p>
+<figure><img loading="lazy" src="img/21/16.png" alt="Captura 16 del tute 21"></figure>
+<figure><img loading="lazy" src="img/21/17.png" alt="Captura 17 del tute 21"></figure>
+<p>Cambiamos EIP allí para que no filtre el 0xa a ver qué pasa.</p>
+<p>Cuando paso el gets_s veo que ahora no ingreso nada.</p>
+<figure><img loading="lazy" src="img/21/18.png" alt="Captura 18 del tute 21"></figure>
+<p>Eso quiere decir que se debe filtrar el carácter 0xA que queda en el stdin luego de ciertas entradas para que no afecte si hay entradas subsiguientes, por eso se justifica la línea de código.</p>
+<p>while ((c = getchar()) != '\n' &amp;&amp; c != EOF);</p>
+<p>También ahora que tenemos el script podemos analizar el crash que se produce en gets_s cuando uno tipea el máximo size a ver si pasa algo mas o es solo un crash.</p>
+<p>primera="16\n"</p>
+<p>p.stdin.write(primera)</p>
+<p>time.sleep(0.5)</p>
+<p>segunda="A" *16 + "\n"</p>
+<p>p.stdin.write(segunda)</p>
+<p>Veré que pasa en este caso.</p>
+<p>Con esos datos llego ahí.</p>
+<figure><img loading="lazy" src="img/21/19.png" alt="Captura 19 del tute 21"></figure>
+<p>Al pasar el LEA anoto la dirección donde comienza el buffer en mi caso 0x0115FDD8.</p>
+<p>Si hago doble click en CANARY y apreto D varias veces hasta que sea un dword (dd), también puedo anotar la dirección en mi caso 0x115fde8 y el valor de CANARY en este caso será 965fa1f4.</p>
+<figure><img loading="lazy" src="img/21/20.png" alt="Captura 20 del tute 21"></figure>
+<p>Doy F9.</p>
+<figure><img loading="lazy" src="img/21/21.png" alt="Captura 21 del tute 21"></figure>
+<p>Allí está la excepción que produce la api en algunos Windows, acepto el OK.</p>
+<figure><img loading="lazy" src="img/21/22.png" alt="Captura 22 del tute 21"></figure>
+<p>Ahí está vayamos con G y coloquemos la dirección del buffer y luego la del canary a ver que paso.</p>
+<p>Vemos que el canary está intacto.</p>
+<figure><img loading="lazy" src="img/21/23.png" alt="Captura 23 del tute 21"></figure>
+<p>Y el buffer se llenó, así que tipear el máximo no produce overflow, lo que sí es cierto es que el buffer se llenó completo y no quedar el cero final de la string, lo cual podría traer problemas si el programa continúa, pero en este caso la excepción no es manejada y el programa se cierra así que por acá solo es un crash.(también creo que pone un cero al inicio del buffer para anular la string)</p>
+<p>Si el programa manejara la excepción y continuará, debería descartar los datos del buffer porque si lo tomara y usará como string, al no tener cero final, se podrían apendear datos que están a continuación en el stack y provocar problemas, pero al poner el cero al inicio la anula igualmente.</p>
+<p>Bueno ya sabiendo que por aquí no hay overflow volvamos al análisis estático.</p>
+<p>Centrémonos en esta parte.</p>
+<figure><img loading="lazy" src="img/21/24.png" alt="Captura 24 del tute 21"></figure>
+<p>Habíamos dicho que el salto JL o JLE considera el signo o sea que EAX podría ser negativo, si por ejemplo fuera 0xFFFFFFFF seria -1 y sería menor que 0x10.</p>
+<p>Quiere decir que si pasara como size -1 tendría posibilidad de que pase la comparación veamos.</p>
+<p>primera="-1\n"</p>
+<p>p.stdin.write(primera)</p>
+<p>time.sleep(0.5)</p>
+<p>segunda="A" *0x2000 + "\n"</p>
+<p>p.stdin.write(segunda)</p>
+<p>Probemos el script con estos valores (size -1)</p>
+<p>Al parar en el breakpoint.</p>
+<figure><img loading="lazy" src="img/21/25.png" alt="Captura 25 del tute 21"></figure>
+<p>Veamos el valor del size.</p>
+<figure><img loading="lazy" src="img/21/26.png" alt="Captura 26 del tute 21"></figure>
+<p>Vemos que vale 0xFFFFFFFF si hago doble click en size y apreto D para agrupar hasta que sea un dword.</p>
+<figure><img loading="lazy" src="img/21/27.png" alt="Captura 27 del tute 21"></figure>
+<p>Sigamos traceando hasta la comparación.</p>
+<figure><img loading="lazy" src="img/21/28.png" alt="Captura 28 del tute 21"></figure>
+<p>Vemos que como 0xFFFFFFFF es -1 al considerar el signo no filtra y seguirá a leer ese size.</p>
+<p>La realidad que en el gets_s lo mismo que un memcpy y cualquier api que copie o ingrese bytes los sizes son interpretados como unsigned, porque no existen los tamaños negativos, como no se pueden ingresar o copiar -1 bytes, eso es imposible, lo interpreta como 0xFFFFFFFF positivo lo cual vemos que producirá un overflow.</p>
+<p>Vuelvo a ver dónde está el buffer, esta vez está en 0x00CFF914.</p>
+<figure><img loading="lazy" src="img/21/29.png" alt="Captura 29 del tute 21"></figure>
+<p>Si voy a donde comienza el buffer.</p>
+<figure><img loading="lazy" src="img/21/30.png" alt="Captura 30 del tute 21"></figure>
+<p>Podemos ver mejor cuanto copio si lo transformo en string, en el inicio de la string apretó A.</p>
+<figure><img loading="lazy" src="img/21/31.png" alt="Captura 31 del tute 21"></figure>
+<p>Veo que la cosa es grande jeje.</p>
+<p>Y si lo transformo en ARRAY</p>
+<figure><img loading="lazy" src="img/21/32.png" alt="Captura 32 del tute 21"></figure>
+<p>Veo también que llega hasta el final del stack, piso el CANARY piso todo.</p>
+<figure><img loading="lazy" src="img/21/33.png" alt="Captura 33 del tute 21"></figure>
+<p>Lo lleno de Aes hasta el final del stack, justo abajo veo que ya cambia a otra sección a debug009.</p>
+<p>Con lo cual verificamos que es vulnerable ahora como se podría arreglar, obviamente si en vez de usar un salto JL o JLE que considera el signo usáramos JB o JBE que no lo considera si pasamos -1 será 0xFFFFFFFF pero en la comparación lo tomara como positivo y será más grande que 0x10 y saldrá afuera.</p>
+<p>En el código fuente sería así.</p>
+<figure><img loading="lazy" src="img/21/34.png" alt="Captura 34 del tute 21"></figure>
+<p>Una sola palabrita lo transforma de VULNERABLE a NO VULNERABLE jeje, compilamos.</p>
+<p>NO_VULNERABLE.exe se llama el reparado.</p>
+<figure><img loading="lazy" src="img/21/35.png" alt="Captura 35 del tute 21"></figure>
+<p>Vemos que con solo cambiar el tipo de variable a UNSIGNED cambio al compilar el tipo de salto al que no considera el signo.</p>
+<p>Arreglo el script cambiando el nombre para que cargue este nuevo ejecutable el resto lo dejo igual.</p>
+<p>Analizo el nuevo ejecutable en IDA en el LOADER y luego arrancó el script y antes de apretar ENTER, atacheo el LOCAL DEBUGGER y pongo un BREAKPOINT en la comparación del size para que pare allí a ver que pasa.</p>
+<figure><img loading="lazy" src="img/21/36.png" alt="Captura 36 del tute 21"></figure>
+<p>Si veo en size el valor sigue siendo 0xFFFFFFFF.</p>
+<figure><img loading="lazy" src="img/21/37.png" alt="Captura 37 del tute 21"></figure>
+<p>Pero si sigo traceando.</p>
+<figure><img loading="lazy" src="img/21/38.png" alt="Captura 38 del tute 21"></figure>
+<p>Ahora va a EXIT y evita el overflow ya que JBE considera ese 0xFFFFFFFF como no le importa el signo, como un número positivo grande y mayor que 0x10, con lo cual está reparado el programa.</p>
+<p>Por lo tanto la respuesta al ejercicio es que era VULNERABLE y que se repara cambiando el size de INT que es SIGNED a UNSIGNED INTEGER con lo cual cambia el salto JLE por JBE de un salto que considera el signo a uno que no lo hace.</p>
+<p>Hasta la parte 22</p>
+<p>Ricardo Narvaja</p>
+</main>
+<footer class="pie">
+  <p>Material educativo y defensivo. Las prácticas se limitan a programas propios, software abierto o crackmes diseñados para aprender. No se enseña a eludir licencias, DRM ni controles de acceso.</p>
+  <p><a href="../00_EMPEZAR_AQUI.html">Inicio</a> · <a href="../guia/etapa-0.html">Etapas</a> · <a href="../fuentes_y_limites.html">Fuentes y límites</a> · <a href="../registro_de_cobertura.csv">Registro de cobertura</a></p>
+</footer>
+<script>
+(function(){
+  function abrir(src){
+    var o=document.createElement('div'); o.className='lightbox-ov';
+    var i=document.createElement('img'); i.src=src; o.appendChild(i);
+    function cerrar(){o.remove(); document.removeEventListener('keydown', onkey);}
+    function onkey(e){ if(e.key==='Escape') cerrar(); }
+    o.addEventListener('click', cerrar);
+    document.addEventListener('keydown', onkey);
+    document.body.appendChild(o);
+  }
+  document.addEventListener('DOMContentLoaded', function(){
+    document.querySelectorAll('figure img, main img').forEach(function(img){
+      img.style.cursor='zoom-in';
+      img.addEventListener('click', function(){ abrir(img.currentSrc||img.src); });
+    });
+  });
+})();
+</script>
+</body>
+</html>

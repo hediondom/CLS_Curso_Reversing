@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tute 53 · IRP e IOCTL — Curso IDA</title>
+<meta name="description" content="Tutorial ilustrado del tute 53 del Curso IDA desde cero: IRP e IOCTL.">
+<link rel="stylesheet" href="../guia/estilo.css">
+</head>
+<body>
+<a class="salto" href="#contenido">Saltar al contenido</a>
+<header class="cabecera">
+  <div class="marca"><a href="../00_EMPEZAR_AQUI.html">CLS · Curso de reversing</a> <span class="edicion">edición 5 · 27/10/2026</span></div>
+  <nav class="principal" aria-label="Navegación principal">
+    <a href="../00_EMPEZAR_AQUI.html">Inicio</a>
+    <a href="../guia/index.html">Curso</a>
+    <a href="../fichas/index.html">Fichas</a>
+    <a href="../glosario.html">Glosario</a>
+    <a href="../preguntas_y_respuestas.html">Repaso</a>
+  </nav>
+</header>
+<main id="contenido">
+<p class="migas"><a href="../ida-tutes.html">← Índice de los 69 tutes de IDA</a></p>
+<h1>Tute 53 · IRP e IOCTL</h1>
+<p class="meta-tute"><strong>⏱ 4 min de lectura</strong> · 744 palabras · 22 capturas · grupo: Kernel de Windows y temas avanzados (drivers, HackSys/HEVD, SSDT/syscalls, VA→física)</p>
+<aside class="callout nota"><p class="callout-titulo">Qué enseña</p><p>Reversear hasta el IOCTL code; la estructura IRP.</p></aside>
+<p><em>se conecta con:</em> <a href="../guia/05-fuera-de-alcance.html">Fuera de alcance</a></p>
+<aside class="callout aviso"><p class="callout-titulo">Material observado, no reescrito</p><p>Es el texto y las capturas del <code>.docx</code> original del curso, solo presentados como tutorial. Puede tener erratas de origen. El autor del curso es Ricardo Narvaja.</p></aside>
+<hr>
+<p>INTRODUCCION AL REVERSING CON IDA PRO DESDE CERO PARTE 53 KERNEL</p>
+<p>IRP</p>
+<p>Un detalle que quería aclarar que en la parte anterior no hallamos, ya que la definición de la estructura IRP no está completa era como llegar a reversear hasta que aparezca el IOCTL code.</p>
+<p>Si vuelvo a debuggear y cuando paro uso la barra de windbg para ver la estructura, sabemos que el comando dt nos muestra la estructura es este caso la estructura _IRP.</p>
+<figure><img loading="lazy" src="img/53/1.png" alt="Captura 1 del tute 53"></figure>
+<p>Igual no nos muestra la posición 0x60 que es la que lee y está dentro de Tail, lo mismo que nos pasa en la estructura del IDA, pero acá hay un truquito que sirve para aclarar un poco más las cosas.</p>
+<figure><img loading="lazy" src="img/53/2.png" alt="Captura 2 del tute 53"></figure>
+<p>Hay varios modificadores del comando dt uno es -v que lo pone en modo verbose otro es -r que nos da la profundidad de las sub-estructuras para que nos muestre las mismas, veamos que pasa si ponemos.</p>
+<figure><img loading="lazy" src="img/53/3.png" alt="Captura 3 del tute 53"></figure>
+<figure><img loading="lazy" src="img/53/4.png" alt="Captura 4 del tute 53"></figure>
+<p>Ahora se ve mejor incluso nos muestra el contenido de Tail</p>
+<figure><img loading="lazy" src="img/53/5.png" alt="Captura 5 del tute 53"></figure>
+<p>IOCURRENTSTACKLOCATION</p>
+<p>Vemos que Tail empieza en 0x40 y 0x20 más adelante esta CurrentStackLocation, que seria la estructura que se encuentra en 0x60</p>
+<p>Si uno busca por el WDK si lo tiene instalado</p>
+<figure><img loading="lazy" src="img/53/6.png" alt="Captura 6 del tute 53"></figure>
+<p>Ve la definición de CurrentStackLocation que es una estructura del tipo _IO_STACK_LOCATION veamos si esta nos la dumpea el windbg.</p>
+<figure><img loading="lazy" src="img/53/7.png" alt="Captura 7 del tute 53"></figure>
+<p>Algo mas obtuvimos pero aun no sale el campo 0x0c que esta dentro de Parameters, también buscamos que nos muestre la estructura con mas profundidad asi que usaremos los modificadores nuevamente.</p>
+<figure><img loading="lazy" src="img/53/8.png" alt="Captura 8 del tute 53"></figure>
+<figure><img loading="lazy" src="img/53/9.png" alt="Captura 9 del tute 53"></figure>
+<p>Vemos que los campos a partir del offset 0x4 cambian según la acción que estemos ejecutando, para cada acción hay una definición diferente de estos campos.</p>
+<p>Como en nuestro caso buscamos el IOCTL code ese solo se usa la segunda vez que para cuando llamamos a DeviceIoControl, asi que podemos mirar alli y ver que el campo 0x8 dentro de Parameters, para ese caso es el IOCTL, si miramos desde el inicio de la estructura _IO_STACK_LOCATION sera el campo 0xC ya que había 0x4 bytes antes de Parameters.</p>
+<p>Si buscamos en el WDK la definición de la estructura</p>
+<figure><img loading="lazy" src="img/53/10.png" alt="Captura 10 del tute 53"></figure>
+<p>Vemos que al igual que nos sale en el Windbg la primera parte es fija pero después cuando dice unión significa que la parte siguiente es variable y depende del código que estamos trabajando, hay diferentes valores según se este llamando desde CreatefIle, ReadFile, etc lo que nos importa a nosotros es cuando se llama desde DeviceIoControl ya que es la api que se usa para pasar los IOCTL.</p>
+<figure><img loading="lazy" src="img/53/11.png" alt="Captura 11 del tute 53"></figure>
+<p>Ahí está, así que como el tipo ULONG es de 4 bytes de largo vemos entonces que si lo completamos.</p>
+<figure><img loading="lazy" src="img/53/12.png" alt="Captura 12 del tute 53"></figure>
+<p>Los primeros son 4 UCHAR o sea de un byte cada uno quiere decir que la estructura Parameters empezaba en 0x4 eso nos decía el windbg</p>
+<figure><img loading="lazy" src="img/53/13.png" alt="Captura 13 del tute 53"></figure>
+<p>Y luego allí en 0x4 desde el inicio de _IO_STACK_LOCATION estará el primer campo de la misma OutputBufferLenght , en 0x8 estará InputBufferLenght y en 0xC estará el IOCTL o IOControlCode.</p>
+<p>Lo cual coincide con el reversing ya que si en IRP + 0x60 empezaba la estructura _IO_STACK_LOCATION, esa se lee aquí.</p>
+<figure><img loading="lazy" src="img/53/14.png" alt="Captura 14 del tute 53"></figure>
+<p>Quiere decir que en EBX tenemos la dirección de _IO_STACK_LOCATION, asi que como eso existe en LOCAL TYPES en IDA la sincronizamos y en EBX apretamos T y la elegimos.</p>
+<figure><img loading="lazy" src="img/53/15.png" alt="Captura 15 del tute 53"></figure>
+<p>Alli este lee a EAX el valor MajorFunction ya que lee solo un byte y es ese campo.</p>
+<figure><img loading="lazy" src="img/53/16.png" alt="Captura 16 del tute 53"></figure>
+<p>MAJOR FUNCTION TABLE</p>
+<p>Recordemos que era el valor que salía de la tablita</p>
+<figure><img loading="lazy" src="img/53/17.png" alt="Captura 17 del tute 53"></figure>
+<figure><img loading="lazy" src="img/53/18.png" alt="Captura 18 del tute 53"></figure>
+<p>La primera vez cuando hago CreateFile valdrá 0x0, la segunda vez cuando uso DeviceIoControl valdrá 0xE y la tercera vez cuando uso CloseHandle valdrá 0x02.</p>
+<p>Por supuesto como es la primera vez que para, cuando hace CreateFile, EAX valdrá cero</p>
+<figure><img loading="lazy" src="img/53/19.png" alt="Captura 19 del tute 53"></figure>
+<p>Seguiré hasta que pare nuevamente en la misma dirección.</p>
+<p>Ahora si MajorFuncion es 0xe.</p>
+<figure><img loading="lazy" src="img/53/20.png" alt="Captura 20 del tute 53"></figure>
+<p>Vemos que en la posición 0xC que va a leer el IOCTL si apreto T</p>
+<figure><img loading="lazy" src="img/53/21.png" alt="Captura 21 del tute 53"></figure>
+<p>Me salen varias opciones y si veo hay para Create, Read, etc busco la de DeviceIoControl y el campo es IoControlCode.</p>
+<p>Y ahora si me queda perfectamente reverseado y coincide ya que solo pasara por alli cuando sea el MajorFunction 0xE, y como en los otros valores de MajorFuncion no pasa por acá, no habrá ningún error.</p>
+<figure><img loading="lazy" src="img/53/22.png" alt="Captura 22 del tute 53"></figure>
+<p>Si en otra parte del programa lee ese mismo campo 0xc cuando utiliza otra MajorFunction en ese caso al apretar T elegiremos la acción correspondiente y el reversing nos quedara de acuerdo a cada caso como corresponde.</p>
+<p>Hasta la parte 54</p>
+<p>Ricardo Narvaja</p>
+</main>
+<footer class="pie">
+  <p>Material educativo y defensivo. Las prácticas se limitan a programas propios, software abierto o crackmes diseñados para aprender. No se enseña a eludir licencias, DRM ni controles de acceso.</p>
+  <p><a href="../00_EMPEZAR_AQUI.html">Inicio</a> · <a href="../guia/etapa-0.html">Etapas</a> · <a href="../fuentes_y_limites.html">Fuentes y límites</a> · <a href="../registro_de_cobertura.csv">Registro de cobertura</a></p>
+</footer>
+<script>
+(function(){
+  function abrir(src){
+    var o=document.createElement('div'); o.className='lightbox-ov';
+    var i=document.createElement('img'); i.src=src; o.appendChild(i);
+    function cerrar(){o.remove(); document.removeEventListener('keydown', onkey);}
+    function onkey(e){ if(e.key==='Escape') cerrar(); }
+    o.addEventListener('click', cerrar);
+    document.addEventListener('keydown', onkey);
+    document.body.appendChild(o);
+  }
+  document.addEventListener('DOMContentLoaded', function(){
+    document.querySelectorAll('figure img, main img').forEach(function(img){
+      img.style.cursor='zoom-in';
+      img.addEventListener('click', function(){ abrir(img.currentSrc||img.src); });
+    });
+  });
+})();
+</script>
+</body>
+</html>

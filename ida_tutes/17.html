@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tute 17 · Resolver el ejercicio de unpacking — Curso IDA</title>
+<meta name="description" content="Tutorial ilustrado del tute 17 del Curso IDA desde cero: Resolver el ejercicio de unpacking.">
+<link rel="stylesheet" href="../guia/estilo.css">
+</head>
+<body>
+<a class="salto" href="#contenido">Saltar al contenido</a>
+<header class="cabecera">
+  <div class="marca"><a href="../00_EMPEZAR_AQUI.html">CLS · Curso de reversing</a> <span class="edicion">edición 5 · 27/10/2026</span></div>
+  <nav class="principal" aria-label="Navegación principal">
+    <a href="../00_EMPEZAR_AQUI.html">Inicio</a>
+    <a href="../guia/index.html">Curso</a>
+    <a href="../fichas/index.html">Fichas</a>
+    <a href="../glosario.html">Glosario</a>
+    <a href="../preguntas_y_respuestas.html">Repaso</a>
+  </nav>
+</header>
+<main id="contenido">
+<p class="migas"><a href="../ida-tutes.html">← Índice de los 69 tutes de IDA</a></p>
+<h1>Tute 17 · Resolver el ejercicio de unpacking</h1>
+<p class="meta-tute"><strong>⏱ 6 min de lectura</strong> · 1.139 palabras · 33 capturas · grupo: Unpacking didáctico (UPX, ASPack), dump e IAT</p>
+<aside class="callout nota"><p class="callout-titulo">Qué enseña</p><p>Solución del UnPackMe pendiente.</p></aside>
+<p><em>▶ video afín (mismo autor, en x64dbg):</em> <a href="../videos.html">«13 Unpacking 2 - OEP»</a></p>
+<aside class="callout aviso"><p class="callout-titulo">Material observado, no reescrito</p><p>Es el texto y las capturas del <code>.docx</code> original del curso, solo presentados como tutorial. Puede tener erratas de origen. El autor del curso es Ricardo Narvaja.</p></aside>
+<hr>
+<p>INTRODUCCIÓN AL REVERSING CON IDA PRO DESDE CERO PARTE 17.</p>
+<p>RESOLVIENDO EL EJERCICIO PENDIENTE.</p>
+<p>Llegamos a la parte 17 y se supone que al menos debían intentar resolver el ejercicio.</p>
+<p>http://ricardonarvaja.info/WEB/INTRODUCCION%20AL%20REVERSING%20CON%20IDA%20PRO%20DESDE%20CERO/EJERCICIOS/</p>
+<p>El mismo es muy simple y hay que desempacarlo como vimos en las partes anteriores y luego reversearlo para hallar la solución del mismo y si es posible hacer un keygen en Python.</p>
+<p>En este caso vamos a cambiar un poco y voy a desempacarlo en forma remota a una máquina virtual que tengo de Windows 10 en VMWare Workstation.</p>
+<p>DESEMPACANDO REMOTO.</p>
+<p>La máquina principal para debuggear remoto es donde tengo corriendo el IDA en este caso es Windows 7 pero podría ser cualquier Windows, Linux, IOS etc donde tengamos corriendo el IDA instalado.</p>
+<p>Igual todas las restricciones que ocurran al desempacar remoto serán las mismas que si el programa lo estuviera debuggeando en Windows 10 directamente, ya que allí es donde correrá el archivo empacado, que en este caso se llama PACKED_PRACTICA_1.exe.</p>
+<p>Para abreviar, de acá en más a la maquina principal donde tengo el IDA instalado, la llamare “PRINCIPAL” y a la imagen de Windows 10 que tengo corriendo en un VMWARE le llamare “TARGET”.</p>
+<figure><img loading="lazy" src="img/17/1.png" alt="Captura 1 del tute 17"></figure>
+<p>Allí está el archivo empacado en el TARGET, y debo copiar también allí de la carpeta donde tengo instalado el IDA en la PRINCIPAL, el servidor remoto llamado win32_remote.exe ya que mi sistema Windows 10 es de 64 bits, pero el programa empacado es de 32 bits, así que debo correr el server de 32 bits.</p>
+<p>Copiamos también el ejecutable PACKED_PRACTICA_1.exe a la PRINCIPAL para realizar el análisis en forma LOCAL y lo abrimos en el LOADER poniendo la tilde en MANUAL LOAD para que lo analice y cargue todas las secciones.</p>
+<figure><img loading="lazy" src="img/17/2.png" alt="Captura 2 del tute 17"></figure>
+<p>Allí estamos en el LOADER mostrando el Entry Point del programa empacado, aun no arrancamos el DEBUGGER.</p>
+<figure><img loading="lazy" src="img/17/3.png" alt="Captura 3 del tute 17"></figure>
+<p>Es muy importante no renombrar el IDB o sea que si el ejecutable se llama PACKED_PRACTICA_1.exe en la PRINCIPAL, al analizar guardara en la misma carpeta un IDB y debería llamarse PACKED_PRACTICA_1.idb y no de otra forma, sino habrá problemas para reconocer que el proceso remoto corresponde al mismo ejecutable analizado localmente.</p>
+<p>Arrancamos el server remoto win32_remote.exe en el TARGET.</p>
+<figure><img loading="lazy" src="img/17/4.png" alt="Captura 4 del tute 17"></figure>
+<p>Allí arranca el server remoto de IDA y escuchara en el IP y puerto que dice allí, en mi caso IP 10.80.65.157 y puerto 23946, copien los datos que muestra el de ustedes.</p>
+<p>Cambien el debugger a REMOTE WINDOWS DEBUGGER.</p>
+<figure><img loading="lazy" src="img/17/5.png" alt="Captura 5 del tute 17"></figure>
+<p>En PROCESS OPTIONS ponen el IP y PORT del server de IDA y como necesitamos arrancarlo desde el inicio para desempacar ya que no nos podemos atachear porque ya lo encontraríamos corriendo, tendremos que arreglar las rutas que muestra allí, para que coincidan con la ubicación del ejecutable en el TARGET.</p>
+<figure><img loading="lazy" src="img/17/6.png" alt="Captura 6 del tute 17"></figure>
+<p>En mi caso el desempacado en el TARGET está en el DESKTOP y allí el path en mi caso será C:\Users\admin\Desktop\PACKED_PRACTICA_1.exe</p>
+<figure><img loading="lazy" src="img/17/7.png" alt="Captura 7 del tute 17"></figure>
+<p>Así que lo arreglo.</p>
+<figure><img loading="lazy" src="img/17/8.png" alt="Captura 8 del tute 17"></figure>
+<p>Ahora sí le damos a START PROCESS y parara en el entry point de esta forma están detenidos en el ENTRY POINT del empacado en MODO DEBUGGER.</p>
+<p>Lo que si podemos apreciar que dado que el ejecutable tiene randomizacion las direcciones de donde se cargan varían cada vez que se reinicia, por lo cual es importante desde que lo arrancamos, dumpeamos y reparemos, la IAT sea el mismo proceso sin cerrarlo para que no cambien las direcciones entre tiro y tiro.</p>
+<figure><img loading="lazy" src="img/17/9.png" alt="Captura 9 del tute 17"></figure>
+<p>Ahora vamos a mirar la primera sección de código después del header en SEGMENTS.</p>
+<p>En mi caso veo que se inicia en 231000 y termina en 238000.</p>
+<figure><img loading="lazy" src="img/17/10.png" alt="Captura 10 del tute 17"></figure>
+<p>Si solo hiciéramos un SEARCH FOR TEXT para hallar el POPAD o POPA en este caso, hallaríamos el que se ejecuta justo antes de saltar al OEP.</p>
+<figure><img loading="lazy" src="img/17/11.png" alt="Captura 11 del tute 17"></figure>
+<figure><img loading="lazy" src="img/17/12.png" alt="Captura 12 del tute 17"></figure>
+<p>Allí ya sabríamos que el OEP está en 0x23146e pero puedo hallarlo poniendo un BREAKPOINT en EJECUCION que abarque toda la primera sección.</p>
+<p>Voy al inicio de la misma en 0x231000.</p>
+<p>Allí veo los datos que saca del header, obviamente las direcciones no coinciden por la randomizacion, la imagebase no es 0x400000 pero el VIRTUAL SIZE si es 0x7000 o sea el tamaño de la sección en la memoria coincide ya que empieza en 0x231000 y termina en 0x238000 la diferencia es 0x7000 bytes.</p>
+<p>.</p>
+<figure><img loading="lazy" src="img/17/13.png" alt="Captura 13 del tute 17"></figure>
+<p>Ali que pongo un breakpoint con F2 allí en el inicio de la sección, en mi caso 0x231000 o la dirección que corresponda en su máquina de largo 0x7000.</p>
+<figure><img loading="lazy" src="img/17/14.png" alt="Captura 14 del tute 17"></figure>
+<p>Borro todos los otros breakpoints que quede solo este y apreto F9 para que corra.</p>
+<figure><img loading="lazy" src="img/17/15.png" alt="Captura 15 del tute 17"></figure>
+<p>Allí se detiene y coincide con la dirección que habíamos visto que era el OEP, ahora borro el BREAKPOINT para quitar lo rojo.</p>
+<figure><img loading="lazy" src="img/17/16.png" alt="Captura 16 del tute 17"></figure>
+<p>Hago click derecho en la esquina inferior izquierda REANALIZE PROGRAM.</p>
+<figure><img loading="lazy" src="img/17/17.png" alt="Captura 17 del tute 17"></figure>
+<p>En este caso lo tomo como si fuera un bloque del mismo STUB por eso no le puso sub_ de prefijo y lo dejo como loc_ igual no hay problema.</p>
+<p>Ahora edito el script dumpeador en Python para que muestre la ImageBase real mía y el final del archivo.</p>
+<figure><img loading="lazy" src="img/17/18.png" alt="Captura 18 del tute 17"></figure>
+<p>O sea que la imagebase en mi caso es 0x230000 y el final 0x23b000.</p>
+<figure><img loading="lazy" src="img/17/19.png" alt="Captura 19 del tute 17"></figure>
+<p>Allí cambio lo valores y lo corro desde FILE-SCRIPT-FILE.</p>
+<figure><img loading="lazy" src="img/17/20.png" alt="Captura 20 del tute 17"></figure>
+<p>Allí lo guarda ya que el script corre en la maquina PRINCIPAL.</p>
+<p>Lo abro con el PEEDITOR y le hago el DUMPFIXER.</p>
+<figure><img loading="lazy" src="img/17/21.png" alt="Captura 21 del tute 17"></figure>
+<p>Lo renombro como exe.</p>
+<figure><img loading="lazy" src="img/17/22.png" alt="Captura 22 del tute 17"></figure>
+<p>Ya aparece con el mismo icono del empacado ahora abro el Scylla en la TARGET y copio el packed.exe allí.</p>
+<figure><img loading="lazy" src="img/17/23.png" alt="Captura 23 del tute 17"></figure>
+<p>Ahora le doy a IAT AUTOSEARCH.</p>
+<figure><img loading="lazy" src="img/17/24.png" alt="Captura 24 del tute 17"></figure>
+<p>Le cambio el OEP por 0x23146e que habíamos hallado.</p>
+<p>Veo que hay una sola entrada INVÁLIDA luego del IAT AUTOSEARCH y GET IMPORTS.</p>
+<p>Sumando la imagebase más la entrada invalida</p>
+<p>Python&gt;hex(0x230000+0x20d4)</p>
+<p>0x2320d4</p>
+<figure><img loading="lazy" src="img/17/25.png" alt="Captura 25 del tute 17"></figure>
+<p>Veo que parece ser ruido no creo que sea parte de la IAT verifiquemos mirando en el listado si esa dirección tiene referencias.</p>
+<p>Vemos que si tiene referencias</p>
+<figure><img loading="lazy" src="img/17/26.png" alt="Captura 26 del tute 17"></figure>
+<figure><img loading="lazy" src="img/17/27.png" alt="Captura 27 del tute 17"></figure>
+<p>Veamos donde va.</p>
+<figure><img loading="lazy" src="img/17/28.png" alt="Captura 28 del tute 17"></figure>
+<p>Vemos que termina yendo a un RET.</p>
+<p>Veo que no es un problema ya que va a un valor fijo del programa que es un RET no a una api, así que hare en la entrada invalida CLICK DERECHO-CUT THUNK para eliminarla de la IAT.</p>
+<figure><img loading="lazy" src="img/17/29.png" alt="Captura 29 del tute 17"></figure>
+<p>Ahora hago FIX DUMP del packed.exe y me queda el packed_SCY.exe sin embargo ese aun no corre y es porque en el dumpeado no se reallocan las direcciones que fueron creadas en runtime que no pertenecen a la IAT y cambian siempre al arrancar, así que le quitare la randomizacion lo abro al packed_SCY.exe  en el IDA con manual load cargando el header también y voy al mismo.</p>
+<p>DLL CHARACTERISTICS Y RANDOMIZACION.</p>
+<figure><img loading="lazy" src="img/17/30.png" alt="Captura 30 del tute 17"></figure>
+<p>Allí esta DLL CHARACTERISTICS en el suyo estará diferente de cero porque yo ya lo cambie.</p>
+<figure><img loading="lazy" src="img/17/31.png" alt="Captura 31 del tute 17"></figure>
+<p>Con el menú EDIT-PATCH PROGRAM-CHANGE WORD lo cambian a cero.</p>
+<figure><img loading="lazy" src="img/17/32.png" alt="Captura 32 del tute 17"></figure>
+<p>Y luego lo guardan ahí mismo con APPLY PATCHES TO INPUT FILE.</p>
+<p>Y listo.</p>
+<figure><img loading="lazy" src="img/17/33.png" alt="Captura 33 del tute 17"></figure>
+<p>Ya está desempacado en la parte 18 lo reversearemos.</p>
+<p>Hasta la parte 18</p>
+<p>Ricardo Narvaja</p>
+</main>
+<footer class="pie">
+  <p>Material educativo y defensivo. Las prácticas se limitan a programas propios, software abierto o crackmes diseñados para aprender. No se enseña a eludir licencias, DRM ni controles de acceso.</p>
+  <p><a href="../00_EMPEZAR_AQUI.html">Inicio</a> · <a href="../guia/etapa-0.html">Etapas</a> · <a href="../fuentes_y_limites.html">Fuentes y límites</a> · <a href="../registro_de_cobertura.csv">Registro de cobertura</a></p>
+</footer>
+<script>
+(function(){
+  function abrir(src){
+    var o=document.createElement('div'); o.className='lightbox-ov';
+    var i=document.createElement('img'); i.src=src; o.appendChild(i);
+    function cerrar(){o.remove(); document.removeEventListener('keydown', onkey);}
+    function onkey(e){ if(e.key==='Escape') cerrar(); }
+    o.addEventListener('click', cerrar);
+    document.addEventListener('keydown', onkey);
+    document.body.appendChild(o);
+  }
+  document.addEventListener('DOMContentLoaded', function(){
+    document.querySelectorAll('figure img, main img').forEach(function(img){
+      img.style.cursor='zoom-in';
+      img.addEventListener('click', function(){ abrir(img.currentSrc||img.src); });
+    });
+  });
+})();
+</script>
+</body>
+</html>

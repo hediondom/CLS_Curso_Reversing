@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tute 1 · Qué es IDA y el curso — Curso IDA</title>
+<meta name="description" content="Tutorial ilustrado del tute 1 del Curso IDA desde cero: Qué es IDA y el curso.">
+<link rel="stylesheet" href="../guia/estilo.css">
+</head>
+<body>
+<a class="salto" href="#contenido">Saltar al contenido</a>
+<header class="cabecera">
+  <div class="marca"><a href="../00_EMPEZAR_AQUI.html">CLS · Curso de reversing</a> <span class="edicion">edición 5 · 27/10/2026</span></div>
+  <nav class="principal" aria-label="Navegación principal">
+    <a href="../00_EMPEZAR_AQUI.html">Inicio</a>
+    <a href="../guia/index.html">Curso</a>
+    <a href="../fichas/index.html">Fichas</a>
+    <a href="../glosario.html">Glosario</a>
+    <a href="../preguntas_y_respuestas.html">Repaso</a>
+  </nav>
+</header>
+<main id="contenido">
+<p class="migas"><a href="../ida-tutes.html">← Índice de los 69 tutes de IDA</a></p>
+<h1>Tute 1 · Qué es IDA y el curso</h1>
+<p class="meta-tute"><strong>⏱ 8 min de lectura</strong> · 1.497 palabras · 21 capturas · grupo: Base de IDA, assembly y primeras prácticas</p>
+<aside class="callout nota"><p class="callout-titulo">Qué enseña</p><p>Presenta la serie (la versión en IDA del curso de OllyDbg): loader vs. debugger y cómo encarar Windows.</p></aside>
+<p><em>▶ video afín (mismo autor, en x64dbg):</em> <a href="../videos.html">«01 x64dbg primeros pasos»</a> · <em>se conecta con:</em> <a href="../guia/02-herramientas.html">Herramientas</a> · <a href="../guia/02-ida.html">IDA</a> · <a href="../guia/02-instrucciones.html">Instrucciones</a> · <a href="../guia/02-flujo.html">Flujo</a> · <a href="../guia/02-debugger.html">Debugger</a> · <a href="../guia/01-numeros.html">Números</a></p>
+<aside class="callout aviso"><p class="callout-titulo">Material observado, no reescrito</p><p>Es el texto y las capturas del <code>.docx</code> original del curso, solo presentados como tutorial. Puede tener erratas de origen. El autor del curso es Ricardo Narvaja.</p></aside>
+<hr>
+<p>INTRODUCCIÓN AL REVERSING CON IDA PRO DESDE CERO.</p>
+<p>La idea de esta serie de tutoriales es realizar una actualización de nuestro original curso de cracking y reversing con OLLYDBG esta vez utilizando IDA PRO aprendiendo a usarlo desde cero y también trabajar en Windows más actualizados en este caso estoy utilizando Windows 10 Anniversary Update con todos los parches al 29 de octubre de 2016 de 64 bits.</p>
+<p>NOTA POSTERIOR: Este curso fue realizado cuando la ultima versión de IDA era la 6.8, por lo tanto, conviene hacerlo con esa misma versión que se consigue fácilmente en internet.</p>
+<p>La base del funcionamiento es la misma que las posteriores versiones 7.x el que aprende a usar IDA 6.8 sabrá usar IDA 7.x.</p>
+<p>La diferencia mayor entre IDA 6.8 y 7.x es que este ultimo esta compilado en 64 bits, mientras que el IDA 6.8 estaba compilado en 32 bits.</p>
+<p>Esto a pesar que en el uso no trae grandes diferencias, si hace que la mayoría de los plugin para la versión 6.8 no funcionen en la versión 7.x, algunos fueron reescritos y adaptados otros no y quedaron solo para la versión 6.8, por lo tanto esta bueno hacer este tutorial y si algún plugin que usamos no se consigue para la versión 7, hay alguno nuevo que seguro lo reemplazara y será similar, pero la base del manejo de IDA es similar en ambas versiones y se mantiene la importancia de esta serie de tutoriales como base para aprender a usarlo.</p>
+<p>PORQUE IDA PRO?</p>
+<p>Porque mientras que OLLYDBG nos limitaba ya que es solo un debugger para 32 bits en user mode de Windows, IDA PRO es una herramienta completa de reversing que se puede usar en 32 y 64 bits como desensamblador y como debugger, permite reversing estático lo cual no se puede realizar con OLLYDBG y además el que lo aprende a usar a pesar de tener una curva más compleja de aprendizaje nos permitirá también trabajar nativamente en Windows, Linux or Mac OS X y remotamente en los siguientes sistemas operativos.</p>
+<figure><img loading="lazy" src="img/1/1.png" alt="Captura 1 del tute 1"></figure>
+<p>Para darse una idea de los procesadores soportados aquí la lista:</p>
+<figure><img loading="lazy" src="img/1/2.png" alt="Captura 2 del tute 1"></figure>
+<p>Como vemos aprender a usar IDA nos permitirá ampliar nuestro universo de trabajo aunque en esta serie de tutes nos centraremos en Windows 32 y 64 bits en user y a veces kernel mode el hecho de familiarizarnos con la herramienta nos permitirá adaptarnos fácilmente a cualquier uso.</p>
+<p>La idea de estos tutoriales es empezar desde cero o sea que muchas cosas que vimos en la introducción a Ollydbg se verá de nuevo aquí pero en IDA tratando de llegar más lejos desde el mismo inicio.</p>
+<p>Si alguien ve que se le complica lo que lee, quizás sea conveniente leer primero la serie de tutoriales de CRACKING DESDE CERO CON OLLYDBG que son un poco más sencillos.</p>
+<p>Por lo tanto aquí habrá de todo reversing estático y dinámico, cracking, exploit, unpacking trataremos de abarcar lo más posible empezando desde cero.</p>
+<p>LO PRIMERO ES LO PRIMERO</p>
+<p>Lo primero es obtener el IDA PRO el problema es que es un programa pago y no podríamos obtenerlo sin pagar unos buenos pesos que lo vale.</p>
+<p>No podemos distribuirlo pero buscando en google IDA PRO 6.8 + HEXRAYS que es la versión que trabajaremos y es la última que está disponible, podrán bajarlo sin problemas.</p>
+<figure><img loading="lazy" src="img/1/3.png" alt="Captura 3 del tute 1"></figure>
+<p>Allí vemos los archivos que contiene el zip que bajamos, está el instalador que se llama idapronw_hexarmw_hexx64w_hexx86w_150413_cb5d8b3937caf856aaae750455d2b4ae y  pide al instalar un password que está en el archivo install_pass.txt.</p>
+<p>También al instalar IDA nos instalará Python 2.7.6. Conviene para no tener problemas usar la versión de Python incluida en IDA y previo a la instalación de IDA desinstalar otros Python que haya en la máquina instalados previamente para no conflictuar.</p>
+<figure><img loading="lazy" src="img/1/4.png" alt="Captura 4 del tute 1"></figure>
+<p>Una vez instalado podemos usarlo por primera vez. y como siempre abriremos como en todo curso que se precie, el crackme de Cruehead que estará adjuntado junto con el tutorial.</p>
+<p>Como es un ejecutable de 32 bits, lo abrimos con la versión de IDA para 32 bits que se arranca con ese acceso directo.</p>
+<figure><img loading="lazy" src="img/1/5.png" alt="Captura 5 del tute 1"></figure>
+<figure><img loading="lazy" src="img/1/6.png" alt="Captura 6 del tute 1"></figure>
+<p>Si lo corriéramos fuera de IDA vemos en el task manager de Windows que es un proceso de 32 bits, si queremos ver si es de 32 o 64 bits sin correrlo, con un editor hexadecimal como por ejemplo.</p>
+<p>https://mh-nexus.de/en/downloads.php?product=HxD</p>
+<p>De ahí se bajan el hxd y lo instalan</p>
+<p>http://mh-nexus.de/downloads/HxDSetupES.zip</p>
+<p>Esa es la versión en español.</p>
+<p>Una forma rápida al abrir un archivo en un editor hexa para saber si es de 32 bits o de 64 a simple vista es esta.</p>
+<figure><img loading="lazy" src="img/1/7.png" alt="Captura 7 del tute 1"></figure>
+<p>Este es uno de 64 bits nativo es el Snipping tool incluido en las nuevas versiones de Windows (Recortes en la versión en español) y vemos que después de la palabra PE tiene</p>
+<p>PE..d†</p>
+<p>Mientras que el crackme de Cruehead que es de 32 bits después de PE tiene.</p>
+<figure><img loading="lazy" src="img/1/8.png" alt="Captura 8 del tute 1"></figure>
+<p>PE..L</p>
+<p>Así que ya sabemos que lo debemos abrir con la versión de 32 bits de IDA, usando el acceso directo antes mencionado, cuando nos aparece la ventana de IDA QUICK START elegimos NEW para abrir un archivo nuevo, buscamos el crackme lo abrimos.</p>
+<figure><img loading="lazy" src="img/1/9.png" alt="Captura 9 del tute 1"></figure>
+<p>Por ahora dejamos todo así como esta ya que detecta que es un ejecutable PE correctamente y damos OK.</p>
+<p>Si aceptamos con YES el modo PROXIMITY VIEW veremos un pantallazo de un árbol de las funciones del programa</p>
+<figure><img loading="lazy" src="img/1/10.png" alt="Captura 10 del tute 1"></figure>
+<p>Para cambiar a modo gráfico o a un listado de instrucciones no gráfico podremos hacerlo alternando con la barra espaciadora.</p>
+<figure><img loading="lazy" src="img/1/11.png" alt="Captura 11 del tute 1"></figure>
+<p>También en OPTIONS - GENERAL -LINE PREFIXES podemos agregar las direcciones delante en la vista de gráficos y en NUMBER OF OPCODE BYTES si cambiamos el 0 que trae por default, veremos los opcodes o bytes que componen de cada instrucción.</p>
+<p>Al abrir un ejecutable lo primero que se abre en el mismo es la vista de desensamblador (lo que llaman LOADER) y que no ejecuta el programa sólo lo analiza con propósitos de reversing creando un archivo idb o database.</p>
+<p>Para debuggear debemos elegir entre las varias posibilidades de debuggers que incluye IDA y arrancarlo en modo DEBUGGER lo cual veremos más adelante.</p>
+<p>Vemos que muchas opciones del programa se ven como pestañas y al ir al menú VIEW-OPEN SUBVIEW podremos abrir pestañas según nuestro gusto y necesidad para no tener abiertas de más.</p>
+<figure><img loading="lazy" src="img/1/12.png" alt="Captura 12 del tute 1"></figure>
+<p>Una de las posibles confusiones o molestias al usar IDA hasta que uno se acostumbra es que hay partes del grafo donde hay varias menciones a una misma dirección como por ejemplo en el inicio de una función la dirección se repite varias veces, eso ocurre porque hay mucha información de esa dirección y no queda bien en una sola línea o no entra.</p>
+<figure><img loading="lazy" src="img/1/13.png" alt="Captura 13 del tute 1"></figure>
+<p>Igual cuando ya llegamos a la última vez que se repite la misma dirección, ahí encontramos el inicio del listado desensamblado en este caso la instrucción correspondiente a 401000 es el PUSH 0.</p>
+<p>IDA tiene la posibilidad de tunear la interface por default separadamente para el LOADER y para el DEBUGGER.</p>
+<p>Una vez que acomodamos por ejemplo en el LOADER las ventanas y pestañas que más usamos a nuestro gusto yendo a WINDOWS-SAVE DESKTOP y poniendo la tilde en default guardará la configuración por DEFAULT, lo mismo podremos hacer cuando arranquemos en modo debugger y cambiar a una configuración por default distinta a la del LOADER.</p>
+<figure><img loading="lazy" src="img/1/14.png" alt="Captura 14 del tute 1"></figure>
+<p>En cualquiera de las pestañas del IDA donde haya listas como por ejemplo FUNCTIONS, STRINGS, NAMES etc</p>
+<figure><img loading="lazy" src="img/1/15.png" alt="Captura 15 del tute 1"></figure>
+<p>Podremos buscar con CTRL mas F se nos abrirá un buscador que filtra según lo que vayamos tipeando.</p>
+<p>En VIEW-OPEN SUBVIEW-STRINGS como en este caso, que me muestre las strings que contienen “try”.</p>
+<figure><img loading="lazy" src="img/1/16.png" alt="Captura 16 del tute 1"></figure>
+<p>También si voy a VIEW-OPEN SUBVIEW-DISASSEMBLY puedo abrir una segunda ventana de desensamblado que puede mostrar una función diferente a la primera y así poder tener muchas funciones a la vista a la vez.</p>
+<figure><img loading="lazy" src="img/1/17.png" alt="Captura 17 del tute 1"></figure>
+<p>Tengo también en OPEN SUBVIEW en el LOADER una pestaña de vista hexadecimal o HEX DUMP.</p>
+<figure><img loading="lazy" src="img/1/18.png" alt="Captura 18 del tute 1"></figure>
+<p>También en OPEN SUBVIEW puedo mostrar la pestaña de las funciones importadas o IMPORTS.</p>
+<figure><img loading="lazy" src="img/1/19.png" alt="Captura 19 del tute 1"></figure>
+<figure><img loading="lazy" src="img/1/20.png" alt="Captura 20 del tute 1"></figure>
+<p>También en VIEW se activa GRAPH OVERVIEW qué es un navegador por el gráfico de la función visible, pudiendo mover y cambiar la parte que se muestra actualmente de la función en pantalla.</p>
+<p>También tenemos pestañas dedicadas para ESTRUCTURAS, EXPORTS, NAMES, SEGMENTS etc las cuales iremos explicando a medida que las vayamos usando.</p>
+<p>La barra de navegación superior muestra con diferentes colores las distintas partes de un ejecutable.</p>
+<figure><img loading="lazy" src="img/1/21.png" alt="Captura 21 del tute 1"></figure>
+<p>Justo debajo nos aclara qué significa cada color por ejemplo el gris es la sección data y si clickeo en la barra en esa parte gris, el gráfico se mueve a dicha sección cuyas direcciones están en gris. En la imagen vemos que la parte rosada corresponde a externa symbol o la sección idata y la parte azul son las que detectó como funciones en la sección de código.</p>
+<p>Hemos dado un primer pantallazo a vuelo de pájaro en esta parte 1 por supuesto en las siguientes iremos poco a poco profundizando.</p>
+<p>Hasta la parte 2</p>
+<p>Ricardo Narvaja</p>
+</main>
+<footer class="pie">
+  <p>Material educativo y defensivo. Las prácticas se limitan a programas propios, software abierto o crackmes diseñados para aprender. No se enseña a eludir licencias, DRM ni controles de acceso.</p>
+  <p><a href="../00_EMPEZAR_AQUI.html">Inicio</a> · <a href="../guia/etapa-0.html">Etapas</a> · <a href="../fuentes_y_limites.html">Fuentes y límites</a> · <a href="../registro_de_cobertura.csv">Registro de cobertura</a></p>
+</footer>
+<script>
+(function(){
+  function abrir(src){
+    var o=document.createElement('div'); o.className='lightbox-ov';
+    var i=document.createElement('img'); i.src=src; o.appendChild(i);
+    function cerrar(){o.remove(); document.removeEventListener('keydown', onkey);}
+    function onkey(e){ if(e.key==='Escape') cerrar(); }
+    o.addEventListener('click', cerrar);
+    document.addEventListener('keydown', onkey);
+    document.body.appendChild(o);
+  }
+  document.addEventListener('DOMContentLoaded', function(){
+    document.querySelectorAll('figure img, main img').forEach(function(img){
+      img.style.cursor='zoom-in';
+      img.addEventListener('click', function(){ abrir(img.currentSrc||img.src); });
+    });
+  });
+})();
+</script>
+</body>
+</html>

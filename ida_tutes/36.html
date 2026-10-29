@@ -1,0 +1,191 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tute 36 · Solucionando DEP.exe — Curso IDA</title>
+<meta name="description" content="Tutorial ilustrado del tute 36 del Curso IDA desde cero: Solucionando DEP.exe.">
+<link rel="stylesheet" href="../guia/estilo.css">
+</head>
+<body>
+<a class="salto" href="#contenido">Saltar al contenido</a>
+<header class="cabecera">
+  <div class="marca"><a href="../00_EMPEZAR_AQUI.html">CLS · Curso de reversing</a> <span class="edicion">edición 5 · 27/10/2026</span></div>
+  <nav class="principal" aria-label="Navegación principal">
+    <a href="../00_EMPEZAR_AQUI.html">Inicio</a>
+    <a href="../guia/index.html">Curso</a>
+    <a href="../fichas/index.html">Fichas</a>
+    <a href="../glosario.html">Glosario</a>
+    <a href="../preguntas_y_respuestas.html">Repaso</a>
+  </nav>
+</header>
+<main id="contenido">
+<p class="migas"><a href="../ida-tutes.html">← Índice de los 69 tutes de IDA</a></p>
+<h1>Tute 36 · Solucionando DEP.exe</h1>
+<p class="meta-tute"><strong>⏱ 10 min de lectura</strong> · 1.806 palabras · 59 capturas · grupo: Vulnerabilidades y exploiting en user-mode (VLC/CVE, DEP, Mona, canary/SEH, shellcode, heap)</p>
+<aside class="callout nota"><p class="callout-titulo">Qué enseña</p><p>Adaptar el script a la versión con DEP.</p></aside>
+<p><em>se conecta con:</em> <a href="../guia/05-vulnerabilidades.html">Vulnerabilidades (defensivo)</a></p>
+<aside class="callout aviso"><p class="callout-titulo">Material observado, no reescrito</p><p>Es el texto y las capturas del <code>.docx</code> original del curso, solo presentados como tutorial. Puede tener erratas de origen. El autor del curso es Ricardo Narvaja.</p></aside>
+<hr>
+<p>INTRODUCCIÓN AL REVERSING CON IDA PRO DESDE CERO PARTE 36</p>
+<p>SOLUCIONANDO DEP.EXE</p>
+<p>Bueno comenzaremos a trabajar con la versión que tiene DEP, sabemos que es similar pero que pasa cuando le tiramos el script de la versión NO DEP.</p>
+<p>Le cambiaremos el path en el script para que apunte a DEP.exe.</p>
+<p>n</p>
+<figure><img loading="lazy" src="img/36/1.png" alt="Captura 1 del tute 36"></figure>
+<p>Lo lanzo y atacheo con el IDA que tiene el análisis del DEP.exe.</p>
+<figure><img loading="lazy" src="img/36/2.png" alt="Captura 2 del tute 36"></figure>
+<p>Le pondré para ver qué pasa un BREAKPOINT en la función saluda, justo después del gets ya que el proceso queda esperando allí dentro de la api que lo atacheemos.</p>
+<figure><img loading="lazy" src="img/36/3.png" alt="Captura 3 del tute 36"></figure>
+<p>Allí paro lo traceare hasta el RET con f8.</p>
+<figure><img loading="lazy" src="img/36/4.png" alt="Captura 4 del tute 36"></figure>
+<p>Allí vemos el stack pisado, saltara al PUSH ESP - RET que está en 0x7800f7c1, no debería haber problema aquí pues es una instrucción de la sección de código de un módulo y estas secciones tienen permiso de ejecución siempre, apretemos f7.</p>
+<figure><img loading="lazy" src="img/36/5.png" alt="Captura 5 del tute 36"></figure>
+<p>Traceamos con F7.</p>
+<figure><img loading="lazy" src="img/36/6.png" alt="Captura 6 del tute 36"></figure>
+<p>Pushea el valor del registro ESP y luego llega al ret, allí saltará tal cual si fuera un return address a ejecutar a 0x78fbc8 y allí está mi shellcode en el stack, en el NO DEP salto y ejecutó ese shellcode que envié pero qué pasa aquí, apreto f7.</p>
+<pre class='asm'>0078FBC4  0078FBC8  Stack[00005608]:0078FBC8</pre>
+<figure><img loading="lazy" src="img/36/7.png" alt="Captura 7 del tute 36"></figure>
+<p>El código en el stack que en el NO DEP ejecutaba sin problemas, acá no me deja hacerlo porque el DEP le quita permiso de ejecución al stack (al heap etc) quedando el mismo solo con permiso de lectura y escritura.</p>
+<p>¿Qué se puede hacer?</p>
+<p>Vemos que saltar al código de una librería como hicimos con el PUSH ESP-RET se puede y esa es la idea del ROP, enhebrar gadgets que son pequeños códigos que terminan en RET para lograr finalmente dar permiso de ejecución al stack, heap o lo que necesitemos.</p>
+<p>USANDO GADGETS.</p>
+<p>Por ejemplo si quiero poner un valor en EAX, en vez de saltar al PUSH ESP-RET saltare a un POP EAX-RET, buscaré un POP EAX-RET entre los gadgets del idasploiter en la librería mypepe que no tiene ASLR.</p>
+<figure><img loading="lazy" src="img/36/8.png" alt="Captura 8 del tute 36"></figure>
+<figure><img loading="lazy" src="img/36/9.png" alt="Captura 9 del tute 36"></figure>
+<p>Allí está el gadget en 0x78003d08.</p>
+<figure><img loading="lazy" src="img/36/10.png" alt="Captura 10 del tute 36"></figure>
+<p>Allí reemplazamos el salto al PUSH ESP -RET por nuestro incipiente rop que comienza con un POP EAX, que mueve el valor que está justo debajo 0x41424344 a EAX y luego al llegar al RET (recuerden que todo o casi todo gadget termina en un RET) salta al siguiente gadget en 0xCCCCCCCC, mas adelante veré cual es, pero ejecutemos esto a ver qué pasa atacheemos de nuevo y traceemos como antes.</p>
+<figure><img loading="lazy" src="img/36/11.png" alt="Captura 11 del tute 36"></figure>
+<p>Al llegar al RET veo mi ROP el salto al POP EAX-RET, el 0x41424344 que terminará moviéndose a EAX y el 0xCCCCCCCC donde debería poner el puntero al siguiente gadget, traceemos con F7.</p>
+<figure><img loading="lazy" src="img/36/12.png" alt="Captura 12 del tute 36"></figure>
+<p>Saltamos a mi primer gadget es el POP EAX-RET sabemos que el POP saca el valor del stack y lo mueve en este caso a EAX, si ejecuto con F7.</p>
+<figure><img loading="lazy" src="img/36/13.png" alt="Captura 13 del tute 36"></figure>
+<p>Allí se movió a EAX, y cómo llego a un RET saltará al siguiente gadget en este caso 0xCCCCCCCC, aún no lo tiene pero se deberá poner la dirección del siguiente gadget allí.</p>
+<p>Y esto es el ROP enhebrar diferentes gadgets que hagan lo que yo quiero uno a continuación del otro, por eso se llama ROP (RETURN ORIENTED PROGRAMMING) porque estamos ejecutando código, sin poner nosotros las instrucciones solo ponemos una lista de direcciones que apuntamos a pedazos de código que nos sirvan y listo.</p>
+<p>Obviamente existe la forma automática y la forma manual de hacerlo, primero lo haremos manualmente el que no lo necesita saltee esta parte y vaya a la parte siguiente donde se hace automáticamente.</p>
+<p>El método general es acomodar ciertos valores en los registros y luego saltar a un PUSHAD RET ya veremos que eso acomoda todo, aunque hay miles de formas de hacer un ROP, está en la más común.</p>
+<p>Lo primero de todo es decidir cuál api usaremos para desproteger el stack en este caso, podría ser VirtualAlloc o VirtualProtect, son las más usadas, aunque hay más.</p>
+<p>Sabemos que hay dos pestañas modules ahora, la del idasploiter y la del IDA mismo, esta última está en DEBUGGER-DEBUGGER WINDOWS-MODULE LIST, allí le haremos click derecho a Mypepe y la analizaremos y haremos que cargue sus símbolos si tiene.</p>
+<figure><img loading="lazy" src="img/36/14.png" alt="Captura 14 del tute 36"></figure>
+<p>Como de Mypepe no tenemos los símbolos queda lindo, pero no agrega alguna información como las funciones importadas que usa en la lista de funciones, solo están las propias de Mypepe.</p>
+<p>Pero bueno si buscamos como texto off_.</p>
+<figure><img loading="lazy" src="img/36/15.png" alt="Captura 15 del tute 36"></figure>
+<p>No necesito todas las ocurrencias solo una.</p>
+<figure><img loading="lazy" src="img/36/16.png" alt="Captura 16 del tute 36"></figure>
+<p>El call será el típico salto a una función importada de la IAT, ya que off_ como prefijo (no confundir con OFFSET que es lo que indica dirección) en este caso significa que el contenido de esa dirección donde saltara es también una dirección, como en el caso de la IAT, vayamos allí.</p>
+<figure><img loading="lazy" src="img/36/17.png" alt="Captura 17 del tute 36"></figure>
+<p>Bueno mirando un poco entre las funciones de la IAT vemos VirtualAlloc, así que listo prepararemos un ROP para ella (ya sabemos además que 0x7802e0b0 es la entrada de la IAT de VA la abreviamos así desde ahora.)</p>
+<p>La idea es acomodar estos valores en cada registro y luego mediante algún PUSHAD RET enviarlos al stack y quedaran acomodados como argumentos de VirtualAlloc, no es magia  jeje.</p>
+<figure><img loading="lazy" src="img/36/18.png" alt="Captura 18 del tute 36"></figure>
+<p>Vemos que hay que poner un 0x90909090 en EAX ese gadget PUSH EAX-RET ya lo habíamos agregado solo falta cambiar el valor que POPEA a EAX a 0x90909090, pero EAX siempre conviene setearlo al último, porque puede ser necesario para setear otros valores, nos conviene poner primero los más difíciles, en ESI debe estar la dirección de VirtualAlloc y nosotros tenemos solo la entrada de la IAT, pero la dirección de la api cambiará, la entrada de la IAT no, así que basándonos en la entrada, hallaremos la dirección y funcionará siempre.</p>
+<p>Para ello debemos buscar lo más fácil si hay un MOV ESI, [registro] -RET busquemos entre los gadgets.</p>
+<p>No hay, pero si hay</p>
+<figure><img loading="lazy" src="img/36/19.png" alt="Captura 19 del tute 36"></figure>
+<p>Está bien ponemos en EAX la dirección de la IAT más 4 y con esa instrucción movemos la dirección de la api a EAX, en otro gadget posterior habrá que moverlo de EAX a ESI, pero vayamos por partes pongamos todo esto y probémoslo.</p>
+<p>La entrada de la IAT era 0x7802e0b0 le sumamos 4 y lo ponemos en EAX con el gadget POP EAX-RET que ya teníamos.</p>
+<figure><img loading="lazy" src="img/36/20.png" alt="Captura 20 del tute 36"></figure>
+<p>Con eso tendremos la entrada de la IAT más 4 en EAX, el siguiente gadget será el que hallamos.</p>
+<pre class='asm'>780022DE mov eax, [eax-4] # retn</pre>
+<figure><img loading="lazy" src="img/36/21.png" alt="Captura 21 del tute 36"></figure>
+<p>Allí encadenamos ambos gadgets, probémoslo a ver si hace lo que pensamos y queda la dirección de VirtualAlloc en EAX.</p>
+<p>Una de las incomodidades que veremos es que el idasploiter solo corre en modo debugging así que si necesitamos debuggear se cerrará al reiniciar trabajando, igual se puede tener otro IDA con el proceso detenido debuggeando para buscar en el IDA SPLOITER y debuggear en otro.</p>
+<figure><img loading="lazy" src="img/36/22.png" alt="Captura 22 del tute 36"></figure>
+<p>Tracearemos el ROP que hicimos hasta ahora con f7.</p>
+<figure><img loading="lazy" src="img/36/23.png" alt="Captura 23 del tute 36"></figure>
+<p>Ahora moverá la dirección de la entrada de la IAT de VA más 4 a EAX.</p>
+<figure><img loading="lazy" src="img/36/24.png" alt="Captura 24 del tute 36"></figure>
+<p>Ahora saltará al segundo gadget, sigo con f7.</p>
+<figure><img loading="lazy" src="img/36/25.png" alt="Captura 25 del tute 36"></figure>
+<p>Ejecuto con F7.</p>
+<figure><img loading="lazy" src="img/36/26.png" alt="Captura 26 del tute 36"></figure>
+<p>Vemos que logramos nuestro objetivo en EAX quedo la dirección de la api y la sacamos de la IAT, así que servirá para cualquier máquina, el siguiente gadget debería mover de EAX a ESI dicha dirección de VA, para que quede en ESI donde corresponde.</p>
+<figure><img loading="lazy" src="img/36/27.png" alt="Captura 27 del tute 36"></figure>
+<p>No hay MOV ESI,EAX ni nada parecido, así que deberemos aguzar la imaginación, a pesar de que los gadgets terminan normalmente en RET cualquier código que aunque no termine en RET me permita continuar y retomar el control será también un gadget, aunque menos tradicional servirá.</p>
+<figure><img loading="lazy" src="img/36/28.png" alt="Captura 28 del tute 36"></figure>
+<p>Si pusheo el valor de EAX al stack usando el gadget PUSH EAX-CALL ESI y preparó ESI para tenga un POP ESI -RET, podría pasar EAX a ESI usando el stack veamos.</p>
+<figure><img loading="lazy" src="img/36/29.png" alt="Captura 29 del tute 36"></figure>
+<p>Así que pondré antes en ESI, el gadget a POP ESI-RET.</p>
+<figure><img loading="lazy" src="img/36/30.png" alt="Captura 30 del tute 36"></figure>
+<figure><img loading="lazy" src="img/36/31.png" alt="Captura 31 del tute 36"></figure>
+<p>Vemos que el POP ESI, mueve a ESI el mismo puntero al POP ESI-RET para que después del siguiente gadget se retome el control.</p>
+<figure><img loading="lazy" src="img/36/32.png" alt="Captura 32 del tute 36"></figure>
+<p>Pusheara al stack la dirección de VA y salta con CALL ESI de nuevo al POP ESI-RET ya que habíamos guardado  la dirección de POP ESI-RET en ESI.</p>
+<figure><img loading="lazy" src="img/36/33.png" alt="Captura 33 del tute 36"></figure>
+<p>Vemos que falla ya que mueve a ESI el return address que guardo y justo debajo esta la dirección de VA, así que en vez de un POP ESI- RET este último debería ser un POP XXX, POP ESI -RET para que saque el primer valor del stack a otro lado y luego si popee a ESI el valor de VA.</p>
+<figure><img loading="lazy" src="img/36/34.png" alt="Captura 34 del tute 36"></figure>
+<p>Ahí esta, así que cambio este solo el que muevo a ESI, el otro debe quedar igual.</p>
+<figure><img loading="lazy" src="img/36/35.png" alt="Captura 35 del tute 36"></figure>
+<p>Probemos ahora.</p>
+<figure><img loading="lazy" src="img/36/36.png" alt="Captura 36 del tute 36"></figure>
+<p>Entro con F7</p>
+<figure><img loading="lazy" src="img/36/37.png" alt="Captura 37 del tute 36"></figure>
+<p>Listo ya está el primer objetivo, en ESI quedo la dirección de VA y va a saltar a 0xCCCCCCCC que es el siguiente gadget así que tengo el control nuevamente.</p>
+<figure><img loading="lazy" src="img/36/38.png" alt="Captura 38 del tute 36"></figure>
+<p>El siguiente será fácil en EBP hay que poner un JMP ESP. CALL ESP o PUSH ESP -RET ya teníamos un PUSH ESP-RET solo tenemos que encontrar un POP EBP-RET para moverlo a EBP.</p>
+<figure><img loading="lazy" src="img/36/39.png" alt="Captura 39 del tute 36"></figure>
+<figure><img loading="lazy" src="img/36/40.png" alt="Captura 40 del tute 36"></figure>
+<figure><img loading="lazy" src="img/36/41.png" alt="Captura 41 del tute 36"></figure>
+<p>Eso es el seteo de EBP, con eso lo tendremos seteado con su puntero a PUSH ESP-RET, sigamos.</p>
+<figure><img loading="lazy" src="img/36/42.png" alt="Captura 42 del tute 36"></figure>
+<p>EDI =ROP NOP significa que debe apuntar a un RET que es el NOP en la programación ROP, así que busquemos un POP EDI-RET para setear EDI.</p>
+<figure><img loading="lazy" src="img/36/43.png" alt="Captura 43 del tute 36"></figure>
+<figure><img loading="lazy" src="img/36/44.png" alt="Captura 44 del tute 36"></figure>
+<p>Ponemos cualquier puntero a RET de Mypepe, lo moverá a EDI, sigamos.</p>
+<figure><img loading="lazy" src="img/36/45.png" alt="Captura 45 del tute 36"></figure>
+<p>Nos queda mover cuatro constantes 90909090 a EAX, 40 a ECX, 1000 a EDX y 1 a EBX, buscaremos los pops respectivos y agregaremos las constantes.</p>
+<figure><img loading="lazy" src="img/36/46.png" alt="Captura 46 del tute 36"></figure>
+<figure><img loading="lazy" src="img/36/47.png" alt="Captura 47 del tute 36"></figure>
+<figure><img loading="lazy" src="img/36/48.png" alt="Captura 48 del tute 36"></figure>
+<figure><img loading="lazy" src="img/36/49.png" alt="Captura 49 del tute 36"></figure>
+<p>Agreguémoslos al ROP.</p>
+<figure><img loading="lazy" src="img/36/50.png" alt="Captura 50 del tute 36"></figure>
+<p>Listo solo nos falta el gadget final que acomoda todo es un PUSHAD-RET.</p>
+<figure><img loading="lazy" src="img/36/51.png" alt="Captura 51 del tute 36"></figure>
+<p>Ahí está, el ADD AL, XX no hace nada porque hace el PUSHAD antes, así que guardara el 90909090 en el stack, agreguemos.</p>
+<figure><img loading="lazy" src="img/36/52.png" alt="Captura 52 del tute 36"></figure>
+<p>Con eso debería funcionar, traceemoslo completamente hasta llegar a VirtualAlloc.</p>
+<p>Llegamos al PUSHAD</p>
+<figure><img loading="lazy" src="img/36/53.png" alt="Captura 53 del tute 36"></figure>
+<p>Se ve bien apretemos F7.</p>
+<figure><img loading="lazy" src="img/36/54.png" alt="Captura 54 del tute 36"></figure>
+<p>Llegamos a VirtualAlloc vemos los argumentos en el stack, el primero será el lugar donde retornará luego de volver de la api, si miro será el PUSH ESP-RET, luego vienen los argumentos de la api veamos.</p>
+<figure><img loading="lazy" src="img/36/55.png" alt="Captura 55 del tute 36"></figure>
+<p>La dirección a desproteger  lpAdress  apunta justo donde está mi shellcode.</p>
+<figure><img loading="lazy" src="img/36/56.png" alt="Captura 56 del tute 36"></figure>
+<p>Luego viene el size 1, que desprotegerá 0x1000 porque es el mínimo bloque a desproteger, pongas lo que pongas menor que 0x1000, luego viene 0x1000 que es la constante de tipo de allocacion y 0x40 que es el otra constante flprotect, si ejecuto hasta el RET de la api, apretando CTRL más F7 veo que vuelve al PUSH ESP-RET.</p>
+<figure><img loading="lazy" src="img/36/57.png" alt="Captura 57 del tute 36"></figure>
+<p>Si en EAX devuelve una dirección está todo correcto y desprotegido, puedo ahora ejecutar mi código sigo traceando con f7.</p>
+<figure><img loading="lazy" src="img/36/58.png" alt="Captura 58 del tute 36"></figure>
+<p>VENCIMOS.</p>
+<p>Vemos que llego a mi shellcode sin problemas y se ejecuta.(ALELUYA)</p>
+<figure><img loading="lazy" src="img/36/59.png" alt="Captura 59 del tute 36"></figure>
+<p>Y termina ejecutando la calculadora, por supuesto esto puede automatizarse, con mona pero eso lo veremos en la parte siguiente.</p>
+<p>VENCIMOS jeje.</p>
+<p>Ricardo Narvaja</p>
+</main>
+<footer class="pie">
+  <p>Material educativo y defensivo. Las prácticas se limitan a programas propios, software abierto o crackmes diseñados para aprender. No se enseña a eludir licencias, DRM ni controles de acceso.</p>
+  <p><a href="../00_EMPEZAR_AQUI.html">Inicio</a> · <a href="../guia/etapa-0.html">Etapas</a> · <a href="../fuentes_y_limites.html">Fuentes y límites</a> · <a href="../registro_de_cobertura.csv">Registro de cobertura</a></p>
+</footer>
+<script>
+(function(){
+  function abrir(src){
+    var o=document.createElement('div'); o.className='lightbox-ov';
+    var i=document.createElement('img'); i.src=src; o.appendChild(i);
+    function cerrar(){o.remove(); document.removeEventListener('keydown', onkey);}
+    function onkey(e){ if(e.key==='Escape') cerrar(); }
+    o.addEventListener('click', cerrar);
+    document.addEventListener('keydown', onkey);
+    document.body.appendChild(o);
+  }
+  document.addEventListener('DOMContentLoaded', function(){
+    document.querySelectorAll('figure img, main img').forEach(function(img){
+      img.style.cursor='zoom-in';
+      img.addEventListener('click', function(){ abrir(img.currentSrc||img.src); });
+    });
+  });
+})();
+</script>
+</body>
+</html>

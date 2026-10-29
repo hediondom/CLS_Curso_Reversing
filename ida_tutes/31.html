@@ -1,0 +1,245 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tute 31 · Explicación de la solución del CVE — Curso IDA</title>
+<meta name="description" content="Tutorial ilustrado del tute 31 del Curso IDA desde cero: Explicación de la solución del CVE.">
+<link rel="stylesheet" href="../guia/estilo.css">
+</head>
+<body>
+<a class="salto" href="#contenido">Saltar al contenido</a>
+<header class="cabecera">
+  <div class="marca"><a href="../00_EMPEZAR_AQUI.html">CLS · Curso de reversing</a> <span class="edicion">edición 5 · 27/10/2026</span></div>
+  <nav class="principal" aria-label="Navegación principal">
+    <a href="../00_EMPEZAR_AQUI.html">Inicio</a>
+    <a href="../guia/index.html">Curso</a>
+    <a href="../fichas/index.html">Fichas</a>
+    <a href="../glosario.html">Glosario</a>
+    <a href="../preguntas_y_respuestas.html">Repaso</a>
+  </nav>
+</header>
+<main id="contenido">
+<p class="migas"><a href="../ida-tutes.html">← Índice de los 69 tutes de IDA</a></p>
+<h1>Tute 31 · Explicación de la solución del CVE</h1>
+<p class="meta-tute"><strong>⏱ 13 min de lectura</strong> · 2.411 palabras · 78 capturas · grupo: Vulnerabilidades y exploiting en user-mode (VLC/CVE, DEP, Mona, canary/SEH, shellcode, heap)</p>
+<aside class="callout nota"><p class="callout-titulo">Qué enseña</p><p>Aclara los puntos del buffer overflow del caso VLC.</p></aside>
+<p><em>se conecta con:</em> <a href="../guia/05-vulnerabilidades.html">Vulnerabilidades (defensivo)</a></p>
+<aside class="callout aviso"><p class="callout-titulo">Material observado, no reescrito</p><p>Es el texto y las capturas del <code>.docx</code> original del curso, solo presentados como tutorial. Puede tener erratas de origen. El autor del curso es Ricardo Narvaja.</p></aside>
+<hr>
+<p>INTRODUCCIÓN AL REVERSING CON IDA PRO DESDE CERO PARTE 31.</p>
+<p>EXPLICACION DE LA SOLUCION DEL CVE.</p>
+<p>Antes de hacer el ejercicio de la parte anterior voy a poner algo más de explicación sobre algunos puntos que quedaron un poco oscuros en la velocidad de solucionar el mismo y luego armaremos el POC.</p>
+<p>Uno de los puntos que quedo poco claro es porque a veces aceptamos el largo del array que nos propone IDA al hacer click derecho-ARRAY y a veces lo cuestionamos como en el ejercicio anterior y ponemos un valor de largo más grande.</p>
+<p>Obviamente eso se realiza por experiencia más que nada, pero vamos a tratar de explicar con un par de ejemplos cuál es el criterio.</p>
+<p>Veamos este ejemplo simple.</p>
+<figure><img loading="lazy" src="img/31/1.png" alt="Captura 1 del tute 31"></figure>
+<p>Tiene una entrada por teclado para ingresar el size el cual se chequea que no sea mayor o igual que 0x200 (unsigned).</p>
+<p>Luego un loop que se repite la cantidad de veces igual a size, para leer de teclado con getchar de a un carácter lo que tipeamos.</p>
+<p>Esto no sería vulnerable a buffer overflow, porque el size es unsigned, así que no hay problemas de signo al comparar contra 0x200.</p>
+<p>Y luego irá leyendo caracteres y copiando al buffer que como su largo es 0x200 no desbordara.</p>
+<figure><img loading="lazy" src="img/31/2.png" alt="Captura 2 del tute 31"></figure>
+<p>Si lo veo con IDA, como lo compile con símbolos ya detecta el buffer correctamente (512 decimal es 0x200), igual si lo compilo nuevamente sin símbolos.</p>
+<figure><img loading="lazy" src="img/31/3.png" alt="Captura 3 del tute 31"></figure>
+<p>Veamos la representación del stack.</p>
+<figure><img loading="lazy" src="img/31/4.png" alt="Captura 4 del tute 31"></figure>
+<p>Vemos que aquí no detecta buffer ni nada así que hay que hacerlo a mano, como hay espacio vacío es muy posible que var_204 sea el buffer, veamos sus referencias.</p>
+<figure><img loading="lazy" src="img/31/5.png" alt="Captura 5 del tute 31"></figure>
+<p>Allí está una referencia clara cuando imprime el buffer al final, normalmente cuando hay una referencia con un LEA casi seguro es un buffer, además 0x401190 será printf.</p>
+<p>La otra referencia a buffer es dentro del loop cuando lo va llenando con los bytes que lee con getchar.</p>
+<figure><img loading="lazy" src="img/31/6.png" alt="Captura 6 del tute 31"></figure>
+<p>Ahora vayamos a la representación del stack y veamos el largo del buffer.</p>
+<figure><img loading="lazy" src="img/31/7.png" alt="Captura 7 del tute 31"></figure>
+<p>Vemos que nos dice 512 que estaría correcto, pero porque dice 512?</p>
+<p>Porque IDA mira el espacio vacío que hay hasta la siguiente variable que es var_4, ahora el método para asegurarnos es ver donde se guarda por primera vez un valor y donde se usa a posteriori esa var_4, veamos.</p>
+<figure><img loading="lazy" src="img/31/8.png" alt="Captura 8 del tute 31"></figure>
+<p>Vemos que hay dos lugares uno donde se inicializa con un valor (se guarda la SECURITY COOKIE) y otro posterior donde se lee.</p>
+<p>Vayamos al primero.</p>
+<figure><img loading="lazy" src="img/31/9.png" alt="Captura 9 del tute 31"></figure>
+<p>Vemos que mucho antes de que se llene el buffer en el loop, la var_4 toma valor en forma que no tiene relación con el buffer, por lo cual determinamos que es una variable independiente y que no pertenece al buffer.</p>
+<p>Lo guardo como BUFFER1.exe, aquí IDA no se equivocó.</p>
+<p>Ahora haré otro ejemplo a este lo llamaré BUFFER2.exe.</p>
+<figure><img loading="lazy" src="img/31/10.png" alt="Captura 10 del tute 31"></figure>
+<p>Vemos que el tamaño del buffer sigue de 0x200, todo es igual al ejemplo anterior, salvo que aquí, imprimo el CUARTO BYTE del buffer, y comparo el QUINTO BYTE con cero y si es igual imprimo buffer.</p>
+<p>Veamos qué pasa cuando lo compilo con símbolos y sin símbolos.</p>
+<figure><img loading="lazy" src="img/31/11.png" alt="Captura 11 del tute 31"></figure>
+<p>Vemos que con símbolos no hubo problema, sigue detectando el buffer como de 0x200 y el CUARTO BYTE que imprime.</p>
+<figure><img loading="lazy" src="img/31/12.png" alt="Captura 12 del tute 31"></figure>
+<p>Vemos que no lo toma como una variable independiente lo cual era mi idea, lee el cuarto byte del buffer al que accede sumándole 4 (SHL EDX, 2 es igual a multiplicar EDX por 4) y luego se lo suma a la dirección de inicio del buffer para buscar el valor del cuarto byte.</p>
+<figure><img loading="lazy" src="img/31/13.png" alt="Captura 13 del tute 31"></figure>
+<p>Aquí multiplica EDX por 5 y se lo suma al inicio del buffer para apuntar y hace MOVSX a EAX el contenido luego si es distinto de cero evita imprimir.</p>
+<p>Vemos claramente que el buffer no fue afectado y que con símbolos IDA sigue detectando bien el largo del mismo, veamos sin símbolos.</p>
+<p>Lo abro y veo que IDA no se equivocó, no asigna una variable a los valores cuarto y quinto del buffer (aunque hay casos en que si lo hace) sigue dándome 512 de largo porque la siguiente variable sigue siendo var_4 el CANARY, si por algún motivo IDA detectara esos bytes cuarto y quinto como variables, obviamente no serían independientes, pues solo se llenan en el momento que se llena el buffer, fuera de eso no hay otro lugar donde guarda valores allí, por lo cual las debo considerar como parte del buffer.</p>
+<p>Ahora ya que no me sale compilando un ejemplo donde se equivoque IDA, comparamos con el buffer del ejercicio, tomando como base que cuando IDA nos sugiere un largo de un buffer hay que seguir buscando hacia abajo la primera variable independiente (que se inicializa en otro lugar diferente al buffer), que sería el verdadero límite del buffer.</p>
+<p>Veamos el buffer del ejercicio.</p>
+<figure><img loading="lazy" src="img/31/14.png" alt="Captura 14 del tute 31"></figure>
+<p>Ese LEA es muy posible un buffer en el stack que le pasa a la función stream_Read, renombrémoslo a buffer.</p>
+<p>Vayamos mirando las variables que hay hacia abajo, para ver cuál es la primera independiente del buffer.</p>
+<figure><img loading="lazy" src="img/31/15.png" alt="Captura 15 del tute 31"></figure>
+<p>Voy apretando X en cada una.</p>
+<figure><img loading="lazy" src="img/31/16.png" alt="Captura 16 del tute 31"></figure>
+<p>Allí veo como deje en el listado el cursor en el LEA donde va a leer al buffer, que usa esa variable más abajo (DOWN), y no tiene sentido que la use si no hay ninguna otra referencia donde se guarde algún valor inicial, el único lugar posible es cuando llena el buffer, lo mismo pasa con las siguientes variables en todas pasa lo mismo.</p>
+<figure><img loading="lazy" src="img/31/17.png" alt="Captura 17 del tute 31"></figure>
+<p>Mismo caso, pertenece al buffer.</p>
+<p>La primera que tiene una referencia distinta es.</p>
+<figure><img loading="lazy" src="img/31/18.png" alt="Captura 18 del tute 31"></figure>
+<p>Que parece un buffer pues tiene un LEA, miremos.</p>
+<figure><img loading="lazy" src="img/31/19.png" alt="Captura 19 del tute 31"></figure>
+<p>Vemos que si es un buffer pero que es parte del mismo buffer anterior, pues no tiene ningún lugar independiente donde se llene, ya la primera referencia se pasa como source a un reps movs para lo cual ya tiene que tener valores guardados para poder copiarlos a otro lugar,</p>
+<p>También marca DOWN o sea que se usa después del llenado del buffer original, así que nada sigamos bajando.</p>
+<p>Sigue en todas las variables siguientes solo leyendo más abajo de donde se llena el buffer hasta acá.</p>
+<figure><img loading="lazy" src="img/31/20.png" alt="Captura 20 del tute 31"></figure>
+<p>Este muestra un LEA y UP o sea que está más arriba de donde se llena el buffer original.</p>
+<p>Vemos que este es otro buffer pero independiente del original.</p>
+<figure><img loading="lazy" src="img/31/21.png" alt="Captura 21 del tute 31"></figure>
+<p>Se le pasa como argumento a stream_Control y se llena allí, así que encontramos la primera variable independiente y por eso el buffer termina justo antes de esta variable.</p>
+<p>No había visto por hacerlo con velocidad que hay otra llamada a stream_Read más arriba con el mismo buffer.</p>
+<figure><img loading="lazy" src="img/31/22.png" alt="Captura 22 del tute 31"></figure>
+<p>Igual el análisis es el mismo no hay ninguna de las variables hasta la 1c que tenga referencias de escritura en las mismas, antes de alguno de los lugares donde se llena el buffer.</p>
+<figure><img loading="lazy" src="img/31/23.png" alt="Captura 23 del tute 31"></figure>
+<p>Quedo de 32 bytes, y todas las variables que quedaron dentro del buffer pudimos verificar que son internas del mismo, y no son independientes.</p>
+<p>Lo otro que me preguntaron es como me di cuenta que stream_Read podría escribir la cantidad de bytes que le pasamos a un buffer, el nombre sugiere eso, además el parche que limita el valor que llega allí a que si es mayor que 8 me dio que sospechar que es el size máximo que copiara.</p>
+<figure><img loading="lazy" src="img/31/24.png" alt="Captura 24 del tute 31"></figure>
+<p>Allí vemos que va a stream_Read sigamos con enter allí.</p>
+<figure><img loading="lazy" src="img/31/25.png" alt="Captura 25 del tute 31"></figure>
+<p>Allí vemos que es una función importada de libvlccore.dll, así que la busco en la versión vulnerable y la abro en otro IDA.</p>
+<figure><img loading="lazy" src="img/31/26.png" alt="Captura 26 del tute 31"></figure>
+<p>Veo que la función depende de un arg_0 que es una constante que viene de la llamada, pues según esa constante decide adonde saltar.  [eax+2c].</p>
+<p>Podría reversear para hallar adonde salta pero como voy a armar el POC y para eso tengo que debuggear lo resolveré debuggeando.</p>
+<p>Para los que preguntaron que era un POC es un proof of concept que no es un exploit completo, pero demuestra la vulnerabilidad, creando un archivo ty en este caso, que desborde el buffer de 32 bytes.</p>
+<p>Como lo tengo remoto al programa lo atacheare con el debugger remoto, el que lo tenga local elige el debugger local y lo atachea.</p>
+<figure><img loading="lazy" src="img/31/27.png" alt="Captura 27 del tute 31"></figure>
+<p>Primero voy a ver de dónde sale ese valor ESI que tiene el size a copiar y que se ve que proviene de var_58, lo renombrare a size_a_copiar.</p>
+<figure><img loading="lazy" src="img/31/28.png" alt="Captura 28 del tute 31"></figure>
+<p>Vemos donde lo guarda y que le realiza una división con IDIV, pero primero vayamos a donde lo guarda.</p>
+<figure><img loading="lazy" src="img/31/29.png" alt="Captura 29 del tute 31"></figure>
+<p>Vemos que ese EDI que se guarda en size_a_copiar viene de otra variable var_5c y que le suma 8, renombrare.</p>
+<figure><img loading="lazy" src="img/31/30.png" alt="Captura 30 del tute 31"></figure>
+<p>Vemos que todo sale del primer llamado a stream_Read, saca los bytes de la posición 14-15-16 y 17 y lo armara para mediante shl y or quede el DWORD seguramente en size_a_copiar_menos_8.</p>
+<p>Ponemos un breakpoint allí en el LEA</p>
+<figure><img loading="lazy" src="img/31/31.png" alt="Captura 31 del tute 31"></figure>
+<p>Atacheemos el programa y arrastramos y soltamos el archivo .ty original en el VLC.</p>
+<figure><img loading="lazy" src="img/31/32.png" alt="Captura 32 del tute 31"></figure>
+<p>Allí lo tengo al VLC abierto en mi máquina virtual y al win32_remote.exe</p>
+<figure><img loading="lazy" src="img/31/33.png" alt="Captura 33 del tute 31"></figure>
+<p>Atacheo.</p>
+<figure><img loading="lazy" src="img/31/34.png" alt="Captura 34 del tute 31"></figure>
+<p>Después de reproducir un rato para en el Breakpoint.</p>
+<p>Paso con F7 y veo en EDX la dirección del BUFFER.</p>
+<figure><img loading="lazy" src="img/31/35.png" alt="Captura 35 del tute 31"></figure>
+<p>hago click en la flechita al lado de EDX teniendo el foco en el listado.</p>
+<figure><img loading="lazy" src="img/31/36.png" alt="Captura 36 del tute 31"></figure>
+<p>Ahora puedo hacer click derecho y crear el array ahí en la memoria, de 32 bytes decimal.</p>
+<figure><img loading="lazy" src="img/31/37.png" alt="Captura 37 del tute 31"></figure>
+<p>Allí quedo.</p>
+<figure><img loading="lazy" src="img/31/38.png" alt="Captura 38 del tute 31"></figure>
+<p>Ponemos un breakpoint on write en el primer dword del buffer para ver que pare cuando lo llene dentro de stream_Read.</p>
+<figure><img loading="lazy" src="img/31/39.png" alt="Captura 39 del tute 31"></figure>
+<figure><img loading="lazy" src="img/31/40.png" alt="Captura 40 del tute 31"></figure>
+<p>Al dar RUN para en la msvcrt en un rep movsd copiando al buffer.</p>
+<p>En el menú DEBUGGER- DEBUGGER WINDOWS-MODULE LIST sale la lista de módulos y ahi busco msvcrt.dll.</p>
+<figure><img loading="lazy" src="img/31/41.png" alt="Captura 41 del tute 31"></figure>
+<figure><img loading="lazy" src="img/31/42.png" alt="Captura 42 del tute 31"></figure>
+<p>Hago click derecho ANALIZE MODULE y cuando termina hago LOAD DEBUG SYMBOLS y ahora se ve más linda la función y podemos ver en el call stack donde estamos realmente.</p>
+<figure><img loading="lazy" src="img/31/43.png" alt="Captura 43 del tute 31"></figure>
+<p>EN DEBUGGER-DEBUGGER WINDOWS -STACK TRACE.</p>
+<figure><img loading="lazy" src="img/31/44.png" alt="Captura 44 del tute 31"></figure>
+<p>Vemos que estamos dentro de un memcpy y de donde viene.</p>
+<p>Lo cierto es que reps movs copia desde lo que apunta ESI que es el source a lo que apunta EDI que es el destino, y ECX es la cantidad de dwords a copiar, veamos a qué apunta ESI hacemos click en la flechita al lado de ESI pero teniendo el foco en HEX DUMP para ver allí.</p>
+<figure><img loading="lazy" src="img/31/45.png" alt="Captura 45 del tute 31"></figure>
+<p>Eso es lo que copia en el BUFFER abramos el archivo .ty en un editor hexa y aquí hagamos.</p>
+<figure><img loading="lazy" src="img/31/46.png" alt="Captura 46 del tute 31"></figure>
+<p>Marquemos 32 bytes y hagamos EDIT-EXPORT DATA para copiar los bytes marcados en el formato que queremos.</p>
+<figure><img loading="lazy" src="img/31/47.png" alt="Captura 47 del tute 31"></figure>
+<p>Creo que asi quedara mejor.</p>
+<figure><img loading="lazy" src="img/31/48.png" alt="Captura 48 del tute 31"></figure>
+<figure><img loading="lazy" src="img/31/49.png" alt="Captura 49 del tute 31"></figure>
+<p>Así que ya encontramos los bytes que lee del archivo, sabemos que el 14-15-16 y 17 son los que armaran el valor, le sumará 8 y hará una división y llegará al valor, veamos cual es aquí.</p>
+<figure><img loading="lazy" src="img/31/50.png" alt="Captura 50 del tute 31"></figure>
+<p>Es ese 00 00 00 02 pongamos un breakpoint para que pare al volver del stream_Read de nuevo en la dll libty_plugin.</p>
+<figure><img loading="lazy" src="img/31/51.png" alt="Captura 51 del tute 31"></figure>
+<p>Lo tuve que tirar de nuevo porque se cayó el IP</p>
+<figure><img loading="lazy" src="img/31/52.png" alt="Captura 52 del tute 31"></figure>
+<p>Ahora el buffer está acá.</p>
+<figure><img loading="lazy" src="img/31/53.png" alt="Captura 53 del tute 31"></figure>
+<p>Lo puedo poner en hex dump y sumarle 0x14 a la dirección del buffer y veo que es el 00 00 00 02 que habíamos visto en el archivo.</p>
+<p>Traceemos a ver que hace.</p>
+<figure><img loading="lazy" src="img/31/54.png" alt="Captura 54 del tute 31"></figure>
+<p>Vemos que todo eso es para armar el DWORD y pasarlo a EDI, luego debería sumarle 8.</p>
+<figure><img loading="lazy" src="img/31/55.png" alt="Captura 55 del tute 31"></figure>
+<p>Y más adelante hará un IDIV lleguemos ahí.</p>
+<figure><img loading="lazy" src="img/31/56.png" alt="Captura 56 del tute 31"></figure>
+<p>Allí está el 0x0a que provino del 0x02 que leyó del archivo y le sumó 8, quedando 0xa.</p>
+<figure><img loading="lazy" src="img/31/57.png" alt="Captura 57 del tute 31"></figure>
+<p>IDIV es la división con signo dividirá EDX:EAX por el size a copiar el que no se modificara, el problema es que si subo mucho el size a copiar la división dará cero y eso es el valor que va al MALLOC luego de multiplicarlo por 16, así que debemos manejar bien esta división para que no de cero.</p>
+<p>EDX:EAX es 00000000:00000148 y se divide por 0A, si vemos en el archivo el 0x148 está cerca del 00000002.</p>
+<figure><img loading="lazy" src="img/31/58.png" alt="Captura 58 del tute 31"></figure>
+<p>Así que si subo el 02 tendré que subir también el 0x148 para que la división no de cero, lo hare.</p>
+<figure><img loading="lazy" src="img/31/59.png" alt="Captura 59 del tute 31"></figure>
+<p>De esa forma veremos si llega al stream_Read con un size grande mayor que 8 que desborde el buffer, lo volvemos a tirar con este archivo modificado.</p>
+<figure><img loading="lazy" src="img/31/60.png" alt="Captura 60 del tute 31"></figure>
+<p>Alli arma el 0x4647 en EDI, luego le sumará 8.</p>
+<figure><img loading="lazy" src="img/31/61.png" alt="Captura 61 del tute 31"></figure>
+<p>Luego hará el IDIV 0000000:AA48 dividido 0x464f</p>
+<figure><img loading="lazy" src="img/31/62.png" alt="Captura 62 del tute 31"></figure>
+<p>El resultado de la división queda en EAX y es 2.</p>
+<figure><img loading="lazy" src="img/31/63.png" alt="Captura 63 del tute 31"></figure>
+<p>Ese es el máximo que va a multiplicar por 16 y llamar a malloc, como no estamos explotando el heap overflow, mientras que alloque estará bien.</p>
+<figure><img loading="lazy" src="img/31/64.png" alt="Captura 64 del tute 31"></figure>
+<p>Así que llama a malloc con el tamaño 0x20, allocara sin problema.</p>
+<figure><img loading="lazy" src="img/31/65.png" alt="Captura 65 del tute 31"></figure>
+<p>Va al bloque donde está la vulnerabilidad, con el size_a_copiar 0x464f que obviamente es mayor que 8, lo que en la versión parcheada lo tiraría fuera y no habría overflow.</p>
+<p>Le colocó breakpoints en el buffer, ECX apunta al mismo, voy allí y le pongo hardware breakpoint on read write para que pare cuando comience a llenar el buffer.</p>
+<figure><img loading="lazy" src="img/31/66.png" alt="Captura 66 del tute 31"></figure>
+<figure><img loading="lazy" src="img/31/67.png" alt="Captura 67 del tute 31"></figure>
+<p>Le daré F9 para que pare cuando copie al buffer.</p>
+<figure><img loading="lazy" src="img/31/68.png" alt="Captura 68 del tute 31"></figure>
+<p>ECX está copiando 1192 dwords ya que rep movsd es REPETIR MOV DWORDS, así que el total que escribirá en un buffer de 32 bytes es 0x1192 x4 o sea 0x4648 que proviene de redondear el 0x4647 que puse en el archivo.</p>
+<figure><img loading="lazy" src="img/31/69.png" alt="Captura 69 del tute 31"></figure>
+<figure><img loading="lazy" src="img/31/70.png" alt="Captura 70 del tute 31"></figure>
+<p>Ahora llegaré hasta el ret ya que seguro pisa el mismo por el largo que tiene lo que copia al buffer.</p>
+<p>Voy haciendo RUN TILL RETURN o CTRL más f7 y vuelve a la función principal, donde está alojado el buffer al llegar al ret de la misma debería crashear.</p>
+<figure><img loading="lazy" src="img/31/71.png" alt="Captura 71 del tute 31"></figure>
+<p>Pongo un breakpoint en el ret de la función y deshabilito todos los otros.</p>
+<figure><img loading="lazy" src="img/31/72.png" alt="Captura 72 del tute 31"></figure>
+<p>Veo que el stack está destruido porque pise todo alli, voy a HEX VIEW y apreto la flechita al lado de ESP.</p>
+<figure><img loading="lazy" src="img/31/73.png" alt="Captura 73 del tute 31"></figure>
+<p>Busco esa cadena en el archivo.</p>
+<figure><img loading="lazy" src="img/31/74.png" alt="Captura 74 del tute 31"></figure>
+<p>Esos son los valores que va a saltar ya que pisamos el return address, lo cambiare por .</p>
+<figure><img loading="lazy" src="img/31/75.png" alt="Captura 75 del tute 31"></figure>
+<p>Ahora lo tiró con este archivo modificado.</p>
+<figure><img loading="lazy" src="img/31/76.png" alt="Captura 76 del tute 31"></figure>
+<p>Listo ahora si ejecuto ya tomó control de EIP que es el objetivo de un POC, o de la mayoría algunos ni llegan a eso solo rompen el programa y listo.</p>
+<figure><img loading="lazy" src="img/31/77.png" alt="Captura 77 del tute 31"></figure>
+<figure><img loading="lazy" src="img/31/78.png" alt="Captura 78 del tute 31"></figure>
+<p>Si todo va bien se podría explotar, ya veremos cómo continuar con la explotación de este ejemplo más adelante ahora en las partes siguientes vamos a seguir con la teoría que falta y algunos ejemplos sencillos programados por mi para que practiquen yo ya trabajé mucho jeje.</p>
+<p>Es de notar que la extensión del archivo debe ser ty+ si no no pasa por la parte vulnerable, si la cambiamos.</p>
+<p>Hasta la parte 32.</p>
+<p>Ricardo Narvaja</p>
+</main>
+<footer class="pie">
+  <p>Material educativo y defensivo. Las prácticas se limitan a programas propios, software abierto o crackmes diseñados para aprender. No se enseña a eludir licencias, DRM ni controles de acceso.</p>
+  <p><a href="../00_EMPEZAR_AQUI.html">Inicio</a> · <a href="../guia/etapa-0.html">Etapas</a> · <a href="../fuentes_y_limites.html">Fuentes y límites</a> · <a href="../registro_de_cobertura.csv">Registro de cobertura</a></p>
+</footer>
+<script>
+(function(){
+  function abrir(src){
+    var o=document.createElement('div'); o.className='lightbox-ov';
+    var i=document.createElement('img'); i.src=src; o.appendChild(i);
+    function cerrar(){o.remove(); document.removeEventListener('keydown', onkey);}
+    function onkey(e){ if(e.key==='Escape') cerrar(); }
+    o.addEventListener('click', cerrar);
+    document.addEventListener('keydown', onkey);
+    document.body.appendChild(o);
+  }
+  document.addEventListener('DOMContentLoaded', function(){
+    document.querySelectorAll('figure img, main img').forEach(function(img){
+      img.style.cursor='zoom-in';
+      img.addEventListener('click', function(){ abrir(img.currentSrc||img.src); });
+    });
+  });
+})();
+</script>
+</body>
+</html>

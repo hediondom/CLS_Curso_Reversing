@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tute 6 · Aritméticas y lógicas — Curso IDA</title>
+<meta name="description" content="Tutorial ilustrado del tute 6 del Curso IDA desde cero: Aritméticas y lógicas.">
+<link rel="stylesheet" href="../guia/estilo.css">
+</head>
+<body>
+<a class="salto" href="#contenido">Saltar al contenido</a>
+<header class="cabecera">
+  <div class="marca"><a href="../00_EMPEZAR_AQUI.html">CLS · Curso de reversing</a> <span class="edicion">edición 5 · 27/10/2026</span></div>
+  <nav class="principal" aria-label="Navegación principal">
+    <a href="../00_EMPEZAR_AQUI.html">Inicio</a>
+    <a href="../guia/index.html">Curso</a>
+    <a href="../fichas/index.html">Fichas</a>
+    <a href="../glosario.html">Glosario</a>
+    <a href="../preguntas_y_respuestas.html">Repaso</a>
+  </nav>
+</header>
+<main id="contenido">
+<p class="migas"><a href="../ida-tutes.html">← Índice de los 69 tutes de IDA</a></p>
+<h1>Tute 6 · Aritméticas y lógicas</h1>
+<p class="meta-tute"><strong>⏱ 7 min de lectura</strong> · 1.328 palabras · 25 capturas · grupo: Base de IDA, assembly y primeras prácticas</p>
+<aside class="callout nota"><p class="callout-titulo">Qué enseña</p><p>ADD/SUB/AND/OR/XOR: operandos, registros y memoria.</p></aside>
+<p><em>▶ video afín (mismo autor, en x64dbg):</em> <a href="../videos.html">«08 Instrucciones 4»</a> · <em>se conecta con:</em> <a href="../guia/02-herramientas.html">Herramientas</a> · <a href="../guia/02-ida.html">IDA</a> · <a href="../guia/02-instrucciones.html">Instrucciones</a> · <a href="../guia/02-flujo.html">Flujo</a> · <a href="../guia/02-debugger.html">Debugger</a> · <a href="../guia/01-numeros.html">Números</a></p>
+<aside class="callout aviso"><p class="callout-titulo">Material observado, no reescrito</p><p>Es el texto y las capturas del <code>.docx</code> original del curso, solo presentados como tutorial. Puede tener erratas de origen. El autor del curso es Ricardo Narvaja.</p></aside>
+<hr>
+<p>INTRODUCCIÓN AL REVERSING CON IDA PRO DESDE CERO PARTE 6.</p>
+<p>Instrucciones aritméticas y lógicas.</p>
+<pre class='asm'>ADD A,B</pre>
+<p>Suma el valor de B a A y guarda el resultado en A.</p>
+<p>A puede ser un registro o el contenido de una posición de memoria, B puede ser registro, una constante o el contenido de una posición de memoria (no se permite que A y B a la vez sean contenidos de posiciones de memoria en la misma instrucción)</p>
+<p>Veamos algunos ejemplos de ADD buscando el texto ADD en el VEVIEWER.</p>
+<figure><img loading="lazy" src="img/6/1.png" alt="Captura 1 del tute 6"></figure>
+<p>Ahí vemos muchos ejemplos de sumas donde el primer miembro es un registro y el segundo una constante, como sabemos se sumará al valor que tiene el registro en ese momento, el valor de la constante y se guardara en el registro.</p>
+<figure><img loading="lazy" src="img/6/2.png" alt="Captura 2 del tute 6"></figure>
+<p>En este ejemplo si ECX vale 10000 se le suma la constante 4 y el resultado 10004 se guarda en el mismo ECX.</p>
+<figure><img loading="lazy" src="img/6/3.png" alt="Captura 3 del tute 6"></figure>
+<p>En este caso sumara 0xFFFFFFFF al valor que tenga previamente el contenido de la dirección a la que apunta ECX +30 siempre que dicha dirección tenga permiso de escritura, hará la suma y guardara el resultado allí.</p>
+<p>Si ECX por ejemplo valiera 0x10000,  en 0x10030 si el contenido fuera el valor 1 y a eso se le suma 0xFFFFFFFF que es -1 por lo tanto el resultado sería cero y se guardara en 0x10030.</p>
+<p>En el CRACKME.EXE hay un ejemplo de la suma de dos registros.</p>
+<figure><img loading="lazy" src="img/6/4.png" alt="Captura 4 del tute 6"></figure>
+<p>En ese caso se sumará el valor de ambos registros y se guardará en EDI.</p>
+<p>Por supuesto también se pueden sumar registros de 16 bits y 8 bits.</p>
+<pre class='asm'>ADD AL,8
+ADD AX,8
+ADD BX,AX
+ADD byte ptr ds: [EAX],7</pre>
+<p>Donde sumara al byte del contenido que apunta EAX el valor 7 y lo guardara en el mismo lugar.</p>
+<p>Y todas las combinaciones posibles de sumas entre registros, contenidos de posiciones de memoria y constantes, como vimos todas las combinaciones son válidas, salvo que A sea una constante y que ambos sean contenidos de direcciones de memoria a la vez en la misma instrucción.</p>
+<pre class='asm'>SUB A,B</pre>
+<p>Es exactamente igual a ADD salvo que en vez de realizar la operación suma en este caso restara enteros y guardara el resultado en A, las combinaciones posibles son las mismas.</p>
+<figure><img loading="lazy" src="img/6/5.png" alt="Captura 5 del tute 6"></figure>
+<pre class='asm'>INC A y DEC A</pre>
+<p>Incrementa o decrementa un registro o contenido de posición de memoria en 1 es en realidad un caso especial de suma y resta.</p>
+<figure><img loading="lazy" src="img/6/6.png" alt="Captura 6 del tute 6"></figure>
+<p>Ambas se utilizan por ejemplo para incrementar o decrementar contadores de a uno.</p>
+<p>IMUL</p>
+<p>Es la multiplicación entera y existen dos formas.</p>
+<p>IMUL A,B</p>
+<p>IMUL A,B,C</p>
+<p>En la primera forma se realiza la multiplicación entera de ambos A y B y el resultado se guarda en A y en la segunda forma se multiplican B y C y el resultado se guarda en A.</p>
+<p>En ambos casos A solo puede ser un registro B puede ser un registro o el contenido de una posición de memoria y C solo puede ser una constante.</p>
+<p>imul eax, [ecx]</p>
+<p>imul esi, edi, 25</p>
+<p>Veamos si hay algún ejemplo en VEVIEWER</p>
+<figure><img loading="lazy" src="img/6/7.png" alt="Captura 7 del tute 6"></figure>
+<p>Vemos que hay solo ejemplos de la primera forma, en ambos casos multiplicara en forma entera ambos miembros y guardara en el primer miembro el resultado.</p>
+<p>Del segundo caso no hay ejemplos</p>
+<p>IMUL EAX,EDI,25</p>
+<p>Multiplicara EDI por 25 y lo guardara en EAX es sencillo.</p>
+<p>IDIV A</p>
+<p>En este caso A marca solo el DIVISOR de la operación tanto el dividendo como el cociente no se especifican porque son siempre el mismo.</p>
+<figure><img loading="lazy" src="img/6/8.png" alt="Captura 8 del tute 6"></figure>
+<p>Lo que hace esta operación es armar un número más grande de 64 bits con los registros EDX como parte alta y EAX como parte baja dividir eso por A y guardarlo el resultado en EAX y el resto en EDX.</p>
+<figure><img loading="lazy" src="img/6/9.png" alt="Captura 9 del tute 6"></figure>
+<p>Si EAX por ejemplo vale 5, EDX vale cero y ECX vale 2 hará la división entera, el resultado de 5 dividido 2 será 2 y se guardara en EAX y el resto 1 en EDX.</p>
+<p>Ocurrirá lo mismo si A es el contenido de una posición de memoria, EDX:EAX se dividirá contra ese valor y se guardara el resultado en EAX y el resto en EDX.</p>
+<p>OPERACIONES LOGICAS</p>
+<p>AND, OR o XOR</p>
+<pre class='asm'>AND A,B</pre>
+<p>Realizara un AND entre ambos valores y guardara el resultado en A, lo mismo pasa con OR o XOR cada uno tiene sus tabla de verdad, se aplicara en cada miembro y el resultado se guardara en A.</p>
+<p>A Y B pueden ser registros o contenidos de direcciones de memoria, pero es ilegal que ambos sean contenidos de memoria a la vez en la misma instrucción.</p>
+<p>Los casos más usados son XOR de un mismo registro para ponerlo a cero fácilmente.</p>
+<p>XOR EAX,EAX por ejemplo cualquiera sea el valor de EAX lo pondrá a cero ya que la tabla de verdad de XOR es.</p>
+<figure><img loading="lazy" src="img/6/10.png" alt="Captura 10 del tute 6"></figure>
+<p>En este caso el resultado es la última columna y vemos que si XOREAMOS un numero contra si mismo solo se pueden dar al pasarlo a binario los casos que ambos bits sean cero o ambos sean uno, ya que como es el mismo número solo pueden ser iguales A y B y el resultado haciéndolo bit a bit siempre da cero en ambos casos.</p>
+<figure><img loading="lazy" src="img/6/11.png" alt="Captura 11 del tute 6"></figure>
+<figure><img loading="lazy" src="img/6/12.png" alt="Captura 12 del tute 6"></figure>
+<p>Escribiéndolo como binarios en la barra de Python y usando ^ que es el xor en Python veo que al xorear dos números iguales siempre da 0.</p>
+<p>Por supuesto que se puede realizar con valores decimales y hexadecimales solo lo paso a binario para que sea vea cómo afecta bit a bit.</p>
+<figure><img loading="lazy" src="img/6/13.png" alt="Captura 13 del tute 6"></figure>
+<p>Otro uso sencillo es por ejemplo</p>
+<pre class='asm'>AND EAX, 0f</pre>
+<p>Como 0F es en binario 1111</p>
+<figure><img loading="lazy" src="img/6/14.png" alt="Captura 14 del tute 6"></figure>
+<figure><img loading="lazy" src="img/6/15.png" alt="Captura 15 del tute 6"></figure>
+<p>Vemos que siendo 1 el segundo miembro el resultado no variara quedara igual como era originalmente mientras que todos los otros bits se pondrán a cero.</p>
+<p>De esta forma yo fácilmente puse a cero todos los bits de un número y deje los últimos 4 bits intactos.</p>
+<figure><img loading="lazy" src="img/6/16.png" alt="Captura 16 del tute 6"></figure>
+<p>Allí vemos que el and en Python que se escribe &amp; me deja el resultado en 0b0111 que eran los últimos cuatro bits originales.</p>
+<p>En el caso de OR en Python se escribe como la barra vertical</p>
+<figure><img loading="lazy" src="img/6/17.png" alt="Captura 17 del tute 6"></figure>
+<p>Siempre con una calculadora científica o con Python podemos resolver la operación sin tener que pasar a binario ambos y ver qué pasa bit a bit que es un poco pesado.</p>
+<p>NOT A</p>
+<p>Niega o invierte todos los bits de A y los guarda en el mismo A.</p>
+<p>De este no existe instrucción en Python pero es muy sencillo si tienes 0101 y le aplicas NOT.</p>
+<figure><img loading="lazy" src="img/6/18.png" alt="Captura 18 del tute 6"></figure>
+<p>El resultado será al invertir bit a bit</p>
+<figure><img loading="lazy" src="img/6/19.png" alt="Captura 19 del tute 6"></figure>
+<p>Vemos que todos los ceros se transformaron en unos y viceversa.</p>
+<p>NEG A</p>
+<p>NEG A transforma A en -A.</p>
+<p>No es exactamente igual al ~ en Python ya que este al resultado le resta uno</p>
+<figure><img loading="lazy" src="img/6/20.png" alt="Captura 20 del tute 6"></figure>
+<p>O sea que para hacer en Python un NEG de assembler hay que sumarle 1 al resultado.</p>
+<figure><img loading="lazy" src="img/6/21.png" alt="Captura 21 del tute 6"></figure>
+<p>SHL, SHR</p>
+<p>SHL A,B</p>
+<p>SHR A,B</p>
+<p>A puede ser un registro o una posición de memoria y B una constante o registro de 8 bits.</p>
+<p>Estas instrucciones rotan a la izquierda (SHL) y a la derecha (SHR) ,los bytes que se van perdiendo por un lado son reemplazados por ceros que entran por el otro, veamos un ejemplo.</p>
+<p>Si yo tengo, por ejemplo</p>
+<figure><img loading="lazy" src="img/6/22.png" alt="Captura 22 del tute 6"></figure>
+<p>Y le hago SHL 2 quedara</p>
+<figure><img loading="lazy" src="img/6/23.png" alt="Captura 23 del tute 6"></figure>
+<p>Ya que al mover a la izquierda dos lugares todos los bits, se cayeron dos bits por el lado izquierdo, que se rellenan con dos ceros por la derecha.</p>
+<figure><img loading="lazy" src="img/6/24.png" alt="Captura 24 del tute 6"></figure>
+<p>Lo mismo si hacemos SHR se moverán hacia la derecha e irán cayendo y los que caigan por la derecha se reemplazaran por ceros por el lado izquierdo.</p>
+<p>Existen también las instrucciones ROL Y ROR que son similares rotan cierta cantidad de bits pero en este caso los que se caen por un lado retornan con su mismo valor por el otro es una rotación pura en ese caso ya que no se cambia ningún bit solo se rotan.</p>
+<figure><img loading="lazy" src="img/6/25.png" alt="Captura 25 del tute 6"></figure>
+<p>Bueno hasta la parte 7.</p>
+<p>Ricardo Narvaja</p>
+</main>
+<footer class="pie">
+  <p>Material educativo y defensivo. Las prácticas se limitan a programas propios, software abierto o crackmes diseñados para aprender. No se enseña a eludir licencias, DRM ni controles de acceso.</p>
+  <p><a href="../00_EMPEZAR_AQUI.html">Inicio</a> · <a href="../guia/etapa-0.html">Etapas</a> · <a href="../fuentes_y_limites.html">Fuentes y límites</a> · <a href="../registro_de_cobertura.csv">Registro de cobertura</a></p>
+</footer>
+<script>
+(function(){
+  function abrir(src){
+    var o=document.createElement('div'); o.className='lightbox-ov';
+    var i=document.createElement('img'); i.src=src; o.appendChild(i);
+    function cerrar(){o.remove(); document.removeEventListener('keydown', onkey);}
+    function onkey(e){ if(e.key==='Escape') cerrar(); }
+    o.addEventListener('click', cerrar);
+    document.addEventListener('keydown', onkey);
+    document.body.appendChild(o);
+  }
+  document.addEventListener('DOMContentLoaded', function(){
+    document.querySelectorAll('figure img, main img').forEach(function(img){
+      img.style.cursor='zoom-in';
+      img.addEventListener('click', function(){ abrir(img.currentSrc||img.src); });
+    });
+  });
+})();
+</script>
+</body>
+</html>

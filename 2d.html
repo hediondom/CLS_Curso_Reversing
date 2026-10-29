@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Etapa 2 · Rama optativa 2D — Windows internals</title>
+<meta name="description" content="Profundización optativa en Windows internals con 13 lecciones y una extensión Hyper-V separada. Recomendada después de 2C; no es obligatoria.">
+<link rel="stylesheet" href="guia/estilo.css">
+</head>
+<body>
+<a class="salto" href="#contenido">Saltar al contenido</a>
+<header class="cabecera">
+  <div class="marca"><a href="00_EMPEZAR_AQUI.html">CLS · Curso de reversing</a> <span class="edicion">edición 5 · 27/10/2026</span></div>
+  <nav class="principal" aria-label="Navegación principal">
+    <a href="00_EMPEZAR_AQUI.html">Inicio</a>
+    <a href="guia/index.html">Curso</a>
+    <a href="materiales.html">Materiales</a>
+    <a href="fichas/index.html">Fichas</a>
+    <a href="glosario.html">Glosario</a>
+    <a href="preguntas_y_respuestas.html">Repaso</a>
+    <a href="buscar.html">Buscar</a>
+  </nav>
+</header>
+<main id="contenido">
+<h1 id="etapa-2-rama-optativa-2d-windows-internals">Etapa 2 · Rama optativa 2D — Windows internals</h1>
+<aside class="callout aviso"><p class="callout-titulo">Rama optativa, fuera de la aprobación obligatoria</p><p>2D es una <strong>rama optativa asociada a la Etapa 2</strong>, después de 2A–2C. Profundiza Windows internals, pero <strong>no</strong> forma parte del recorrido obligatorio ni es prerrequisito general: el recorrido base siguen siendo las Etapas 0–4 y la Etapa 5 agrupa otras ramas optativas. Aporta prerrequisitos selectivos para la <a href="guia/etapa-6.html">Etapa 6 · Kernel y drivers</a>, también optativa. Llegás acá desde el mapa de la <a href="guia/etapa-2.html">Etapa 2</a> o desde las <a href="guia/etapa-5.html">ramas optativas de la Etapa 5</a>.</p></aside>
+<aside class="callout peligro"><p class="callout-titulo">Marco defensivo y de laboratorio</p><p>Todo acá es para <strong>entender, analizar, depurar y detectar</strong>, sobre <strong>programas propios o didácticos</strong> en <strong>VMs aisladas con snapshot</strong>. Nada de rootkits, persistencia encubierta, evasión de protecciones, ocultamiento de tareas ni objetivos de terceros. Cada laboratorio que registre servicios, tareas, claves o consumidores WMI <strong>termina con pasos de limpieza</strong> y evidencia de que quedó limpio.</p></aside>
+<h2 id="prerrequisitos">Prerrequisitos</h2>
+<ul><li><strong>Obligatorios:</strong> Etapa 1 (memoria, PE), Etapa 2A–2B (assembly, debugger, IDA, PE fino). C básico (<a href="guia/01-c-python.html">1.5</a>).</li><li><strong>Recomendados:</strong> Etapa 2C (WinDbg/heap, scripting) y la rama de malware estática (<a href="guia/05-malware.html">5.1</a>).</li></ul>
+<h2 id="las-lecciones">Las lecciones</h2>
+<p>13 lecciones redactadas. Estimación editorial <strong>55–70 h</strong>, todavía no medida con alumnos ni laboratorios verificados. El rango se amplió porque COM/DCOM, WMI y la integración requieren preparación y documentación además de lectura. En las revisiones del 28/10/2026 pasó de 45–60 h a 50–65 h (2D.6, 2D.8 y 2D.9 sumaron unas diez páginas y pasos de práctica) y luego a 55–70 h (2D.10–2D.13 sumaron unas once páginas y pasos de práctica: revisión de pipes y registro RPC, lectura de excepciones con <code>.exr</code>/<code>.ecxr</code>, inventario de sesiones ETW y fichas del integrador):</p>
+<ol><li><a href="guia/2d-01-objetos.html">Objetos, handles, tokens, privilegios e integridad</a></li><li><a href="guia/2d-02-memoria-loader.html">Memoria y loader: PEB/TEB, VAD e image mapping</a></li><li><a href="guia/2d-03-registro.html">Registro de Windows: hives, permisos, WOW64 y análisis defensivo</a></li><li><a href="guia/2d-04-servicios.html">Servicios: SCM, ciclo de vida, cuentas y auditoría</a></li><li><a href="guia/2d-05-task-scheduler.html">Task Scheduler: leer tareas y detectar cambios</a></li><li><a href="guia/2d-06-com-interfaces.html">COM: interfaces, IUnknown y vida de los objetos</a></li><li><a href="guia/2d-07-com-activacion.html">COM: registro, activación y configuración</a></li><li><a href="guia/2d-08-dcom-rpc.html">DCOM y RPC: activación remota y límites de confianza</a></li><li><a href="guia/2d-09-wmi.html">WMI: proveedores, filtros y consumidores</a></li><li><a href="guia/2d-10-ipc.html">IPC en Windows: named pipes, RPC y ALPC</a></li><li><a href="guia/2d-11-excepciones.html">Excepciones de Windows y debugging</a></li><li><a href="guia/2d-12-etw.html">ETW y telemetría defensiva</a></li><li><a href="guia/2d-13-integrador.html">Integrador Windows internals</a></li></ol>
+<h3 id="extensión-optativa-hyper-v-y-virtualización-2d-hyperv-html"><a href="2d-hyperv.html">Extensión optativa: Hyper-V y virtualización</a></h3>
+<p>Separada del núcleo de 2D y <strong>no requisito</strong> de 2D ni de la Etapa 6. La práctica es de lectura conceptual, sin modificar Hyper-V ni enseñar evasión anti-VM.</p>
+<h2 id="puerta-de-salida-optativa">Puerta de salida (optativa)</h2>
+<p>2D no tiene puerta obligatoria. Cada lección trae la suya. Si hacés el integrador (2D.13), el criterio es: analizar un programa propio, producir un <strong>inventario con evidencia</strong> y demostrar que <strong>limpiaste</strong> todos los cambios que hiciste en el sistema.</p>
+<aside class="callout nota"><p class="callout-titulo">Estado y honestidad</p><p>Las lecciones de 2D son, en su mayoría, <strong>conocimiento externo</strong> (documentación de Microsoft Learn), con <strong>ejemplos ilustrativos</strong> cuando no hay un laboratorio compilado con datos reales en esta edición. Los ejercicios de registro, servicio y tareas indican sus límites y limpieza; el resto no se declara reproducible si no fue ejecutado. Donde algo se apoya en material del corpus CLS, se cita; donde no se pudo verificar, se declara. No se inventan versiones, hashes, salidas ni citas.</p></aside>
+<h2 id="etapa-6-kernel-y-drivers-optativa">Etapa 6 · Kernel y drivers (optativa)</h2>
+<p>La Etapa 6 no es requisito para completar el curso y no exige COM, tareas programadas ni completar toda 2D. Requiere C, assembly, memoria/sincronización, WinDbg y las lecciones <a href="guia/2d-01-objetos.html">2D.1</a>, <a href="guia/2d-02-memoria-loader.html">2D.2</a> y <a href="guia/2d-11-excepciones.html">2D.11</a>. 2C es recomendado. Para ver prerrequisitos por lección, alcance y estimación, consultá <a href="guia/etapa-6.html">el mapa de Etapa 6</a>.</p>
+<h2 id="alcance-de-las-prácticas">Alcance de las prácticas</h2>
+<p>Las lecciones 2D.6–2D.13 son redacción editorial basada en documentación primaria; sus ejemplos son ilustrativos y sus laboratorios <strong>no están verificados</strong>. La Etapa 6 requiere VM descartable con snapshot. La carga de drivers es opcional: si la política de firma/arranque de la VM no permite probarlos con la configuración vigente, la alternativa segura es análisis estático. No se modifican protecciones del equipo principal.</p>
+</main>
+<footer class="pie">
+  <p>Material educativo y defensivo. Las prácticas se limitan a programas propios, software abierto o crackmes diseñados para aprender. No se enseña a eludir licencias, DRM ni controles de acceso.</p>
+  <p><a href="00_EMPEZAR_AQUI.html">Inicio</a> · <a href="guia/etapa-0.html">Etapas</a> · <a href="fuentes_y_limites.html">Fuentes y límites</a> · <a href="registro_de_cobertura.csv">Registro de cobertura</a></p>
+</footer>
+</body>
+</html>

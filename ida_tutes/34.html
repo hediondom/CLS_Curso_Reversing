@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tute 34 · Explotación y mitigaciones — Curso IDA</title>
+<meta name="description" content="Tutorial ilustrado del tute 34 del Curso IDA desde cero: Explotación y mitigaciones.">
+<link rel="stylesheet" href="../guia/estilo.css">
+</head>
+<body>
+<a class="salto" href="#contenido">Saltar al contenido</a>
+<header class="cabecera">
+  <div class="marca"><a href="../00_EMPEZAR_AQUI.html">CLS · Curso de reversing</a> <span class="edicion">edición 5 · 27/10/2026</span></div>
+  <nav class="principal" aria-label="Navegación principal">
+    <a href="../00_EMPEZAR_AQUI.html">Inicio</a>
+    <a href="../guia/index.html">Curso</a>
+    <a href="../fichas/index.html">Fichas</a>
+    <a href="../glosario.html">Glosario</a>
+    <a href="../preguntas_y_respuestas.html">Repaso</a>
+  </nav>
+</header>
+<main id="contenido">
+<p class="migas"><a href="../ida-tutes.html">← Índice de los 69 tutes de IDA</a></p>
+<h1>Tute 34 · Explotación y mitigaciones</h1>
+<p class="meta-tute"><strong>⏱ 9 min de lectura</strong> · 1.583 palabras · 36 capturas · grupo: Vulnerabilidades y exploiting en user-mode (VLC/CVE, DEP, Mona, canary/SEH, shellcode, heap)</p>
+<aside class="callout nota"><p class="callout-titulo">Qué enseña</p><p>Arranca ejecución de código e introduce DEP y otras protecciones.</p></aside>
+<p><em>se conecta con:</em> <a href="../guia/05-vulnerabilidades.html">Vulnerabilidades (defensivo)</a></p>
+<aside class="callout aviso"><p class="callout-titulo">Material observado, no reescrito</p><p>Es el texto y las capturas del <code>.docx</code> original del curso, solo presentados como tutorial. Puede tener erratas de origen. El autor del curso es Ricardo Narvaja.</p></aside>
+<hr>
+<p>INTRODUCCIÓN AL REVERSING CON IDA PRO DESDE CERO PARTE 34</p>
+<p>Vamos a comenzar con la explotación y la posible ejecución de código, por supuesto tenemos que tener en cuenta e ir aprendiendo las mitigaciones y protecciones que se fueron agregando para evitar esto, a veces podremos evitarlas y a veces no, la idea es ir poco a poco estudiándolas, primero veamos algunas definiciones importantes.</p>
+<p>QUE ES DEP?</p>
+<figure><img loading="lazy" src="img/34/1.png" alt="Captura 1 del tute 34"></figure>
+<p>Dejémosle la definición a Microsoft jeje, la realidad es que hay varias formas de activar DEP, una por ejemplo en las propiedades del sistema.</p>
+<figure><img loading="lazy" src="img/34/2.png" alt="Captura 2 del tute 34"></figure>
+<p>Estoy en Windows 10 y está seteado DEP para los programas y servicios esenciales, esa es la configuración por default, lo cual quiere decir que hay programas que no tienen DEP por default.</p>
+<p>Por supuesto se puede cambiar a la otra opción de que todos los programas tengan DEP, lo cual obviamente ayuda un poco mas a evitar la ejecución de código.</p>
+<p>Además de la configuración del sistema, cada programa puede activar DEP por su cuenta. usando una api que Microsoft provee para ello.</p>
+<p>SETDEPPROCESSPOLICY.</p>
+<figure><img loading="lazy" src="img/34/3.png" alt="Captura 3 del tute 34"></figure>
+<figure><img loading="lazy" src="img/34/4.png" alt="Captura 4 del tute 34"></figure>
+<p>Resumiendo, DEP cambia los permisos de las páginas donde se alojan datos, stack, heap etc, para evitar que podamos ejecutar código allí.</p>
+<p>Dado que DEP se maneja por proceso, tiene varias formas de activarse y puede hacerse en tiempo de ejecución, debemos mirar la lista de procesos con PROCESS EXPLORER la cual tiene una columna que nos dice el estado del DEP de cada proceso.</p>
+<p>https://technet.microsoft.com/en-us/sysinternals/processexplorer.aspx</p>
+<figure><img loading="lazy" src="img/34/5.png" alt="Captura 5 del tute 34"></figure>
+<figure><img loading="lazy" src="img/34/6.png" alt="Captura 6 del tute 34"></figure>
+<p>Allí está, debemos correrlo como administrador, le agregamos la coluna DEP haciendo click derecho en la barra de columnas y eligiendo SELECT COLUMNS.</p>
+<figure><img loading="lazy" src="img/34/7.png" alt="Captura 7 del tute 34"></figure>
+<p>Vemos que la mayoría de los procesos lo tienen habilitado y alguno que otro deshabilitado.</p>
+<figure><img loading="lazy" src="img/34/8.png" alt="Captura 8 del tute 34"></figure>
+<p>Obviamente los procesos de sistema lo tienen siempre habilitado y los programas de terceros, algunos sí otros no.</p>
+<p>Bueno la cuestión es que el DEP solo este habilitado no es gran cosa, pues puede ser bypaseado, el DEP gana fuerza cuando se combina completamente con otras protecciones que más adelante veremos.</p>
+<p>ROP o return oriented programming.</p>
+<p>Uno de los principales métodos para bypasear el DEP es el ROP o return oriented programming.</p>
+<figure><img loading="lazy" src="img/34/9.png" alt="Captura 9 del tute 34"></figure>
+<p>La idea cuando no existe DEP, y por ejemplo pisamos un return address al desbordar un stack overflow, es que normalmente saltamos a un JMP ESP o CALL ESP que devuelve la ejecución al stack y continuaba ejecutando mi código que se encontraba debajo del JMP ESP.</p>
+<p>Pero la idea general del ROP es, en vez de saltar a un JMP ESP, ir saltando a pedazos de código llamados gadgets que son código ejecutable del programa que terminan en un RET (los gadgets son parte de algún módulo por eso allí podemos ejecutar) y con eso enhebrar una llamada poco a poco a alguna api como VirtualProtect o VirtualAlloc que cambie y le de permiso de ejecución al stack o al heap donde esta mi código, para finalmente saltar a ejecutar al mismo.</p>
+<p>O sea que si un exploit que pisa un return address por ejemplo sin DEP era</p>
+<p>“A” * 200 + direccion_jmp_esp + código a ejecutar</p>
+<p>ahora con DEP deberá ser en el mismo caso</p>
+<p>“A” * 200 + rop + código a ejecutar</p>
+<p>Donde el rop debe darle permiso a mi código a ejecutar.</p>
+<p>Veremos un par de ejemplos primero sin DEP.</p>
+<figure><img loading="lazy" src="img/34/10.png" alt="Captura 10 del tute 34"></figure>
+<p>Allí tenemos un programa, tiene un buffer de 30 bytes decimal, y ingresa por argumento una string que la copia con strcpy al buffer sin chequear el largo, por lo cual produce un buffer overflow.</p>
+<p>Por lo demás carga un modulo llamado Mypepe.dll ya veremos si se necesita o no.</p>
+<p>Abramosolo en el LOADER del IDA.</p>
+<figure><img loading="lazy" src="img/34/11.png" alt="Captura 11 del tute 34"></figure>
+<p>Vemos que solo tiene dos argumentos en el main argc y argv, sabemos que argc es la cantidad de argumentos que le pasamos por consola, por lo tanto si no es dos (el nombre del ejecutable más un segundo argumento a continuación separado por espacio) se cerrará ya que chequea eso.</p>
+<figure><img loading="lazy" src="img/34/12.png" alt="Captura 12 del tute 34"></figure>
+<p>Si la cantidad de argumentos no es 2 va al bloque rojo y imprime el mensaje de error y llega al return sin hacer nada luego se cerrará, mientras que si la cantidad de argumentos es correcta o sea 2, seguirá por el bloque verde, cargará el modulo y  luego irá a la función saluda, se ve feo el nombre voy a OPTIONS-DEMANGLE NAMES-NAMES.</p>
+<figure><img loading="lazy" src="img/34/13.png" alt="Captura 13 del tute 34"></figure>
+<figure><img loading="lazy" src="img/34/14.png" alt="Captura 14 del tute 34"></figure>
+<p>Por si alguno no recuerda, argc es el número de argumentos y argv es un array de punteros, cada uno apunta a una string que es cada argumento, o sea que en el caso.</p>
+<figure><img loading="lazy" src="img/34/15.png" alt="Captura 15 del tute 34"></figure>
+<p>En 0x40109c ECX tiene el valor de argv, es un array de punteros</p>
+<p>ARGV = [p_nombre_del_ejecutable, p_argumento1, p_argumento2…]</p>
+<p>En IDA vemos que hace SHL EAX, 0 o sea que rota 0 bytes, quedando EAX igual que antes o sea 4 en este caso.</p>
+<p>Luego [ECX+EAX] devolverá el puntero a un argumento, si EAX es cero, devolverá el puntero al nombre del ejecutable, si es 4 ya que cada puntero mide 4 bytes de largo, leerá el puntero al segundo argumento y así sucesivamente.</p>
+<p>En este caso como EAX vale 4, quedará en EDX el puntero al segundo argumento que nosotros pasamos, que pasa como argumento a la función saluda.</p>
+<figure><img loading="lazy" src="img/34/16.png" alt="Captura 16 del tute 34"></figure>
+<p>En la función saluda, hay un argumento que es el puntero al argumento y una variable que es un buffer donde copiará la string.</p>
+<figure><img loading="lazy" src="img/34/17.png" alt="Captura 17 del tute 34"></figure>
+<p>Como lo compile con símbolos, detecta que texto es del tipo puntero, y que apunta a una string (o array de caracteres).</p>
+<p>Por supuesto ese array puede ser del largo que queramos ya que lo tipeamos nosotros y no hay límite ni chequeo.</p>
+<p>Veamos el buffer.</p>
+<figure><img loading="lazy" src="img/34/18.png" alt="Captura 18 del tute 34"></figure>
+<p>Como lo compile con símbolos detectó que es un buffer, igual veamos las referencias donde se usa.</p>
+<figure><img loading="lazy" src="img/34/19.png" alt="Captura 19 del tute 34"></figure>
+<p>Las referencias son LEA lo cual es otra pista si no supiéramos, además se usa como Destino de un strcpy donde se usara como buffer de Destino, luego se usara para imprimir su contenido.</p>
+<figure><img loading="lazy" src="img/34/20.png" alt="Captura 20 del tute 34"></figure>
+<p>Así que hagamos click derecho ARRAY.</p>
+<figure><img loading="lazy" src="img/34/21.png" alt="Captura 21 del tute 34"></figure>
+<p>Aquí no hay dudas, no hay más variables debajo, lo que hay debajo es el STORED EBP y el RETURN ADDRESS, así que no hay duda que el buffer IDA lo medirá bien.(además tiene los símbolos que lo ayudan con lo cual determina que es un buffer sin ayuda nuestra)</p>
+<p>Así que para pisar el return address, ¿cuánto debería ser el largo del argumento que enviamos?</p>
+<p>Marco la zona que voy a llenar empezando desde el buffer, y dejando fuera el return address, y hago click derecho -ARRAY sin aceptar, solo para ver el largo que debe tener la string que overflodee eso.</p>
+<figure><img loading="lazy" src="img/34/22.png" alt="Captura 22 del tute 34"></figure>
+<p>O sea que enviando 36 bytes decimal quedó justo para pisar el return address, así que si mi código fuera.</p>
+<figure><img loading="lazy" src="img/34/23.png" alt="Captura 23 del tute 34"></figure>
+<p>Supuestamente las CCCCCCCC quedarían justo pisando el return address, podría probarlo para eso configurare IDA como JUST IN TIME DEBUGGER, para eso desde una consola con permiso de administrador voy a la carpeta donde esta el ejecutable del IDA.</p>
+<p>-I#    set IDA as just-in-time debugger (0 to disable and 1 to enable)</p>
+<figure><img loading="lazy" src="img/34/24.png" alt="Captura 24 del tute 34"></figure>
+<figure><img loading="lazy" src="img/34/25.png" alt="Captura 25 del tute 34"></figure>
+<p>Al correr el script veo que salta a ejecutar la dirección 0xCCCCCCCC que yo puse en el mismo, ya que pise el return address con la misma.</p>
+<figure><img loading="lazy" src="img/34/26.png" alt="Captura 26 del tute 34"></figure>
+<p>Allí veo que ahora ESP quedó apuntando justo debajo de las CCCCCCCC, así que si yo agregara mas código debajo, y en vez de saltar a CCCCCCCC saltara a un JMP ESP, saltaría a ejecutar dicho código (que buenos tiempos cuando no había DEP jeje)</p>
+<p>Busco en la lista de módulos Mypepe.dll.</p>
+<figure><img loading="lazy" src="img/34/27.png" alt="Captura 27 del tute 34"></figure>
+<p>Hacemos click derecho para que lo analice y cargamos los símbolos del mismo, tardará un rato, mientras en cualquier lugar del código arrancamos el plugin keypatcher y sin aceptar vemos que la instrucción JMP ESP corresponde a la secuencia de bytes FF e4.</p>
+<figure><img loading="lazy" src="img/34/28.png" alt="Captura 28 del tute 34"></figure>
+<p>Cuando termina vemos que en la lista de funciones aparecen las de mypepe, voy a alguna.</p>
+<figure><img loading="lazy" src="img/34/29.png" alt="Captura 29 del tute 34"></figure>
+<p>Se ve bien busquemos a ver si hay algún JMP ESP.</p>
+<p>SEARCH FOR-SEQUENCE OF BYTES y pongo FF e4.</p>
+<figure><img loading="lazy" src="img/34/30.png" alt="Captura 30 del tute 34"></figure>
+<p>Allí en 00x4010ba hay un JMP ESP, lo que si no podemos pasar ceros, pero como cuando hace strcpy el sistema coloca un cero al final, no lo pondremos y dejaremos que el lo coloque.</p>
+<figure><img loading="lazy" src="img/34/31.png" alt="Captura 31 del tute 34"></figure>
+<p>El problema es que el JMP ESP sirve solo para saltar si ponemos más código debajo, pero no podemos pasar más código por el cero final del JMP ESP, así que saltaremos a un RET, total justo debajo está el puntero a la string nuestra que se pasó como argumento.</p>
+<figure><img loading="lazy" src="img/34/32.png" alt="Captura 32 del tute 34"></figure>
+<p>Justo debajo del return address en el stack, está el puntero a nuestra string texto, así que si saltamos a un RET volverá al código mío, pues ese ret lo devolverá allí usando ese puntero como si fuera un return address nuevamente.</p>
+<figure><img loading="lazy" src="img/34/33.png" alt="Captura 33 del tute 34"></figure>
+<p>Ese es un buen RET pongámoslo.</p>
+<figure><img loading="lazy" src="img/34/34.png" alt="Captura 34 del tute 34"></figure>
+<p>Probemos.</p>
+<figure><img loading="lazy" src="img/34/35.png" alt="Captura 35 del tute 34"></figure>
+<p>Veo que ya salta a ejecutar mi código las CCCCCCCC que puse como shellcode, podría ahora acomodar el código que quisiera allí y ejecutar lo que quiera total no hay DEP, lo único que hay poco espacio porque le puse solo 30 bytes de largo lo que me impide hacer grandes cosas, pero bueno la idea es esa.</p>
+<p>Me arme un shellcode que ejecuta la calculadora</p>
+<p>import struct</p>
+<p>shellcode ="\xB8\x40\x50\x03\x78\xC7\x40\x04"+ "calc" + "\x83\xC0\x04\x50\x68\x24\x98\x01\x78\x59\xFF\xD1"</p>
+<p>fruta = shellcode + "A" * (36-len(shellcode)) + "\x3a\x10\x40"</p>
+<p>#0x40103a ret</p>
+<p>import subprocess</p>
+<p>subprocess.call([r'C:\Users\ricna\Desktop\34\NO_DEP.exe', fruta])</p>
+<figure><img loading="lazy" src="img/34/36.png" alt="Captura 36 del tute 34"></figure>
+<p>Allí está crasheara, pero luego de ejecutar la calculadora que es el objetivo.</p>
+<p>En las partes siguientes iremos agregando de a poco más ejercicios, luego algunos con DEP, agregaremos ROP y iremos paso a paso.</p>
+<p>Ricardo Narvaja</p>
+<p>Hasta la parte 35</p>
+</main>
+<footer class="pie">
+  <p>Material educativo y defensivo. Las prácticas se limitan a programas propios, software abierto o crackmes diseñados para aprender. No se enseña a eludir licencias, DRM ni controles de acceso.</p>
+  <p><a href="../00_EMPEZAR_AQUI.html">Inicio</a> · <a href="../guia/etapa-0.html">Etapas</a> · <a href="../fuentes_y_limites.html">Fuentes y límites</a> · <a href="../registro_de_cobertura.csv">Registro de cobertura</a></p>
+</footer>
+<script>
+(function(){
+  function abrir(src){
+    var o=document.createElement('div'); o.className='lightbox-ov';
+    var i=document.createElement('img'); i.src=src; o.appendChild(i);
+    function cerrar(){o.remove(); document.removeEventListener('keydown', onkey);}
+    function onkey(e){ if(e.key==='Escape') cerrar(); }
+    o.addEventListener('click', cerrar);
+    document.addEventListener('keydown', onkey);
+    document.body.appendChild(o);
+  }
+  document.addEventListener('DOMContentLoaded', function(){
+    document.querySelectorAll('figure img, main img').forEach(function(img){
+      img.style.cursor='zoom-in';
+      img.addEventListener('click', function(){ abrir(img.currentSrc||img.src); });
+    });
+  });
+})();
+</script>
+</body>
+</html>

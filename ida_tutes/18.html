@@ -1,0 +1,212 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tute 18 · Reversear lo desempacado — Curso IDA</title>
+<meta name="description" content="Tutorial ilustrado del tute 18 del Curso IDA desde cero: Reversear lo desempacado.">
+<link rel="stylesheet" href="../guia/estilo.css">
+</head>
+<body>
+<a class="salto" href="#contenido">Saltar al contenido</a>
+<header class="cabecera">
+  <div class="marca"><a href="../00_EMPEZAR_AQUI.html">CLS · Curso de reversing</a> <span class="edicion">edición 5 · 27/10/2026</span></div>
+  <nav class="principal" aria-label="Navegación principal">
+    <a href="../00_EMPEZAR_AQUI.html">Inicio</a>
+    <a href="../guia/index.html">Curso</a>
+    <a href="../fichas/index.html">Fichas</a>
+    <a href="../glosario.html">Glosario</a>
+    <a href="../preguntas_y_respuestas.html">Repaso</a>
+  </nav>
+</header>
+<main id="contenido">
+<p class="migas"><a href="../ida-tutes.html">← Índice de los 69 tutes de IDA</a></p>
+<h1>Tute 18 · Reversear lo desempacado</h1>
+<p class="meta-tute"><strong>⏱ 9 min de lectura</strong> · 1.701 palabras · 60 capturas · grupo: Unpacking didáctico (UPX, ASPack), dump e IAT</p>
+<aside class="callout nota"><p class="callout-titulo">Qué enseña</p><p>Analizar el ejecutable ya desempacado (crackme didáctico).</p></aside>
+<aside class="callout aviso"><p class="callout-titulo">Material observado, no reescrito</p><p>Es el texto y las capturas del <code>.docx</code> original del curso, solo presentados como tutorial. Puede tener erratas de origen. El autor del curso es Ricardo Narvaja.</p></aside>
+<hr>
+<p>INTRODUCCIÓN AL REVERSING CON IDA PRO DESDE CERO PARTE 18.</p>
+<p>REVERSEANDO EL DESEMPACADO.</p>
+<p>En la parte anterior hemos desempacado el ejecutable del ejercicio y lo hicimos funcionar, en esta parte lo reversearemos para ver si podemos hacer un keygen en Python.</p>
+<p>Es bueno recordar que para un análisis estático no es necesario descomprimir, solo con llegar hasta el OEP y hacer un TAKE MEMORY SNAPSHOT, y copiando el idb a otro lugar y abriéndolo, ya se podría analizar estáticamente, pero bueno tenerlo desempacado nos permite también debuggear y eso a veces puede ayudar.</p>
+<p>Abro el desempacado en el IDA y lo primero que siempre me fijo son las strings.</p>
+<figure><img loading="lazy" src="img/18/1.png" alt="Captura 1 del tute 18"></figure>
+<p>Bueno sabemos que lo primero que hace el programa es imprimir la string Pone un user.</p>
+<figure><img loading="lazy" src="img/18/2.png" alt="Captura 2 del tute 18"></figure>
+<p>Así que haciendo doble click en dicha string</p>
+<figure><img loading="lazy" src="img/18/3.png" alt="Captura 3 del tute 18"></figure>
+<p>Y buscando la referencia con X.</p>
+<figure><img loading="lazy" src="img/18/4.png" alt="Captura 4 del tute 18"></figure>
+<p>Voy allí.</p>
+<figure><img loading="lazy" src="img/18/5.png" alt="Captura 5 del tute 18"></figure>
+<p>Vamos a reversear estáticamente a partir de aquí.</p>
+<p>En las funciones basadas en EBP, dijimos, primero guarda en el stack el EBP de la función que llamo a esta con PUSH EBP y luego hará un MOV EBP, ESP para setear EBP con el valor de referencia para esta función, a partir de donde se calculan las posiciones de los argumentos variables y buffers.</p>
+<p>Vemos es que reserva 0x94 bytes para las variables locales y buffers, a partir de valor base de EBP.</p>
+<figure><img loading="lazy" src="img/18/6.png" alt="Captura 6 del tute 18"></figure>
+<p>Bueno haciendo doble click en cualquier variable o argumento el LOADER muestra la vista estática del stack.</p>
+<figure><img loading="lazy" src="img/18/7.png" alt="Captura 7 del tute 18"></figure>
+<p>Eso lo vemos allí, esta es una función sin argumentos porque esos se pasan primero con los PUSH antes de llamar a la función y estarían debajo del return address (r), en este caso no hay nada debajo de r por lo cual es una función sin argumentos.</p>
+<figure><img loading="lazy" src="img/18/8.png" alt="Captura 8 del tute 18"></figure>
+<p>Es el mismo caso de la vez anterior es la función main y tiene argumentos que son argv y argc etc, pero como no los usa dentro de la función, ida no los considera.</p>
+<figure><img loading="lazy" src="img/18/9.png" alt="Captura 9 del tute 18"></figure>
+<figure><img loading="lazy" src="img/18/10.png" alt="Captura 10 del tute 18"></figure>
+<p>Renombraremos la función a main y al hacerlo ida me agrega automáticamente los tres argumentos.</p>
+<figure><img loading="lazy" src="img/18/11.png" alt="Captura 11 del tute 18"></figure>
+<p>Igual si apretamos X en cualquiera de los tres.</p>
+<figure><img loading="lazy" src="img/18/12.png" alt="Captura 12 del tute 18"></figure>
+<p>No se utilizan así que no le daremos mucha importancia.</p>
+<figure><img loading="lazy" src="img/18/13.png" alt="Captura 13 del tute 18"></figure>
+<p>Volviendo a la visión estática del stack, vemos ahora que están los argumentos debajo del return address como corresponde, luego s que es el STORED EBP como dijimos que guarda el EBP de la función anterior con PUSH EBP y hacia arriba el espacio para las variables que normalmente tiene esa variable var_4 que es para proteger el stack de buffer overflows.</p>
+<figure><img loading="lazy" src="img/18/14.png" alt="Captura 14 del tute 18"></figure>
+<p>Tiene dos referencias una al inicio de la función cuando guarda el valor de la cookie de seguridad allí en el stack.</p>
+<figure><img loading="lazy" src="img/18/15.png" alt="Captura 15 del tute 18"></figure>
+<p>Dicho valor es un valor random que se XOREA con EBP y se guarda allí en var_4 al iniciar la función y la otra referencia es aquí.</p>
+<figure><img loading="lazy" src="img/18/16.png" alt="Captura 16 del tute 18"></figure>
+<p>Donde vuelve a recuperar el valor original guardado y lo vuelve a XOREAR con EBP para recuperar el valor original en ECX y dentro de ese CALL chequeara el mismo.</p>
+<figure><img loading="lazy" src="img/18/17.png" alt="Captura 17 del tute 18"></figure>
+<p>Si todo esta correcto retornara, pero si ECX no tiene el valor original de _security_cookie se va al JMP ese que va a EXIT y no te deja llegar al RET de la función.</p>
+<p>Ya veremos que solo puede ocurrir que vaya a EXIT si hubo un OVERFLOW que machaco el valor de var_4 dentro de la función, por ahora renombremos a CANARY o SECURITY COOKIE, la var_4.</p>
+<figure><img loading="lazy" src="img/18/18.png" alt="Captura 18 del tute 18"></figure>
+<p>Ahora quedo más lindo.</p>
+<figure><img loading="lazy" src="img/18/19.png" alt="Captura 19 del tute 18"></figure>
+<p>Luego vemos dos variables que aún no sabemos que son que se inicializan a cero, y una variable que ya tiene el nombre size que se inicializa a 8.</p>
+<p>Si vemos las referencias a var_7d, vemos que se usa aquí.</p>
+<figure><img loading="lazy" src="img/18/20.png" alt="Captura 20 del tute 18"></figure>
+<p>Guarda en valor de AL en dicha variable al volver de un CALL y luego levanta ese byte a EDX para chequear si es cero o no, para decidir si somos buenos reversers o no, así que es una variable de un solo byte, y le pondremos FLAG_EXITO.</p>
+<p>Verificamos en la vista estática que esta detectada como tipo byte.</p>
+<figure><img loading="lazy" src="img/18/21.png" alt="Captura 21 del tute 18"></figure>
+<p>Le cambiamos el nombre con N.</p>
+<figure><img loading="lazy" src="img/18/22.png" alt="Captura 22 del tute 18"></figure>
+<p>Ahora quedo mejor, pinto de verde el bloque de chico bueno y de rojo o naranja para que se vea el contenido el de chico malo.</p>
+<p>Obviamente si solo fuera parchear ese salto JZ sería el punto justo, pero trataremos de llegar al final de esto.</p>
+<figure><img loading="lazy" src="img/18/23.png" alt="Captura 23 del tute 18"></figure>
+<p>Vemos que la otra variable var_90 que ponía a cero al inicio, va sumando los bytes que va leyendo del Buf ya que lee de a uno y lo pasa a EDX en 0x231109 y luego lo suma a cero en el primer ciclo, y EDX siempre va guardando la sumatoria de todos los bytes ya veremos que contiene el Buf que está leyendo, pero por ahora pongámosle sumatoria.</p>
+<figure><img loading="lazy" src="img/18/24.png" alt="Captura 24 del tute 18"></figure>
+<p>Vemos que var_84 es el contador de ese LOOP donde va sumando, pero vemos que el mismo solo suma los primeros cuatro bytes ya que la salida es cuando ese valor es mayor o igual a 4.</p>
+<p>Allí vemos el CONTADOR y como se va incrementando.</p>
+<figure><img loading="lazy" src="img/18/25.png" alt="Captura 25 del tute 18"></figure>
+<p>Obviamente también se va sumando en 0x231109 al inicio del Buf para ir leyendo y sumando los siguientes bytes.</p>
+<figure><img loading="lazy" src="img/18/26.png" alt="Captura 26 del tute 18"></figure>
+<p>Bueno ya vimos que ese LOOP va leyendo los bytes de Buf y los suma y los va guardando esa suma en SUMATORIA, veamos que tiene Buf.</p>
+<figure><img loading="lazy" src="img/18/27.png" alt="Captura 27 del tute 18"></figure>
+<p>Vemos que Buf al inicio se llena con 8 bytes como máximo con el nombre del user, usando gets_s para ingresar por teclado.</p>
+<p>Nos faltaba cambiar esa función a printf</p>
+<figure><img loading="lazy" src="img/18/28.png" alt="Captura 28 del tute 18"></figure>
+<p>Listo.</p>
+<figure><img loading="lazy" src="img/18/29.png" alt="Captura 29 del tute 18"></figure>
+<p>Representación estática del stack.</p>
+<p>También en la representación estática vemos el largo del buffer Buf con click derecho-ARRAY.</p>
+<figure><img loading="lazy" src="img/18/30.png" alt="Captura 30 del tute 18"></figure>
+<p>Coincide con el código fuente</p>
+<figure><img loading="lazy" src="img/18/31.png" alt="Captura 31 del tute 18"></figure>
+<figure><img loading="lazy" src="img/18/32.png" alt="Captura 32 del tute 18"></figure>
+<p>La representación del stack se va aclarando.</p>
+<p>Además luego de recibir en el Buf, le pasa el mismo a strlen para saber el largo de lo que tipeaste.</p>
+<figure><img loading="lazy" src="img/18/33.png" alt="Captura 33 del tute 18"></figure>
+<p>Por lo tanto, la var_88 es la cantidad de bytes de lo que tipeamos.</p>
+<figure><img loading="lazy" src="img/18/34.png" alt="Captura 34 del tute 18"></figure>
+<p>Y si la misma es menor que 4 te tira a EXIT.</p>
+<p>Ya tenemos visto que ese LOOP suma los cuatro primeros bytes del user que tipeamos, así que lo agruparemos para que no moleste a la vista clickeando en las barras de cada bloque apretando CTRL.</p>
+<figure><img loading="lazy" src="img/18/35.png" alt="Captura 35 del tute 18"></figure>
+<p>Ahora quedo mejor, con click derecho-GROUP NODES y lo puedo desagrupar si necesitara con UNGROUP.</p>
+<figure><img loading="lazy" src="img/18/36.png" alt="Captura 36 del tute 18"></figure>
+<p>Vemos que vuelve a utilizar el mismo Buf para ingresar el password, ya que ya tiene guardada la sumatoria de los primeros 4 bytes de user.</p>
+<figure><img loading="lazy" src="img/18/37.png" alt="Captura 37 del tute 18"></figure>
+<p>También se fija con strlen el largo y si es menor que 4 te tira a EXIT.</p>
+<figure><img loading="lazy" src="img/18/38.png" alt="Captura 38 del tute 18"></figure>
+<p>Si es 4 o más el largo sigue por el bloque verde.</p>
+<figure><img loading="lazy" src="img/18/39.png" alt="Captura 39 del tute 18"></figure>
+<p>Luego toma el password y lo convierte a valor hexadecimal con ATOI, en Python sería equivalente a la función hex().</p>
+<figure><img loading="lazy" src="img/18/40.png" alt="Captura 40 del tute 18"></figure>
+<figure><img loading="lazy" src="img/18/41.png" alt="Captura 41 del tute 18"></figure>
+<p>Allí vemos que XOREA el password en HEXA con 0x1234 y lo vuelve a guardar en la misma variable.</p>
+<figure><img loading="lazy" src="img/18/42.png" alt="Captura 42 del tute 18"></figure>
+<p>Vemos que le pasara ambos la sumatoria de los 4 primeros bytes del user y el valor hexa xoreado con 0x1234 del password a esa función que llamaremos CHEQUEO_EXITO, su resultado hace que salte a chico bueno o chico malo.</p>
+<p>Allí vemos los dos argumentos, arg_4 será el que primero se pasa o sea en la referencia será el que se PUSHEA primero.</p>
+<figure><img loading="lazy" src="img/18/43.png" alt="Captura 43 del tute 18"></figure>
+<p>Así que renombraremos dentro de la función ambos argumentos.</p>
+<figure><img loading="lazy" src="img/18/44.png" alt="Captura 44 del tute 18"></figure>
+<p>Ahora propagaremos los argumentos con click derecho SET TYPE.</p>
+<figure><img loading="lazy" src="img/18/45.png" alt="Captura 45 del tute 18"></figure>
+<p>Con lo cual se declara la función.</p>
+<figure><img loading="lazy" src="img/18/46.png" alt="Captura 46 del tute 18"></figure>
+<p>Y veremos si coincide en las referencias.</p>
+<figure><img loading="lazy" src="img/18/47.png" alt="Captura 47 del tute 18"></figure>
+<p>Vemos que los carteles azules que aparecen al propagar coinciden con los nombres en la referencia, así que está todo bien.</p>
+<figure><img loading="lazy" src="img/18/48.png" alt="Captura 48 del tute 18"></figure>
+<p>Veo que antes de comparar ambos hace SHL EAX, 1 lo cual equivale a multiplicar por 2.</p>
+<p>Entonces si son iguales va al bloque verde donde pondrá AL a 1 y lo devolverá siendo el FLAG_EXITO que decidir si somos buenos reversers o no.</p>
+<p>Así que resumiendo</p>
+<p>Toma los primeros 4 bytes de USER y los suma</p>
+<p>El PASSWORD lo pasa a HEXA y lo XOREA con 0x1234 y lo multiplica por 2</p>
+<p>Haremos una formula suponiendo que conocemos el USER ya que el keygen se basa en eso, dado un cierto USER hallar el password correspondiente.</p>
+<p>X = PASSWORD ya convertido a HEXA</p>
+<p>(X ^ 0x1234)* 2 = SUMATORIA</p>
+<p>Si despejamos X</p>
+<p>X ^ 0x1234= (SUMATORIA/2)</p>
+<p>X= (SUMATORIA/2) ^ 0x1234</p>
+<p>La función XOR es inversible y se puede pasar de miembro sin problemas ya que si.</p>
+<p>A ^ B = C</p>
+<p>A = B ^ C</p>
+<p>Bueno la cuestión es que el valor a hallar X es igual a</p>
+<p>X= (SUMATORIA/2) ^ 0x1234</p>
+<p>Si mi nombre fuera pepe el cual es válido ya que es menor que 8 bytes de largo la sumatoria de los bytes seria.</p>
+<figure><img loading="lazy" src="img/18/49.png" alt="Captura 49 del tute 18"></figure>
+<p>Allí obtuvimos la sumatoria de mi user pepe.</p>
+<figure><img loading="lazy" src="img/18/50.png" alt="Captura 50 del tute 18"></figure>
+<p>Pero recordemos que no suma todos los bytes sino solo los cuatro primeros.</p>
+<figure><img loading="lazy" src="img/18/51.png" alt="Captura 51 del tute 18"></figure>
+<p>Allí quedo mejor ya que chequea que sea mayor o igual que 4 al igual que hace el programa.</p>
+<p>Podemos hacerlo genérico para cualquier user que se tipee.</p>
+<figure><img loading="lazy" src="img/18/52.png" alt="Captura 52 del tute 18"></figure>
+<p>Vemos que usando raw_input obtenemos lo que se tipea por consola.</p>
+<p>El resultado para pepe es similar la sumatoria da 0x1aa pero puedo obtenerla para cualquier user.</p>
+<figure><img loading="lazy" src="img/18/53.png" alt="Captura 53 del tute 18"></figure>
+<p>Teníamos la formula</p>
+<p>X= (SUMATORIA/2) ^ 0x1234</p>
+<p>Así que debería dividir por 2 y hacer el XOR con 0x1234 para hallar el password en hexadecimal.</p>
+<figure><img loading="lazy" src="img/18/54.png" alt="Captura 54 del tute 18"></figure>
+<p>Si lo pruebo</p>
+<figure><img loading="lazy" src="img/18/55.png" alt="Captura 55 del tute 18"></figure>
+<p>Ya tenemos el keygen no necesitamos hacer la conversión del password hexa a decimal porque Python al imprimir lo hace siempre imprimiendo en decimal por default.</p>
+<figure><img loading="lazy" src="img/18/56.png" alt="Captura 56 del tute 18"></figure>
+<p>Vemos que suma solo los primeros 4 caracteres del nombre de usuario, el password da igual si es más largo pero los 4 caracteres iniciales son similares.</p>
+<p>Igual el ejercicio crashea al tipear 8 caracteres ya que deben ser 8 en total incluyendo el 0 final de la string.</p>
+<figure><img loading="lazy" src="img/18/57.png" alt="Captura 57 del tute 18"></figure>
+<p>Hasta 7 funciona bien.</p>
+<p>Solo hay un problema cuando la sumatoria da negativa</p>
+<figure><img loading="lazy" src="img/18/58.png" alt="Captura 58 del tute 18"></figure>
+<p>No tendría solución ya que el password termina multiplicándose por 2 y siendo una multiplicación de enteros nunca dará impar, así que le agregaremos ese chequeo.</p>
+<figure><img loading="lazy" src="img/18/59.png" alt="Captura 59 del tute 18"></figure>
+<p>Allí verificamos el resto de dividir por dos si es cero es par sino es impar y no tiene solución.</p>
+<figure><img loading="lazy" src="img/18/60.png" alt="Captura 60 del tute 18"></figure>
+<p>Creo que nuestro keygen ya quedo bastante bien, así que podemos terminar esta parte y vernos en la siguiente.</p>
+<p>Hasta la parte 19</p>
+<p>Ricardo Narvaja</p>
+</main>
+<footer class="pie">
+  <p>Material educativo y defensivo. Las prácticas se limitan a programas propios, software abierto o crackmes diseñados para aprender. No se enseña a eludir licencias, DRM ni controles de acceso.</p>
+  <p><a href="../00_EMPEZAR_AQUI.html">Inicio</a> · <a href="../guia/etapa-0.html">Etapas</a> · <a href="../fuentes_y_limites.html">Fuentes y límites</a> · <a href="../registro_de_cobertura.csv">Registro de cobertura</a></p>
+</footer>
+<script>
+(function(){
+  function abrir(src){
+    var o=document.createElement('div'); o.className='lightbox-ov';
+    var i=document.createElement('img'); i.src=src; o.appendChild(i);
+    function cerrar(){o.remove(); document.removeEventListener('keydown', onkey);}
+    function onkey(e){ if(e.key==='Escape') cerrar(); }
+    o.addEventListener('click', cerrar);
+    document.addEventListener('keydown', onkey);
+    document.body.appendChild(o);
+  }
+  document.addEventListener('DOMContentLoaded', function(){
+    document.querySelectorAll('figure img, main img').forEach(function(img){
+      img.style.cursor='zoom-in';
+      img.addEventListener('click', function(){ abrir(img.currentSrc||img.src); });
+    });
+  });
+})();
+</script>
+</body>
+</html>

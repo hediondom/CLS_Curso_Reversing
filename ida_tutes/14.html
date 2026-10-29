@@ -1,0 +1,172 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tute 14 · Unpacking 1: UPX — Curso IDA</title>
+<meta name="description" content="Tutorial ilustrado del tute 14 del Curso IDA desde cero: Unpacking 1: UPX.">
+<link rel="stylesheet" href="../guia/estilo.css">
+</head>
+<body>
+<a class="salto" href="#contenido">Saltar al contenido</a>
+<header class="cabecera">
+  <div class="marca"><a href="../00_EMPEZAR_AQUI.html">CLS · Curso de reversing</a> <span class="edicion">edición 5 · 27/10/2026</span></div>
+  <nav class="principal" aria-label="Navegación principal">
+    <a href="../00_EMPEZAR_AQUI.html">Inicio</a>
+    <a href="../guia/index.html">Curso</a>
+    <a href="../fichas/index.html">Fichas</a>
+    <a href="../glosario.html">Glosario</a>
+    <a href="../preguntas_y_respuestas.html">Repaso</a>
+  </nav>
+</header>
+<main id="contenido">
+<p class="migas"><a href="../ida-tutes.html">← Índice de los 69 tutes de IDA</a></p>
+<h1>Tute 14 · Unpacking 1: UPX</h1>
+<p class="meta-tute"><strong>⏱ 10 min de lectura</strong> · 1.832 palabras · 45 capturas · grupo: Unpacking didáctico (UPX, ASPack), dump e IAT</p>
+<aside class="callout nota"><p class="callout-titulo">Qué enseña</p><p>Desempacar un CRACKME comprimido con UPX y llegar al OEP.</p></aside>
+<p><em>▶ video afín (mismo autor, en x64dbg):</em> <a href="../videos.html">«10 Unpacking 1 - UPX»</a></p>
+<aside class="callout aviso"><p class="callout-titulo">Material observado, no reescrito</p><p>Es el texto y las capturas del <code>.docx</code> original del curso, solo presentados como tutorial. Puede tener erratas de origen. El autor del curso es Ricardo Narvaja.</p></aside>
+<hr>
+<p>INTRODUCCIÓN AL REVERSING CON IDA PRO DESDE CERO PARTE 14.</p>
+<p>Desempacaremos el archivo CRACKME.exe empacado con UPX.</p>
+<p>Este curso será variado y abarcará diferentes tópicos del reversing (ya dijimos reversing estático, debugging, unpacking, exploiting por ejemplo),</p>
+<p>En este capítulo desempacaremos el archivo CRACKME.exe empacado con el último UPX. No significa que vamos a hacer un montón de partes solo con unpacking continuadas, iremos variando de temas, y mezclando diferentes tópicos para que nadie se aburra, así que habrá empacados cada tanto, mezclados con otros temas.</p>
+<p>Archivos empacados</p>
+<p>La definición de archivo empacado es un archivo que oculta el código ejecutable de un programa, guardándolo con algún tipo de compresión o encriptación para que no se pueda reversear fácilmente, agrega además un STUB o sección desde donde arranca, que toma en tiempo de ejecución el código empacado, lo desempaca en memoria en alguna otra sección o en la misma, para que se pueda ejecutar y luego salta a ella.</p>
+<p>Hay mil variantes de packers, y muchos son además protectores, rompiendo la IAT o tabla de importaciones, rompiendo el HEADER,  agregando código antidebugger para evitar el desempacado y reconstrucción del archivo original.</p>
+<p>El caso más simple de packer es UPX, que no tiene antidebuggers, ni trucos sucios, pero permite iniciarse como siempre por lo más sencillo, adjunto estará el archivo PACKED_CRACKME.EXE.</p>
+<figure><img loading="lazy" src="img/14/1.png" alt="Captura 1 del tute 14"></figure>
+<p>Le pondremos la tilde a MANUAL LOAD y le quitamos la de CREATE IMPORTS SEGMENT ya que es necesario que tengamos todas las secciones cargadas, y si puede afectar la tilde de CREATE IMPORTS SEGMENTS, la verdad no lo sé, pero IDA aconseja quitarla cuando es un empacado así que lo haremos.</p>
+<figure><img loading="lazy" src="img/14/2.png" alt="Captura 2 del tute 14"></figure>
+<p>Ese es el start o ENTRY POINT del archivo PACKED_CRACKME.exe, vemos que se encuentra en la dirección 0x409be0, mientras que el original se encontraba en 0x401000, como veamos abajo.</p>
+<figure><img loading="lazy" src="img/14/3.png" alt="Captura 3 del tute 14"></figure>
+<p>También comparando los segmentos de ambos, vemos que el packeado luego del header tiene un segmento llamado UPX0, cuyo largo en memoria es más largo que el programa original.</p>
+<p>ORIGINAL</p>
+<figure><img loading="lazy" src="img/14/4.png" alt="Captura 4 del tute 14"></figure>
+<p>PACKEADO</p>
+<figure><img loading="lazy" src="img/14/5.png" alt="Captura 5 del tute 14"></figure>
+<p>Vemos que la sección UPX0 del packeado termina en 0x409000 mientras que en el original todas las secciones se ubican en la memoria desde 0x401000 hasta 0x408200,</p>
+<p>Ojo que estamos hablando de memoria virtual o sea cuando arranca un programa puede tener 1k en el disco y reservar 20 K o lo que quiera en la memoria.</p>
+<p>Eso se puede ver en el IDA por ejemplo en la dirección de  inicio 0x401000 de la sección de código del original vemos.</p>
+<figure><img loading="lazy" src="img/14/6.png" alt="Captura 6 del tute 14"></figure>
+<p>Dicha sección (SECTION SIZE IN FILE) ocupa 0x600 bytes, mientras que en memoria (VIRTUAL SIZE) ocupa 0x1000.</p>
+<p>Mientras que el empacado, si vamos a 0x401000 que es el inicio de la sección UPX0.</p>
+<figure><img loading="lazy" src="img/14/7.png" alt="Captura 7 del tute 14"></figure>
+<p>Vemos que es una sección de largo 0 bytes en el disco, pero en la memoria ocupa 0x8000 o sea que esto reserva espacio vacío, para armar aquí el código del programa original y luego saltar a ejecutarlo, hay suficiente espacio para hacerlo.</p>
+<figure><img loading="lazy" src="img/14/8.png" alt="Captura 8 del tute 14"></figure>
+<p>También vemos que la dirección 0x401000 por el prefijo dword_ delante significa que su contenido es del tipo DWORD.</p>
+<p>El signo (?) significa que solo está reservado o sea no tiene contenido y el dup o multiplicar, significa que se multiplica ese dword por 0xc00 o sea 0x3000 bytes reservados.</p>
+<figure><img loading="lazy" src="img/14/9.png" alt="Captura 9 del tute 14"></figure>
+<p>Luego en 0x404000 hay 0x1400 dwords mas (?) o sea solo reservados.</p>
+<figure><img loading="lazy" src="img/14/10.png" alt="Captura 10 del tute 14"></figure>
+<p>O sea, en total hay reservados en memoria 0x8000 bytes para armar allí el programa.</p>
+<figure><img loading="lazy" src="img/14/11.png" alt="Captura 11 del tute 14"></figure>
+<p>También vemos que en 0x401000 hay una referencia a código ejecutable ya veremos que es.</p>
+<figure><img loading="lazy" src="img/14/12.png" alt="Captura 12 del tute 14"></figure>
+<p>Luego el packeado tiene esta segunda sección cuyo size en el disco es 0xe00 y en la memoria 0x1000 y que posiblemente sea el programa original guardado con algún método de encripcion simple para que no se pueda ver el código original.</p>
+<p>Si miramos las referencias en la dirección de inicio de la sección 0x409000.</p>
+<figure><img loading="lazy" src="img/14/13.png" alt="Captura 13 del tute 14"></figure>
+<p>Vemos que hacia abajo (DOWN) hay una referencia en una parte ejecutable, si hacemos click allí.</p>
+<figure><img loading="lazy" src="img/14/14.png" alt="Captura 14 del tute 14"></figure>
+<p>Vemos que en el STUB a continuación del entry point carga la dirección 0x409000 (recordar el OFFSET delante)</p>
+<p>Si apretamos la barra ahí vemos</p>
+<figure><img loading="lazy" src="img/14/15.png" alt="Captura 15 del tute 14"></figure>
+<p>Que el código del STUB está en la misma sección UPX1 debajo del código empacado del programa original, o sea que en la sección UPX1 tenemos tanto los bytes guardados del programa original encriptados y el código del STUB a partir de 0x409be0.</p>
+<p>No hay que ser muy pillo para darse cuenta que ira leyendo bytes desde 0x409000 le aplicara ciertas operaciones y los guardara en 0x401000, vemos que EDI es igual a ESI-0x8000 o sea</p>
+<figure><img loading="lazy" src="img/14/16.png" alt="Captura 16 del tute 14"></figure>
+<figure><img loading="lazy" src="img/14/17.png" alt="Captura 17 del tute 14"></figure>
+<p>O sea se ve que usara el contenido de ESI como SOURCE de donde ira leyendo los datos, les aplicara ciertas operaciones y los guardara en el contenido de EDI, lo que ira armando el programa.</p>
+<p>Habíamos dicho que en 0x401000 había una referencia a código ejecutable, si hacemos doble click en esa referencia.</p>
+<figure><img loading="lazy" src="img/14/18.png" alt="Captura 18 del tute 14"></figure>
+<p>Vemos que hay un salto a 0x401000.</p>
+<figure><img loading="lazy" src="img/14/19.png" alt="Captura 19 del tute 14"></figure>
+<p>JMP NEAR es un salto directo a la dirección que está al lado o sea que saltara a 0x401000, evidentemente aquí luego ejecutar todo el STUB y armar el código original, saltara al OEP en 0x401000 que sería el ORIGINAL ENTRY POINT que es diferente del ENTRY POINT del STUB que se encuentra en 0x00409BE0</p>
+<p>Llamaremos OEP o ORIGINAL ENTRY POINT al ENTRY POINT del programa original, obviamente como es un programa empacado no se sabe dónde está y solo nosotros como tenemos el original podemos saber que estaba en 0x401000.</p>
+<figure><img loading="lazy" src="img/14/20.png" alt="Captura 20 del tute 14"></figure>
+<p>Obviamente cuando nos llega un programa empacado no sabemos cuál es el OEP, porque no tenemos el original, así que va a haber que hallarlo, viendo cuando el STUB termine de hacer todas sus tretas y termine de armar el código original, saltará a ejecutarlo para comenzar el programa, casi siempre, la primera línea de código que ejecute en esa sección que armo será el OEP.</p>
+<p>Podríamos poner un BREAKPOINT en ese JMP al OEP, para ver si allí el programa original ya está armado, probemos.</p>
+<figure><img loading="lazy" src="img/14/21.png" alt="Captura 21 del tute 14"></figure>
+<p>Elijamos el debugger LOCAL WIN32 DEBUGGER y apretemos START DEBUGGER.</p>
+<figure><img loading="lazy" src="img/14/22.png" alt="Captura 22 del tute 14"></figure>
+<p>Allí paro en el salto al OEP, traceemos un paso con f8.</p>
+<figure><img loading="lazy" src="img/14/23.png" alt="Captura 23 del tute 14"></figure>
+<p>Apretamos YES para que interprete como CODIGO la primera sección UPX0 que estaba definida como DATA.</p>
+<figure><img loading="lazy" src="img/14/24.png" alt="Captura 24 del tute 14"></figure>
+<p>Vemos que ya desempaco el código y salto a ejecutar. El código es muy parecido al 0x401000 del original, aunque vemos que al querer pasar a modo grafico no lo hace porque no está definido como función (loc_401000), pero lo haremos automáticamente.</p>
+<p>Hay un menu medio oculto en la esquina inferior izquierda, haciendo click derecho, elijo REANALYZE PROGRAM.</p>
+<figure><img loading="lazy" src="img/14/25.png" alt="Captura 25 del tute 14"></figure>
+<p>Vemos que al cliquearlo la dirección loc_401000 cambio a sub_401000 lo cual indica que ahora es una función, así que podemos cambiarla a modo gráfico con la barra espaciadora.</p>
+<figure><img loading="lazy" src="img/14/26.png" alt="Captura 26 del tute 14"></figure>
+<p>Ahora quedo más linda.</p>
+<figure><img loading="lazy" src="img/14/27.png" alt="Captura 27 del tute 14"></figure>
+<p>Una diferencia que vemos es que el original mostraba en 0x401002 por ejemplo CALL GetModuleHandleA, mientras que esta muestra CALL sub_401056, veamos que hay dentro de ese CALL.</p>
+<figure><img loading="lazy" src="img/14/28.png" alt="Captura 28 del tute 14"></figure>
+<p>Veamos la diferencia con el original, si entramos en el CALL GetModuleHandleA en el original.</p>
+<figure><img loading="lazy" src="img/14/29.png" alt="Captura 29 del tute 14"></figure>
+<p>También hay un salto indirecto, aquí detecta que salta a la api, el otro no, pero donde va el packeado allí?</p>
+<figure><img loading="lazy" src="img/14/30.png" alt="Captura 30 del tute 14"></figure>
+<p>El contenido de 0x403028 es un offset (off_) o sea la dirección de la api GetModuleHandleA y en el original la misma dirección esta en la sección idata y contiene también la dirección de la misma api.</p>
+<figure><img loading="lazy" src="img/14/31.png" alt="Captura 31 del tute 14"></figure>
+<p>A pesar de que terminan saltando al mismo lugar, hay una diferencia muy importante que veremos más adelante.</p>
+<p>Yo tengo el código del programa desempacado, aunque aún no es funcional y si solo tengo que analizar estáticamente el código del programa que se armó en la primera sección, lo que hago es lo siguiente.</p>
+<p>Primero en SEGMENTS</p>
+<figure><img loading="lazy" src="img/14/32.png" alt="Captura 32 del tute 14"></figure>
+<p>Verifico que todas las secciones del packer tengan la L o sea que cargaran en el LOADER, como vemos en la imagen, incluso puedo agregar alguna dll o segmento que quiera que esté en el análisis estático, haciendo CLICK DERECHO-EDIT SEGMENT en la línea que queremos agregar al LOADER.</p>
+<figure><img loading="lazy" src="img/14/33.png" alt="Captura 33 del tute 14"></figure>
+<p>Los segmentos que queremos que se agreguen le ponemos la tilde en LOADER SEGMENT, en este caso solo dejaremos los segmentos del PACKER pero es bueno saber que podemos agregar otros.</p>
+<figure><img loading="lazy" src="img/14/34.png" alt="Captura 34 del tute 14"></figure>
+<figure><img loading="lazy" src="img/14/35.png" alt="Captura 35 del tute 14"></figure>
+<p>Luego la opción TAKE MEMORY SNAPSHOT guardara los segmentos que hayamos marcados como LOADER con el código que tengan. (NO CONFUNDIR CON LA OTRA OPCION FILE-TAKE DATABASE SNAPSHOT que estudiamos antes)</p>
+<p>Vemos que si paro el DEBUGGER, y por supuesto quedo en el LOADER y voy a 0x401000 en vez de estar vacío como antes, ahora aparece el código que copiamos cuando estábamos parado en el OEP y que ahora está disponible para hacer reversing estático al igual que todos los segmentos que tengan la L, por supuesto al arrancar el DEBUGGER de nuevo se perdería porque lo pisaría con los bytes que realmente estarán allí al inicializar la sección en el DEBUGGER, así que si necesitamos la database con el análisis estático, debemos copiarla a otra carpeta y abrirlo con otro IDA para trabajar tranquilos.</p>
+<p>Si arranco de nuevo el debugger y paro en el ENTRY POINT del mismo antes de ejecutar el STUB, veo que la zona de 0x401000 esta vacía nuevamente.</p>
+<figure><img loading="lazy" src="img/14/36.png" alt="Captura 36 del tute 14"></figure>
+<figure><img loading="lazy" src="img/14/37.png" alt="Captura 37 del tute 14"></figure>
+<p>Lo que habíamos guardado en la database se perdió, porque en el DEBUGGER la info del LOADER se pisó con los bytes que inicializaron la sección UPX0, así que, si lo necesitamos para reversing estático, como dije antes luego de hacer el TAKE MEMORY SNAPSHOT hay que copiarlo a otra carpeta, antes de volver a arrancar el debugger.</p>
+<p>Como soy un molesto voy a buscar una segunda forma de encontrar el OEP, que es buscando la primera instrucción que se ejecute en la primera sección, es otro método que a veces puede funcionar.</p>
+<p>Arranco de nuevo el PACKEADO en el DEBUGGER, parando en su ENTRY POINT.</p>
+<figure><img loading="lazy" src="img/14/38.png" alt="Captura 38 del tute 14"></figure>
+<p>Voy a la primera sección donde comienza a 0x401000.</p>
+<figure><img loading="lazy" src="img/14/39.png" alt="Captura 39 del tute 14"></figure>
+<p>Allí coloco un BREAKPOINT con f2, lo configuro para que pare por EXECUTE o sea cuando ejecuta y no cuando se escriba o lea allí ya que sino parara cuando copia el código y lo va armando y no quiero eso, solo quiero que cuando este armado y salte a ejecutar, pare en la primera instrucción que ejecute, y como no sé cuál será, pongo un BREAKPOINT ON EXECUTE que abarque toda la sección (0x8000 bytes)</p>
+<figure><img loading="lazy" src="img/14/40.png" alt="Captura 40 del tute 14"></figure>
+<p>Se ponen todas las instrucciones rojas.</p>
+<figure><img loading="lazy" src="img/14/41.png" alt="Captura 41 del tute 14"></figure>
+<p>Deshabilito los otros dos breakpoints en DEBUGGER-BREAKPOINT-BREAKPOINT LIST.</p>
+<figure><img loading="lazy" src="img/14/42.png" alt="Captura 42 del tute 14"></figure>
+<p>CLICK DERECHO-DISABLE.</p>
+<figure><img loading="lazy" src="img/14/43.png" alt="Captura 43 del tute 14"></figure>
+<p>Y ahora si doy RUN.</p>
+<p>Y veo que la primera instrucción que paro en la sección recién armada es en este caso 0x401000 mi OEP hallado.</p>
+<figure><img loading="lazy" src="img/14/44.png" alt="Captura 44 del tute 14"></figure>
+<p>O sea que usando este método coincide y hallamos el OEP que es 0x401000, quito el breakpoint.</p>
+<p>Luego de reanalizar me queda de nuevo como función.</p>
+<figure><img loading="lazy" src="img/14/45.png" alt="Captura 45 del tute 14"></figure>
+<p>O sea que hasta ahora obtuvimos el OEP y paramos en el mismo de dos formas diferentes, pudimos hacer un SNAPSHOT del código armado, lo único que nos falta es DUMPEAR y RECONSTRUIR la IAT, para terminar de obtener un archivo desempacado ejecutable y funcional.</p>
+<p>Hasta la parte 15 donde terminaremos eso.</p>
+<p>Ricardo Narvaja</p>
+</main>
+<footer class="pie">
+  <p>Material educativo y defensivo. Las prácticas se limitan a programas propios, software abierto o crackmes diseñados para aprender. No se enseña a eludir licencias, DRM ni controles de acceso.</p>
+  <p><a href="../00_EMPEZAR_AQUI.html">Inicio</a> · <a href="../guia/etapa-0.html">Etapas</a> · <a href="../fuentes_y_limites.html">Fuentes y límites</a> · <a href="../registro_de_cobertura.csv">Registro de cobertura</a></p>
+</footer>
+<script>
+(function(){
+  function abrir(src){
+    var o=document.createElement('div'); o.className='lightbox-ov';
+    var i=document.createElement('img'); i.src=src; o.appendChild(i);
+    function cerrar(){o.remove(); document.removeEventListener('keydown', onkey);}
+    function onkey(e){ if(e.key==='Escape') cerrar(); }
+    o.addEventListener('click', cerrar);
+    document.addEventListener('keydown', onkey);
+    document.body.appendChild(o);
+  }
+  document.addEventListener('DOMContentLoaded', function(){
+    document.querySelectorAll('figure img, main img').forEach(function(img){
+      img.style.cursor='zoom-in';
+      img.addEventListener('click', function(){ abrir(img.currentSrc||img.src); });
+    });
+  });
+})();
+</script>
+</body>
+</html>
