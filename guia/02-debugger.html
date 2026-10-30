@@ -98,8 +98,13 @@ log:     "longitud = {EAX}"</code></pre>
 <ul><li>La función despachadora es el <strong>WinProc</strong> (si la ventana se creó con <code>CreateWindow</code>) o la <strong>Dialog procedure</strong> (si se creó con <code>DialogBoxParam</code>). Las dos hacen lo mismo: reciben el mensaje y lo reparten con un <code>switch</code>.</li><li>El <strong>mensaje</strong> es el <strong>segundo argumento</strong> de esa función. Un <code>WM_COMMAND</code> vale <code>0x111</code> y es el que se dispara, en general, al apretar un botón; un <code>WM_LBUTTONDOWN</code> vale <code>0x201</code>.</li><li>El <strong>Control ID</strong> identifica qué botón se tocó. Se puede ver pasando el mouse por el control en una herramienta de inspección de ventanas.</li></ul>
 <p>Tres maneras de llegar al handler, de más simple a más robusta:</p>
 <ol><li><strong>Buscar el Control ID en estático.</strong> Si el botón tiene ID <code>0x13A</code>, buscás ese inmediato en IDA (ver la lección de IDA) y caés dentro del <code>WinProc</code>. Falla cuando el ID es un número bajo y común (<code>1</code>, <code>5</code>, <code>10</code>): hay demasiadas ocurrencias.</li><li><strong>Breakpoint condicional sobre el mensaje.</strong> Poné un breakpoint donde la función carga el mensaje en un registro y condicionalo a ese mensaje. Podés además loguear los dos argumentos leyéndolos del stack:</li></ol>
-<pre><code class="lenguaje-text">log:     "msg={2}  id={3}"      ; con getdword(sp+8) y getdword(sp+C)
-breakif: getdword(sp+8) == 0x111 &amp;&amp; getdword(sp+0xC) == 0x13A</code></pre>
+<pre><code class="lenguaje-text">; En x86 (32-bit): uMsg en [esp+8], LOWORD(wParam) (Control ID) en [esp+0xC] & 0xFFFF:
+breakif: getdword(sp+8) == 0x111 &amp;&amp; (getdword(sp+0xC) &amp; 0xFFFF) == 0x13A
+log:     "msg={getdword(sp+8)}  id={getdword(sp+0xC) &amp; 0xFFFF}"
+
+; Expresión universal x64dbg (válida en x86 y x64 en el prólogo con arg.get):
+breakif: arg.get(1) == 0x111 &amp;&amp; (arg.get(2) &amp; 0xFFFF) == 0x13A
+log:     "uMsg={arg.get(1)}  control_id={arg.get(2) &amp; 0xFFFF}"</code></pre>
 <ol><li><strong>Breakpoint en <code>SendMessage</code> + breakpoint de ejecución en el código.</strong> Es el método genérico que sirve aunque no sepas nada del programa. En Windows, los mensajes llegan vía <code>SendMessageW</code>/<code>SendMessageA</code> de <code>user32.dll</code> (ahí el mensaje también es el segundo argumento). Poné un breakpoint ahí, condicionado a tu mensaje; cuando pare, poné un <strong>breakpoint de hardware por ejecución sobre toda la sección de código del ejecutable</strong> (su dirección de inicio y su tamaño, que ves en el <em>Memory Map</em> o en <em>Segments</em>). Al continuar, el programa se detiene en la primera instrucción <strong>de tu código</strong> que corre tras recibir el mensaje: esa es la entrada del WinProc. Después borrás ese breakpoint para seguir.</li></ol>
 <aside class="callout nota"><p class="callout-titulo">Cómo se registra el WinProc</p><p>Con <code>CreateWindow</code>, antes hay un <code>RegisterClassA</code> que recibe una estructura <code>WNDCLASS</code>; dentro de esa estructura está el puntero al WinProc. Con <code>DialogBoxParam</code>, el procedimiento se pasa directamente como uno de sus argumentos. Encontrar <code>RegisterClassA</code> o <code>DialogBoxParam</code> te lleva, por cualquiera de los dos caminos, a la función que maneja los mensajes.</p></aside>
 <p>El capítulo 28 ("Mensajes de Windows") muestra las tres formas sobre varios crackmes propios, incluida la carga de los símbolos de <code>user32.dll</code> para poner el breakpoint en <code>SendMessageW</code> (<a class="fuente" href="../../CLS_resultados_intermedios/transcripciones/extraidos/Reversing%20desde%20cero%20%28Ricardo%20y%20Solid%29/Ricardo%20Narvaja%20y%20Solid%20-%20Reversing%20desde%20cero_28%20Mensajes%20de%20Windows_28%20Mensajes%20de%20Windows.txt">Reversing desde cero, cap. 28</a>; transcripción .txt, sin marcas de tiempo). El capítulo 24b agrega que el <code>switch</code> de mensajes se lee mejor traduciendo los números a sus nombres <code>WM_*</code> con la tecla <code>M</code> en IDA.</p>
@@ -158,6 +163,62 @@ log:     "WM_COMMAND: notif={r8&gt;&gt;16} id={r8&amp;0xFFFF} hwnd={rcx}"</code>
 <li><strong>Expresión universal (x86 y x64) en el prólogo con <code>arg.get(n)</code>:</strong>
 <pre><code>breakif: arg.get(1) == 0x111 &amp;&amp; (arg.get(2) &amp; 0xFFFF) == 0x13A
 log:     "uMsg={arg.get(1)} control_id={arg.get(2)&amp;0xFFFF}"</code></pre></li>
+</ul>
+</aside>
+
+<aside class="ampliacion-ext">
+<p class="callout-titulo">Ampliación editorial basada en fuentes externas — Flujo operativo de trinchera en x64dbg y extracción masiva de cadenas cifradas</p>
+<p>El uso ágil del depurador dinámico y la desofuscación rápida de cadenas constituyen dos habilidades prácticas decisivas (<a href="https://help.x64dbg.com/" rel="noopener" target="_blank">x64dbg Documentation</a>):</p>
+
+<h4 style="margin: 0.8rem 0 0.4rem 0; color: #1d4f2a;">1. Hoja de Ruta Táctica de Operaciones en x64dbg</h4>
+<ul>
+<li><strong>Atajos de Navegación Esenciales:</strong> <code>F2</code> (Poner/quitar breakpoint de software), <code>F7</code> (Paso a paso dentro de la función), <code>F8</code> (Paso a paso sobre la función), <code>Ctrl+F9</code> (Ejecutar hasta el <code>ret</code> de la función actual), <code>F9</code> (Reanudar ejecución continua) y <code>Ctrl+G</code> (Saltar a una dirección o expresión).</li>
+<li><strong>Follow in Dump:</strong> Clic derecho sobre cualquier registro en el panel de CPU o sobre una dirección en el Stack -> <em>Follow in Dump</em>: proyecta inmediatamente el contenido de la memoria apuntada en la vista hexadecimal.</li>
+<li><strong>Búsqueda de Referencias Intermodulares:</strong> Clic derecho en el desensamblado -> <em>Search for -> Current Module -> Intermodular calls</em>: lista todas las llamadas a APIs importadas por el binario. Permite seleccionar múltiples funciones (ej. <code>RegOpenKeyEx</code>, <code>CreateFileW</code>, <code>InternetOpenA</code>) y presionar <code>F2</code> para establecer breakpoints simultáneos en todas ellas.</li>
+<li><strong>Memory Map (<code>Alt+M</code>):</strong> Visualiza todas las páginas de memoria del proceso. Presionar <code>Ctrl+B</code> permite buscar cadenas o secuencias de bytes en toda la memoria dinámica. Facilita la detección de bloques con protección <code>PAGE_EXECUTE_READWRITE</code> (<code>ERW</code>), indicio clásico de payloads inyectados o shellcode.</li>
+<li><strong>Reconstrucción con Scylla:</strong> Menú <em>Plugins -> Scylla</em> integrado en x64dbg: automatiza la detección del OEP (<em>IAT Autosearch</em>), lectura de importaciones (<em>Get Imports</em>), volcado a disco (<em>Dump</em>) y corrección de la tabla de importaciones (<em>Fix Dump</em>).</li>
+</ul>
+
+<h4 style="margin: 0.8rem 0 0.4rem 0; color: #1d4f2a;">2. Los 3 Métodos Estándar para Extraer Cadenas Cifradas en Masa</h4>
+<ol>
+<li><strong>Método 1 — Breakpoint Condicional con Log en el Retorno del Decodificador (x64dbg):</strong>
+Cuando un binario tiene decenas de llamadas a una rutina decodificadora XOR o RC4, no se debe revertir una por una a mano. Se localiza la instrucción <code>ret</code> de la función decodificadora y se configura un breakpoint:
+<pre><code>Log text:        "Cadena descifrada: {utf8@rax}"   ; (o {utf16@rax} según corresponda)
+Break condition: 0                                 ; Condición 0: no pausa la ejecución</code></pre>
+Al presionar <code>F9</code>, el programa se ejecuta a velocidad normal y la pestaña <em>Log</em> de x64dbg vuelca automáticamente todas las cadenas descifradas secuencialmente.</li>
+<li><strong>Método 2 — Scripting Estático en IDAPython / Ghidra:</strong>
+Si la clave está embebida y el algoritmo es determinista, se escribe un script que localice las referencias cruzadas (XREFs) al buffer cifrado y aplique la operación directamente en la base de datos de IDA:
+<pre><code>import ida_bytes
+def decode_xor(ea, length, key):
+    raw = ida_bytes.get_bytes(ea, length)
+    return bytes([b ^ key for b in raw]).decode('latin1', errors='ignore')</code></pre></li>
+<li><strong>Método 3 — Micro-emulación con Unicorn Engine:</strong>
+Permite aislar únicamente los 30 o 40 bytes de la rutina decodificadora, inicializar los registros de la CPU virtual con los punteros y longitudes deseadas, y ejecutar el bloque emulado sin interactuar con dependencias del sistema operativo ni requerir un entorno Windows activo.</li>
+</ol>
+</aside>
+
+<aside class="ampliacion-ext">
+<p class="callout-titulo">Ampliación editorial basada en fuentes externas — Patrón de doble breakpoint encadenado para funciones in-place y plugins tácticos</p>
+<p>En el flujo de extracción masiva de cadenas cifradas, existe un caso frecuente donde el truco estándar de leer <code>{utf8@rax}</code> en el <code>ret</code> no funciona:</p>
+
+<h4 style="margin: 0.8rem 0 0.4rem 0; color: #1d4f2a;">1. Funciones Decodificadoras void con Buffer In-Place</h4>
+<p>Cuando la función es <code>void decodificar(char* buffer, size_t len)</code>, el buffer se descifra sobre sí mismo (<em>in-place</em>) y la función no devuelve ningún puntero en <code>RAX</code>. En x64, el puntero al buffer llega en <code>RCX</code>, pero <code>RCX</code> es un registro volátil (*scratch*) que el compilador suele reutilizar como contador de bucle o índice, perdiéndose su valor antes de llegar al <code>ret</code>.</p>
+<p><strong>Solución: Técnica de Doble Breakpoint Encadenado con Variable de Usuario ($ptr):</strong></p>
+<ol>
+<li><strong>En el prólogo de la función decodificadora (dirección inicial):</strong>
+<pre><code>Break condition: 0
+Command text:    $ptr = rcx    ; Guarda el puntero original antes de que el bucle lo pise</code></pre></li>
+<li><strong>En la instrucción <code>ret</code> de la función:</strong>
+<pre><code>Break condition: 0
+Log text:        "Cadena descifrada: {utf8@$ptr}"    ; Lee el buffer ya descifrado en memoria</code></pre></li>
+</ol>
+<p>Al reanudar con <code>F9</code>, la consola de Log vuelca todas las cadenas limpias sin detener nunca la ejecución.</p>
+
+<h4 style="margin: 0.8rem 0 0.4rem 0; color: #1d4f2a;">2. Ecosistema de Plugins Tácticos para x64dbg</h4>
+<ul>
+<li><strong>ScyllaHide:</strong> Plugin indispensable que intercepta a nivel de Ring 3 las APIs de anti-debug más comunes (<code>PEB.BeingDebugged</code>, <code>NtGlobalFlag</code>, <code>CheckRemoteDebuggerPresent</code>, <code>ProcessDebugPort</code> y temporizadores <code>RDTSC</code> / <code>GetTickCount</code>) con un solo clic.</li>
+<li><strong>xAnalyzer:</strong> Analizador heurístico estático para x64dbg que reconoce automáticamente los prototipos de funciones de Windows y anota los nombres de los argumentos en el desensamblado, emulando la clásica vista contextual de OllyDbg en binarios modernos de 64 bits.</li>
+<li><strong>OllyDumpEx / SwissArmyKnife:</strong> Permite realizar volcados selectivos de regiones de memoria específicas o secciones individuales directamente desde el <em>Memory Map</em> sin necesidad de reconstruir el binario completo.</li>
 </ul>
 </aside>
 </main>

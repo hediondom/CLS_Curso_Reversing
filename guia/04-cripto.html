@@ -91,6 +91,74 @@
 <li><strong>Firma en el código (Quarter-Round ARX):</strong> Un bucle de 20 rondas (10 iteraciones dobles) compuesto exclusivamente por sumas de 32 bits (<code>add</code>), <code>xor</code> y rotaciones (<code>rol</code>) con conteos de <strong>16, 12, 8 y 7 bits</strong> (o 7, 9, 13 y 18 en Salsa20).</li>
 </ul>
 </aside>
+
+<aside class="ampliacion-ext">
+<p class="callout-titulo">Ampliación editorial basada en fuentes externas — Criptografía asimétrica (RSA/ECC) y tabla de intercepción en APIs nativas de Windows (CryptoAPI y CNG)</p>
+<p>El software moderno rara vez implementa algoritmos criptográficos desde cero; en su lugar, utiliza esquemas híbridos apoyados en las bibliotecas criptográficas nativas de Windows (<a href="https://learn.microsoft.com/en-us/windows/win32/seccng/cng-portal" rel="noopener" target="_blank">Microsoft Learn: Cryptography Next Generation</a> y <a href="https://learn.microsoft.com/en-us/windows/win32/seccrypto/cryptography-portal" rel="noopener" target="_blank">CryptoAPI</a>):</p>
+
+<h4 style="margin: 0.8rem 0 0.4rem 0; color: #1d4f2a;">1. Esquemas Criptográficos Híbridos en la Práctica</h4>
+<p>La carga útil o los datos de configuración se cifran con un algoritmo simétrico de alta velocidad (AES-CBC, AES-GCM o ChaCha20) utilizando una clave de sesión generada al vuelo. A continuación, esa clave de sesión se cifra con una <strong>clave pública asimétrica</strong> (RSA o Curvas Elípticas ECC) embebida en el binario. Solo quien posee la clave privada correspondiente puede descifrar la clave de sesión y acceder a los datos.</p>
+
+<h4 style="margin: 0.8rem 0 0.4rem 0; color: #1d4f2a;">2. Reconocimiento de Claves Asimétricas en Binarios</h4>
+<ul>
+<li><strong>RSA:</strong> Se detecta por la presencia del exponente público estándar <code>e = 65537</code> (<code>0x00010001</code>, codificado en little-endian como <code>01 00 01 00</code> en memoria) y módulos grandes <code>N</code> de 256 bytes (2048 bits) o 512 bytes (4096 bits) en <code>.rdata</code>.</li>
+<li><strong>Estructura <code>RSAPUBKEY</code> (CryptoAPI clásica):</strong>
+<pre><code>struct RSAPUBKEY {
+    DWORD magic;  // 0x31415352 = ASCII "RSA1" (clave pública) / 0x32415352 = "RSA2" (privada)
+    DWORD bitlen; // Tamaño en bits (ej. 0x00000800 = 2048 bits)
+    DWORD pubexp; // Exponente público (ej. 0x00010001 = 65537)
+};</code></pre></li>
+<li><strong>Curvas Elípticas (ECC / ECDSA / ECDH):</strong> Se identifican por constantes de curvas estándares como <code>secp256r1</code> (NIST P-256) o <code>Curve25519</code> (constante de campo primo <code>2^255 - 19</code>).</li>
+</ul>
+
+<h4 style="margin: 0.8rem 0 0.4rem 0; color: #1d4f2a;">3. Tabla de APIs Criptográficas Nativas y Puntos de Intercepción en Depuración</h4>
+<div class="tabla"><table>
+<thead><tr><th>Operación</th><th>CryptoAPI Clásica (advapi32.dll)</th><th>CNG Moderna (bcrypt.dll)</th><th>Estrategia de Intercepción en Depurador</th></tr></thead>
+<tbody>
+<tr><td><strong>Inicialización</strong></td><td><code>CryptAcquireContextW</code></td><td><code>BCryptOpenAlgorithmProvider</code></td><td>Identifica el algoritmo pasando cadenas como <code>BCRYPT_AES_ALGORITHM</code> o <code>BCRYPT_RSA_ALGORITHM</code>.</td></tr>
+<tr><td><strong>Importación de Clave</strong></td><td><code>CryptImportKey</code></td><td><code>BCryptImportKeyPair</code> / <code>BCryptGenerateSymmetricKey</code></td><td>Poner breakpoint para volcar el buffer de la clave en memoria (estructura <code>BLOBHEADER</code> o clave simétrica cruda).</td></tr>
+<tr><td><strong>Cifrado de Datos</strong></td><td><code>CryptEncrypt</code></td><td><code>BCryptEncrypt</code></td><td><strong>Punto crítico de intercepción:</strong> Poner breakpoint en la entrada. El argumento <code>pbData</code> (CryptoAPI) o <code>pbInput</code> (<code>RDX</code> en x64 para CNG) contiene el <strong>texto plano antes de ser cifrado</strong>.</td></tr>
+<tr><td><strong>Descifrado de Datos</strong></td><td><code>CryptDecrypt</code></td><td><code>BCryptDecrypt</code></td><td>Poner breakpoint en el <strong>retorno de la función</strong>. El buffer de salida contendrá el texto descifrado en memoria.</td></tr>
+</tbody>
+</table></div>
+</aside>
+
+<aside class="ampliacion-ext">
+<p class="callout-titulo">Ampliación editorial basada en fuentes externas — La trampa del Endianness en CNG vs. CryptoAPI y script de conversión en Python</p>
+<p>Una de las discrepancias arquitectónicas más frecuentes al extraer claves criptográficas de memoria radica en la convención de orden de bytes (<a href="https://learn.microsoft.com/en-us/windows/win32/seccng/cng-key-storage-functions" rel="noopener" target="_blank">Microsoft Learn: CNG Key Storage</a>):</p>
+
+<div class="tabla"><table>
+<thead><tr><th>Característica</th><th>CryptoAPI Clásica (advapi32.dll)</th><th>CNG Moderna (bcrypt.dll / ncrypt.dll)</th></tr></thead>
+<tbody>
+<tr><td><strong>Estructura del encabezado</strong></td><td><code>PUBLICKEYSTRUC</code> (<code>BLOBHEADER</code>) + <code>RSAPUBKEY</code></td><td><code>BCRYPT_RSAKEY_BLOB</code> / <code>BCRYPT_ECCKEY_BLOB</code></td></tr>
+<tr><td><strong>Magic Bytes de clave pública RSA</strong></td><td><code>0x31415352</code> (ASCII <code>"RSA1"</code>)</td><td><code>0x31415352</code> (<code>BCRYPT_RSAPUBLIC_MAGIC</code> = <code>"RSA1"</code>)</td></tr>
+<tr><td><strong>Magic Bytes de clave privada RSA</strong></td><td><code>0x32415352</code> (ASCII <code>"RSA2"</code>)</td><td><code>0x32415352</code> (<code>BCRYPT_RSAPRIVATE_MAGIC</code> = <code>"RSA2"</code>)</td></tr>
+<tr><td><strong>Magic Bytes de Curvas Elípticas (P-256)</strong></td><td>No soportado de forma estándar</td><td><code>0x314B4345</code> (<code>"ECK1"</code> para ECDH) / <code>0x31534345</code> (<code>"ECS1"</code> para ECDSA)</td></tr>
+<tr><td><strong>Orden de Bytes (Endianness) del Módulo y Claves</strong></td><td><strong>Little-Endian</strong> (el byte menos significativo va primero)</td><td><strong>Big-Endian</strong> (formato estándar de red / RFC)</td></tr>
+</tbody>
+</table></div>
+
+<h4 style="margin: 0.8rem 0 0.4rem 0; color: #1d4f2a;">Reconocimiento Visual de Claves ASN.1 DER (X.509)</h4>
+<p>Cuando un binario no utiliza APIs nativas de Windows y compila su propia librería (como mbedTLS u OpenSSL), las claves públicas suelen embeberse en formato ASN.1 DER binario. Se reconocen al instante por la secuencia invariable que codifica el OID de <code>rsaEncryption</code> (<code>1.2.840.113549.1.1.1</code>):</p>
+<pre><code>30 82 .. .. 30 0D 06 09 2A 86 48 86 F7 0D 01 01 01 05 00 03 82 .. .. 00 30 82 ..</code></pre>
+
+<h4 style="margin: 0.8rem 0 0.4rem 0; color: #1d4f2a;">Script de Extracción y Conversión a PEM (Python / PyCryptodome)</h4>
+<p>Para convertir un volcado hexadecimal obtenido en x64dbg de una estructura <code>RSAPUBKEY</code> (CryptoAPI) a una clave pública <code>.pem</code> estándar utilizable en scripts defensivos, se debe invertir el orden de los bytes del módulo:</p>
+<pre><code># Reconstrucción de clave pública RSA desde volcado de CryptoAPI (Little-Endian)
+from Crypto.PublicKey import RSA
+
+def parse_cryptoapi_rsapubkey(data: bytes) -> RSA.RsaKey:
+    # data: buffer que comienza en RSAPUBKEY (después del BLOBHEADER de 8 bytes)
+    magic = data[0:4]          # b'RSA1' (0x31415352)
+    bitlen = int.from_bytes(data[4:8], 'little')
+    pubexp = int.from_bytes(data[8:12], 'little')
+    modlen = bitlen // 8
+    # En CryptoAPI el módulo viene en little-endian; se invierte a big-endian:
+    modulus = int.from_bytes(data[12:12+modlen][::-1], 'big')
+    return RSA.construct((modulus, pubexp))
+
+# Exportar a PEM: print(key.export_key().decode())</code></pre>
+</aside>
 </main>
 <footer class="pie">
   <p>Material educativo y defensivo. Las prácticas se limitan a programas propios, software abierto o crackmes diseñados para aprender. No se enseña a eludir licencias, DRM ni controles de acceso.</p>

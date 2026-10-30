@@ -107,6 +107,31 @@
 <h2 id="fuentes">Fuentes</h2>
 <ul><li>Microsoft Learn: <a href="https://learn.microsoft.com/en-us/windows-hardware/drivers/ifs/about-file-system-filter-drivers" rel="noopener" target="_blank">About File System Filter Drivers</a>, <a href="https://learn.microsoft.com/en-us/windows-hardware/drivers/ifs/filter-manager-concepts" rel="noopener" target="_blank">Filter Manager concepts</a>, <a href="https://learn.microsoft.com/en-us/windows-hardware/drivers/ifs/writing-preoperation-callback-routines" rel="noopener" target="_blank">Writing Preoperation Callback Routines</a>, <a href="https://learn.microsoft.com/en-us/windows-hardware/drivers/ifs/writing-postoperation-callback-routines" rel="noopener" target="_blank">Writing Postoperation Callback Routines</a>.</li><li>Microsoft Learn, altitudes y herramientas: <a href="https://learn.microsoft.com/en-us/windows-hardware/drivers/ifs/load-order-groups-and-altitudes-for-minifilter-drivers" rel="noopener" target="_blank">Load Order Groups and Altitudes for Minifilter Drivers</a>, <a href="https://learn.microsoft.com/en-us/windows-hardware/drivers/ifs/allocated-altitudes" rel="noopener" target="_blank">Allocated filter altitudes</a>, <a href="https://learn.microsoft.com/en-us/windows-hardware/drivers/ifs/development-and-testing-tools" rel="noopener" target="_blank">Tools for Minifilter Development and Testing (Fltmc, !fltkd)</a>.</li></ul>
 <aside class="callout nota"><p class="callout-titulo">Etiquetas</p><p><strong>Observado en CLS:</strong> monitoreo de procesos como contexto. <strong>Conocimiento externo:</strong> Filter Manager/minifilters, altitudes, valores de retorno e IRQL de callbacks. <strong>Ejemplo ilustrativo:</strong> flujo de archivo y ficha de inventario ficticia. <strong>Laboratorio verificado:</strong> no.</p></aside>
+
+<aside class="ampliacion-ext">
+<p class="callout-titulo">Ampliación editorial basada en fuentes externas — Estructuras FLT_REGISTRATION y callbacks de monitoreo en Kernel</p>
+<p>Al auditar en IDA o Ghidra drivers defensivos, EDRs o módulos de filtrado de archivos sin símbolos, el reverser necesita identificar de inmediato qué operaciones y eventos del sistema están siendo interceptados (Microsoft Learn: <em>FLT_REGISTRATION</em> y <em>ObRegisterCallbacks</em>) <em>(Hecho confirmado)</em>:</p>
+
+<p><strong>1. Minifiltros de Filesystem (<code>FltRegisterFilter</code>):</strong> El segundo argumento (<code>RDX</code> en x64) apunta a la estructura estática <code>FLT_REGISTRATION</code> en <code>.rdata</code> / <code>.data</code>. Su campo <strong><code>OperationRegistration</code></strong> (offset <strong><code>+0x20</code></strong> en x64) apunta a un arreglo de estructuras <code>FLT_OPERATION_REGISTRATION</code> de 32 bytes cada una:</p>
+<div class="tabla"><table>
+<thead><tr><th>Offset (x64)</th><th>Campo</th><th>Tipo y Significado</th></tr></thead>
+<tbody>
+<tr><td><strong><code>+0x00</code></strong></td><td><code>MajorFunction</code></td><td><code>UCHAR</code> (ej. <code>0x00</code> = <code>IRP_MJ_CREATE</code>, <code>0x04</code> = <code>IRP_MJ_WRITE</code>; termina con <code>0x80</code> = <code>IRP_MJ_OPERATION_END</code>).</td></tr>
+<tr><td><strong><code>+0x04</code></strong></td><td><code>Flags</code></td><td><code>ULONG</code> (banderas de operación, ej. <code>FLTFL_OPERATION_REGISTRATION_SKIP_CACHED_IO</code>).</td></tr>
+<tr><td><strong><code>+0x08</code></strong></td><td><code>PreOperation</code></td><td><code>PFLT_PRE_OPERATION_CALLBACK</code> (puntero a la rutina previa a la E/S).</td></tr>
+<tr><td><strong><code>+0x10</code></strong></td><td><code>PostOperation</code></td><td><code>PFLT_POST_OPERATION_CALLBACK</code> (puntero a la rutina posterior a la E/S).</td></tr>
+<tr><td><strong><code>+0x18</code></strong></td><td><code>Reserved1</code></td><td><code>PVOID</code> (reservado para el sistema, completa los 32 bytes de la estructura).</td></tr>
+</tbody></table></div>
+
+<p><strong>2. Callbacks de Kernel no relacionados con Filesystem (Telemetría y Protección):</strong></p>
+<div class="tabla"><table>
+<thead><tr><th>API de Registro</th><th>Estructura / Parámetro Clave</th><th>Propósito Defensivo / Intercepción</th></tr></thead>
+<tbody>
+<tr><td><strong><code>PsSetCreateProcessNotifyRoutineEx</code></strong></td><td><code>NotifyRoutine</code> (1.er arg, <code>RCX</code>)</td><td>Notifica creación y terminación de procesos en el sistema; permite denegar la creación retornando error en <code>CreateInfo->CreationStatus</code>.</td></tr>
+<tr><td><strong><code>PsSetLoadImageNotifyRoutine</code></strong></td><td><code>NotifyRoutine</code> (1.er arg, <code>RCX</code>)</td><td>Intercepta cada mapeo de ejecutables (<code>.exe</code>), bibliotecas (<code>.dll</code>) o módulos de kernel (<code>.sys</code>) en el espacio de memoria virtual.</td></tr>
+<tr><td><strong><code>ObRegisterCallbacks</code></strong></td><td><code>OB_CALLBACK_REGISTRATION</code> &rarr; arreglo <code>OB_OPERATION_REGISTRATION</code> (<code>+0x20</code>)</td><td>Intercepta apertura y duplicación de handles sobre <code>PsProcessType</code> y <code>PsThreadType</code>, despojando máscaras de acceso críticas como <code>PROCESS_VM_WRITE</code> o <code>PROCESS_TERMINATE</code> para blindar procesos.</td></tr>
+</tbody></table></div>
+</aside>
 </main>
 <footer class="pie">
   <p>Material educativo y defensivo. Las prácticas se limitan a programas propios, software abierto o crackmes diseñados para aprender. No se enseña a eludir licencias, DRM ni controles de acceso.</p>

@@ -81,6 +81,39 @@ x64: .pdata señala RuntimeFunction; .xdata describe unwind del prólogo</code><
 <h2 id="fuentes">Fuentes</h2>
 <ul><li>Microsoft Learn: <a href="https://learn.microsoft.com/en-us/cpp/build/exception-handling-x64" rel="noopener" target="_blank">x64 exception handling</a>, <a href="https://learn.microsoft.com/en-us/windows/win32/debug/structured-exception-handling" rel="noopener" target="_blank">Structured Exception Handling</a>, <a href="https://learn.microsoft.com/en-us/windows-hardware/drivers/debugger/debugging-a-user-mode-process-using-windbg" rel="noopener" target="_blank">Debugging a user-mode process using WinDbg</a>.</li><li>Microsoft Learn, despacho y depurador: <a href="https://learn.microsoft.com/en-us/windows/win32/debug/exception-dispatching" rel="noopener" target="_blank">Exception Dispatching</a>, <a href="https://learn.microsoft.com/en-us/windows/win32/debug/vectored-exception-handling" rel="noopener" target="_blank">Vectored Exception Handling</a>, <a href="https://learn.microsoft.com/en-us/cpp/cpp/try-except-statement" rel="noopener" target="_blank">try-except statement</a>, <a href="https://learn.microsoft.com/en-us/windows-hardware/drivers/debugger/controlling-exceptions-and-events" rel="noopener" target="_blank">Controlling Exceptions and Events</a>, <a href="https://learn.microsoft.com/en-us/windows-hardware/drivers/debuggercmds/-exr--display-exception-record-" rel="noopener" target="_blank">.exr</a>, <a href="https://learn.microsoft.com/en-us/windows-hardware/drivers/debuggercmds/-ecxr--display-exception-context-record-" rel="noopener" target="_blank">.ecxr</a>.</li><li><strong>CLS:</strong> stack en <a href="01-memoria.html">1.2</a>, unwind C++ en <a href="02-cpp-profundo.html">2.18</a>, WinDbg en <a href="02-windbg-heap.html">2.19</a>, anti-análisis en <a href="02-anti-analisis.html">2.15</a>.</li></ul>
 <aside class="callout nota"><p class="callout-titulo">Etiquetas</p><p><strong>Observado en CLS:</strong> excepciones y stack como conceptos generales. <strong>Conocimiento externo:</strong> SEH/unwind, despacho de excepciones, VEH y control de excepciones en WinDbg; el código de excepción C++ de MSVC como dato de reversing. <strong>Ejemplo ilustrativo:</strong> flujo y cronología de excepción. <strong>Laboratorio verificado:</strong> no.</p></aside>
+
+<aside class="ampliacion-ext">
+<p class="callout-titulo">Ampliación editorial basada en fuentes externas — Layout binario de RUNTIME_FUNCTION (.pdata) y UNWIND_INFO (.xdata) en x64</p>
+<p>A diferencia de x86 (donde la lista SEH se enlaza en la pila mediante <code>FS:[0]</code>), en Windows x64 el desenrollado de pila y el despacho de excepciones se rigen por tablas estáticas en el PE sin tocar la pila en el prólogo (Microsoft Learn: <em>x64 exception handling</em>) <em>(Hecho confirmado)</em>:</p>
+
+<div class="tabla"><table>
+<thead><tr><th>Estructura y Sección</th><th>Offset / Tamaño</th><th>Campos Binarios y Significado</th></tr></thead>
+<tbody>
+<tr>
+<td><strong><code>RUNTIME_FUNCTION</code></strong><br>(Sección <code>.pdata</code>)</td>
+<td><code>12 bytes</code> fijos por función</td>
+<td>
+  &bull; <code>+0x00</code>: <code>DWORD BeginAddress</code> (RVA de inicio de la función).<br>
+  &bull; <code>+0x04</code>: <code>DWORD EndAddress</code> (RVA de fin de la función).<br>
+  &bull; <code>+0x08</code>: <code>DWORD UnwindInfoAddress</code> (RVA que apunta a la cabecera en <code>.xdata</code>).
+</td>
+</tr>
+<tr>
+<td><strong><code>UNWIND_INFO</code></strong><br>(Sección <code>.xdata</code>)</td>
+<td><code>4 bytes</code> cabecera + array variable</td>
+<td>
+  &bull; <code>+0x00</code>: <code>Version : 3</code> (bits 0..2, vale 1 o 2) y <code>Flags : 5</code> (bits 3..7: <code>0x01 = UNW_FLAG_EHANDLER</code>, <code>0x02 = UNW_FLAG_UHANDLER</code>, <code>0x04 = UNW_FLAG_CHAININFO</code>).<br>
+  &bull; <code>+0x01</code>: <code>UBYTE SizeOfProlog</code> (longitud en bytes del prólogo).<br>
+  &bull; <code>+0x02</code>: <code>UBYTE CountOfCodes</code> (cantidad de slots de 2 bytes en <code>UnwindCode[]</code>).<br>
+  &bull; <code>+0x03</code>: <code>UBYTE FrameRegisterAndOffset</code> (registro base y desplazamiento de marco).<br>
+  &bull; <code>+0x04</code>: Arreglo <code>UNWIND_CODE[]</code> (códigos como <code>UWOP_PUSH_NONVOL=0</code>, <code>UWOP_ALLOC_SMALL=2</code> indicando qué registros se salvaron y cuánto creció <code>RSP</code>).<br>
+  &bull; <strong>Tras <code>UnwindCode[]</code></strong> (alineado a 4B): Si <code>Flags &amp; 0x03</code>, sigue la <strong>RVA de 32 bits de <code>ExceptionHandler</code></strong> (<code>__C_specific_handler</code>, <code>__CxxFrameHandler3</code> o <code>__CxxFrameHandler4</code>) y los datos de excepción (<code>SCOPE_TABLE</code> / <code>FuncInfo</code>).
+</td>
+</tr>
+</tbody></table></div>
+
+<p><strong>Inspección en vivo con WinDbg:</strong> El comando <code>!fnent &lt;dirección_de_función&gt;</code> decodifica en vivo tanto la entrada <code>RUNTIME_FUNCTION</code> como todos los códigos <code>UNWIND_CODE</code> de <code>.xdata</code>, siendo fundamental para validar si una dirección de retorno en la pila fue falsificada (Call Stack Spoofing).</p>
+</aside>
 </main>
 <footer class="pie">
   <p>Material educativo y defensivo. Las prácticas se limitan a programas propios, software abierto o crackmes diseñados para aprender. No se enseña a eludir licencias, DRM ni controles de acceso.</p>

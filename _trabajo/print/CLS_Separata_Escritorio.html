@@ -369,6 +369,14 @@ main { max-width: none; padding: 0; }
 .print-sec .callout, .print-sec .gate, .print-sec details, .print-sec .ampliacion-ext, .print-sec .nota-ed { break-inside: avoid; page-break-inside: avoid; }
 .print-sec h2, .print-sec h3, .print-sec h4 { break-after: avoid; page-break-after: avoid; }
 .print-sec a { color: #000; text-decoration: none; }
+.hoja-compacta { font-size: 8.5pt; line-height: 1.25; }
+.hoja-compacta h2 { font-size: 11pt !important; margin: 0 0 4pt !important; border-bottom: 1px solid #0b5f6b; padding-bottom: 2pt; color: #0b5f6b; }
+.hoja-compacta h3 { font-size: 9.3pt !important; margin: 4pt 0 2pt !important; color: #222; }
+.hoja-compacta table { font-size: 7.6pt !important; margin: 2px 0 4px !important; }
+.hoja-compacta th, .hoja-compacta td { padding: 2px 4px !important; }
+.hoja-compacta pre { font-size: 7.2pt !important; line-height: 1.15 !important; margin: 2px 0 !important; padding: 2px 4px !important; }
+.hoja-compacta ul, .hoja-compacta p { margin: 2px 0 3px !important; }
+.hoja-compacta li { margin-bottom: 2px !important; }
 .portada-pdf { text-align: left; padding-top: 26mm; }
 .portada-pdf .kicker { color: #0b5f6b; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; font-size: 9pt; }
 .portada-pdf h1 { font-size: 34pt; line-height: 1.05; margin: .2em 0 .3em; }
@@ -387,14 +395,14 @@ details.qa summary { font-size: 10pt; }
 </style></head><body><main>
 
 <section class="print-sec" id="portada-separata">
-<p style="color: #0b5f6b; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; font-size: 8.5pt; margin: 0;">Proyecto CLS · Edición 5 · Revisión 5.2 · Cuadernillo de Consulta Rápida</p>
+<p style="color: #0b5f6b; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; font-size: 8.5pt; margin: 0;">Proyecto CLS · Edición 5 · Revisión 5.4 · Cuadernillo de Consulta Rápida</p>
 <h1 style="font-size: 22pt; margin: 2pt 0 6pt;">Separata de Escritorio y Referencia Rápida</h1>
 <p style="margin: 0 0 8pt; font-size: 9.8pt; color: #333;">Cuadernillo diseñado para permanecer abierto junto al teclado (abrochado a caballete o anillado fino) mientras trabajás con IDA, Ghidra, x64dbg, ILSpy o WinDbg y leés el <strong>Tomo I</strong> o el <strong>Tomo II</strong>.</p>
 
 <h2 style="font-size: 11.5pt; margin: 8pt 0 4pt; border-bottom: 1px solid #999;">Contenido de esta Separata de Escritorio</h2>
 <div class="toc" style="columns: 1; margin-top: 4pt; font-size: 9.5pt;">
 <ol style="padding-left: 14pt;">
-<li><a href="#rutas-estudio">1. Tres perfiles o rutas de estudio (Principiante, Intermedio y Avanzado)</a><span class="toc-pag" data-anchor="rutas-estudio">p. 3-4 · 2 págs.</span></li><li><a href="#arbol-triage">2. Árbol de decisión de triage inicial («¿Por dónde empiezo?») y 10 señales</a><span class="toc-pag" data-anchor="arbol-triage">p. 5-6 · 2 págs.</span></li><li><a href="#resumen-hilo">3. Mapa del Hilo Conductor (check_v1 → BlocLab) y comandos del Kit C/C++</a><span class="toc-pag" data-anchor="resumen-hilo">p. 7-8 · 2 págs.</span></li><li><a href="#hoja-1">4. Hoja de Referencia 1 · Nivel Principiante (Registros, saltos, VA/RVA, ABIs)</a><span class="toc-pag" data-anchor="hoja-1">p. 9-10 · 2 págs.</span></li><li><a href="#hoja-2">5. Hoja de Referencia 2 · Nivel Intermedio (Offsets PEB/LDR, cripto, x64dbg, Frida)</a><span class="toc-pag" data-anchor="hoja-2">p. 11-12 · 2 págs.</span></li><li><a href="#hoja-3">6. Hoja de Referencia 3 · Nivel Avanzado (C++ RTTI/SSO, CTL_CODE, IRQL, WinDbg/TTD)</a><span class="toc-pag" data-anchor="hoja-3">p. 13-14 · 2 págs.</span></li>
+<li><a href="#rutas-estudio">1. Tres perfiles o rutas de estudio (Principiante, Intermedio y Avanzado)</a><span class="toc-pag" data-anchor="rutas-estudio">p. 3-4 · 2 págs.</span></li><li><a href="#arbol-triage">2. Árbol de decisión de triage inicial («¿Por dónde empiezo?») y 10 señales</a><span class="toc-pag" data-anchor="arbol-triage">p. 5-6 · 2 págs.</span></li><li><a href="#resumen-hilo">3. Mapa del Hilo Conductor (check_v1 → BlocLab) y comandos del Kit C/C++</a><span class="toc-pag" data-anchor="resumen-hilo">p. 7-8 · 2 págs.</span></li><li><a href="#hoja-1">4. Hoja de Referencia 1 · Nivel Principiante (Registros, saltos, VA/RVA, ABIs)</a><span class="toc-pag" data-anchor="hoja-1">p. 9-10 · 2 págs.</span></li><li><a href="#hoja-2">5. Hoja de Referencia 2 · Nivel Intermedio (Offsets PEB/LDR, cripto, x64dbg, Frida)</a><span class="toc-pag" data-anchor="hoja-2">p. 11-12 · 2 págs.</span></li><li><a href="#hoja-3">6. Hoja de Referencia 3 · Nivel Avanzado (C++ RTTI/SSO, CTL_CODE, IRQL, WinDbg/TTD)</a><span class="toc-pag" data-anchor="hoja-3">p. 13-14 · 2 págs.</span></li><li><a href="#hoja-4">7. Hoja de Referencia 4 · Evasión User-Mode, Inyección, Go/Rust y x64dbg (Rev. 5.4)</a><span class="toc-pag" data-anchor="hoja-4">p. 15 · 1 pág.</span></li><li><a href="#hoja-5">8. Hoja de Referencia 5 · Criptografía Nativa (CryptoAPI/CNG) y Drivers .sys (Rev. 5.4)</a><span class="toc-pag" data-anchor="hoja-5">p. 16 · 1 pág.</span></li>
 </ol>
 </div>
 
@@ -409,19 +417,19 @@ details.qa summary { font-size: 10pt; }
 </tr></thead><tbody>
 <tr><td><strong>Apertura y Mapa del curso</strong> (<code>00_EMPEZAR_AQUI</code>, <code>index</code>)</td><td>Todos</td><td><strong>Tomo I</strong></td><td>p. 3–13</td><td>p. 3–13</td></tr>
 <tr><td><strong>Etapa 0 · Laboratorio seguro</strong> (<code>0.1</code>)</td><td>Principiante</td><td><strong>Tomo I</strong></td><td>p. 14–20</td><td>p. 14–20</td></tr>
-<tr><td><strong>Etapa 1 · Fundamentos binarios y PE</strong> (<code>1.1–1.5</code>)</td><td>Principiante</td><td><strong>Tomo I</strong></td><td>p. 21–53</td><td>p. 21–53</td></tr>
-<tr><td><strong>Etapa 2A · Núcleo x86/x64, IDA y x64dbg</strong> (<code>2.1–2.9</code>)</td><td>Principiante</td><td><strong>Tomo I</strong></td><td>p. 54–116</td><td>p. 54–116</td></tr>
-<tr><td><strong>Etapa 2B · Ofuscación, TLS, MFC, PEB, Anti-debug, Ghidra</strong> (<code>2.10–2.16</code>)</td><td>Intermedio</td><td><strong>Tomo I</strong></td><td>p. 117–155</td><td>p. 117–155</td></tr>
-<tr><td><strong>Etapa 2C · Packers, C++ profundo, WinDbg/TTD, Diffing, Frida</strong> (<code>2.17–2.21</code>)</td><td>Interm. / Avanzado</td><td><strong>Tomo I</strong></td><td>p. 156–184</td><td>p. 156–184</td></tr>
-<tr><td><strong>Etapa 2 Optativas · Malware dinámico, Shellcode, Fuzzing</strong> (<code>2.22–2.24</code>)</td><td>Interm. / Avanzado</td><td><strong>Tomo I</strong></td><td>p. 185–194</td><td>p. 185–194</td></tr>
-<tr><td><strong>Etapa 3 · Reversing en .NET e IL</strong> (<code>3.1–3.2</code>)</td><td>Principiante</td><td><strong>Tomo I</strong></td><td>p. 195–208</td><td>p. 195–208</td></tr>
-<tr><td><strong>Etapa 4 · Método de 5 pasos, protocolos, cripto e informe</strong> (<code>4.1–4.5</code>)</td><td>Princ. / Intermedio</td><td><strong>Tomo I</strong></td><td>p. 209–241</td><td>p. 209–241</td></tr>
-<tr><td><strong>Etapa 5 · Malware estático, vulnerabilidades, automatización</strong> (<code>5.1–5.4</code>)</td><td>Interm. / Avanzado</td><td><strong>Tomo I</strong></td><td>p. 242–268</td><td>p. 242–268</td></tr>
-<tr><td><strong>Etapa 6 · Kernel y drivers KMDF/WDM en Windows</strong> (<code>6.1–6.6</code>)</td><td>Avanzado</td><td><strong>Tomo II</strong></td><td>p. 3–38</td><td>p. 269–304</td></tr>
-<tr><td><strong>Rama 2D · Windows internals y Hyper-V</strong> (<code>2D.1–2D.13</code> + Hyper-V)</td><td>Interm. / Avanzado</td><td><strong>Tomo II</strong></td><td>p. 39–119</td><td>p. 305–385</td></tr>
-<tr><td><strong>Hilo conductor multi-nivel y Kit de 5 plantillas C/C++</strong></td><td>Todos</td><td><strong>Tomo I</strong></td><td>p. 269–277</td><td>p. 386–394</td></tr>
-<tr><td><strong>Hojas de referencia rápida (Cheat Sheets 1, 2 y 3)</strong></td><td>Todos</td><td><strong>Separata y Tomo I</strong></td><td>p. 278–283</td><td>p. 395–400</td></tr>
-<tr><td><strong>Glosario, Preguntas frecuentes y Fuentes/límites</strong></td><td>Todos</td><td><strong>Tomo I</strong></td><td>p. 284–313</td><td>p. 401–430</td></tr>
+<tr><td><strong>Etapa 1 · Fundamentos binarios y PE</strong> (<code>1.1–1.5</code>)</td><td>Principiante</td><td><strong>Tomo I</strong></td><td>p. 21–55</td><td>p. 21–55</td></tr>
+<tr><td><strong>Etapa 2A · Núcleo x86/x64, IDA y x64dbg</strong> (<code>2.1–2.9</code>)</td><td>Principiante</td><td><strong>Tomo I</strong></td><td>p. 56–121</td><td>p. 56–121</td></tr>
+<tr><td><strong>Etapa 2B · Ofuscación, TLS, MFC, PEB, Anti-debug, Ghidra</strong> (<code>2.10–2.16</code>)</td><td>Intermedio</td><td><strong>Tomo I</strong></td><td>p. 122–165</td><td>p. 122–165</td></tr>
+<tr><td><strong>Etapa 2C · Packers, C++ profundo, WinDbg/TTD, Diffing, Frida</strong> (<code>2.17–2.21</code>)</td><td>Interm. / Avanzado</td><td><strong>Tomo I</strong></td><td>p. 166–194</td><td>p. 166–194</td></tr>
+<tr><td><strong>Etapa 2 Optativas · Malware dinámico, Shellcode, Fuzzing</strong> (<code>2.22–2.24</code>)</td><td>Interm. / Avanzado</td><td><strong>Tomo I</strong></td><td>p. 195–205</td><td>p. 195–205</td></tr>
+<tr><td><strong>Etapa 3 · Reversing en .NET e IL</strong> (<code>3.1–3.2</code>)</td><td>Principiante</td><td><strong>Tomo I</strong></td><td>p. 206–219</td><td>p. 206–219</td></tr>
+<tr><td><strong>Etapa 4 · Método de 5 pasos, protocolos, cripto e informe</strong> (<code>4.1–4.5</code>)</td><td>Princ. / Intermedio</td><td><strong>Tomo I</strong></td><td>p. 220–256</td><td>p. 220–256</td></tr>
+<tr><td><strong>Etapa 5 · Malware estático, vulnerabilidades, automatización</strong> (<code>5.1–5.4</code>)</td><td>Interm. / Avanzado</td><td><strong>Tomo I</strong></td><td>p. 257–283</td><td>p. 257–283</td></tr>
+<tr><td><strong>Etapa 6 · Kernel y drivers KMDF/WDM en Windows</strong> (<code>6.1–6.6</code>)</td><td>Avanzado</td><td><strong>Tomo II</strong></td><td>p. 3–40</td><td>p. 284–321</td></tr>
+<tr><td><strong>Rama 2D · Windows internals y Hyper-V</strong> (<code>2D.1–2D.13</code> + Hyper-V)</td><td>Interm. / Avanzado</td><td><strong>Tomo II</strong></td><td>p. 41–124</td><td>p. 322–405</td></tr>
+<tr><td><strong>Hilo conductor multi-nivel y Kit de 5 plantillas C/C++</strong></td><td>Todos</td><td><strong>Tomo I</strong></td><td>p. 284–292</td><td>p. 406–414</td></tr>
+<tr><td><strong>Hojas de referencia rápida (Cheat Sheets 1 a 5)</strong></td><td>Todos</td><td><strong>Separata y Tomo I</strong></td><td>p. 293–298</td><td>p. 415–420</td></tr>
+<tr><td><strong>Glosario, Preguntas frecuentes y Fuentes/límites</strong></td><td>Todos</td><td><strong>Tomo I</strong></td><td>p. 299–327</td><td>p. 421–449</td></tr>
 </tbody></table></div>
 </section>
 
@@ -808,5 +816,73 @@ ba w4 &lt;addr&gt;  ;  g-          ; frena en la instrucción pasada exacta que 
 dx @$cursession.TTD.Calls("ntdll!NtCreateFile")  ; consulta todas las llamadas a una API en la traza
 !drvobj &lt;driver&gt; 7           ; muestra el DRIVER_OBJECT y su tabla de rutinas MajorFunction (IRP_MJ_*)
 !wdfkd.wdflogdump &lt;driver&gt;   ; vuelca el In-flight Recorder (IFR) de un driver KMDF</code></pre>
+</section>
+<section class="print-sec hoja-compacta" id="hoja-4">
+<h2 id="hoja-4">Hoja 4 · Evasión User-Mode, Inyección, Go/Rust y Extracción In-Place (Rev. 5.4)</h2>
+
+<h3>4.1 Stubs de Syscall en <code>ntdll.dll</code> (x64) y Matriz de Evasión (Lecciones 2.14 y 2.15)</h3>
+<div class="tabla"><table>
+<thead><tr><th>Stub original en <code>ntdll.dll</code> (32 bytes)</th><th>Stub Indirect Syscall (en el binario)</th></tr></thead>
+<tbody><tr>
+<td><pre><code>4C 8B D1        mov r10, rcx
+B8 [SSN 4B]     mov eax, &lt;SSN&gt;
+F6 04 25 ...    test byte ptr [...], 1
+75 03           jne short +3
+0F 05           syscall
+C3              ret</code></pre></td>
+<td><pre><code>4C 8B D1        mov r10, rcx
+B8 [SSN 4B]     mov eax, &lt;SSN&gt;
+FF 25 [offset]  jmp qword ptr [pfn_ntdll_syscall]
+                (salta al 0F 05 dentro de ntdll)</code></pre></td>
+</tr></tbody></table></div>
+<ul>
+<li><strong>Hell's Gate:</strong> Busca <code>4C 8B D1 B8</code> en el export de <code>ntdll</code>. <strong>Halo's Gate:</strong> Si el byte <code>+0</code> es <code>0xE9</code> (hook), busca en vecinos a <code>±32 * i</code> bytes. <strong>Tartarus' Gate:</strong> Detecta hooks en el byte <code>+3</code> (tras <code>4C 8B D1</code>).</li>
+<li><strong>Detección Defensiva:</strong> 1) <code>RIP</code> en <code>KiSystemCall64</code> fuera de <code>ntdll.dll</code>/<code>win32u.dll</code> (caza Direct Syscalls vía <code>ETWti</code> / <code>InstrumentationCallback</code>). 2) Desenrollado de pila vía <code>.pdata</code> donde el llamador de <code>ntdll</code> no es <code>kernelbase.dll</code> (caza Indirect Syscalls sin Call Stack Spoofing).</li>
+</ul>
+
+<h3>4.2 Firma Rápida de Inyección de Procesos en Memoria (Lección 2.22)</h3>
+<div class="tabla"><table>
+<thead><tr><th>Técnica</th><th>Secuencia de APIs característica</th><th>Punto exacto de intercepción / Evidencia</th></tr></thead>
+<tbody>
+<tr><td><strong>CreateRemoteThread</strong></td><td><code>OpenProcess</code> &rarr; <code>VirtualAllocEx</code> &rarr; <code>WriteProcessMemory</code> &rarr; <code>CreateRemoteThread</code></td><td>Breakpoint en <code>WriteProcessMemory</code> (<code>R8</code> = buffer local en x64) y <code>CreateRemoteThread</code>.</td></tr>
+<tr><td><strong>Process Hollowing (RunPE)</strong></td><td><code>CreateProcessW(CREATE_SUSPENDED=4)</code> &rarr; <code>NtUnmapViewOfSection</code> &rarr; <code>VirtualAllocEx</code> &rarr; <code>WriteProcessMemory</code> &rarr; <code>SetThreadContext</code> &rarr; <code>ResumeThread</code></td><td>En <code>SetThreadContext</code>, el nuevo <code>EntryPoint</code> se escribe en <strong><code>ctx.Rcx</code></strong> (x64, offset <code>+0x80</code> de <code>CONTEXT</code>) o <strong><code>ctx.Eax</code></strong> (x86, offset <code>+0xB0</code>).</td></tr>
+<tr><td><strong>Early Bird APC</strong></td><td><code>CreateProcessW(CREATE_SUSPENDED)</code> &rarr; <code>VirtualAllocEx</code> &rarr; <code>WriteProcessMemory</code> &rarr; <code>QueueUserAPC</code> &rarr; <code>ResumeThread</code></td><td>Primer argumento de <code>QueueUserAPC</code> (<code>RCX</code> en x64) apunta al payload inyectado.</td></tr>
+<tr><td><strong>Reflective DLL</strong></td><td>Reserva memoria <code>RWX</code>/<code>RX</code> y salta a <code>ReflectiveLoader</code> sin <code>LoadLibrary</code></td><td>La DLL no figura en <code>PEB-&gt;Ldr</code> (<code>lm</code>), pero existe como región <code>Private</code> ejecutable en <code>!vadump</code>.</td></tr>
+</tbody></table></div>
+
+<h3>4.3 Go (1.17+ ABI) y Rust (Mangling v0 y Niche Optimization) (Lección 2.13)</h3>
+<ul>
+<li><strong>Go <code>pclntab</code> Magic Bytes:</strong> <code>0xFFFFFFFB</code> (Go 1.2), <code>0xFFFFFFFA</code> (Go 1.16), <code>0xFFFFFFF0</code> (Go 1.18+), <code>0xFFFFFFF1</code> (Go 1.20+). Recuperar nombres con <code>GoReSym</code> o Ghidra 11+.</li>
+<li><strong>Go <code>string</code> y Registros:</strong> Par <code>{ptr, len}</code> de 16B <strong>sin byte <code>0x00</code></strong>. Registros de argumentos/retorno en orden: <strong><code>RAX, RBX, RCX, RDI, RSI, R8, R9, R10, R11</code></strong>. Goroutine activa en <strong><code>R14</code></strong> (<code>cmp rsp, [r14+10h]</code>).</li>
+<li><strong>Rust <code>Option&lt;T&gt;</code>:</strong> Con tipos completos (<code>Option&lt;u32&gt;</code>) lleva un <code>tag</code> en <code>+0x00</code> (<code>0=None, 1=Some</code>). Con punteros no nulos (<code>Option&lt;&amp;T&gt;</code>, <code>Option&lt;Box&lt;T&gt;&gt;</code>, <code>NonZeroU32</code>), aplica <strong>Niche Optimization</strong>: suprime el <code>tag</code> y compila como <code>test rax, rax ; jz es_none</code>.</li>
+</ul>
+
+<h3>4.4 Doble Breakpoint Encadenado en <code>x64dbg</code> para Decodificadores <code>void</code> In-Place (Lección 2.6)</h3>
+<pre><code>1) En el prólogo de la función decodificadora:  Break condition: 0  |  Command: $ptr = rcx
+2) En la instrucción RET de la función:         Break condition: 0  |  Log:     "Str: {utf8@$ptr}"</code></pre>
+</section>
+<section class="print-sec hoja-compacta" id="hoja-5">
+<h2 id="hoja-5">Hoja 5 · Criptografía Nativa (CryptoAPI / CNG) y Reversing de Drivers .sys (Rev. 5.4)</h2>
+
+<h3>5.1 CryptoAPI (<code>advapi32.dll</code>) vs. CNG (<code>bcrypt.dll</code>) y Endianness (Lección 4.2)</h3>
+<div class="tabla"><table>
+<thead><tr><th>Propiedad</th><th>CryptoAPI Clásica (<code>advapi32.dll</code>)</th><th>CNG Moderna (<code>bcrypt.dll</code>)</th></tr></thead>
+<tbody>
+<tr><td><strong>Buffer de texto plano al cifrar</strong></td><td><code>CryptEncrypt</code>: 5.º arg <code>pbData</code> (<strong><code>[rsp+28h]</code></strong> en x64, <em>in-place</em>)</td><td><code>BCryptEncrypt</code>: 2.º arg <code>pbInput</code> (<strong><code>RDX</code></strong> en x64) y largo en <strong><code>R8D</code></strong></td></tr>
+<tr><td><strong>Encabezado de clave y Magic</strong></td><td><code>BLOBHEADER</code> (8B) + <code>RSAPUBKEY</code> (<code>"RSA1"</code>=<code>0x31415352</code>, <code>"RSA2"</code>=<code>0x32415352</code>)</td><td><code>BCRYPT_RSAKEY_BLOB</code> (<code>"RSA1"</code>/<code>"RSA2"</code>) &middot; ECC P-256: <code>"ECK1"</code> (<code>0x314B4345</code>) / <code>"ECS1"</code> (<code>0x31534345</code>)</td></tr>
+<tr><td><strong>Orden de bytes del Módulo RSA</strong></td><td><strong>Little-Endian</strong> (invertir con <code>[::-1]</code> antes de exportar a PEM)</td><td><strong>Big-Endian</strong> (orden de red estándar RFC)</td></tr>
+<tr><td><strong>Firma ASN.1 DER (X.509 RSA)</strong></td><td colspan="2"><code>30 82 .. .. 30 0D 06 09 2A 86 48 86 F7 0D 01 01 01 05 00 03 82 .. .. 00 30 82</code></td></tr>
+</tbody></table></div>
+
+<h3>5.2 Offsets Críticos para Triage Estático de Drivers y RPC en x64 (Etapa 6 y Rama 2D)</h3>
+<div class="tabla"><table>
+<thead><tr><th>Estructura (x64)</th><th>Offset</th><th>Campo y significado en IDA / Ghidra / WinDbg</th></tr></thead>
+<tbody>
+<tr><td><strong><code>DRIVER_OBJECT</code></strong><br>(<code>RCX</code> en <code>DriverEntry</code>)</td><td><code>+0x68</code><br><code>+0x70</code><br><code>+0xE0</code></td><td><code>DriverUnload</code><br><code>MajorFunction[0]</code> (<code>IRP_MJ_CREATE</code>)<br><code>MajorFunction[14]</code> (<strong><code>IRP_MJ_DEVICE_CONTROL</code></strong> = <code>0x70 + 14*8</code>)</td></tr>
+<tr><td><strong><code>WDF_DRIVER_CONFIG</code></strong></td><td><code>+0x08</code></td><td><code>EvtDriverDeviceAdd</code> (pasado a <code>WdfDriverCreate</code>)</td></tr>
+<tr><td><strong><code>WDF_IO_QUEUE_CONFIG</code></strong></td><td><code>+0x28</code></td><td><strong><code>EvtIoDeviceControl</code></strong> (pasado a <code>WdfIoQueueCreate</code>)</td></tr>
+<tr><td><strong><code>FLT_REGISTRATION</code></strong></td><td><code>+0x20</code></td><td><code>OperationRegistration</code> &rarr; arreglo <code>FLT_OPERATION_REGISTRATION</code> (<code>+0x04</code> Flags, <code>+0x08</code> PreOp, <code>+0x10</code> PostOp)</td></tr>
+<tr><td><strong><code>RPC_SERVER_INTERFACE</code></strong><br>(<code>RCX</code> en <code>RpcServerRegisterIf*</code>)</td><td><code>+0x04</code><br><code>+0x50</code></td><td><code>InterfaceId</code> (<code>RPC_SYNTAX_IDENTIFIER</code>: UUID de 16B + versión)<br><code>InterpreterInfo</code> &rarr; apunta a <code>MIDL_SERVER_INFO</code>, cuyo <strong><code>+0x08</code></strong> (<code>DispatchTable</code>) es el arreglo de punteros a las funciones C del servidor RPC.</td></tr>
+</tbody></table></div>
 </section>
 </main></body></html>

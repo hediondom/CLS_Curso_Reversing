@@ -128,10 +128,52 @@ for i in range(nsec):
 <h2 id="antes-de-avanzar">Antes de avanzar</h2>
 <p>Tenés que poder:</p>
 <ul><li>Recorrer la cabecera PE y ubicar entry point, image base y secciones.</li><li>Convertir una VA en offset y verificarla en el archivo.</li><li>Explicar qué es la IAT y leer un <code>call dword ptr [dirección]</code>.</li><li>Reconocer las señales de un binario empacado y decir por qué no lo vas a desempaquetar en este curso.</li></ul>
-<aside class="callout nota"><p class="callout-titulo">Puerta de salida de la Etapa 1</p><p>Si podés hacer el recorrido completo con tu propio <code>.exe</code> y explicar cada paso, terminaste los fundamentos. La Etapa 2 empieza con el lenguaje del procesador: assembly.</p></aside>
+<aside class="callout nota"><p class="callout-titulo">Hito de verificación — Formato PE</p><p>Si podés hacer el recorrido completo con tu propio <code>.exe</code> y explicar cada paso, dominás la cabecera PE y la tabla de imports. La Lección 1.5 complementa estos fundamentos con código en C y Python antes de entrar a Assembly en la Etapa 2.</p></aside>
+<section class="subseccion-ampliacion" id="ciclo-vida-dll-sideloading">
+<h2 id="ampliacion-ciclo-vida-dll">Ampliación: Ciclo de vida de DLLs, depuración y técnica de DLL Sideloading / Proxying</h2>
+<aside class="ampliacion-ext">
+<p class="callout-titulo">Ampliación editorial basada en fuentes externas</p>
+<p>Las bibliotecas de enlace dinámico (<code>.dll</code>) constituyen la unidad fundamental de modularidad y ejecución en Windows. Su análisis dinámico y los vectores de interceptación más comunes se rigen por las siguientes reglas técnicas (<a href="https://learn.microsoft.com/en-us/windows/win32/dlls/dynamic-link-library-best-practices" rel="noopener" target="_blank">Microsoft Learn: DLL Best Practices</a>):</p>
+
+<h3 style="margin: 0.8rem 0 0.4rem 0; color: #1d4f2a;">1. Ciclo de Vida y DllMain</h3>
+<p>El punto de entrada de una DLL tiene la firma estandarizada:</p>
+<pre><code>BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvReserved);</code></pre>
+<ul>
+<li><strong><code>DLL_PROCESS_ATTACH</code> (1):</strong> Se ejecuta cuando el proceso mapea la DLL por primera vez (mediante import estático o llamada explícita a <code>LoadLibraryA/W</code>). Si <code>DllMain</code> devuelve <code>FALSE</code>, el proceso anfitrión aborta su inicio con error de inicialización.</li>
+<li><strong><code>DLL_THREAD_ATTACH</code> (2) / <code>DLL_THREAD_DETACH</code> (3):</strong> Se invocan cada vez que un hilo secundario se crea o termina limpiamente en el proceso.</li>
+<li><strong><code>DLL_PROCESS_DETACH</code> (0):</strong> Se ejecuta cuando la DLL es descargada (vía <code>FreeLibrary</code> o al cerrar el proceso).</li>
+<li><strong>La restricción del <em>Loader Lock</em>:</strong> Durante la ejecución de <code>DllMain</code>, el sistema mantiene adquirido un bloqueo exclusivo del cargador (<em>Loader Lock</em>). Intentar llamar a <code>LoadLibrary</code>, crear procesos o sincronizar hilos dentro de <code>DllMain</code> puede provocar un interbloqueo (<em>deadlock</em>) irreversible.</li>
+</ul>
+
+<h3 style="margin: 0.8rem 0 0.4rem 0; color: #1d4f2a;">2. Cómo Depurar una DLL en x64dbg e IDA Pro</h3>
+<ul>
+<li><strong>Opción A — Mediante Rundll32:</strong> Configurar como ejecutable anfitrión en el depurador:
+<pre><code>C:\Windows\System32\rundll32.exe C:\ruta\libreria.dll,NombreDeExportada</code></pre></li>
+<li><strong>Opción B — Eventos de carga en x64dbg:</strong> En x64dbg, acceder a <em>Opciones -&gt; Preferencias -&gt; Eventos</em> y activar la casilla <strong>DLL Entry</strong>. Al lanzar cualquier ejecutable anfitrión, el depurador interrumpirá la ejecución automáticamente en el <code>DllMain</code> de la biblioteca tan pronto el sistema la proyecte en memoria.</li>
+<li><strong>Opción C — Arnés en C (Harness):</strong> Compilar un lanzador de prueba mínimo de 4 líneas que invoque <code>LoadLibraryA("muestra.dll")</code> y llame a la función exportada mediante <code>GetProcAddress</code>.</li>
+</ul>
+
+<h3 style="margin: 0.8rem 0 0.4rem 0; color: #1d4f2a;">3. DLL Sideloading y DLL Proxying con Export Forwarding</h3>
+<ul>
+<li><strong>Orden estándar de búsqueda de DLLs (<code>SafeDllSearchMode</code>):</strong>
+1. Directorio donde reside el ejecutable anfitrión (<code>.exe</code>).
+2. Directorio del sistema (<code>System32</code>).
+3. Directorio de Windows (<code>C:\Windows</code>).
+4. Directorio de trabajo actual (CWD).
+5. Directorios declarados en la variable de entorno <code>PATH</code>.</li>
+<li><strong>Vulnerabilidad de DLL Sideloading:</strong> Si un ejecutable legítimo y firmado busca una biblioteca que no está en la lista de <code>KnownDLLs</code> del registro (p. ej. <code>version.dll</code> o <code>cryptbase.dll</code>), cargará la copia situada en su misma carpeta antes que la copia oficial de <code>System32</code>.</li>
+<li><strong>DLL Proxying con reenvío de exportaciones (<em>Export Forwarding</em>):</strong> Para ejecutar lógica propia en <code>DLL_PROCESS_ATTACH</code> sin que la aplicación anfitriona falle por funciones faltantes, la DLL desarrollada redirige sus exportaciones a la biblioteca legítima de Windows mediante directivas de enlace:
+<pre><code>#pragma comment(linker, "/export:VerQueryValueW=C:\\Windows\\System32\\version.VerQueryValueW")
+#pragma comment(linker, "/export:GetFileVersionInfoW=C:\\Windows\\System32\\version.GetFileVersionInfoW")</code></pre></li>
+</ul>
+</aside>
+</section>
+
 <h2 id="fuentes-de-esta-lección">Fuentes de esta lección</h2>
 <ul><li><a class="fuente" href="../../CLS_resultados_intermedios/transcripciones/extraidos/Reversing%20desde%20cero%20%28Ricardo%20y%20Solid%29/Ricardo%20Narvaja%20y%20Solid%20-%20Reversing%20desde%20cero_05%20Virtual%20Adress%2C%20RVA%2C%20Offsets%20y%20Desplazamientos_05%20Virtual%20Adress%2C%20RVA%2C%20Offsets%20y%20Desplazamientos.txt">Reversing desde cero, cap. 05</a> — VA, RVA, offset, secciones, call directo e indirecto, IAT.</li><li><a class="fuente" href="../../CLS_resultados_intermedios/transcripciones/extraidos/Videos%20y%20material%20adicional%20Ingenieria%20Inversa/Videos_Video33_Video33.txt">Videos y material adicional, Video 33</a> — formato PE, secciones, imports, relocalizaciones.</li><li><a class="fuente" href="../../CLS_resultados_intermedios/transcripciones/extraidos/Reversing%20desde%20cero%20%28Ricardo%20y%20Solid%29/Ricardo%20Narvaja%20y%20Solid%20-%20Reversing%20desde%20cero_14%20Conociendo%20IDA_14%20Conociendo%20IDA.txt">Reversing desde cero, cap. 14</a> — rebase y file offset entre IDA y el debugger.</li><li><a class="fuente" href="../../CLS_resultados_intermedios/transcripciones/extraidos/Reversing%20desde%20cero%20%28Ricardo%20y%20Solid%29/Ricardo%20Narvaja%20y%20Solid%20-%20Reversing%20desde%20cero_26b%20ASLR_26b%20ASLR.txt">Reversing desde cero, cap. 26b</a> — ASLR.</li><li><a class="fuente" href="../../CLS_resultados_intermedios/transcripciones/extraidos/Reversing%20desde%20cero%20%28Ricardo%20y%20Solid%29/Ricardo%20Narvaja%20y%20Solid%20-%20Reversing%20desde%20cero_10%20Unpacking%201%20-%20UPX_10%20Unpacking%201%20-%20UPX%20.txt">Reversing desde cero, cap. 10</a> — UPX como caso de binario empacado.</li></ul>
 <aside class="callout nota"><p class="callout-titulo">Capas de esta lección</p><p><strong>Contenido observado en CLS:</strong> el ejemplo <code>0x6D1372 → 0x772</code>, la IAT en <code>0x6E300C</code>, la lectura del PE del video 33 y la explicación de ASLR del capítulo 26b. <strong>Conocimiento externo:</strong> estructura de la cabecera PE y del directorio de imports. <strong>Recomendación editorial:</strong> el script de Python y el límite explícito sobre desempaquetado.</p></aside>
+
+
 </main>
 <footer class="pie">
   <p>Material educativo y defensivo. Las prácticas se limitan a programas propios, software abierto o crackmes diseñados para aprender. No se enseña a eludir licencias, DRM ni controles de acceso.</p>

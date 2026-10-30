@@ -96,6 +96,54 @@ Secciones: .text .rdata .data        Símbolos: __mingw_*, ___chkstk_ms
 <li><strong>Formularios en <code>.rsrc</code> (<code>TPF0</code>) (<a href="https://docwiki.embarcadero.com/RADStudio/en/Using_Resource_Files" rel="noopener" target="_blank">Embarcadero DocWiki: Using Resource Files</a>):</strong> Los formularios VCL/FMX compilados en recursos <code>RT_RCDATA</code> comienzan con los 4 bytes ASCII <code>54 50 46 30</code> (<code>"TPF0"</code>) generados por <code>TWriter</code> y asocian cada control con el nombre de su método de evento publicado <em>(Hecho confirmado)</em>.</li>
 </ul>
 </aside>
+
+<aside class="ampliacion-ext">
+<p class="callout-titulo">Ampliación editorial basada en fuentes externas — Metodología de reversing para binarios en Go (pclntab, strings y ABI) y Rust (mangling v0 y enums)</p>
+<p>Dada la proliferación de binarios compilados en <strong>Go</strong> y <strong>Rust</strong> en software de sistema, herramientas defensivas y amenazas modernas, su análisis requiere técnicas específicas que difieren sustancialmente del código compilado en C/C++ clásico:</p>
+
+<h4 style="margin: 0.8rem 0 0.4rem 0; color: #1d4f2a;">1. Reversing de Binarios en Go</h4>
+<ul>
+<li><strong>Recuperación de símbolos mediante la tabla <code>pclntab</code>:</strong> El compilador de Go (<code>gc</code>) enlaza una tabla en la sección <code>.gopclntab</code> o <code>.rodata</code> denominada <em>Program Counter Line Table</em> (<a href="https://go.dev/src/runtime/symtab.go" rel="noopener" target="_blank">Go Runtime: symtab.go</a>). Esta estructura asocia cada dirección virtual con el nombre de su función, archivo fuente <code>.go</code> y número de línea. En binarios sin símbolos (<em>stripped</em>), <code>pclntab</code> <strong>permanece intacta</strong> porque el recolector de basura, el planificador y <code>runtime.panic</code> la necesitan para generar trazas de pila.
+<br><em>Herramientas de recuperación:</em> Plugins como <code>go_parser</code> (IDA Pro), el analizador integrado <em>Go Module Analyzer</em> (Ghidra 11+) o la utilidad <code>GoReSym</code> leen el número mágico al inicio de la tabla (<code>0xFFFFFFFB</code> en Go 1.2, <code>0xFFFFFFFA</code> en Go 1.16, <code>0xFFFFFFF0</code> en Go 1.18+ y <code>0xFFFFFFF1</code> en Go 1.20+) y renuevan en pocos segundos los nombres de las 2.000+ funciones (revelando de inmediato funciones críticas como <code>main.main</code> o <code>main.verificarLicencia</code>).</li>
+<li><strong>Estructura interna de cadenas (<code>string</code>):</strong> Un <code>string</code> en Go es un par inmutable <code>struct { const char* str; ptrdiff_t len; }</code> (16 bytes en x64). No contiene terminador nulo <code>0x00</code>. En desensamblado x64 se reconoce el patrón invariable de carga del puntero seguido de su tamaño en un registro secundario:
+<pre><code>lea rax, [rip + 0x2A150]   ; Puntero al inicio del buffer en .rodata
+mov rbx, 0x18              ; Longitud exacta: 24 bytes (sin terminador nulo)</code></pre></li>
+<li><strong>Convención de llamadas por registros (Go 1.17+ ABI):</strong> A partir de Go 1.17, las funciones internas pasan argumentos y retornos en 9 registros enteros ordenados: <code>RAX</code>, <code>RBX</code>, <code>RCX</code>, <code>RDI</code>, <code>RSI</code>, <code>R8</code>, <code>R9</code>, <code>R10</code>, <code>R11</code>, pasando a la pila solo los excedentes.</li>
+<li><strong>Prólogo de comprobación de pila:</strong> En el inicio de casi toda función Go aparece una comprobación con el puntero de la goroutine activa (almacenado en <code>R14</code> en x64):
+<pre><code>cmp rsp, qword ptr [r14 + 0x10]   ; Comprueba límite de pila de la goroutine
+jbe runtime.morestack             ; Aloca un segmento de pila nuevo si falta espacio</code></pre></li>
+</ul>
+
+<h4 style="margin: 0.8rem 0 0.4rem 0; color: #1d4f2a;">2. Reversing de Binarios en Rust</h4>
+<ul>
+<li><strong>Name Mangling v0 (RFC 2603):</strong> Desde Rust 1.59+, los símbolos usan el esquema estándar iniciado con el prefijo <code>_R</code> (<a href="https://rust-lang.github.io/rfcs/2603-symbol-mangling-v0.html" rel="noopener" target="_blank">Rust RFC 2603</a>). Nombres crudos como <code>_RNvNtCs1234_7mi_app4auth14verificar_pass</code> se decodifican de inmediato con la herramienta oficial <code>rustfilt</code> a <code>mi_app::auth::verificar_pass</code>.</li>
+<li><strong>Tipos algebraicos <code>Result&lt;T, E&gt;</code> y <code>Option&lt;T&gt;</code>:</strong> En memoria se compilan como estructuras con un byte discriminante (*tag*):
+<pre><code>struct Option_u32 {
+    uint8_t  tag;   // 0 = None, 1 = Some
+    uint32_t valor; // Válido únicamente si tag == 1
+};</code></pre>
+En ensamblador se observa la comprobación del byte discriminante previa a operar con el dato (<code>cmp byte ptr [rsp+0x18], 1 ; jne fallo</code>).</li>
+<li><strong>Manejo de pánicos y cadenas de error:</strong> Cuando una función aborta, Rust invoca a <code>core::panicking::panic_fmt</code> pasando una estructura que contiene el nombre del archivo fuente <code>.rs</code> y la línea exacta como cadenas ASCII legibles en <code>.rdata</code>.</li>
+</ul>
+</aside>
+
+<aside class="ampliacion-ext">
+<p class="callout-titulo">Ampliación editorial basada en fuentes externas — Optimización de nicho (Niche Optimization) en Rust para tipos Option sin byte tag</p>
+<p>Al revertir binarios compilados en Rust, es fundamental conocer la <strong>optimización de nicho</strong> (<em>Niche Optimization</em> o <em>Null-Pointer Optimization</em>) implementada por el compilador (<a href="https://doc.rust-lang.org/nomicon/repr-rust.html" rel="noopener" target="_blank">The Rustonomicon: Alternative Representations</a>):</p>
+<ul>
+<li><strong>El principio del nicho:</strong> En tipos como <code>Option&lt;u32&gt;</code>, Rust debe reservar un byte extra como discriminante (<em>tag</em>) porque cualquier valor de 32 bits es un número válido. Sin embargo, para tipos que <strong>garantizan que nunca pueden ser nulos</strong> (como referencias <code>&amp;T</code>, punteros inteligentes <code>Box&lt;T&gt;</code>, punteros a función <code>fn()</code> o enteros no nulos <code>core::num::NonZeroU32</code>), el compilador <strong>elimina por completo el byte <code>tag</code></strong>.</li>
+<li><strong>Representación en memoria:</strong>
+  <ul>
+  <li><code>Some(&amp;T)</code>: Se representa simplemente por la dirección de memoria válida del puntero (8 bytes en x64).</li>
+  <li><code>None</code>: Se representa con el valor nulo exacto (<code>0x0000000000000000</code>).</li>
+  </ul>
+</li>
+<li><strong>Patrón en desensamblado:</strong> Ante estos tipos, el analista <strong>no debe buscar</strong> un <code>cmp byte ptr [rsp+offset], 1</code>. En su lugar, el chequeo de <code>None</code> se compila de forma idéntica a una comprobación de puntero nulo en C:
+<pre><code>test rax, rax     ; Comprueba si el Option&lt;&amp;T&gt; o Option&lt;Box&lt;T&gt;&gt; es nulo
+jz es_none        ; Si es cero, equivale a la rama None
+; ... continúa en la rama Some(&amp;T) usando RAX directamente como puntero</code></pre></li>
+</ul>
+</aside>
 </main>
 <footer class="pie">
   <p>Material educativo y defensivo. Las prácticas se limitan a programas propios, software abierto o crackmes diseñados para aprender. No se enseña a eludir licencias, DRM ni controles de acceso.</p>

@@ -56,6 +56,10 @@
 <tr><td>¿Tiene símbolos?</td><td>PDB</td><td>Sí, si lo compilaste en Debug</td></tr>
 </tbody></table></div>
 <p>Ese inventario ya te dice mucho: un programa de consola que usa <code>scanf</code> y <code>puts</code>, sin empaquetar, con cadenas claras. No hace falta empezar por el entry point.</p>
+
+
+
+
 <h2 id="árbol-de-decisión-de-triage-inicial-por-dónde-empiezo">Árbol de decisión de triage inicial («¿Por dónde empiezo?»)</h2>
 <p>Cuando te enfrentás a un binario desconocido (un crackme, un programa propio compilado meses atrás o un componente de laboratorio), los primeros diez minutos del <strong>Paso 2 (Inventario)</strong> definen qué herramientas abrir y a qué lección del curso acudir. Usar IDA sobre un ensamblado .NET puro o buscar strings en un binario empaquetado con UPX hace perder horas. Este árbol de decisión conecta los tres niveles del curso (Principiante, Intermedio y Avanzado) en un flujo único (y se complementa con el <a href="../hilo-conductor-y-plantillas.html">Hilo conductor multi-nivel y kit de plantillas C/C++</a>):</p>
 
@@ -69,7 +73,7 @@
   │
   ├─► ¿Es PE32 (0x10B, 32 bits) o PE32+ (0x20B, 64 bits)? (Lecciones 1.4 y 2.5)
   │     ├─► 32 bits (x86): argumentos en stack (cdecl/stdcall) o ECX/EDX (fastcall/thiscall);
-  │     │                  en Windows x64 corre bajo WOW64 (ver Lección 2D.2).
+  │     │                  en Windows x64 corre bajo WOW64 (ver Lección 2D.2 [Tomo II]).
   │     └─► 64 bits (x64): argumentos en RCX, RDX, R8, R9 + shadow space de 32 bytes.
   │
   └─► ¿Tiene cabecera CLR (.NET) o marcador ".net bundle" (hostfxr)? (Lección 3.1)
@@ -146,7 +150,7 @@
 <tr><td><strong>Intermedio</strong></td><td>Mi breakpoint en <code>main</code> nunca se alcanza, o una variable global ya llega alterada al entrar a <code>main</code></td><td>Código ejecutado antes del entry point principal</td><td>Revisar el directorio <strong>TLS (<code>AddressOfCallBacks</code>)</strong> en PE-bear/IDA y poner breakpoint en cada callback (<a href="02-tls.html">2.11</a>, <a href="02-anti-analisis.html">2.15</a>).</td></tr>
 <tr><td><strong>Intermedio</strong></td><td>Casi sin imports ni strings, pero lee <code>gs:[60h]</code> &rarr; <code>[rax+18h]</code> &rarr; <code>[rax+20h]</code> y rota enteros (<code>ror edx, 0Dh</code>)</td><td>Resolución dinámica de APIs por recorrido del PEB y <em>API hashing</em></td><td>Poner breakpoint en el <code>call reg</code> del resolvedor o cruzar constantes con listas de hashes de exportaciones (<a href="02-pe-fino.html">2.14</a>).</td></tr>
 <tr><td><strong>Intermedio</strong></td><td>Constantes <code>0x637c777b</code> (AES), <code>"expand 32-byte k"</code> (ChaCha20) o <code>0x9E3779B9</code> (TEA) en <code>.rdata</code>/código</td><td>Transformación criptográfica estándar o cifrado de configuración/mensajes</td><td>Etiquetar la función criptográfica por su constante mágica e interceptar su entrada/salida en vez de analizar las rondas internas (<a href="04-cripto.html">4.2</a>, <a href="02-scripting-debugger.html">2.21</a>).</td></tr>
-<tr><td><strong>Avanzado</strong></td><td>Llamadas indirectas <code>call qword ptr [rax+18h]</code> donde <code>rax</code> proviene de <code>[rcx]</code></td><td>Despacho virtual C++ (<code>vtable</code>) o interfaz COM (<code>IUnknown</code>)</td><td>Ubicar la <code>vtable</code> en <code>.rdata</code>, leer <code>vtable[-1]</code> (<code>Complete Object Locator</code>, RVAs en x64) para recuperar el nombre de la clase (<a href="02-cpp-profundo.html">2.18</a>, <a href="2d-06-com-interfaces.html">2D.6</a>).</td></tr>
+<tr><td><strong>Avanzado</strong></td><td>Llamadas indirectas <code>call qword ptr [rax+18h]</code> donde <code>rax</code> proviene de <code>[rcx]</code></td><td>Despacho virtual C++ (<code>vtable</code>) o interfaz COM (<code>IUnknown</code>)</td><td>Ubicar la <code>vtable</code> en <code>.rdata</code>, leer <code>vtable[-1]</code> (<code>Complete Object Locator</code>, RVAs en x64) para recuperar el nombre de la clase (<a href="02-cpp-profundo.html">2.18</a>, [Tomo II] <a href="2d-06-com-interfaces.html">2D.6</a>).</td></tr>
 <tr><td><strong>Avanzado</strong></td><td>El proceso muere dentro de <code>ntdll!RtlFreeHeap</code> lejos de donde ocurrió el error real</td><td>Corrupción de heap previa (desborde, <em>use-after-free</em> o <em>double free</em>)</td><td>Activar <strong>Full Page Heap</strong> (<code>gflags /p /enable app.exe /full</code>) o grabar traza <strong>TTD</strong> en WinDbg y retroceder con <code>ba w4</code> + <code>g-</code> (<a href="02-windbg-heap.html">2.19</a>).</td></tr>
 <tr><td><strong>Avanzado</strong></td><td>Archivo <code>.sys</code> que importa <code>WdfVersionBind</code> y registra <code>EvtIoDeviceControl</code></td><td>Driver de modo kernel basado en KMDF</td><td>Desglosar cada constante <code>CTL_CODE</code> del <code>switch</code> (DeviceType, Access, Function, Method), revisar <code>SDDL</code> y auditar tamaños mínimos y usos de <code>METHOD_NEITHER</code> (<a href="6-02-kmdf-ioctl.html">6.2</a>, <a href="6-04-revision-driver.html">6.4</a>).</td></tr>
 </tbody></table></div>

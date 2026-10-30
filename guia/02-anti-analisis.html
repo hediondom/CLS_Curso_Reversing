@@ -119,6 +119,63 @@ jnz   detectado</code></pre>
 <li><strong><code>ProcessDebugFlags</code> (clase <code>0x1F = 31</code>):</strong> Consulta <code>NoDebugInherit</code>; devuelve <code>0</code> si hay depurador activo y <code>1</code> si no está siendo depurado.</li>
 </ul>
 </aside>
+
+<aside class="ampliacion-ext">
+<p class="callout-titulo">Ampliación editorial basada en fuentes externas — Evasión en User-Mode: API Hooking de EDRs, Syscalls Directas (Hell's Gate / Halo's Gate) y DLL Unhooking</p>
+<p>El análisis de binarios modernos en entornos corporativos exige comprender cómo interactúa el software con los agentes de seguridad (antivirus/EDR) en el espacio de usuario (<a href="https://learn.microsoft.com/en-us/windows-hardware/drivers/debugger/x64-architecture" rel="noopener" target="_blank">Microsoft Learn: x64 Architecture & System Calls</a>):</p>
+
+<h4 style="margin: 0.8rem 0 0.4rem 0; color: #1d4f2a;">1. Mecanismo de los Inline API Hooks</h4>
+<p>Los sistemas de seguridad inyectan una DLL en cada proceso para supervisar llamadas sensibles. Para interceptar la ejecución, modifican los primeros bytes de las funciones de <code>ntdll.dll</code> reemplazando el prólogo original por un salto incondicional (<em>inline hook</em>):</p>
+<pre><code>; --- ntdll.dll original (Limpia) ---
+mov r10, rcx
+mov eax, 0x18         ; SSN (System Service Number de NtAllocateVirtualMemory)
+test byte ptr [0x7ffe0308], 1
+jne short ...
+syscall
+ret
+
+; --- ntdll.dll hookeada por un EDR ---
+jmp qword ptr [rip + 0x10240]   ; Salto (0xE9 o 0xFF 0x25) al motor de análisis del EDR</code></pre>
+
+<h4 style="margin: 0.8rem 0 0.4rem 0; color: #1d4f2a;">2. Técnicas de Evasión Reversibles</h4>
+<ul>
+<li><strong>Syscalls Directas (Direct Syscalls):</strong> El programa no invoca a <code>ntdll.dll</code>; en su lugar, define un stub propio en ensamblador con la instrucción <code>syscall</code> y el número SSN correspondiente.</li>
+<li><strong>Algoritmos Hell's Gate y Halo's Gate:</strong> Como los números SSN cambian entre versiones y compilaciones de Windows:
+  <ul>
+  <li><em>Hell's Gate (2020):</em> Parsea la tabla de exportaciones de <code>ntdll.dll</code> en memoria, localiza la función deseada y lee los bytes <code>4C 8B D1 B8 [SSN]</code>. Si la función tiene un <code>jmp</code> (está hookeada), falla.</li>
+  <li><em>Halo's Gate:</em> Supera la limitación inspeccionando las funciones vecinas inmediatamente adyacentes (offsets &plusmn;32 bytes). Si la función vecina no está hookeada, lee su SSN y le suma o resta el desplazamiento para deducir el SSN de la función bloqueada.</li>
+  </ul>
+</li>
+<li><strong>DLL Unhooking:</strong> El binario abre <code>C:\Windows\System32\ntdll.dll</code> directamente desde disco con <code>CreateFileW</code> + <code>MapViewOfFile</code>, localiza la sección <code>.text</code> limpia, cambia los permisos de la copia en memoria con <code>VirtualProtect(PAGE_EXECUTE_READWRITE)</code> y sobrescribe los hooks con <code>memcpy</code>, restaurando el prólogo original de todas las APIs.</li>
+</ul>
+
+<h4 style="margin: 0.8rem 0 0.4rem 0; color: #1d4f2a;">3. Criterio de Detección Defensiva</h4>
+<p>La presencia de instrucciones <code>syscall</code> fuera del rango de memoria virtual asignado a <code>ntdll.dll</code> o <code>win32u.dll</code> constituye una anomalía heurística de máxima prioridad que delata intentos deliberados de evasión de telemetría.</p>
+</aside>
+
+<aside class="ampliacion-ext">
+<p class="callout-titulo">Ampliación editorial basada en fuentes externas — De Direct Syscalls a Indirect Syscalls y Call Stack Spoofing</p>
+<p>Aunque las <em>Direct Syscalls</em> (Hell's Gate / Halo's Gate) permiten evitar los hooks de <code>ntdll.dll</code>, los agentes de seguridad modernos (EDRs) y el propio kernel de Windows implementan contramedidas que detectan esta técnica (<a href="https://learn.microsoft.com/en-us/windows-hardware/drivers/debugger/x64-architecture" rel="noopener" target="_blank">Microsoft Learn: x64 Architecture &amp; System Calls</a> y telemetría ETWti):</p>
+
+<h4 style="margin: 0.8rem 0 0.4rem 0; color: #1d4f2a;">1. La Limitación de las Syscalls Directas (Inspección de RIP)</h4>
+<p>Cuando la CPU ejecuta la instrucción <code>syscall</code> en Ring 3, el procesador transfiere el control al manejador del kernel (<code>KiSystemCall64</code>). Durante esta transición, el kernel captura el registro <code>RIP</code> de origen en la estructura del hilo (<em>trap frame</em>). Mediante telemetría de kernel (como <strong>ETWti</strong> —<em>Microsoft-Windows-Threat-Intelligence</em>— o <em>ProcessInstrumentationCallback</em>):</p>
+<ul>
+<li>Si el <code>RIP</code> ejecutor reside en la sección <code>.text</code> de <code>ntdll.dll</code> o <code>win32u.dll</code>, la llamada se considera conforme al diseño del sistema.</li>
+<li>Si el <code>RIP</code> apunta a la sección <code>.text</code> del propio ejecutable anfitrión o a memoria privada (<code>MEM_PRIVATE</code>), se genera una alerta inmediata por ejecución de llamadas al sistema anómalas.</li>
+</ul>
+
+<h4 style="margin: 0.8rem 0 0.4rem 0; color: #1d4f2a;">2. La Solución: Indirect Syscalls</h4>
+<p>Para satisfacer la validación del <code>RIP</code> sin pasar por los hooks del EDR, el cargador prepara los registros de la llamada en su propio código, pero en lugar de emitir el opcode <code>0F 05</code> (<code>syscall</code>), realiza un salto (<code>jmp</code>) a una instrucción <code>syscall ; ret</code> legítima ya existente dentro de <code>ntdll.dll</code>:</p>
+<pre><code>; --- Stub en el binario (Indirect Syscall) ---
+mov r10, rcx
+mov eax, 0x18                      ; SSN deducido dinámicamente con Halo's Gate
+jmp qword ptr [rip + pfn_syscall]  ; Salta a la instrucción "syscall; ret" dentro de ntdll</code></pre>
+<p>Al ejecutarse el <code>syscall</code> físicamente dentro del espacio de memoria de <code>ntdll.dll</code>, el <code>RIP</code> registrado en el kernel resulta 100 % legítimo.</p>
+
+<h4 style="margin: 0.8rem 0 0.4rem 0; color: #1d4f2a;">3. El Problema del Call Stack Walking y Call Stack Spoofing</h4>
+<p>Aun con <em>Indirect Syscalls</em>, los EDRs avanzados inspeccionan la pila de llamadas retrospectiva (<em>Call Stack Unwinding</em> guiado por las tablas <code>.pdata</code> / <code>UNWIND_INFO</code> vistas en la lección 2.14). Si el frame inmediatamente anterior a <code>ntdll!NtAllocateVirtualMemory</code> no es una API de alto nivel (como <code>kernelbase.dll!VirtualAllocEx</code>), sino memoria no respaldada o un salto anómalo, la llamada es detectada. Para evadir esto, los cargadores avanzados implementan <strong>Call Stack Spoofing</strong> (sintetizando marcos de pila falsos para simular que la llamada se originó en una secuencia legítima de Windows).</p>
+<p><em>Nota sobre Tartarus' Gate:</em> Algunos EDRs modernos colocan su hook <code>jmp</code> no en el byte <code>+0</code>, sino después de <code>mov r10, rcx</code> (en el byte <code>+3</code>). La variante <em>Tartarus' Gate</em> verifica si el hook está desplazado y ajusta el puntero de lectura para no confundir el prólogo.</p>
+</aside>
 </main>
 <footer class="pie">
   <p>Material educativo y defensivo. Las prácticas se limitan a programas propios, software abierto o crackmes diseñados para aprender. No se enseña a eludir licencias, DRM ni controles de acceso.</p>

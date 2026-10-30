@@ -232,19 +232,6 @@
 </tbody></table></div>
 <aside class="callout nota"><p class="callout-titulo">¿Falta un término?</p><p>Si una lección usa una palabra que no está acá, anotala en tu bitácora. El glosario se amplía con las dudas reales, no con definiciones que nadie usa.</p></aside>
 
-<aside class="ampliacion-ext">
-<p class="callout-titulo">Ampliación editorial basada en fuentes externas — Términos adicionales (Revisión 5.2)</p>
-<div class="tabla"><table>
-<thead><tr><th>Término</th><th>Explicación</th></tr></thead>
-<tbody>
-<tr><td><strong><code>arg.get(n)</code> (x64dbg)</strong></td><td>Función de expresión de x64dbg que lee el argumento <code>n</code> (basado en 0) según la arquitectura (<code>[esp+4*(n+1)]</code> en x86; <code>RCX</code>, <code>RDX</code>, <code>R8</code>, <code>R9</code> en x64). Ver <a href="guia/02-debugger.html">Debugger</a>.</td></tr>
-<tr><td><strong>ChaCha20</strong></td><td>Cifrado de flujo moderno (RFC 8439) basado en operaciones ARX (<code>ADD</code>, <code>ROTATE</code>, <code>XOR</code>) sobre 16 palabras de 32 bits; se reconoce por la constante ASCII <code>"expand 32-byte k"</code> (<code>0x61707865...</code>). Ver <a href="guia/04-cripto.html">Criptografía</a>.</td></tr>
-<tr><td><strong><code>__CxxFrameHandler4</code> (FH4)</strong></td><td>Manejador de excepciones C++ por defecto en MSVC x64 (VS 2019 16.3+ / 2022) que comprime las tablas de <code>.xdata</code> en <code>FuncInfo4</code> sin la firma fija <code>0x19930520</code>. Ver <a href="guia/02-cpp-profundo.html">C++ profundo</a>.</td></tr>
-<tr><td><strong><code>ida_typeinf</code> (<code>tinfo_t</code>)</strong></td><td>Módulo de IDAPython que en IDA 9.0+ reemplazó a los módulos eliminados <code>ida_struct</code> e <code>ida_enum</code> para manipular estructuras y enumeraciones. Ver <a href="guia/05-automatizacion.html">Automatización</a>.</td></tr>
-<tr><td><strong>ReadyToRun (R2R) / Single-File (.NET)</strong></td><td>Variantes de despliegue en .NET moderno: <em>Single-File</em> concatena las DLLs de IL dentro de un <code>apphost.exe</code> nativo, y <em>R2R</em> agrega código nativo precompilado (<code>READYTORUN_HEADER</code>, <code>"RTR\0"</code>) conservando el IL original. Ver <a href="guia/03-dotnet-runtime.html">.NET runtime</a>.</td></tr>
-<tr><td><strong>Segment Heap</strong></td><td>Administrador de heap moderno de Windows 10/11 (firma <code>0xDDEEDDEE</code>), usado por servicios del sistema y apps con manifiesto <code>segmentHeap</code>, distinto del <em>NT Heap</em> clásico (<code>0xEEFFEEFF</code>). Ver <a href="guia/02-windbg-heap.html">WinDbg y heap</a>.</td></tr>
-</tbody></table></div>
-</aside>
 </main>
 <footer class="pie">
   <p>Material educativo y defensivo. Las prácticas se limitan a programas propios, software abierto o crackmes diseñados para aprender. No se enseña a eludir licencias, DRM ni controles de acceso.</p>

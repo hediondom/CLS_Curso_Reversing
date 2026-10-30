@@ -369,6 +369,14 @@ main { max-width: none; padding: 0; }
 .print-sec .callout, .print-sec .gate, .print-sec details, .print-sec .ampliacion-ext, .print-sec .nota-ed { break-inside: avoid; page-break-inside: avoid; }
 .print-sec h2, .print-sec h3, .print-sec h4 { break-after: avoid; page-break-after: avoid; }
 .print-sec a { color: #000; text-decoration: none; }
+.hoja-compacta { font-size: 8.5pt; line-height: 1.25; }
+.hoja-compacta h2 { font-size: 11pt !important; margin: 0 0 4pt !important; border-bottom: 1px solid #0b5f6b; padding-bottom: 2pt; color: #0b5f6b; }
+.hoja-compacta h3 { font-size: 9.3pt !important; margin: 4pt 0 2pt !important; color: #222; }
+.hoja-compacta table { font-size: 7.6pt !important; margin: 2px 0 4px !important; }
+.hoja-compacta th, .hoja-compacta td { padding: 2px 4px !important; }
+.hoja-compacta pre { font-size: 7.2pt !important; line-height: 1.15 !important; margin: 2px 0 !important; padding: 2px 4px !important; }
+.hoja-compacta ul, .hoja-compacta p { margin: 2px 0 3px !important; }
+.hoja-compacta li { margin-bottom: 2px !important; }
 .portada-pdf { text-align: left; padding-top: 26mm; }
 .portada-pdf .kicker { color: #0b5f6b; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; font-size: 9pt; }
 .portada-pdf h1 { font-size: 34pt; line-height: 1.05; margin: .2em 0 .3em; }
@@ -387,15 +395,15 @@ details.qa summary { font-size: 10pt; }
 </style></head><body><main>
 
 <section class="print-sec portada-pdf" id="portada">
-<p class="kicker">Proyecto CLS · Edición 5 · Revisión 5.2 (Ampliada) · TOMO I DE II</p>
+<p class="kicker">Proyecto CLS · Edición 5 · Revisión 5.4 (Ampliada) · TOMO I DE II</p>
 <h1>Curso de reversing<br><span style="font-size: 20pt; font-weight: 600; color: #0b5f6b;">Tomo I · Tronco Principal (Etapas 0 a 5) y Material de Apoyo</span></h1>
-<p class="sub">De los fundamentos al análisis guiado en user-mode: arquitectura x86/x64, formato PE, IDA, Ghidra, x64dbg, .NET, método de 5 pasos, criptografía, formatos/protocolos, C++ profundo, WinDbg/TTD, análisis de malware y vulnerabilidades.</p>
+<p class="sub">De los fundamentos al análisis guiado en user-mode: arquitectura x86/x64, formato PE y DLLs (ciclo de vida y sideloading), IDA, Ghidra, x64dbg (flujo táctico y extracción masiva de strings), reversing de Go y Rust, evasión en user-mode (API hooking, direct/indirect syscalls y call stack spoofing), inyección de procesos en memoria, criptografía híbrida y APIs nativas (CryptoAPI/CNG), .NET, C++ profundo, WinDbg/TTD, malware y vulnerabilidades.</p>
 <p class="sub"><strong>Contenido de este volumen (Tomo I):</strong> Apertura y 3 Rutas de Estudio · Etapas 0, 1, 2 (2A, 2B, 2C y optativas 2.22–2.24), 3, 4 y 5 · Hilo conductor multi-nivel y Kit de 5 plantillas C/C++ · 3 Hojas de referencia rápida (<em>Cheat Sheets</em>) · Glosario · Preguntas y respuestas · Fuentes y límites.</p>
 <p class="sub"><strong>En el Tomo II y Separata:</strong> La <strong>Etapa 6 (Kernel y drivers KMDF)</strong> y la <strong>Rama 2D (Windows internals y Hyper-V)</strong> se encuentran encuadernadas en el <strong>Tomo II</strong>. Para consulta rápida junto al teclado, usá la <strong>Separata de Escritorio</strong>.</p>
 <div class="aviso"><strong>Material educativo y defensivo.</strong> Las prácticas usan programas propios, software abierto o crackmes diseñados para aprender. No se enseña a eludir licencias, DRM ni controles de acceso.</div>
 </section>
 
-<section class="print-sec" id="toc"><h1>Contenido — Tomo I</h1><div class="toc"><div class="etapa">Apertura</div><ol><li><a href="#portada-texto">Cómo estudiar y qué se revisó</a><span class="toc-pag" data-anchor="portada-texto">p. 3-9 · 7 págs.</span></li><li><a href="#mapa-curso">Mapa del curso y rutas de estudio</a><span class="toc-pag" data-anchor="mapa-curso">p. 10-13 · 4 págs.</span></li></ol><div class="etapa"><a href="#sec-guia-etapa-0">Etapa 0</a><span class="toc-pag" data-anchor="sec-guia-etapa-0">p. 14 · 1 pág.</span></div><ol><li><a href="#sec-guia-00-laboratorio">0.1 Laboratorio</a><span class="toc-pag" data-anchor="sec-guia-00-laboratorio">p. 15-20 · 6 págs.</span></li></ol><div class="etapa"><a href="#sec-guia-etapa-1">Etapa 1</a><span class="toc-pag" data-anchor="sec-guia-etapa-1">p. 21-22 · 2 págs.</span></div><ol><li><a href="#sec-guia-01-numeros">1.1 Números y hexadecimal</a><span class="toc-pag" data-anchor="sec-guia-01-numeros">p. 23-28 · 6 págs.</span></li><li><a href="#sec-guia-01-memoria">1.2 Memoria y stack</a><span class="toc-pag" data-anchor="sec-guia-01-memoria">p. 29-35 · 7 págs.</span></li><li><a href="#sec-guia-01-procesos">1.3 Procesos e hilos</a><span class="toc-pag" data-anchor="sec-guia-01-procesos">p. 36-40 · 5 págs.</span></li><li><a href="#sec-guia-01-pe">1.4 Formato PE</a><span class="toc-pag" data-anchor="sec-guia-01-pe">p. 41-46 · 6 págs.</span></li><li><a href="#sec-guia-01-c-python">1.5 C y Python</a><span class="toc-pag" data-anchor="sec-guia-01-c-python">p. 47-53 · 7 págs.</span></li></ol><div class="etapa"><a href="#sec-guia-etapa-2">Etapa 2</a><span class="toc-pag" data-anchor="sec-guia-etapa-2">p. 54-57 · 4 págs.</span></div><ol><li><a href="#sec-guia-02-registros">2.1 Registros y flags</a><span class="toc-pag" data-anchor="sec-guia-02-registros">p. 58-62 · 5 págs.</span></li><li><a href="#sec-guia-02-instrucciones">2.2 Instrucciones</a><span class="toc-pag" data-anchor="sec-guia-02-instrucciones">p. 63-68 · 6 págs.</span></li><li><a href="#sec-guia-02-flotante">2.3 Punto flotante y SSE</a><span class="toc-pag" data-anchor="sec-guia-02-flotante">p. 69-73 · 5 págs.</span></li><li><a href="#sec-guia-02-flujo">2.4 Flujo</a><span class="toc-pag" data-anchor="sec-guia-02-flujo">p. 74-80 · 7 págs.</span></li><li><a href="#sec-guia-02-llamadas">2.5 Llamadas</a><span class="toc-pag" data-anchor="sec-guia-02-llamadas">p. 81-86 · 6 págs.</span></li><li><a href="#sec-guia-02-debugger">2.6 Debugger</a><span class="toc-pag" data-anchor="sec-guia-02-debugger">p. 87-95 · 9 págs.</span></li><li><a href="#sec-guia-02-ida">2.7 IDA</a><span class="toc-pag" data-anchor="sec-guia-02-ida">p. 96-106 · 11 págs.</span></li><li><a href="#sec-guia-02-optimizaciones">2.8 Optimizaciones</a><span class="toc-pag" data-anchor="sec-guia-02-optimizaciones">p. 107-110 · 4 págs.</span></li><li><a href="#sec-guia-02-herramientas">2.9 Herramientas</a><span class="toc-pag" data-anchor="sec-guia-02-herramientas">p. 111-116 · 6 págs.</span></li><li><a href="#sec-guia-02-ofuscacion">2.10 Ofuscación nativa</a><span class="toc-pag" data-anchor="sec-guia-02-ofuscacion">p. 117-122 · 6 págs.</span></li><li><a href="#sec-guia-02-tls">2.11 TLS callbacks</a><span class="toc-pag" data-anchor="sec-guia-02-tls">p. 123-126 · 4 págs.</span></li><li><a href="#sec-guia-02-mfc">2.12 MFC</a><span class="toc-pag" data-anchor="sec-guia-02-mfc">p. 127-130 · 4 págs.</span></li><li><a href="#sec-guia-02-huella-compilador">2.13 Huella de compilador</a><span class="toc-pag" data-anchor="sec-guia-02-huella-compilador">p. 131-136 · 6 págs.</span></li><li><a href="#sec-guia-02-pe-fino">2.14 PE fino</a><span class="toc-pag" data-anchor="sec-guia-02-pe-fino">p. 137-144 · 8 págs.</span></li><li><a href="#sec-guia-02-anti-analisis">2.15 Taxonomía anti-análisis</a><span class="toc-pag" data-anchor="sec-guia-02-anti-analisis">p. 145-150 · 6 págs.</span></li><li><a href="#sec-guia-02-ghidra">2.16 Ghidra/Cutter</a><span class="toc-pag" data-anchor="sec-guia-02-ghidra">p. 151-155 · 5 págs.</span></li><li><a href="#sec-guia-02-packers">2.17 Packers didácticos</a><span class="toc-pag" data-anchor="sec-guia-02-packers">p. 156-161 · 6 págs.</span></li><li><a href="#sec-guia-02-cpp-profundo">2.18 C++ profundo</a><span class="toc-pag" data-anchor="sec-guia-02-cpp-profundo">p. 162-169 · 8 págs.</span></li><li><a href="#sec-guia-02-windbg-heap">2.19 WinDbg, TTD y heap</a><span class="toc-pag" data-anchor="sec-guia-02-windbg-heap">p. 170-173 · 4 págs.</span></li><li><a href="#sec-guia-02-patch-diffing">2.20 Patch diffing y CVE</a><span class="toc-pag" data-anchor="sec-guia-02-patch-diffing">p. 174-178 · 5 págs.</span></li><li><a href="#sec-guia-02-scripting-debugger">2.21 Scripting de debugger</a><span class="toc-pag" data-anchor="sec-guia-02-scripting-debugger">p. 179-184 · 6 págs.</span></li><li><a href="#sec-guia-02-opt-malware-dinamico">2.22 (opt) Malware dinámico</a><span class="toc-pag" data-anchor="sec-guia-02-opt-malware-dinamico">p. 185-187 · 3 págs.</span></li><li><a href="#sec-guia-02-opt-shellcode-c2">2.23 (opt) Shellcode, red y C2</a><span class="toc-pag" data-anchor="sec-guia-02-opt-shellcode-c2">p. 188-190 · 3 págs.</span></li><li><a href="#sec-guia-02-opt-fuzzing">2.24 (opt) Fuzzing y simbólico</a><span class="toc-pag" data-anchor="sec-guia-02-opt-fuzzing">p. 191-194 · 4 págs.</span></li></ol><div class="etapa"><a href="#sec-guia-etapa-3">Etapa 3</a><span class="toc-pag" data-anchor="sec-guia-etapa-3">p. 195-196 · 2 págs.</span></div><ol><li><a href="#sec-guia-03-dotnet-runtime">3.1 .NET runtime</a><span class="toc-pag" data-anchor="sec-guia-03-dotnet-runtime">p. 197-202 · 6 págs.</span></li><li><a href="#sec-guia-03-dotnet-il">3.2 Leer IL</a><span class="toc-pag" data-anchor="sec-guia-03-dotnet-il">p. 203-208 · 6 págs.</span></li></ol><div class="etapa"><a href="#sec-guia-etapa-4">Etapa 4</a><span class="toc-pag" data-anchor="sec-guia-etapa-4">p. 209-210 · 2 págs.</span></div><ol><li><a href="#sec-guia-04-metodo">4.1 Método de análisis</a><span class="toc-pag" data-anchor="sec-guia-04-metodo">p. 211-221 · 11 págs.</span></li><li><a href="#sec-guia-04-formatos-protocolos">4.5 Reconstruir formatos y protocolos</a><span class="toc-pag" data-anchor="sec-guia-04-formatos-protocolos">p. 222-226 · 5 págs.</span></li><li><a href="#sec-guia-04-cripto">4.2 Reconocer criptografía</a><span class="toc-pag" data-anchor="sec-guia-04-cripto">p. 227-231 · 5 págs.</span></li><li><a href="#sec-guia-04-informe">4.3 Informe</a><span class="toc-pag" data-anchor="sec-guia-04-informe">p. 232-236 · 5 págs.</span></li><li><a href="#sec-guia-04-dinamico-seguro">4.4 Dinámico seguro</a><span class="toc-pag" data-anchor="sec-guia-04-dinamico-seguro">p. 237-241 · 5 págs.</span></li></ol><div class="etapa"><a href="#sec-guia-etapa-5">Etapa 5</a><span class="toc-pag" data-anchor="sec-guia-etapa-5">p. 242-243 · 2 págs.</span></div><ol><li><a href="#sec-guia-05-malware">5.1 Malware</a><span class="toc-pag" data-anchor="sec-guia-05-malware">p. 244-248 · 5 págs.</span></li><li><a href="#sec-guia-05-vulnerabilidades">5.2 Vulnerabilidades</a><span class="toc-pag" data-anchor="sec-guia-05-vulnerabilidades">p. 249-255 · 7 págs.</span></li><li><a href="#sec-guia-05-automatizacion">5.3 Automatización</a><span class="toc-pag" data-anchor="sec-guia-05-automatizacion">p. 256-264 · 9 págs.</span></li><li><a href="#sec-guia-05-fuera-de-alcance">5.4 Fuera de alcance</a><span class="toc-pag" data-anchor="sec-guia-05-fuera-de-alcance">p. 265-268 · 4 págs.</span></li></ol><div class="etapa">Material de apoyo (en este Tomo I)</div><ol><li><a href="#hilo-plantillas">Hilo conductor y plantillas C/C++</a><span class="toc-pag" data-anchor="hilo-plantillas">p. 269-277 · 9 págs.</span></li><li><a href="#hojas-referencia">Hojas de referencia rápida (Cheat Sheets)</a><span class="toc-pag" data-anchor="hojas-referencia">p. 278-283 · 6 págs.</span></li><li><a href="#glosario">Glosario</a><span class="toc-pag" data-anchor="glosario">p. 284-295 · 12 págs.</span></li><li><a href="#preguntas">Preguntas y respuestas</a><span class="toc-pag" data-anchor="preguntas">p. 296-304 · 9 págs.</span></li><li><a href="#fuentes">Fuentes y límites</a><span class="toc-pag" data-anchor="fuentes">p. 305-313 · 9 págs.</span></li></ol><div class="etapa" style="margin-top:10pt; color:#555;">En el Tomo II (Ramas Especializadas)</div><ol><li><span>Etapa 6 · Kernel y drivers en Windows (6.1 a 6.6)</span><span class="toc-pag">ver Tomo II</span></li><li><span>Rama 2D · Windows internals y Hyper-V (2D.1 a 2D.13)</span><span class="toc-pag">ver Tomo II</span></li></ol></div></section>
+<section class="print-sec" id="toc"><h1>Contenido — Tomo I</h1><div class="toc"><div class="etapa">Apertura</div><ol><li><a href="#portada-texto">Cómo estudiar y qué se revisó</a><span class="toc-pag" data-anchor="portada-texto">p. 3-9 · 7 págs.</span></li><li><a href="#mapa-curso">Mapa del curso y rutas de estudio</a><span class="toc-pag" data-anchor="mapa-curso">p. 10-13 · 4 págs.</span></li></ol><div class="etapa"><a href="#sec-guia-etapa-0">Etapa 0</a><span class="toc-pag" data-anchor="sec-guia-etapa-0">p. 14 · 1 pág.</span></div><ol><li><a href="#sec-guia-00-laboratorio">0.1 Laboratorio</a><span class="toc-pag" data-anchor="sec-guia-00-laboratorio">p. 15-20 · 6 págs.</span></li></ol><div class="etapa"><a href="#sec-guia-etapa-1">Etapa 1</a><span class="toc-pag" data-anchor="sec-guia-etapa-1">p. 21-22 · 2 págs.</span></div><ol><li><a href="#sec-guia-01-numeros">1.1 Números y hexadecimal</a><span class="toc-pag" data-anchor="sec-guia-01-numeros">p. 23-28 · 6 págs.</span></li><li><a href="#sec-guia-01-memoria">1.2 Memoria y stack</a><span class="toc-pag" data-anchor="sec-guia-01-memoria">p. 29-35 · 7 págs.</span></li><li><a href="#sec-guia-01-procesos">1.3 Procesos e hilos</a><span class="toc-pag" data-anchor="sec-guia-01-procesos">p. 36-40 · 5 págs.</span></li><li><a href="#sec-guia-01-pe">1.4 Formato PE</a><span class="toc-pag" data-anchor="sec-guia-01-pe">p. 41-48 · 8 págs.</span></li><li><a href="#sec-guia-01-c-python">1.5 C y Python</a><span class="toc-pag" data-anchor="sec-guia-01-c-python">p. 49-55 · 7 págs.</span></li></ol><div class="etapa"><a href="#sec-guia-etapa-2">Etapa 2</a><span class="toc-pag" data-anchor="sec-guia-etapa-2">p. 56-59 · 4 págs.</span></div><ol><li><a href="#sec-guia-02-registros">2.1 Registros y flags</a><span class="toc-pag" data-anchor="sec-guia-02-registros">p. 60-64 · 5 págs.</span></li><li><a href="#sec-guia-02-instrucciones">2.2 Instrucciones</a><span class="toc-pag" data-anchor="sec-guia-02-instrucciones">p. 65-70 · 6 págs.</span></li><li><a href="#sec-guia-02-flotante">2.3 Punto flotante y SSE</a><span class="toc-pag" data-anchor="sec-guia-02-flotante">p. 71-75 · 5 págs.</span></li><li><a href="#sec-guia-02-flujo">2.4 Flujo</a><span class="toc-pag" data-anchor="sec-guia-02-flujo">p. 76-82 · 7 págs.</span></li><li><a href="#sec-guia-02-llamadas">2.5 Llamadas</a><span class="toc-pag" data-anchor="sec-guia-02-llamadas">p. 83-88 · 6 págs.</span></li><li><a href="#sec-guia-02-debugger">2.6 Debugger</a><span class="toc-pag" data-anchor="sec-guia-02-debugger">p. 89-100 · 12 págs.</span></li><li><a href="#sec-guia-02-ida">2.7 IDA</a><span class="toc-pag" data-anchor="sec-guia-02-ida">p. 101-111 · 11 págs.</span></li><li><a href="#sec-guia-02-optimizaciones">2.8 Optimizaciones</a><span class="toc-pag" data-anchor="sec-guia-02-optimizaciones">p. 112-115 · 4 págs.</span></li><li><a href="#sec-guia-02-herramientas">2.9 Herramientas</a><span class="toc-pag" data-anchor="sec-guia-02-herramientas">p. 116-121 · 6 págs.</span></li><li><a href="#sec-guia-02-ofuscacion">2.10 Ofuscación nativa</a><span class="toc-pag" data-anchor="sec-guia-02-ofuscacion">p. 122-128 · 7 págs.</span></li><li><a href="#sec-guia-02-tls">2.11 TLS callbacks</a><span class="toc-pag" data-anchor="sec-guia-02-tls">p. 129-132 · 4 págs.</span></li><li><a href="#sec-guia-02-mfc">2.12 MFC</a><span class="toc-pag" data-anchor="sec-guia-02-mfc">p. 133-136 · 4 págs.</span></li><li><a href="#sec-guia-02-huella-compilador">2.13 Huella de compilador</a><span class="toc-pag" data-anchor="sec-guia-02-huella-compilador">p. 137-144 · 8 págs.</span></li><li><a href="#sec-guia-02-pe-fino">2.14 PE fino</a><span class="toc-pag" data-anchor="sec-guia-02-pe-fino">p. 145-152 · 8 págs.</span></li><li><a href="#sec-guia-02-anti-analisis">2.15 Taxonomía anti-análisis</a><span class="toc-pag" data-anchor="sec-guia-02-anti-analisis">p. 153-160 · 8 págs.</span></li><li><a href="#sec-guia-02-ghidra">2.16 Ghidra/Cutter</a><span class="toc-pag" data-anchor="sec-guia-02-ghidra">p. 161-165 · 5 págs.</span></li><li><a href="#sec-guia-02-packers">2.17 Packers didácticos</a><span class="toc-pag" data-anchor="sec-guia-02-packers">p. 166-171 · 6 págs.</span></li><li><a href="#sec-guia-02-cpp-profundo">2.18 C++ profundo</a><span class="toc-pag" data-anchor="sec-guia-02-cpp-profundo">p. 172-179 · 8 págs.</span></li><li><a href="#sec-guia-02-windbg-heap">2.19 WinDbg, TTD y heap</a><span class="toc-pag" data-anchor="sec-guia-02-windbg-heap">p. 180-183 · 4 págs.</span></li><li><a href="#sec-guia-02-patch-diffing">2.20 Patch diffing y CVE</a><span class="toc-pag" data-anchor="sec-guia-02-patch-diffing">p. 184-188 · 5 págs.</span></li><li><a href="#sec-guia-02-scripting-debugger">2.21 Scripting de debugger</a><span class="toc-pag" data-anchor="sec-guia-02-scripting-debugger">p. 189-194 · 6 págs.</span></li><li><a href="#sec-guia-02-opt-malware-dinamico">2.22 (opt) Malware dinámico</a><span class="toc-pag" data-anchor="sec-guia-02-opt-malware-dinamico">p. 195-198 · 4 págs.</span></li><li><a href="#sec-guia-02-opt-shellcode-c2">2.23 (opt) Shellcode, red y C2</a><span class="toc-pag" data-anchor="sec-guia-02-opt-shellcode-c2">p. 199-201 · 3 págs.</span></li><li><a href="#sec-guia-02-opt-fuzzing">2.24 (opt) Fuzzing y simbólico</a><span class="toc-pag" data-anchor="sec-guia-02-opt-fuzzing">p. 202-205 · 4 págs.</span></li></ol><div class="etapa"><a href="#sec-guia-etapa-3">Etapa 3</a><span class="toc-pag" data-anchor="sec-guia-etapa-3">p. 206-207 · 2 págs.</span></div><ol><li><a href="#sec-guia-03-dotnet-runtime">3.1 .NET runtime</a><span class="toc-pag" data-anchor="sec-guia-03-dotnet-runtime">p. 208-213 · 6 págs.</span></li><li><a href="#sec-guia-03-dotnet-il">3.2 Leer IL</a><span class="toc-pag" data-anchor="sec-guia-03-dotnet-il">p. 214-219 · 6 págs.</span></li></ol><div class="etapa"><a href="#sec-guia-etapa-4">Etapa 4</a><span class="toc-pag" data-anchor="sec-guia-etapa-4">p. 220-221 · 2 págs.</span></div><ol><li><a href="#sec-guia-04-metodo">4.1 Método de análisis</a><span class="toc-pag" data-anchor="sec-guia-04-metodo">p. 222-232 · 11 págs.</span></li><li><a href="#sec-guia-04-cripto">4.2 Reconocer criptografía</a><span class="toc-pag" data-anchor="sec-guia-04-cripto">p. 233-241 · 9 págs.</span></li><li><a href="#sec-guia-04-informe">4.3 Informe</a><span class="toc-pag" data-anchor="sec-guia-04-informe">p. 242-246 · 5 págs.</span></li><li><a href="#sec-guia-04-dinamico-seguro">4.4 Dinámico seguro</a><span class="toc-pag" data-anchor="sec-guia-04-dinamico-seguro">p. 247-251 · 5 págs.</span></li><li><a href="#sec-guia-04-formatos-protocolos">4.5 Reconstruir formatos y protocolos</a><span class="toc-pag" data-anchor="sec-guia-04-formatos-protocolos">p. 252-256 · 5 págs.</span></li></ol><div class="etapa"><a href="#sec-guia-etapa-5">Etapa 5</a><span class="toc-pag" data-anchor="sec-guia-etapa-5">p. 257-258 · 2 págs.</span></div><ol><li><a href="#sec-guia-05-malware">5.1 Malware</a><span class="toc-pag" data-anchor="sec-guia-05-malware">p. 259-263 · 5 págs.</span></li><li><a href="#sec-guia-05-vulnerabilidades">5.2 Vulnerabilidades</a><span class="toc-pag" data-anchor="sec-guia-05-vulnerabilidades">p. 264-270 · 7 págs.</span></li><li><a href="#sec-guia-05-automatizacion">5.3 Automatización</a><span class="toc-pag" data-anchor="sec-guia-05-automatizacion">p. 271-279 · 9 págs.</span></li><li><a href="#sec-guia-05-fuera-de-alcance">5.4 Fuera de alcance</a><span class="toc-pag" data-anchor="sec-guia-05-fuera-de-alcance">p. 280-283 · 4 págs.</span></li></ol><div class="etapa">Material de apoyo (en este Tomo I)</div><ol><li><a href="#hilo-plantillas">Hilo conductor y plantillas C/C++</a><span class="toc-pag" data-anchor="hilo-plantillas">p. 284-292 · 9 págs.</span></li><li><a href="#hojas-referencia">Hojas de referencia rápida (Cheat Sheets)</a><span class="toc-pag" data-anchor="hojas-referencia">p. 293-298 · 6 págs.</span></li><li><a href="#glosario">Glosario</a><span class="toc-pag" data-anchor="glosario">p. 299-309 · 11 págs.</span></li><li><a href="#preguntas">Preguntas y respuestas</a><span class="toc-pag" data-anchor="preguntas">p. 310-318 · 9 págs.</span></li><li><a href="#fuentes">Fuentes y límites</a><span class="toc-pag" data-anchor="fuentes">p. 319-327 · 9 págs.</span></li></ol><div class="etapa" style="margin-top:10pt; color:#555;">En el Tomo II (Ramas Especializadas)</div><ol><li><span>Etapa 6 · Kernel y drivers en Windows (6.1 a 6.6)</span><span class="toc-pag">ver Tomo II</span></li><li><span>Rama 2D · Windows internals y Hyper-V (2D.1 a 2D.13)</span><span class="toc-pag">ver Tomo II</span></li></ol></div></section>
 <section class="print-sec" id="portada-texto">
 <h1 id="de-miles-de-mensajes-a-un-curso-que-se-puede-estudiar">De miles de mensajes a un curso que se puede estudiar</h1>
 <p>Este paquete convierte el material útil del proyecto <strong>CLS</strong> en un curso de reversing en español, progresivo y verificable. No es un índice ni una lista de enlaces: cada lección explica un concepto, lo conecta con lo anterior, muestra un ejemplo paso a paso, propone una práctica y te permite comprobar si aprendiste.</p>
@@ -528,6 +536,10 @@ details.qa summary { font-size: 10pt; }
 </tbody></table></div>
 <h2 id="cómo-estudiar">Cómo estudiar</h2>
 <ol><li>Leé la lección completa, sin saltear los ejemplos.</li><li>Hacé la práctica en el laboratorio; no solo leas.</li><li>Respondé las preguntas <strong>antes</strong> de abrir las respuestas.</li><li>Verificá la puerta de salida. Si no la pasás, repetí la práctica.</li><li>Anotá en <code>seguimiento.csv</code> qué hiciste, cuánto tardaste y qué duda quedó.</li></ol>
+
+
+
+
 <h2 id="tres-perfiles-o-rutas-de-estudio-principiante-intermedio-y-avanzado">Tres perfiles o rutas de estudio (Principiante, Intermedio y Avanzado)</h2>
 <p>Aunque el curso completo supera las 400 páginas al sumar el tronco obligatorio (Etapas 0–4), los bloques intermedio y avanzado de la Etapa 2 (2B y 2C), la rama de Windows internals (2D) y la de Kernel y drivers (Etapa 6), <strong>no hace falta leerlo de corrido de principio a fin en una sola sentada</strong>. Podés recorrerlo en tres hitos progresivos claramente delimitados según tu nivel actual y tu objetivo:</p>
 <div class="tabla"><table>
@@ -1173,10 +1185,52 @@ for i in range(nsec):
 <h2 id="antes-de-avanzar">Antes de avanzar</h2>
 <p>Tenés que poder:</p>
 <ul><li>Recorrer la cabecera PE y ubicar entry point, image base y secciones.</li><li>Convertir una VA en offset y verificarla en el archivo.</li><li>Explicar qué es la IAT y leer un <code>call dword ptr [dirección]</code>.</li><li>Reconocer las señales de un binario empacado y decir por qué no lo vas a desempaquetar en este curso.</li></ul>
-<aside class="callout nota"><p class="callout-titulo">Puerta de salida de la Etapa 1</p><p>Si podés hacer el recorrido completo con tu propio <code>.exe</code> y explicar cada paso, terminaste los fundamentos. La Etapa 2 empieza con el lenguaje del procesador: assembly.</p></aside>
+<aside class="callout nota"><p class="callout-titulo">Hito de verificación — Formato PE</p><p>Si podés hacer el recorrido completo con tu propio <code>.exe</code> y explicar cada paso, dominás la cabecera PE y la tabla de imports. La Lección 1.5 complementa estos fundamentos con código en C y Python antes de entrar a Assembly en la Etapa 2.</p></aside>
+<section class="subseccion-ampliacion" id="ciclo-vida-dll-sideloading">
+<h2 id="ampliacion-ciclo-vida-dll">Ampliación: Ciclo de vida de DLLs, depuración y técnica de DLL Sideloading / Proxying</h2>
+<aside class="ampliacion-ext">
+<p class="callout-titulo">Ampliación editorial basada en fuentes externas</p>
+<p>Las bibliotecas de enlace dinámico (<code>.dll</code>) constituyen la unidad fundamental de modularidad y ejecución en Windows. Su análisis dinámico y los vectores de interceptación más comunes se rigen por las siguientes reglas técnicas (<a href="https://learn.microsoft.com/en-us/windows/win32/dlls/dynamic-link-library-best-practices">Microsoft Learn: DLL Best Practices</a>):</p>
+
+<h3 style="margin: 0.8rem 0 0.4rem 0; color: #1d4f2a;">1. Ciclo de Vida y DllMain</h3>
+<p>El punto de entrada de una DLL tiene la firma estandarizada:</p>
+<pre><code>BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvReserved);</code></pre>
+<ul>
+<li><strong><code>DLL_PROCESS_ATTACH</code> (1):</strong> Se ejecuta cuando el proceso mapea la DLL por primera vez (mediante import estático o llamada explícita a <code>LoadLibraryA/W</code>). Si <code>DllMain</code> devuelve <code>FALSE</code>, el proceso anfitrión aborta su inicio con error de inicialización.</li>
+<li><strong><code>DLL_THREAD_ATTACH</code> (2) / <code>DLL_THREAD_DETACH</code> (3):</strong> Se invocan cada vez que un hilo secundario se crea o termina limpiamente en el proceso.</li>
+<li><strong><code>DLL_PROCESS_DETACH</code> (0):</strong> Se ejecuta cuando la DLL es descargada (vía <code>FreeLibrary</code> o al cerrar el proceso).</li>
+<li><strong>La restricción del <em>Loader Lock</em>:</strong> Durante la ejecución de <code>DllMain</code>, el sistema mantiene adquirido un bloqueo exclusivo del cargador (<em>Loader Lock</em>). Intentar llamar a <code>LoadLibrary</code>, crear procesos o sincronizar hilos dentro de <code>DllMain</code> puede provocar un interbloqueo (<em>deadlock</em>) irreversible.</li>
+</ul>
+
+<h3 style="margin: 0.8rem 0 0.4rem 0; color: #1d4f2a;">2. Cómo Depurar una DLL en x64dbg e IDA Pro</h3>
+<ul>
+<li><strong>Opción A — Mediante Rundll32:</strong> Configurar como ejecutable anfitrión en el depurador:
+<pre><code>C:\Windows\System32\rundll32.exe C:\ruta\libreria.dll,NombreDeExportada</code></pre></li>
+<li><strong>Opción B — Eventos de carga en x64dbg:</strong> En x64dbg, acceder a <em>Opciones -&gt; Preferencias -&gt; Eventos</em> y activar la casilla <strong>DLL Entry</strong>. Al lanzar cualquier ejecutable anfitrión, el depurador interrumpirá la ejecución automáticamente en el <code>DllMain</code> de la biblioteca tan pronto el sistema la proyecte en memoria.</li>
+<li><strong>Opción C — Arnés en C (Harness):</strong> Compilar un lanzador de prueba mínimo de 4 líneas que invoque <code>LoadLibraryA("muestra.dll")</code> y llame a la función exportada mediante <code>GetProcAddress</code>.</li>
+</ul>
+
+<h3 style="margin: 0.8rem 0 0.4rem 0; color: #1d4f2a;">3. DLL Sideloading y DLL Proxying con Export Forwarding</h3>
+<ul>
+<li><strong>Orden estándar de búsqueda de DLLs (<code>SafeDllSearchMode</code>):</strong>
+1. Directorio donde reside el ejecutable anfitrión (<code>.exe</code>).
+2. Directorio del sistema (<code>System32</code>).
+3. Directorio de Windows (<code>C:\Windows</code>).
+4. Directorio de trabajo actual (CWD).
+5. Directorios declarados en la variable de entorno <code>PATH</code>.</li>
+<li><strong>Vulnerabilidad de DLL Sideloading:</strong> Si un ejecutable legítimo y firmado busca una biblioteca que no está en la lista de <code>KnownDLLs</code> del registro (p. ej. <code>version.dll</code> o <code>cryptbase.dll</code>), cargará la copia situada en su misma carpeta antes que la copia oficial de <code>System32</code>.</li>
+<li><strong>DLL Proxying con reenvío de exportaciones (<em>Export Forwarding</em>):</strong> Para ejecutar lógica propia en <code>DLL_PROCESS_ATTACH</code> sin que la aplicación anfitriona falle por funciones faltantes, la DLL desarrollada redirige sus exportaciones a la biblioteca legítima de Windows mediante directivas de enlace:
+<pre><code>#pragma comment(linker, "/export:VerQueryValueW=C:\\Windows\\System32\\version.VerQueryValueW")
+#pragma comment(linker, "/export:GetFileVersionInfoW=C:\\Windows\\System32\\version.GetFileVersionInfoW")</code></pre></li>
+</ul>
+</aside>
+</section>
+
 <h2 id="fuentes-de-esta-lección">Fuentes de esta lección</h2>
 <ul><li><span class="fuente">Reversing desde cero, cap. 05</span> — VA, RVA, offset, secciones, call directo e indirecto, IAT.</li><li><span class="fuente">Videos y material adicional, Video 33</span> — formato PE, secciones, imports, relocalizaciones.</li><li><span class="fuente">Reversing desde cero, cap. 14</span> — rebase y file offset entre IDA y el debugger.</li><li><span class="fuente">Reversing desde cero, cap. 26b</span> — ASLR.</li><li><span class="fuente">Reversing desde cero, cap. 10</span> — UPX como caso de binario empacado.</li></ul>
 <aside class="callout nota"><p class="callout-titulo">Capas de esta lección</p><p><strong>Contenido observado en CLS:</strong> el ejemplo <code>0x6D1372 → 0x772</code>, la IAT en <code>0x6E300C</code>, la lectura del PE del video 33 y la explicación de ASLR del capítulo 26b. <strong>Conocimiento externo:</strong> estructura de la cabecera PE y del directorio de imports. <strong>Recomendación editorial:</strong> el script de Python y el límite explícito sobre desempaquetado.</p></aside>
+
+
 </section>
 <section class="print-sec" id="sec-guia-01-c-python">
 <h1 id="c-y-python-mínimos-para-analizar">C y Python mínimos para analizar</h1>
@@ -1966,8 +2020,13 @@ log:     "longitud = {EAX}"</code></pre>
 <ul><li>La función despachadora es el <strong>WinProc</strong> (si la ventana se creó con <code>CreateWindow</code>) o la <strong>Dialog procedure</strong> (si se creó con <code>DialogBoxParam</code>). Las dos hacen lo mismo: reciben el mensaje y lo reparten con un <code>switch</code>.</li><li>El <strong>mensaje</strong> es el <strong>segundo argumento</strong> de esa función. Un <code>WM_COMMAND</code> vale <code>0x111</code> y es el que se dispara, en general, al apretar un botón; un <code>WM_LBUTTONDOWN</code> vale <code>0x201</code>.</li><li>El <strong>Control ID</strong> identifica qué botón se tocó. Se puede ver pasando el mouse por el control en una herramienta de inspección de ventanas.</li></ul>
 <p>Tres maneras de llegar al handler, de más simple a más robusta:</p>
 <ol><li><strong>Buscar el Control ID en estático.</strong> Si el botón tiene ID <code>0x13A</code>, buscás ese inmediato en IDA (ver la lección de IDA) y caés dentro del <code>WinProc</code>. Falla cuando el ID es un número bajo y común (<code>1</code>, <code>5</code>, <code>10</code>): hay demasiadas ocurrencias.</li><li><strong>Breakpoint condicional sobre el mensaje.</strong> Poné un breakpoint donde la función carga el mensaje en un registro y condicionalo a ese mensaje. Podés además loguear los dos argumentos leyéndolos del stack:</li></ol>
-<pre><code class="lenguaje-text">log:     "msg={2}  id={3}"      ; con getdword(sp+8) y getdword(sp+C)
-breakif: getdword(sp+8) == 0x111 &amp;&amp; getdword(sp+0xC) == 0x13A</code></pre>
+<pre><code class="lenguaje-text">; En x86 (32-bit): uMsg en [esp+8], LOWORD(wParam) (Control ID) en [esp+0xC] & 0xFFFF:
+breakif: getdword(sp+8) == 0x111 &amp;&amp; (getdword(sp+0xC) &amp; 0xFFFF) == 0x13A
+log:     "msg={getdword(sp+8)}  id={getdword(sp+0xC) &amp; 0xFFFF}"
+
+; Expresión universal x64dbg (válida en x86 y x64 en el prólogo con arg.get):
+breakif: arg.get(1) == 0x111 &amp;&amp; (arg.get(2) &amp; 0xFFFF) == 0x13A
+log:     "uMsg={arg.get(1)}  control_id={arg.get(2) &amp; 0xFFFF}"</code></pre>
 <ol><li><strong>Breakpoint en <code>SendMessage</code> + breakpoint de ejecución en el código.</strong> Es el método genérico que sirve aunque no sepas nada del programa. En Windows, los mensajes llegan vía <code>SendMessageW</code>/<code>SendMessageA</code> de <code>user32.dll</code> (ahí el mensaje también es el segundo argumento). Poné un breakpoint ahí, condicionado a tu mensaje; cuando pare, poné un <strong>breakpoint de hardware por ejecución sobre toda la sección de código del ejecutable</strong> (su dirección de inicio y su tamaño, que ves en el <em>Memory Map</em> o en <em>Segments</em>). Al continuar, el programa se detiene en la primera instrucción <strong>de tu código</strong> que corre tras recibir el mensaje: esa es la entrada del WinProc. Después borrás ese breakpoint para seguir.</li></ol>
 <aside class="callout nota"><p class="callout-titulo">Cómo se registra el WinProc</p><p>Con <code>CreateWindow</code>, antes hay un <code>RegisterClassA</code> que recibe una estructura <code>WNDCLASS</code>; dentro de esa estructura está el puntero al WinProc. Con <code>DialogBoxParam</code>, el procedimiento se pasa directamente como uno de sus argumentos. Encontrar <code>RegisterClassA</code> o <code>DialogBoxParam</code> te lleva, por cualquiera de los dos caminos, a la función que maneja los mensajes.</p></aside>
 <p>El capítulo 28 ("Mensajes de Windows") muestra las tres formas sobre varios crackmes propios, incluida la carga de los símbolos de <code>user32.dll</code> para poner el breakpoint en <code>SendMessageW</code> (<span class="fuente">Reversing desde cero, cap. 28</span>; transcripción .txt, sin marcas de tiempo). El capítulo 24b agrega que el <code>switch</code> de mensajes se lee mejor traduciendo los números a sus nombres <code>WM_*</code> con la tecla <code>M</code> en IDA.</p>
@@ -2026,6 +2085,62 @@ log:     "WM_COMMAND: notif={r8&gt;&gt;16} id={r8&amp;0xFFFF} hwnd={rcx}"</code>
 <li><strong>Expresión universal (x86 y x64) en el prólogo con <code>arg.get(n)</code>:</strong>
 <pre><code>breakif: arg.get(1) == 0x111 &amp;&amp; (arg.get(2) &amp; 0xFFFF) == 0x13A
 log:     "uMsg={arg.get(1)} control_id={arg.get(2)&amp;0xFFFF}"</code></pre></li>
+</ul>
+</aside>
+
+<aside class="ampliacion-ext">
+<p class="callout-titulo">Ampliación editorial basada en fuentes externas — Flujo operativo de trinchera en x64dbg y extracción masiva de cadenas cifradas</p>
+<p>El uso ágil del depurador dinámico y la desofuscación rápida de cadenas constituyen dos habilidades prácticas decisivas (<a href="https://help.x64dbg.com/">x64dbg Documentation</a>):</p>
+
+<h4 style="margin: 0.8rem 0 0.4rem 0; color: #1d4f2a;">1. Hoja de Ruta Táctica de Operaciones en x64dbg</h4>
+<ul>
+<li><strong>Atajos de Navegación Esenciales:</strong> <code>F2</code> (Poner/quitar breakpoint de software), <code>F7</code> (Paso a paso dentro de la función), <code>F8</code> (Paso a paso sobre la función), <code>Ctrl+F9</code> (Ejecutar hasta el <code>ret</code> de la función actual), <code>F9</code> (Reanudar ejecución continua) y <code>Ctrl+G</code> (Saltar a una dirección o expresión).</li>
+<li><strong>Follow in Dump:</strong> Clic derecho sobre cualquier registro en el panel de CPU o sobre una dirección en el Stack -> <em>Follow in Dump</em>: proyecta inmediatamente el contenido de la memoria apuntada en la vista hexadecimal.</li>
+<li><strong>Búsqueda de Referencias Intermodulares:</strong> Clic derecho en el desensamblado -> <em>Search for -> Current Module -> Intermodular calls</em>: lista todas las llamadas a APIs importadas por el binario. Permite seleccionar múltiples funciones (ej. <code>RegOpenKeyEx</code>, <code>CreateFileW</code>, <code>InternetOpenA</code>) y presionar <code>F2</code> para establecer breakpoints simultáneos en todas ellas.</li>
+<li><strong>Memory Map (<code>Alt+M</code>):</strong> Visualiza todas las páginas de memoria del proceso. Presionar <code>Ctrl+B</code> permite buscar cadenas o secuencias de bytes en toda la memoria dinámica. Facilita la detección de bloques con protección <code>PAGE_EXECUTE_READWRITE</code> (<code>ERW</code>), indicio clásico de payloads inyectados o shellcode.</li>
+<li><strong>Reconstrucción con Scylla:</strong> Menú <em>Plugins -> Scylla</em> integrado en x64dbg: automatiza la detección del OEP (<em>IAT Autosearch</em>), lectura de importaciones (<em>Get Imports</em>), volcado a disco (<em>Dump</em>) y corrección de la tabla de importaciones (<em>Fix Dump</em>).</li>
+</ul>
+
+<h4 style="margin: 0.8rem 0 0.4rem 0; color: #1d4f2a;">2. Los 3 Métodos Estándar para Extraer Cadenas Cifradas en Masa</h4>
+<ol>
+<li><strong>Método 1 — Breakpoint Condicional con Log en el Retorno del Decodificador (x64dbg):</strong>
+Cuando un binario tiene decenas de llamadas a una rutina decodificadora XOR o RC4, no se debe revertir una por una a mano. Se localiza la instrucción <code>ret</code> de la función decodificadora y se configura un breakpoint:
+<pre><code>Log text:        "Cadena descifrada: {utf8@rax}"   ; (o {utf16@rax} según corresponda)
+Break condition: 0                                 ; Condición 0: no pausa la ejecución</code></pre>
+Al presionar <code>F9</code>, el programa se ejecuta a velocidad normal y la pestaña <em>Log</em> de x64dbg vuelca automáticamente todas las cadenas descifradas secuencialmente.</li>
+<li><strong>Método 2 — Scripting Estático en IDAPython / Ghidra:</strong>
+Si la clave está embebida y el algoritmo es determinista, se escribe un script que localice las referencias cruzadas (XREFs) al buffer cifrado y aplique la operación directamente en la base de datos de IDA:
+<pre><code>import ida_bytes
+def decode_xor(ea, length, key):
+    raw = ida_bytes.get_bytes(ea, length)
+    return bytes([b ^ key for b in raw]).decode('latin1', errors='ignore')</code></pre></li>
+<li><strong>Método 3 — Micro-emulación con Unicorn Engine:</strong>
+Permite aislar únicamente los 30 o 40 bytes de la rutina decodificadora, inicializar los registros de la CPU virtual con los punteros y longitudes deseadas, y ejecutar el bloque emulado sin interactuar con dependencias del sistema operativo ni requerir un entorno Windows activo.</li>
+</ol>
+</aside>
+
+<aside class="ampliacion-ext">
+<p class="callout-titulo">Ampliación editorial basada en fuentes externas — Patrón de doble breakpoint encadenado para funciones in-place y plugins tácticos</p>
+<p>En el flujo de extracción masiva de cadenas cifradas, existe un caso frecuente donde el truco estándar de leer <code>{utf8@rax}</code> en el <code>ret</code> no funciona:</p>
+
+<h4 style="margin: 0.8rem 0 0.4rem 0; color: #1d4f2a;">1. Funciones Decodificadoras void con Buffer In-Place</h4>
+<p>Cuando la función es <code>void decodificar(char* buffer, size_t len)</code>, el buffer se descifra sobre sí mismo (<em>in-place</em>) y la función no devuelve ningún puntero en <code>RAX</code>. En x64, el puntero al buffer llega en <code>RCX</code>, pero <code>RCX</code> es un registro volátil (*scratch*) que el compilador suele reutilizar como contador de bucle o índice, perdiéndose su valor antes de llegar al <code>ret</code>.</p>
+<p><strong>Solución: Técnica de Doble Breakpoint Encadenado con Variable de Usuario ($ptr):</strong></p>
+<ol>
+<li><strong>En el prólogo de la función decodificadora (dirección inicial):</strong>
+<pre><code>Break condition: 0
+Command text:    $ptr = rcx    ; Guarda el puntero original antes de que el bucle lo pise</code></pre></li>
+<li><strong>En la instrucción <code>ret</code> de la función:</strong>
+<pre><code>Break condition: 0
+Log text:        "Cadena descifrada: {utf8@$ptr}"    ; Lee el buffer ya descifrado en memoria</code></pre></li>
+</ol>
+<p>Al reanudar con <code>F9</code>, la consola de Log vuelca todas las cadenas limpias sin detener nunca la ejecución.</p>
+
+<h4 style="margin: 0.8rem 0 0.4rem 0; color: #1d4f2a;">2. Ecosistema de Plugins Tácticos para x64dbg</h4>
+<ul>
+<li><strong>ScyllaHide:</strong> Plugin indispensable que intercepta a nivel de Ring 3 las APIs de anti-debug más comunes (<code>PEB.BeingDebugged</code>, <code>NtGlobalFlag</code>, <code>CheckRemoteDebuggerPresent</code>, <code>ProcessDebugPort</code> y temporizadores <code>RDTSC</code> / <code>GetTickCount</code>) con un solo clic.</li>
+<li><strong>xAnalyzer:</strong> Analizador heurístico estático para x64dbg que reconoce automáticamente los prototipos de funciones de Windows y anota los nombres de los argumentos en el desensamblado, emulando la clásica vista contextual de OllyDbg en binarios modernos de 64 bits.</li>
+<li><strong>OllyDumpEx / SwissArmyKnife:</strong> Permite realizar volcados selectivos de regiones de memoria específicas o secciones individuales directamente desde el <em>Memory Map</em> sin necesidad de reconstruir el binario completo.</li>
 </ul>
 </aside>
 </section>
@@ -2364,6 +2479,11 @@ call  cs:LoadLibraryA             ; el texto descifrado es un nombre de DLL</cod
 <p>Cómo se lee: el <code>xor al, 5Ah</code> dentro del bucle es la transformación; <code>0Ch</code> es el largo; el destino termina como argumento de <code>LoadLibraryA</code>, así que el texto es un nombre de módulo. Para recuperarlo hay dos caminos, y conviene hacer los dos: <strong>dinámico</strong>, con un breakpoint en la llamada a <code>LoadLibraryA</code> y leyendo <code>RCX</code>; <strong>estático</strong>, aplicando la misma operación a los 12 bytes con un script (en IDA, IDAPython; en Ghidra, un script de <a href="#sec-guia-02-ghidra">2.16</a>). Si coinciden, anotás la cadena en un comentario junto al bucle y renombrás el buffer.</p>
 <p>Lo que <strong>no</strong> conviene: ejecutar el programa entero para "ver qué cadenas aparecen" si no sabés qué hace, ni copiar la rutina sin entender de dónde sale la clave (puede depender de un dato del entorno y dar otro resultado en otra máquina).</p>
 <h2 id="aplanamiento-del-flujo-de-control">Aplanamiento del flujo de control</h2>
+<aside class="nota-ed">
+<p class="callout-titulo">Delimitación pedagógica: Virtualización de código (VM-based obfuscation)</p>
+<p><strong>Límite de alcance:</strong> La ofuscación basada en máquinas virtuales y bytecode interpretado propietario (estilo VMProtect, Themida o Denuvo) sustituye las instrucciones nativas x86/x64 por conjuntos de instrucciones custom ejecutadas en bucles de emulación por dispatchers. Dada su complejidad y su rol en empaquetadores comerciales pesados, la desvirtualización y síntesis simbólica de bytecode queda expresamente fuera del alcance de este tomo introductorio-intermedio. En esta lección nos concentramos en las transformaciones nativas analizables con ingeniería inversa estándar: predicados opacos, aplanamiento de flujo con dispatcher entero y cifrado estático de cadenas.</p>
+</aside>
+
 <p>Otra técnica frecuente en ofuscadores de código nativo es el <strong>aplanamiento del flujo de control</strong> (<em>control-flow flattening</em>): los bloques básicos de una función se sacan de su orden natural y se ponen <strong>todos al mismo nivel</strong>, dentro de un bucle infinito con un <code>switch</code> que elige qué bloque ejecutar según una <strong>variable de estado</strong>. Cada bloque, al terminar, escribe en esa variable el número del bloque siguiente (<strong>conocimiento externo</strong>; el ofuscador de investigación Obfuscator-LLVM lo describe así).</p>
 <p>Cómo se ve en el grafo de IDA o Ghidra:</p>
 <ul><li>un <strong>despachador</strong> central (comparaciones o una tabla de saltos sobre la misma variable) al que vuelven todos los bloques;</li><li>muchos bloques "hermanos" sin relación aparente entre sí, todos con una flecha de vuelta al despachador;</li><li>cada bloque termina con un <code>mov [var_estado], constante</code> (o con un cálculo que da una constante) antes de volver.</li></ul>
@@ -2619,6 +2739,54 @@ Secciones: .text .rdata .data        Símbolos: __mingw_*, ___chkstk_ms
 <li><strong>Formularios en <code>.rsrc</code> (<code>TPF0</code>) (<a href="https://docwiki.embarcadero.com/RADStudio/en/Using_Resource_Files">Embarcadero DocWiki: Using Resource Files</a>):</strong> Los formularios VCL/FMX compilados en recursos <code>RT_RCDATA</code> comienzan con los 4 bytes ASCII <code>54 50 46 30</code> (<code>"TPF0"</code>) generados por <code>TWriter</code> y asocian cada control con el nombre de su método de evento publicado <em>(Hecho confirmado)</em>.</li>
 </ul>
 </aside>
+
+<aside class="ampliacion-ext">
+<p class="callout-titulo">Ampliación editorial basada en fuentes externas — Metodología de reversing para binarios en Go (pclntab, strings y ABI) y Rust (mangling v0 y enums)</p>
+<p>Dada la proliferación de binarios compilados en <strong>Go</strong> y <strong>Rust</strong> en software de sistema, herramientas defensivas y amenazas modernas, su análisis requiere técnicas específicas que difieren sustancialmente del código compilado en C/C++ clásico:</p>
+
+<h4 style="margin: 0.8rem 0 0.4rem 0; color: #1d4f2a;">1. Reversing de Binarios en Go</h4>
+<ul>
+<li><strong>Recuperación de símbolos mediante la tabla <code>pclntab</code>:</strong> El compilador de Go (<code>gc</code>) enlaza una tabla en la sección <code>.gopclntab</code> o <code>.rodata</code> denominada <em>Program Counter Line Table</em> (<a href="https://go.dev/src/runtime/symtab.go">Go Runtime: symtab.go</a>). Esta estructura asocia cada dirección virtual con el nombre de su función, archivo fuente <code>.go</code> y número de línea. En binarios sin símbolos (<em>stripped</em>), <code>pclntab</code> <strong>permanece intacta</strong> porque el recolector de basura, el planificador y <code>runtime.panic</code> la necesitan para generar trazas de pila.
+<br><em>Herramientas de recuperación:</em> Plugins como <code>go_parser</code> (IDA Pro), el analizador integrado <em>Go Module Analyzer</em> (Ghidra 11+) o la utilidad <code>GoReSym</code> leen el número mágico al inicio de la tabla (<code>0xFFFFFFFB</code> en Go 1.2, <code>0xFFFFFFFA</code> en Go 1.16, <code>0xFFFFFFF0</code> en Go 1.18+ y <code>0xFFFFFFF1</code> en Go 1.20+) y renuevan en pocos segundos los nombres de las 2.000+ funciones (revelando de inmediato funciones críticas como <code>main.main</code> o <code>main.verificarLicencia</code>).</li>
+<li><strong>Estructura interna de cadenas (<code>string</code>):</strong> Un <code>string</code> en Go es un par inmutable <code>struct { const char* str; ptrdiff_t len; }</code> (16 bytes en x64). No contiene terminador nulo <code>0x00</code>. En desensamblado x64 se reconoce el patrón invariable de carga del puntero seguido de su tamaño en un registro secundario:
+<pre><code>lea rax, [rip + 0x2A150]   ; Puntero al inicio del buffer en .rodata
+mov rbx, 0x18              ; Longitud exacta: 24 bytes (sin terminador nulo)</code></pre></li>
+<li><strong>Convención de llamadas por registros (Go 1.17+ ABI):</strong> A partir de Go 1.17, las funciones internas pasan argumentos y retornos en 9 registros enteros ordenados: <code>RAX</code>, <code>RBX</code>, <code>RCX</code>, <code>RDI</code>, <code>RSI</code>, <code>R8</code>, <code>R9</code>, <code>R10</code>, <code>R11</code>, pasando a la pila solo los excedentes.</li>
+<li><strong>Prólogo de comprobación de pila:</strong> En el inicio de casi toda función Go aparece una comprobación con el puntero de la goroutine activa (almacenado en <code>R14</code> en x64):
+<pre><code>cmp rsp, qword ptr [r14 + 0x10]   ; Comprueba límite de pila de la goroutine
+jbe runtime.morestack             ; Aloca un segmento de pila nuevo si falta espacio</code></pre></li>
+</ul>
+
+<h4 style="margin: 0.8rem 0 0.4rem 0; color: #1d4f2a;">2. Reversing de Binarios en Rust</h4>
+<ul>
+<li><strong>Name Mangling v0 (RFC 2603):</strong> Desde Rust 1.59+, los símbolos usan el esquema estándar iniciado con el prefijo <code>_R</code> (<a href="https://rust-lang.github.io/rfcs/2603-symbol-mangling-v0.html">Rust RFC 2603</a>). Nombres crudos como <code>_RNvNtCs1234_7mi_app4auth14verificar_pass</code> se decodifican de inmediato con la herramienta oficial <code>rustfilt</code> a <code>mi_app::auth::verificar_pass</code>.</li>
+<li><strong>Tipos algebraicos <code>Result&lt;T, E&gt;</code> y <code>Option&lt;T&gt;</code>:</strong> En memoria se compilan como estructuras con un byte discriminante (*tag*):
+<pre><code>struct Option_u32 {
+    uint8_t  tag;   // 0 = None, 1 = Some
+    uint32_t valor; // Válido únicamente si tag == 1
+};</code></pre>
+En ensamblador se observa la comprobación del byte discriminante previa a operar con el dato (<code>cmp byte ptr [rsp+0x18], 1 ; jne fallo</code>).</li>
+<li><strong>Manejo de pánicos y cadenas de error:</strong> Cuando una función aborta, Rust invoca a <code>core::panicking::panic_fmt</code> pasando una estructura que contiene el nombre del archivo fuente <code>.rs</code> y la línea exacta como cadenas ASCII legibles en <code>.rdata</code>.</li>
+</ul>
+</aside>
+
+<aside class="ampliacion-ext">
+<p class="callout-titulo">Ampliación editorial basada en fuentes externas — Optimización de nicho (Niche Optimization) en Rust para tipos Option sin byte tag</p>
+<p>Al revertir binarios compilados en Rust, es fundamental conocer la <strong>optimización de nicho</strong> (<em>Niche Optimization</em> o <em>Null-Pointer Optimization</em>) implementada por el compilador (<a href="https://doc.rust-lang.org/nomicon/repr-rust.html">The Rustonomicon: Alternative Representations</a>):</p>
+<ul>
+<li><strong>El principio del nicho:</strong> En tipos como <code>Option&lt;u32&gt;</code>, Rust debe reservar un byte extra como discriminante (<em>tag</em>) porque cualquier valor de 32 bits es un número válido. Sin embargo, para tipos que <strong>garantizan que nunca pueden ser nulos</strong> (como referencias <code>&amp;T</code>, punteros inteligentes <code>Box&lt;T&gt;</code>, punteros a función <code>fn()</code> o enteros no nulos <code>core::num::NonZeroU32</code>), el compilador <strong>elimina por completo el byte <code>tag</code></strong>.</li>
+<li><strong>Representación en memoria:</strong>
+  <ul>
+  <li><code>Some(&amp;T)</code>: Se representa simplemente por la dirección de memoria válida del puntero (8 bytes en x64).</li>
+  <li><code>None</code>: Se representa con el valor nulo exacto (<code>0x0000000000000000</code>).</li>
+  </ul>
+</li>
+<li><strong>Patrón en desensamblado:</strong> Ante estos tipos, el analista <strong>no debe buscar</strong> un <code>cmp byte ptr [rsp+offset], 1</code>. En su lugar, el chequeo de <code>None</code> se compila de forma idéntica a una comprobación de puntero nulo en C:
+<pre><code>test rax, rax     ; Comprueba si el Option&lt;&amp;T&gt; o Option&lt;Box&lt;T&gt;&gt; es nulo
+jz es_none        ; Si es cero, equivale a la rama None
+; ... continúa en la rama Some(&amp;T) usando RAX directamente como puntero</code></pre></li>
+</ul>
+</aside>
 </section>
 <section class="print-sec" id="sec-guia-02-pe-fino">
 <h1 id="pe-fino-los-directorios-que-cuentan-la-historia">PE fino: los directorios que cuentan la historia</h1>
@@ -2837,6 +3005,63 @@ jnz   detectado</code></pre>
 <li><strong><code>ProcessDebugObjectHandle</code> (clase <code>0x1E = 30</code>):</strong> Consulta el handle al <code>DEBUG_OBJECT</code> del kernel. Si no hay debugger, <code>NtQueryInformationProcess</code> devuelve <code>0xC0000353</code> (<code>STATUS_PORT_NOT_SET</code>).</li>
 <li><strong><code>ProcessDebugFlags</code> (clase <code>0x1F = 31</code>):</strong> Consulta <code>NoDebugInherit</code>; devuelve <code>0</code> si hay depurador activo y <code>1</code> si no está siendo depurado.</li>
 </ul>
+</aside>
+
+<aside class="ampliacion-ext">
+<p class="callout-titulo">Ampliación editorial basada en fuentes externas — Evasión en User-Mode: API Hooking de EDRs, Syscalls Directas (Hell's Gate / Halo's Gate) y DLL Unhooking</p>
+<p>El análisis de binarios modernos en entornos corporativos exige comprender cómo interactúa el software con los agentes de seguridad (antivirus/EDR) en el espacio de usuario (<a href="https://learn.microsoft.com/en-us/windows-hardware/drivers/debugger/x64-architecture">Microsoft Learn: x64 Architecture & System Calls</a>):</p>
+
+<h4 style="margin: 0.8rem 0 0.4rem 0; color: #1d4f2a;">1. Mecanismo de los Inline API Hooks</h4>
+<p>Los sistemas de seguridad inyectan una DLL en cada proceso para supervisar llamadas sensibles. Para interceptar la ejecución, modifican los primeros bytes de las funciones de <code>ntdll.dll</code> reemplazando el prólogo original por un salto incondicional (<em>inline hook</em>):</p>
+<pre><code>; --- ntdll.dll original (Limpia) ---
+mov r10, rcx
+mov eax, 0x18         ; SSN (System Service Number de NtAllocateVirtualMemory)
+test byte ptr [0x7ffe0308], 1
+jne short ...
+syscall
+ret
+
+; --- ntdll.dll hookeada por un EDR ---
+jmp qword ptr [rip + 0x10240]   ; Salto (0xE9 o 0xFF 0x25) al motor de análisis del EDR</code></pre>
+
+<h4 style="margin: 0.8rem 0 0.4rem 0; color: #1d4f2a;">2. Técnicas de Evasión Reversibles</h4>
+<ul>
+<li><strong>Syscalls Directas (Direct Syscalls):</strong> El programa no invoca a <code>ntdll.dll</code>; en su lugar, define un stub propio en ensamblador con la instrucción <code>syscall</code> y el número SSN correspondiente.</li>
+<li><strong>Algoritmos Hell's Gate y Halo's Gate:</strong> Como los números SSN cambian entre versiones y compilaciones de Windows:
+  <ul>
+  <li><em>Hell's Gate (2020):</em> Parsea la tabla de exportaciones de <code>ntdll.dll</code> en memoria, localiza la función deseada y lee los bytes <code>4C 8B D1 B8 [SSN]</code>. Si la función tiene un <code>jmp</code> (está hookeada), falla.</li>
+  <li><em>Halo's Gate:</em> Supera la limitación inspeccionando las funciones vecinas inmediatamente adyacentes (offsets &plusmn;32 bytes). Si la función vecina no está hookeada, lee su SSN y le suma o resta el desplazamiento para deducir el SSN de la función bloqueada.</li>
+  </ul>
+</li>
+<li><strong>DLL Unhooking:</strong> El binario abre <code>C:\Windows\System32\ntdll.dll</code> directamente desde disco con <code>CreateFileW</code> + <code>MapViewOfFile</code>, localiza la sección <code>.text</code> limpia, cambia los permisos de la copia en memoria con <code>VirtualProtect(PAGE_EXECUTE_READWRITE)</code> y sobrescribe los hooks con <code>memcpy</code>, restaurando el prólogo original de todas las APIs.</li>
+</ul>
+
+<h4 style="margin: 0.8rem 0 0.4rem 0; color: #1d4f2a;">3. Criterio de Detección Defensiva</h4>
+<p>La presencia de instrucciones <code>syscall</code> fuera del rango de memoria virtual asignado a <code>ntdll.dll</code> o <code>win32u.dll</code> constituye una anomalía heurística de máxima prioridad que delata intentos deliberados de evasión de telemetría.</p>
+</aside>
+
+<aside class="ampliacion-ext">
+<p class="callout-titulo">Ampliación editorial basada en fuentes externas — De Direct Syscalls a Indirect Syscalls y Call Stack Spoofing</p>
+<p>Aunque las <em>Direct Syscalls</em> (Hell's Gate / Halo's Gate) permiten evitar los hooks de <code>ntdll.dll</code>, los agentes de seguridad modernos (EDRs) y el propio kernel de Windows implementan contramedidas que detectan esta técnica (<a href="https://learn.microsoft.com/en-us/windows-hardware/drivers/debugger/x64-architecture">Microsoft Learn: x64 Architecture &amp; System Calls</a> y telemetría ETWti):</p>
+
+<h4 style="margin: 0.8rem 0 0.4rem 0; color: #1d4f2a;">1. La Limitación de las Syscalls Directas (Inspección de RIP)</h4>
+<p>Cuando la CPU ejecuta la instrucción <code>syscall</code> en Ring 3, el procesador transfiere el control al manejador del kernel (<code>KiSystemCall64</code>). Durante esta transición, el kernel captura el registro <code>RIP</code> de origen en la estructura del hilo (<em>trap frame</em>). Mediante telemetría de kernel (como <strong>ETWti</strong> —<em>Microsoft-Windows-Threat-Intelligence</em>— o <em>ProcessInstrumentationCallback</em>):</p>
+<ul>
+<li>Si el <code>RIP</code> ejecutor reside en la sección <code>.text</code> de <code>ntdll.dll</code> o <code>win32u.dll</code>, la llamada se considera conforme al diseño del sistema.</li>
+<li>Si el <code>RIP</code> apunta a la sección <code>.text</code> del propio ejecutable anfitrión o a memoria privada (<code>MEM_PRIVATE</code>), se genera una alerta inmediata por ejecución de llamadas al sistema anómalas.</li>
+</ul>
+
+<h4 style="margin: 0.8rem 0 0.4rem 0; color: #1d4f2a;">2. La Solución: Indirect Syscalls</h4>
+<p>Para satisfacer la validación del <code>RIP</code> sin pasar por los hooks del EDR, el cargador prepara los registros de la llamada en su propio código, pero en lugar de emitir el opcode <code>0F 05</code> (<code>syscall</code>), realiza un salto (<code>jmp</code>) a una instrucción <code>syscall ; ret</code> legítima ya existente dentro de <code>ntdll.dll</code>:</p>
+<pre><code>; --- Stub en el binario (Indirect Syscall) ---
+mov r10, rcx
+mov eax, 0x18                      ; SSN deducido dinámicamente con Halo's Gate
+jmp qword ptr [rip + pfn_syscall]  ; Salta a la instrucción "syscall; ret" dentro de ntdll</code></pre>
+<p>Al ejecutarse el <code>syscall</code> físicamente dentro del espacio de memoria de <code>ntdll.dll</code>, el <code>RIP</code> registrado en el kernel resulta 100 % legítimo.</p>
+
+<h4 style="margin: 0.8rem 0 0.4rem 0; color: #1d4f2a;">3. El Problema del Call Stack Walking y Call Stack Spoofing</h4>
+<p>Aun con <em>Indirect Syscalls</em>, los EDRs avanzados inspeccionan la pila de llamadas retrospectiva (<em>Call Stack Unwinding</em> guiado por las tablas <code>.pdata</code> / <code>UNWIND_INFO</code> vistas en la lección 2.14). Si el frame inmediatamente anterior a <code>ntdll!NtAllocateVirtualMemory</code> no es una API de alto nivel (como <code>kernelbase.dll!VirtualAllocEx</code>), sino memoria no respaldada o un salto anómalo, la llamada es detectada. Para evadir esto, los cargadores avanzados implementan <strong>Call Stack Spoofing</strong> (sintetizando marcos de pila falsos para simular que la llamada se originó en una secuencia legítima de Windows).</p>
+<p><em>Nota sobre Tartarus' Gate:</em> Algunos EDRs modernos colocan su hook <code>jmp</code> no en el byte <code>+0</code>, sino después de <code>mov r10, rcx</code> (en el byte <code>+3</code>). La variante <em>Tartarus' Gate</em> verifica si el hook está desplazado y ajusta el puntero de lectura para no confundir el prólogo.</p>
 </aside>
 </section>
 <section class="print-sec" id="sec-guia-02-ghidra">
@@ -3354,6 +3579,29 @@ IOCs:
 <h2 id="fuentes-de-esta-lección">Fuentes de esta lección</h2>
 <ul><li><span class="fuente">Videos y material adicional, Video 37</span> — el caso Shelter: ejecutar una muestra; por qué queda fuera del recorrido base.</li><li><a href="#sec-guia-05-malware">Rama malware (triage estático)</a> (5.1) — la base defensiva sin ejecutar, sobre la que se apoya esta ruta.</li><li><a href="#sec-guia-04-dinamico-seguro">Análisis dinámico seguro</a> (4.4) — cuándo ejecutar y cuándo no, y cómo contener.</li></ul>
 <aside class="callout nota"><p class="callout-titulo">Capas de esta lección</p><p><strong>Contenido observado en CLS:</strong> el caso Shelter (video 37) y la rama malware estática. <strong>Conocimiento externo:</strong> Procmon, Regshot, INetSim/FakeNet-NG, Noriben, el modelo de cuatro superficies y los IOCs. <strong>Recomendación editorial:</strong> las reglas de laboratorio, el enfoque de muestra-de-curso/simulador y el ejemplo ilustrativo (no hay un laboratorio real ni muestras en esta edición).</p></aside>
+
+<aside class="ampliacion-ext">
+<p class="callout-titulo">Ampliación editorial basada en fuentes externas — Anatomía de la inyección de procesos en memoria: Process Hollowing, Early Bird APC y Reflective Loading</p>
+<p>En el análisis de software dinámico y amenazas defensivas, las técnicas de inyección en user-mode buscan ejecutar código dentro del espacio de direcciones virtual de un proceso legítimo para enmascarar su presencia (<a href="https://learn.microsoft.com/en-us/windows/win32/procthread/process-creation-flags">Microsoft Learn: Process Creation Flags</a>):</p>
+
+<div class="tabla"><table>
+<thead><tr><th>Técnica de Inyección</th><th>Secuencia de APIs Clave</th><th>Comportamiento y Huella en Memoria</th><th>Detección y Caza</th></tr></thead>
+<tbody>
+<tr><td><strong>Inyección Clásica (CreateRemoteThread)</strong></td><td><code>OpenProcess</code> -> <code>VirtualAllocEx(RWX)</code> -> <code>WriteProcessMemory</code> -> <code>CreateRemoteThread</code></td><td>Aloca un bloque independiente en un proceso ya en ejecución y crea un hilo remoto.</td><td>Interceptada por telemetría del kernel (<code>PsSetCreateThreadNotifyRoutine</code>) y monitores de API.</td></tr>
+<tr><td><strong>Process Hollowing (RunPE)</strong></td><td><code>CreateProcess(CREATE_SUSPENDED)</code> -> <code>NtUnmapViewOfSection</code> -> <code>VirtualAllocEx</code> -> <code>WriteProcessMemory</code> -> <code>SetThreadContext</code> -> <code>ResumeThread</code></td><td>Vacia el binario legítimo original de la memoria del proceso y proyecta un ejecutable completamente nuevo.</td><td>Discrepancia entre la memoria mapeada y el archivo en disco (detectable con <code>PE-sieve</code> o inspección de VAD).</td></tr>
+<tr><td><strong>Early Bird APC Injection</strong></td><td><code>CreateProcess(CREATE_SUSPENDED)</code> -> <code>VirtualAllocEx</code> -> <code>WriteProcessMemory</code> -> <code>QueueUserAPC</code> -> <code>ResumeThread</code></td><td>Encola una Asynchronous Procedure Call (APC) antes de que inicie el hilo principal, ejecutándose en el primer estado de alerta.</td><td>Monitoreo de llamadas a <code>QueueUserAPC</code> dirigidas al hilo primario de procesos recién creados.</td></tr>
+<tr><td><strong>Reflective DLL Injection</strong></td><td><code>VirtualAllocEx</code> -> <code>WriteProcessMemory</code> -> <code>CreateRemoteThread(offset_ReflectiveLoader)</code></td><td>La DLL inyectada incluye su propio loader interno que resuelve imports y relocalizaciones sin usar <code>LoadLibrary</code>.</td><td>La DLL no figura en las listas del PEB (<code>InLoadOrderModuleList</code>), dejando páginas de memoria huérfanas con permisos de ejecución.</td></tr>
+</tbody>
+</table></div>
+
+<h4 style="margin: 0.8rem 0 0.4rem 0; color: #1d4f2a;">Flujo paso a paso de Process Hollowing (RunPE)</h4>
+<ol>
+<li><strong>Creación suspendida:</strong> El cargador inicia un proceso del sistema benigno (ej. <code>svchost.exe</code>) pasando el flag <code>CREATE_SUSPENDED (0x00000004)</code> a <code>CreateProcessW</code>.</li>
+<li><strong>Desmapeo:</strong> Invoca <code>NtUnmapViewOfSection(pi.hProcess, baseImageOriginal)</code> para desalojar el ejecutable legítimo de la memoria virtual.</li>
+<li><strong>Reserva y escritura:</strong> Asigna memoria con <code>VirtualAllocEx</code> en la dirección base preferida del nuevo binario (<code>ImageBase</code>) y escribe las cabeceras PE y secciones con <code>WriteProcessMemory</code>.</li>
+<li><strong>Reajuste de contexto:</strong> Llama a <code>GetThreadContext(pi.hThread, &ctx)</code>, sobrescribe el registro del EntryPoint (<code>ctx.Rcx</code> en x64 o <code>ctx.Eax</code> en x86) con la nueva dirección del OEP, aplica <code>SetThreadContext</code> y despierta el proceso con <code>ResumeThread</code>.</li>
+</ol>
+</aside>
 </section>
 <section class="print-sec" id="sec-guia-02-opt-shellcode-c2">
 <h1 id="shellcode-red-y-c2-reconocer-y-describir">Shellcode, red y C2: reconocer y describir</h1>
@@ -3710,10 +3958,10 @@ return (a + b) * 4 == 480;</code></pre>
 <th>Qué aprendés</th>
 </tr></thead><tbody>
 <tr><td>4.1</td><td><a href="#sec-guia-04-metodo">Método de análisis: de la pregunta al hallazgo</a></td><td>Ciclo de cinco pasos, hipótesis y confirmación.</td></tr>
-<tr><td>4.5</td><td><a href="#sec-guia-04-formatos-protocolos">Reconstruir formatos y protocolos propios</a></td><td>Deducir campos, longitudes, framing, estados y transformaciones a partir de muestras controladas.</td></tr>
 <tr><td>4.2</td><td><a href="#sec-guia-04-cripto">Reconocer criptografía y encoding en un binario</a></td><td>XOR, base64, constantes de AES/MD5/RC4 y CryptoAPI/CNG.</td></tr>
 <tr><td>4.3</td><td><a href="#sec-guia-04-informe">El informe reproducible</a></td><td>Estructura, evidencia, límites y divulgación.</td></tr>
 <tr><td>4.4</td><td><a href="#sec-guia-04-dinamico-seguro">Análisis dinámico seguro: cuándo ejecutar y cuándo no</a></td><td>Matriz de decisión, contención y respuesta.</td></tr>
+<tr><td>4.5</td><td><a href="#sec-guia-04-formatos-protocolos">Reconstruir formatos y protocolos propios</a></td><td>Deducir campos, longitudes, framing, estados y transformaciones a partir de muestras controladas.</td></tr>
 </tbody></table></div>
 <h2 id="recursos-de-cls-para-esta-etapa">Recursos de CLS para esta etapa</h2>
 <ul><li><span>Reversing desde cero (ejercicios 1 y 2)</span></li><li><span>Inventario y estados de cuarentena</span></li></ul>
@@ -3761,6 +4009,10 @@ return (a + b) * 4 == 480;</code></pre>
 <tr><td>¿Tiene símbolos?</td><td>PDB</td><td>Sí, si lo compilaste en Debug</td></tr>
 </tbody></table></div>
 <p>Ese inventario ya te dice mucho: un programa de consola que usa <code>scanf</code> y <code>puts</code>, sin empaquetar, con cadenas claras. No hace falta empezar por el entry point.</p>
+
+
+
+
 <h2 id="árbol-de-decisión-de-triage-inicial-por-dónde-empiezo">Árbol de decisión de triage inicial («¿Por dónde empiezo?»)</h2>
 <p>Cuando te enfrentás a un binario desconocido (un crackme, un programa propio compilado meses atrás o un componente de laboratorio), los primeros diez minutos del <strong>Paso 2 (Inventario)</strong> definen qué herramientas abrir y a qué lección del curso acudir. Usar IDA sobre un ensamblado .NET puro o buscar strings en un binario empaquetado con UPX hace perder horas. Este árbol de decisión conecta los tres niveles del curso (Principiante, Intermedio y Avanzado) en un flujo único (y se complementa con el <a href="#hilo-plantillas">Hilo conductor multi-nivel y kit de plantillas C/C++</a>):</p>
 
@@ -3774,7 +4026,7 @@ return (a + b) * 4 == 480;</code></pre>
   │
   ├─► ¿Es PE32 (0x10B, 32 bits) o PE32+ (0x20B, 64 bits)? (Lecciones 1.4 y 2.5)
   │     ├─► 32 bits (x86): argumentos en stack (cdecl/stdcall) o ECX/EDX (fastcall/thiscall);
-  │     │                  en Windows x64 corre bajo WOW64 (ver Lección 2D.2).
+  │     │                  en Windows x64 corre bajo WOW64 (ver Lección 2D.2 [Tomo II]).
   │     └─► 64 bits (x64): argumentos en RCX, RDX, R8, R9 + shadow space de 32 bytes.
   │
   └─► ¿Tiene cabecera CLR (.NET) o marcador ".net bundle" (hostfxr)? (Lección 3.1)
@@ -3851,7 +4103,7 @@ return (a + b) * 4 == 480;</code></pre>
 <tr><td><strong>Intermedio</strong></td><td>Mi breakpoint en <code>main</code> nunca se alcanza, o una variable global ya llega alterada al entrar a <code>main</code></td><td>Código ejecutado antes del entry point principal</td><td>Revisar el directorio <strong>TLS (<code>AddressOfCallBacks</code>)</strong> en PE-bear/IDA y poner breakpoint en cada callback (<a href="#sec-guia-02-tls">2.11</a>, <a href="#sec-guia-02-anti-analisis">2.15</a>).</td></tr>
 <tr><td><strong>Intermedio</strong></td><td>Casi sin imports ni strings, pero lee <code>gs:[60h]</code> &rarr; <code>[rax+18h]</code> &rarr; <code>[rax+20h]</code> y rota enteros (<code>ror edx, 0Dh</code>)</td><td>Resolución dinámica de APIs por recorrido del PEB y <em>API hashing</em></td><td>Poner breakpoint en el <code>call reg</code> del resolvedor o cruzar constantes con listas de hashes de exportaciones (<a href="#sec-guia-02-pe-fino">2.14</a>).</td></tr>
 <tr><td><strong>Intermedio</strong></td><td>Constantes <code>0x637c777b</code> (AES), <code>"expand 32-byte k"</code> (ChaCha20) o <code>0x9E3779B9</code> (TEA) en <code>.rdata</code>/código</td><td>Transformación criptográfica estándar o cifrado de configuración/mensajes</td><td>Etiquetar la función criptográfica por su constante mágica e interceptar su entrada/salida en vez de analizar las rondas internas (<a href="#sec-guia-04-cripto">4.2</a>, <a href="#sec-guia-02-scripting-debugger">2.21</a>).</td></tr>
-<tr><td><strong>Avanzado</strong></td><td>Llamadas indirectas <code>call qword ptr [rax+18h]</code> donde <code>rax</code> proviene de <code>[rcx]</code></td><td>Despacho virtual C++ (<code>vtable</code>) o interfaz COM (<code>IUnknown</code>)</td><td>Ubicar la <code>vtable</code> en <code>.rdata</code>, leer <code>vtable[-1]</code> (<code>Complete Object Locator</code>, RVAs en x64) para recuperar el nombre de la clase (<a href="#sec-guia-02-cpp-profundo">2.18</a>, <span>2D.6</span>).</td></tr>
+<tr><td><strong>Avanzado</strong></td><td>Llamadas indirectas <code>call qword ptr [rax+18h]</code> donde <code>rax</code> proviene de <code>[rcx]</code></td><td>Despacho virtual C++ (<code>vtable</code>) o interfaz COM (<code>IUnknown</code>)</td><td>Ubicar la <code>vtable</code> en <code>.rdata</code>, leer <code>vtable[-1]</code> (<code>Complete Object Locator</code>, RVAs en x64) para recuperar el nombre de la clase (<a href="#sec-guia-02-cpp-profundo">2.18</a>, [Tomo II] <span>2D.6</span>).</td></tr>
 <tr><td><strong>Avanzado</strong></td><td>El proceso muere dentro de <code>ntdll!RtlFreeHeap</code> lejos de donde ocurrió el error real</td><td>Corrupción de heap previa (desborde, <em>use-after-free</em> o <em>double free</em>)</td><td>Activar <strong>Full Page Heap</strong> (<code>gflags /p /enable app.exe /full</code>) o grabar traza <strong>TTD</strong> en WinDbg y retroceder con <code>ba w4</code> + <code>g-</code> (<a href="#sec-guia-02-windbg-heap">2.19</a>).</td></tr>
 <tr><td><strong>Avanzado</strong></td><td>Archivo <code>.sys</code> que importa <code>WdfVersionBind</code> y registra <code>EvtIoDeviceControl</code></td><td>Driver de modo kernel basado en KMDF</td><td>Desglosar cada constante <code>CTL_CODE</code> del <code>switch</code> (DeviceType, Access, Function, Method), revisar <code>SDDL</code> y auditar tamaños mínimos y usos de <code>METHOD_NEITHER</code> (<span>6.2</span>, <span>6.4</span>).</td></tr>
 </tbody></table></div>
@@ -3943,70 +4195,6 @@ return (a + b) * 4 == 480;</code></pre>
 <ul><li><span class="fuente">Reversing desde cero, cap. 11</span> — análisis dinámico, strings, etiquetas y hipótesis.</li><li><span class="fuente">Reversing desde cero, cap. 15</span> — análisis estático, condiciones <code>0x32</code>/<code>0x1E0</code> y confirmación.</li><li><span class="fuente">Reversing desde cero, cap. 16</span> — decisión con <code>CMOVcc</code> en el mismo bloque y <code>strlen</code> inline.</li><li><span class="fuente">Reversing desde cero, cap. 19</span> — clave dependiente del tiempo (<code>GetSystemTime</code>): por qué no se reproduce ingresando el mismo valor.</li><li><span class="fuente">Reversing desde cero, cap. 20</span> — modelo del ciclo sin símbolos: strings, xref, pintar, analizar desde el inicio, renombrar con <code>?</code>.</li><li><span class="fuente">plantilla_informe.md</span> — plantilla base para el informe.</li><li>Conocimiento externo: <a href="https://docs.python.org/3/library/struct.html">struct — Interpret bytes as packed binary data</a> (documentación de Python) y <a href="https://kaitai.io/">Kaitai Struct</a> (lenguaje declarativo para describir formatos binarios).</li></ul>
 <aside class="callout nota"><p class="callout-titulo">Capas de esta lección</p><p><strong>Contenido observado en CLS:</strong> el método y los valores de los capítulos 11 y 15 (<code>0x32</code>, <code>0x1E0</code>, <code>40</code>/<code>80</code>), el caso <code>CMOVcc</code>/<code>strlen</code> inline del 16, el modelo sin símbolos del 20 y la clave por tiempo del 19. <strong>Conocimiento externo:</strong> ciclo hipótesis-confirmación, criterios de reproducibilidad y la reconstrucción de formatos (mágicos, campos de longitud, checksums). <strong>Ejemplo ilustrativo:</strong> el formato <code>.blc</code> y su tabla de campos. <strong>Recomendación editorial:</strong> el programa <code>check.exe</code>, la tabla de errores y la confirmación diferencial con lector independiente.</p></aside>
 </section>
-<section class="print-sec" id="sec-guia-04-formatos-protocolos">
-<h1 id="reconstruir-formatos-y-protocolos-propios">Reconstruir formatos y protocolos propios</h1>
-<aside class="callout nota"><p class="callout-titulo">Objetivo de la lección</p><p>Dado un conjunto pequeño de archivos o mensajes generados por un programa propio, formular y comprobar una estructura: campos, offsets, longitudes, endianness, framing y estados. Distinguir checksum, hash, MAC, compresión y cifrado como hipótesis diferentes, y anotar qué evidencia sostiene cada conclusión.</p></aside>
-<p><strong>Prerrequisitos:</strong> <a href="#sec-guia-01-numeros">Bits y endianness</a> (1.1), <a href="#sec-guia-01-pe">formato PE</a> (1.4), <a href="#sec-guia-04-metodo">método de análisis</a> (4.1), <span>IPC de Windows</span> como referencia. <strong>Duración sugerida:</strong> 6 horas.</p>
-<aside class="callout aviso"><p class="callout-titulo">Alcance y muestras</p><p>Usá archivos y programas <strong>propios</strong> o diseñados para la práctica. Para un protocolo, trabajá con dos procesos tuyos en una VM, una named pipe local o loopback. No envíes datos a servicios de terceros. <strong>Capas:</strong> conocimiento externo; ejemplo CLSF ilustrativo y sintético; laboratorio no verificado. La práctica propuesta usa programas propios y comunicación local.</p></aside>
-<h2 id="del-síntoma-a-una-pregunta-comprobable">Del síntoma a una pregunta comprobable</h2>
-<p>«¿Qué significa este blob?» es demasiado amplio. Convertí la duda en una pregunta que permita diseñar una prueba:</p>
-<ul><li>¿Los primeros cuatro bytes son una firma constante?</li><li>¿Este entero describe la longitud del cuerpo, del encabezado o del archivo completo?</li><li>¿Dos mensajes consecutivos se separan por longitud, delimitador o estado de la conexión?</li><li>¿Qué campo cambia cuando cambia solo el contenido?</li><li>¿El bloque final detecta corrupción accidental, autentica el mensaje o solo parece aleatorio?</li></ul>
-<p>Conservá cada muestra original sin modificarla, calculá su hash y anotá cómo se obtuvo. Trabajá sobre copias. Una tabla de diferencias entre muestras vale más que una interpretación basada en un solo archivo.</p>
-<h2 id="procedimiento-de-reconstrucción">Procedimiento de reconstrucción</h2>
-<ol><li><strong>Inventario.</strong> Anotá tamaño, hash, origen de laboratorio, herramienta que lo produjo y si el espécimen es archivo, mensaje, flujo o captura. Identificá la envoltura conocida y separala del formato interno.</li><li><strong>Muestras controladas.</strong> Generá pares que difieran en una sola propiedad: una cadena más larga, otro valor, un registro adicional o una versión distinta. Incluí casos válidos vacíos y límites que tu programa admita.</li><li><strong>Mapa de bytes.</strong> Numera offsets desde cero; registra bytes, ASCII/UTF-16, enteros little-endian/big-endian, alineación y regiones repetidas. No decidas el tipo de un campo por su apariencia aislada.</li><li><strong>Hipótesis.</strong> Para cada campo escribe hipótesis, evidencia, alternativa y prueba que la refutaría. «Parece una longitud» no es conclusión hasta comprobar varios tamaños.</li><li><strong>Framing y estructura.</strong> Separa cabecera, registros, cuerpo y tráiler. Prueba longitudes prefijadas, tamaños fijos, delimitadores, terminadores, conteos y esquemas TLV. Comprueba si las longitudes incluyen o excluyen cabecera/tráiler.</li><li><strong>Estado y secuencia.</strong> Dibuja estados y transiciones: conexión, saludo, petición, respuesta, error y cierre. Relaciona cada mensaje con el estado previo; un opcode puede significar cosas distintas según el estado.</li><li><strong>Transformaciones.</strong> Investiga por separado codificación, compresión, checksum/CRC, hash, MAC y cifrado. Usa perturbaciones controladas y evidencia del programa propio; entropía alta por sí sola no demuestra cifrado ni compresión.</li><li><strong>Validación independiente.</strong> Comprueba la hipótesis con muestras no usadas para formularla, límites y entradas malformadas inocuas. Escribe un esquema y un parser de referencia mínimo.</li></ol>
-<h2 id="endianness-longitudes-y-tlv">Endianness, longitudes y TLV</h2>
-<p>Un entero de dos bytes 05 00 vale 5 en little-endian; 00 05 vale 5 en big-endian. En tráfico IP, los campos numéricos de Winsock usan orden de red (big-endian), aunque el host x86/x64 use little-endian. Un formato puede mezclar órdenes: documenta el orden <strong>por campo</strong>.</p>
-<p>En un esquema <strong>TLV</strong> (type, length, value), cada elemento indica tipo, longitud y valor. Confirma el ancho de tipo/longitud, si la longitud incluye el encabezado y cómo se representa un elemento desconocido.</p>
-<h2 id="ejemplo-trabajado-formato-sintético-clsf">Ejemplo trabajado: formato sintético CLSF</h2>
-<p><em>(Ejemplo <strong>ilustrativo</strong>, generado para la lección; no proviene de un archivo CLS.)</em> Supongamos un programa propio que escribe estos bytes:</p>
-<pre><code class="lenguaje-text">Offset  Bytes                                      Lectura provisional
-00      43 4C 53 46                                 firma ASCII «CLSF»
-04      01                                          versión candidata = 1
-05      00                                          flags candidatos = 0
-06      0C 00                                       tamaño de cabecera candidato = 12 (LE)
-08      05 00                                       tamaño de cuerpo candidato = 5 (LE)
-0A      2A 00                                       campo variable = 42 (LE)
-0C      48 45 4C 4C 4F                              cuerpo ASCII «HELLO»</code></pre>
-<p>La muestra completa tiene 17 bytes. Es tentador llamar «secuencia» al campo en offset 0A, pero una sola muestra no lo justifica. Generamos variantes cambiando una cosa cada vez:</p>
-<div class="tabla"><table>
-<thead><tr>
-<th>Muestra</th>
-<th>Cambios controlados</th>
-<th>Observación</th>
-</tr></thead><tbody>
-<tr><td>A</td><td>Cuerpo HELLO, campo 2A 00</td><td>Longitud 5; total 17 bytes</td></tr>
-<tr><td>B</td><td>Mismo cuerpo, campo 2B 00</td><td>Solo cambia el campo en 0A; podría ser contador, ID o checksum</td></tr>
-<tr><td>C</td><td>Cuerpo BYE!!, campo 2A 00</td><td>Cambia solo el cuerpo; el campo 0A permanece</td></tr>
-<tr><td>D</td><td>Cuerpo HELLO!!!, campo 2A 00</td><td>Cuerpo crece tres bytes y el campo 08 pasa de 5 a 8</td></tr>
-</tbody></table></div>
-<p>A y D apoyan la hipótesis «offset 08 es longitud del cuerpo» y que empieza en 0C. A/B/C sugieren que 0A no es un checksum simple del cuerpo, pero no identifican su significado. Solo al observar varias operaciones del programa propio —por ejemplo, que incrementa entre mensajes— podríamos etiquetarlo como contador. Cada etiqueta queda como hipótesis hasta probarla.</p>
-<h2 id="framing-y-máquina-de-estados">Framing y máquina de estados</h2>
-<p>En un archivo, el inicio y final vienen dados por el archivo. En un protocolo hay que averiguar <strong>dónde termina cada mensaje</strong>:</p>
-<ul><li><strong>Tamaño fijo:</strong> cada mensaje tiene la misma longitud.</li><li><strong>Longitud prefijada:</strong> un encabezado anuncia cuántos bytes siguen; determina si cuenta desde el encabezado o solo el cuerpo.</li><li><strong>Delimitador:</strong> un byte o secuencia separa mensajes; prueba cómo se escapa si aparece en el cuerpo.</li><li><strong>Estado o longitud implícita:</strong> el final depende de una operación o fase del protocolo.</li></ul>
-<p>TCP es un flujo de bytes: los límites de una llamada send no son automáticamente límites de mensaje para quien recibe. El framing pertenece al protocolo de aplicación. Named pipes de Windows pueden operar en modo byte o mensaje; identifica el modo antes de interpretar lecturas, y documenta también la estructura interna definida por la aplicación.</p>
-<pre><code class="lenguaje-text">DESCONECTADO --conectar--&gt; ESPERA_SALUDO
-ESPERA_SALUDO --saludo válido--&gt; LISTO
-LISTO --petición--&gt; ESPERA_RESPUESTA
-ESPERA_RESPUESTA --respuesta/error--&gt; LISTO
-cualquier estado --cierre--&gt; DESCONECTADO</code></pre>
-<p>El diagrama es una hipótesis hasta contrastarla con trazas de una ejecución propia. Anota estado previo, bytes, respuesta y efecto observable para cada transición.</p>
-<h2 id="no-confundir-checksum-hash-mac-compresión-y-cifrado">No confundir checksum, hash, MAC, compresión y cifrado</h2>
-<ul><li><strong>Checksum/CRC:</strong> detecta ciertas corrupciones accidentales; no autentica al emisor.</li><li><strong>Hash:</strong> resumen de tamaño fijo; sin secreto no prueba quién creó el mensaje.</li><li><strong>MAC:</strong> etiqueta con clave compartida que permite verificar integridad/autenticidad bajo ese secreto.</li><li><strong>Cifrado:</strong> transforma datos usando una clave para ocultar contenido; no implica por sí mismo integridad.</li><li><strong>Compresión:</strong> transforma la representación para reducirla; firmas y cambios de tamaño dan pistas, pero entropía alta no prueba compresión ni cifrado.</li><li><strong>Codificación:</strong> cambia la representación (por ejemplo, base64 o UTF-16) sin ser cifrado.</li></ul>
-<p>Cambia un solo byte y compara el tráiler en muchas muestras. Después cambia una propiedad semántica y repite. Si no puedes validar una fórmula o identificar una llamada concreta en el programa propio, registra «campo no resuelto» en vez de adivinar CRC/AES.</p>
-<h2 id="práctica">Práctica</h2>
-<p>En una VM, con <strong>un escritor/parser propio</strong> y, si eliges la rama de protocolo, dos procesos tuyos:</p>
-<ol><li>Genera al menos cuatro muestras con una sola variable distinta por par. Conserva originales y hashes.</li><li>Completa una tabla de offsets, ancho, orden de bytes, valor observado, hipótesis y confianza.</li><li>Identifica el framing y dibuja una máquina de estados para un intercambio local. Si usas named pipe, registra su modo byte/mensaje.</li><li>Investiga un posible tráiler variando un byte y el contenido; distingue qué puedes concluir y qué no sobre checksum, hash, MAC, cifrado o compresión.</li><li>Escribe un esquema breve y un parser de referencia para muestras válidas. Añade límites y casos malformados inocuos.</li><li>Reserva dos muestras para validación: predice sus offsets, longitudes y transiciones antes de abrirlas.</li></ol>
-<h2 id="entregable">Entregable</h2>
-<p>Un mini-informe con hashes, tabla de campos/offsets, diagrama de estados si es protocolo, esquema, pruebas, hipótesis refutadas y límites. Marca cada campo como <strong>confirmado</strong>, <strong>probable</strong> o <strong>sin resolver</strong>, con su evidencia.</p>
-<h2 id="preguntas-de-repaso">Preguntas de repaso</h2>
-<details open class="qa"><summary>¿Por qué un mensaje TCP no termina necesariamente donde terminó la llamada send?</summary><div class="respuesta"><p>TCP entrega un flujo de bytes; el protocolo de aplicación define el framing. Los segmentos y llamadas de envío no garantizan los límites que verá cada lectura.</p></div></details>
-<details open class="qa"><summary>¿Qué experimento ayuda a identificar un campo de longitud?</summary><div class="respuesta"><p>Cambiar solo el tamaño del cuerpo en varias muestras y comprobar si el campo cambia coherentemente y si cuenta encabezado o archivo completo.</p></div></details>
-<details open class="qa"><summary>¿Que un tráiler cambie al modificar el cuerpo demuestra que es un CRC?</summary><div class="respuesta"><p>No. También podría ser hash, MAC, cifrado u otro campo dependiente del contenido. Hay que probar la hipótesis con más muestras y evidencia.</p></div></details>
-<details open class="qa"><summary>¿Qué diferencia hay entre minimizar una muestra y confirmar un formato?</summary><div class="respuesta"><p>Minimizar reduce una entrada manteniendo un comportamiento o cobertura; confirmar exige que una hipótesis estructural prediga muestras independientes y casos límite.</p></div></details>
-<aside class="callout nota"><p class="callout-titulo">Puerta de salida</p><p>Podés reconstruir un formato o protocolo propio desde muestras controladas: marcar campos y offsets, explicar endianness/longitudes/framing, dibujar estados cuando corresponda, separar transformaciones candidatas y validar el esquema con muestras reservadas. No hace falta adivinar todos los campos; sí declarar qué evidencia falta.</p></aside>
-<h2>Fuentes</h2>
-<ul><li>Microsoft Learn: <a href="https://learn.microsoft.com/en-us/windows/win32/winsock/byte-ordering-2">Byte Ordering</a>, <a href="https://learn.microsoft.com/en-us/windows/win32/ipc/named-pipes">Named Pipes</a>, <a href="https://learn.microsoft.com/en-us/windows/win32/ipc/named-pipe-type-read-and-wait-modes">Named Pipe Type, Read, and Wait Modes</a>.</li><li>IETF: <a href="https://www.rfc-editor.org/rfc/rfc9293">RFC 9293, Transmission Control Protocol (TCP)</a>.</li><li><a href="#sec-guia-04-metodo">Método de análisis</a>, <span>IPC en Windows</span> y <a href="#sec-guia-02-opt-fuzzing">fuzzing/análisis simbólico</a>.</li></ul>
-</section>
 <section class="print-sec" id="sec-guia-04-cripto">
 <h1 id="reconocer-criptografía-y-encoding-en-un-binario">Reconocer criptografía y encoding en un binario</h1>
 <aside class="callout aviso"><p class="callout-titulo">De dónde sale esta lección</p><p>Este tema <strong>no está en el corpus CLS</strong>: es <strong>conocimiento externo</strong> que agregamos para completar la guía. Se incluye porque reconocer cripto y encoding es rutina en análisis de malware de Windows y en CTF. El enfoque es <strong>defensivo y de identificación</strong>: reconocer qué algoritmo hay, no implementar criptografía ni romperla.</p></aside>
@@ -4076,6 +4264,74 @@ cualquier estado --cierre--&gt; DESCONECTADO</code></pre>
 <li><strong>Constante mágica de 16 bytes (clave de 256 bits):</strong> La cadena ASCII <strong><code>"expand 32-byte k"</code></strong> o los cuatro <code>DWORD</code> little-endian <strong><code>0x61707865</code>, <code>0x3320646e</code>, <code>0x79622d32</code>, <code>0x6b206574</code></strong> en las palabras <code>0..3</code> de un estado de 16 palabras (64 bytes). (Para clave de 128 bits: <code>"expand 16-byte k"</code>).</li>
 <li><strong>Firma en el código (Quarter-Round ARX):</strong> Un bucle de 20 rondas (10 iteraciones dobles) compuesto exclusivamente por sumas de 32 bits (<code>add</code>), <code>xor</code> y rotaciones (<code>rol</code>) con conteos de <strong>16, 12, 8 y 7 bits</strong> (o 7, 9, 13 y 18 en Salsa20).</li>
 </ul>
+</aside>
+
+<aside class="ampliacion-ext">
+<p class="callout-titulo">Ampliación editorial basada en fuentes externas — Criptografía asimétrica (RSA/ECC) y tabla de intercepción en APIs nativas de Windows (CryptoAPI y CNG)</p>
+<p>El software moderno rara vez implementa algoritmos criptográficos desde cero; en su lugar, utiliza esquemas híbridos apoyados en las bibliotecas criptográficas nativas de Windows (<a href="https://learn.microsoft.com/en-us/windows/win32/seccng/cng-portal">Microsoft Learn: Cryptography Next Generation</a> y <a href="https://learn.microsoft.com/en-us/windows/win32/seccrypto/cryptography-portal">CryptoAPI</a>):</p>
+
+<h4 style="margin: 0.8rem 0 0.4rem 0; color: #1d4f2a;">1. Esquemas Criptográficos Híbridos en la Práctica</h4>
+<p>La carga útil o los datos de configuración se cifran con un algoritmo simétrico de alta velocidad (AES-CBC, AES-GCM o ChaCha20) utilizando una clave de sesión generada al vuelo. A continuación, esa clave de sesión se cifra con una <strong>clave pública asimétrica</strong> (RSA o Curvas Elípticas ECC) embebida en el binario. Solo quien posee la clave privada correspondiente puede descifrar la clave de sesión y acceder a los datos.</p>
+
+<h4 style="margin: 0.8rem 0 0.4rem 0; color: #1d4f2a;">2. Reconocimiento de Claves Asimétricas en Binarios</h4>
+<ul>
+<li><strong>RSA:</strong> Se detecta por la presencia del exponente público estándar <code>e = 65537</code> (<code>0x00010001</code>, codificado en little-endian como <code>01 00 01 00</code> en memoria) y módulos grandes <code>N</code> de 256 bytes (2048 bits) o 512 bytes (4096 bits) en <code>.rdata</code>.</li>
+<li><strong>Estructura <code>RSAPUBKEY</code> (CryptoAPI clásica):</strong>
+<pre><code>struct RSAPUBKEY {
+    DWORD magic;  // 0x31415352 = ASCII "RSA1" (clave pública) / 0x32415352 = "RSA2" (privada)
+    DWORD bitlen; // Tamaño en bits (ej. 0x00000800 = 2048 bits)
+    DWORD pubexp; // Exponente público (ej. 0x00010001 = 65537)
+};</code></pre></li>
+<li><strong>Curvas Elípticas (ECC / ECDSA / ECDH):</strong> Se identifican por constantes de curvas estándares como <code>secp256r1</code> (NIST P-256) o <code>Curve25519</code> (constante de campo primo <code>2^255 - 19</code>).</li>
+</ul>
+
+<h4 style="margin: 0.8rem 0 0.4rem 0; color: #1d4f2a;">3. Tabla de APIs Criptográficas Nativas y Puntos de Intercepción en Depuración</h4>
+<div class="tabla"><table>
+<thead><tr><th>Operación</th><th>CryptoAPI Clásica (advapi32.dll)</th><th>CNG Moderna (bcrypt.dll)</th><th>Estrategia de Intercepción en Depurador</th></tr></thead>
+<tbody>
+<tr><td><strong>Inicialización</strong></td><td><code>CryptAcquireContextW</code></td><td><code>BCryptOpenAlgorithmProvider</code></td><td>Identifica el algoritmo pasando cadenas como <code>BCRYPT_AES_ALGORITHM</code> o <code>BCRYPT_RSA_ALGORITHM</code>.</td></tr>
+<tr><td><strong>Importación de Clave</strong></td><td><code>CryptImportKey</code></td><td><code>BCryptImportKeyPair</code> / <code>BCryptGenerateSymmetricKey</code></td><td>Poner breakpoint para volcar el buffer de la clave en memoria (estructura <code>BLOBHEADER</code> o clave simétrica cruda).</td></tr>
+<tr><td><strong>Cifrado de Datos</strong></td><td><code>CryptEncrypt</code></td><td><code>BCryptEncrypt</code></td><td><strong>Punto crítico de intercepción:</strong> Poner breakpoint en la entrada. El argumento <code>pbData</code> (CryptoAPI) o <code>pbInput</code> (<code>RDX</code> en x64 para CNG) contiene el <strong>texto plano antes de ser cifrado</strong>.</td></tr>
+<tr><td><strong>Descifrado de Datos</strong></td><td><code>CryptDecrypt</code></td><td><code>BCryptDecrypt</code></td><td>Poner breakpoint en el <strong>retorno de la función</strong>. El buffer de salida contendrá el texto descifrado en memoria.</td></tr>
+</tbody>
+</table></div>
+</aside>
+
+<aside class="ampliacion-ext">
+<p class="callout-titulo">Ampliación editorial basada en fuentes externas — La trampa del Endianness en CNG vs. CryptoAPI y script de conversión en Python</p>
+<p>Una de las discrepancias arquitectónicas más frecuentes al extraer claves criptográficas de memoria radica en la convención de orden de bytes (<a href="https://learn.microsoft.com/en-us/windows/win32/seccng/cng-key-storage-functions">Microsoft Learn: CNG Key Storage</a>):</p>
+
+<div class="tabla"><table>
+<thead><tr><th>Característica</th><th>CryptoAPI Clásica (advapi32.dll)</th><th>CNG Moderna (bcrypt.dll / ncrypt.dll)</th></tr></thead>
+<tbody>
+<tr><td><strong>Estructura del encabezado</strong></td><td><code>PUBLICKEYSTRUC</code> (<code>BLOBHEADER</code>) + <code>RSAPUBKEY</code></td><td><code>BCRYPT_RSAKEY_BLOB</code> / <code>BCRYPT_ECCKEY_BLOB</code></td></tr>
+<tr><td><strong>Magic Bytes de clave pública RSA</strong></td><td><code>0x31415352</code> (ASCII <code>"RSA1"</code>)</td><td><code>0x31415352</code> (<code>BCRYPT_RSAPUBLIC_MAGIC</code> = <code>"RSA1"</code>)</td></tr>
+<tr><td><strong>Magic Bytes de clave privada RSA</strong></td><td><code>0x32415352</code> (ASCII <code>"RSA2"</code>)</td><td><code>0x32415352</code> (<code>BCRYPT_RSAPRIVATE_MAGIC</code> = <code>"RSA2"</code>)</td></tr>
+<tr><td><strong>Magic Bytes de Curvas Elípticas (P-256)</strong></td><td>No soportado de forma estándar</td><td><code>0x314B4345</code> (<code>"ECK1"</code> para ECDH) / <code>0x31534345</code> (<code>"ECS1"</code> para ECDSA)</td></tr>
+<tr><td><strong>Orden de Bytes (Endianness) del Módulo y Claves</strong></td><td><strong>Little-Endian</strong> (el byte menos significativo va primero)</td><td><strong>Big-Endian</strong> (formato estándar de red / RFC)</td></tr>
+</tbody>
+</table></div>
+
+<h4 style="margin: 0.8rem 0 0.4rem 0; color: #1d4f2a;">Reconocimiento Visual de Claves ASN.1 DER (X.509)</h4>
+<p>Cuando un binario no utiliza APIs nativas de Windows y compila su propia librería (como mbedTLS u OpenSSL), las claves públicas suelen embeberse en formato ASN.1 DER binario. Se reconocen al instante por la secuencia invariable que codifica el OID de <code>rsaEncryption</code> (<code>1.2.840.113549.1.1.1</code>):</p>
+<pre><code>30 82 .. .. 30 0D 06 09 2A 86 48 86 F7 0D 01 01 01 05 00 03 82 .. .. 00 30 82 ..</code></pre>
+
+<h4 style="margin: 0.8rem 0 0.4rem 0; color: #1d4f2a;">Script de Extracción y Conversión a PEM (Python / PyCryptodome)</h4>
+<p>Para convertir un volcado hexadecimal obtenido en x64dbg de una estructura <code>RSAPUBKEY</code> (CryptoAPI) a una clave pública <code>.pem</code> estándar utilizable en scripts defensivos, se debe invertir el orden de los bytes del módulo:</p>
+<pre><code># Reconstrucción de clave pública RSA desde volcado de CryptoAPI (Little-Endian)
+from Crypto.PublicKey import RSA
+
+def parse_cryptoapi_rsapubkey(data: bytes) -> RSA.RsaKey:
+    # data: buffer que comienza en RSAPUBKEY (después del BLOBHEADER de 8 bytes)
+    magic = data[0:4]          # b'RSA1' (0x31415352)
+    bitlen = int.from_bytes(data[4:8], 'little')
+    pubexp = int.from_bytes(data[8:12], 'little')
+    modlen = bitlen // 8
+    # En CryptoAPI el módulo viene en little-endian; se invierte a big-endian:
+    modulus = int.from_bytes(data[12:12+modlen][::-1], 'big')
+    return RSA.construct((modulus, pubexp))
+
+# Exportar a PEM: print(key.export_key().decode())</code></pre>
 </aside>
 </section>
 <section class="print-sec" id="sec-guia-04-informe">
@@ -4283,6 +4539,70 @@ No se evaluó el comportamiento con entradas no numéricas.</code></pre>
 <h2 id="fuentes-de-esta-lección">Fuentes de esta lección</h2>
 <ul><li><span class="fuente">Videos y material adicional, Video 37</span> — caso Shelter: VM, Kali y ejecución de malware; se cita como caso observado.</li><li><span class="fuente">Videos y material adicional, Video 36</span> — XOR, crypter y backdoor en VM.</li><li><span class="fuente">Reversing desde cero, cap. 22</span> — PEB y detección de debugger.</li><li><span class="fuente">Reversing desde cero, cap. 24</span> — cuatro chequeos anti-debug.</li><li><span class="fuente">Inventario limpio, LEEME</span> — estados <code>cuarentena</code> y criterio de no ejecución.</li></ul>
 <aside class="callout nota"><p class="callout-titulo">Capas de esta lección</p><p><strong>Contenido observado en CLS:</strong> el laboratorio con dos VMs del video 37, la inyección del video 36 y los chequeos de los capítulos 22 y 24. <strong>Conocimiento externo:</strong> observación con Process Monitor/TCPView y planes de contención. <strong>Recomendación editorial:</strong> la matriz de decisión y el protocolo de incidentes.</p></aside>
+</section>
+<section class="print-sec" id="sec-guia-04-formatos-protocolos">
+<h1 id="reconstruir-formatos-y-protocolos-propios">Reconstruir formatos y protocolos propios</h1>
+<aside class="callout nota"><p class="callout-titulo">Objetivo de la lección</p><p>Dado un conjunto pequeño de archivos o mensajes generados por un programa propio, formular y comprobar una estructura: campos, offsets, longitudes, endianness, framing y estados. Distinguir checksum, hash, MAC, compresión y cifrado como hipótesis diferentes, y anotar qué evidencia sostiene cada conclusión.</p></aside>
+<p><strong>Prerrequisitos:</strong> <a href="#sec-guia-01-numeros">Bits y endianness</a> (1.1), <a href="#sec-guia-01-pe">formato PE</a> (1.4), <a href="#sec-guia-04-metodo">método de análisis</a> (4.1), <span>IPC de Windows</span> como referencia. <strong>Duración sugerida:</strong> 6 horas.</p>
+<aside class="callout aviso"><p class="callout-titulo">Alcance y muestras</p><p>Usá archivos y programas <strong>propios</strong> o diseñados para la práctica. Para un protocolo, trabajá con dos procesos tuyos en una VM, una named pipe local o loopback. No envíes datos a servicios de terceros. <strong>Capas:</strong> conocimiento externo; ejemplo CLSF ilustrativo y sintético; laboratorio no verificado. La práctica propuesta usa programas propios y comunicación local.</p></aside>
+<h2 id="del-síntoma-a-una-pregunta-comprobable">Del síntoma a una pregunta comprobable</h2>
+<p>«¿Qué significa este blob?» es demasiado amplio. Convertí la duda en una pregunta que permita diseñar una prueba:</p>
+<ul><li>¿Los primeros cuatro bytes son una firma constante?</li><li>¿Este entero describe la longitud del cuerpo, del encabezado o del archivo completo?</li><li>¿Dos mensajes consecutivos se separan por longitud, delimitador o estado de la conexión?</li><li>¿Qué campo cambia cuando cambia solo el contenido?</li><li>¿El bloque final detecta corrupción accidental, autentica el mensaje o solo parece aleatorio?</li></ul>
+<p>Conservá cada muestra original sin modificarla, calculá su hash y anotá cómo se obtuvo. Trabajá sobre copias. Una tabla de diferencias entre muestras vale más que una interpretación basada en un solo archivo.</p>
+<h2 id="procedimiento-de-reconstrucción">Procedimiento de reconstrucción</h2>
+<ol><li><strong>Inventario.</strong> Anotá tamaño, hash, origen de laboratorio, herramienta que lo produjo y si el espécimen es archivo, mensaje, flujo o captura. Identificá la envoltura conocida y separala del formato interno.</li><li><strong>Muestras controladas.</strong> Generá pares que difieran en una sola propiedad: una cadena más larga, otro valor, un registro adicional o una versión distinta. Incluí casos válidos vacíos y límites que tu programa admita.</li><li><strong>Mapa de bytes.</strong> Numera offsets desde cero; registra bytes, ASCII/UTF-16, enteros little-endian/big-endian, alineación y regiones repetidas. No decidas el tipo de un campo por su apariencia aislada.</li><li><strong>Hipótesis.</strong> Para cada campo escribe hipótesis, evidencia, alternativa y prueba que la refutaría. «Parece una longitud» no es conclusión hasta comprobar varios tamaños.</li><li><strong>Framing y estructura.</strong> Separa cabecera, registros, cuerpo y tráiler. Prueba longitudes prefijadas, tamaños fijos, delimitadores, terminadores, conteos y esquemas TLV. Comprueba si las longitudes incluyen o excluyen cabecera/tráiler.</li><li><strong>Estado y secuencia.</strong> Dibuja estados y transiciones: conexión, saludo, petición, respuesta, error y cierre. Relaciona cada mensaje con el estado previo; un opcode puede significar cosas distintas según el estado.</li><li><strong>Transformaciones.</strong> Investiga por separado codificación, compresión, checksum/CRC, hash, MAC y cifrado. Usa perturbaciones controladas y evidencia del programa propio; entropía alta por sí sola no demuestra cifrado ni compresión.</li><li><strong>Validación independiente.</strong> Comprueba la hipótesis con muestras no usadas para formularla, límites y entradas malformadas inocuas. Escribe un esquema y un parser de referencia mínimo.</li></ol>
+<h2 id="endianness-longitudes-y-tlv">Endianness, longitudes y TLV</h2>
+<p>Un entero de dos bytes 05 00 vale 5 en little-endian; 00 05 vale 5 en big-endian. En tráfico IP, los campos numéricos de Winsock usan orden de red (big-endian), aunque el host x86/x64 use little-endian. Un formato puede mezclar órdenes: documenta el orden <strong>por campo</strong>.</p>
+<p>En un esquema <strong>TLV</strong> (type, length, value), cada elemento indica tipo, longitud y valor. Confirma el ancho de tipo/longitud, si la longitud incluye el encabezado y cómo se representa un elemento desconocido.</p>
+<h2 id="ejemplo-trabajado-formato-sintético-clsf">Ejemplo trabajado: formato sintético CLSF</h2>
+<p><em>(Ejemplo <strong>ilustrativo</strong>, generado para la lección; no proviene de un archivo CLS.)</em> Supongamos un programa propio que escribe estos bytes:</p>
+<pre><code class="lenguaje-text">Offset  Bytes                                      Lectura provisional
+00      43 4C 53 46                                 firma ASCII «CLSF»
+04      01                                          versión candidata = 1
+05      00                                          flags candidatos = 0
+06      0C 00                                       tamaño de cabecera candidato = 12 (LE)
+08      05 00                                       tamaño de cuerpo candidato = 5 (LE)
+0A      2A 00                                       campo variable = 42 (LE)
+0C      48 45 4C 4C 4F                              cuerpo ASCII «HELLO»</code></pre>
+<p>La muestra completa tiene 17 bytes. Es tentador llamar «secuencia» al campo en offset 0A, pero una sola muestra no lo justifica. Generamos variantes cambiando una cosa cada vez:</p>
+<div class="tabla"><table>
+<thead><tr>
+<th>Muestra</th>
+<th>Cambios controlados</th>
+<th>Observación</th>
+</tr></thead><tbody>
+<tr><td>A</td><td>Cuerpo HELLO, campo 2A 00</td><td>Longitud 5; total 17 bytes</td></tr>
+<tr><td>B</td><td>Mismo cuerpo, campo 2B 00</td><td>Solo cambia el campo en 0A; podría ser contador, ID o checksum</td></tr>
+<tr><td>C</td><td>Cuerpo BYE!!, campo 2A 00</td><td>Cambia solo el cuerpo; el campo 0A permanece</td></tr>
+<tr><td>D</td><td>Cuerpo HELLO!!!, campo 2A 00</td><td>Cuerpo crece tres bytes y el campo 08 pasa de 5 a 8</td></tr>
+</tbody></table></div>
+<p>A y D apoyan la hipótesis «offset 08 es longitud del cuerpo» y que empieza en 0C. A/B/C sugieren que 0A no es un checksum simple del cuerpo, pero no identifican su significado. Solo al observar varias operaciones del programa propio —por ejemplo, que incrementa entre mensajes— podríamos etiquetarlo como contador. Cada etiqueta queda como hipótesis hasta probarla.</p>
+<h2 id="framing-y-máquina-de-estados">Framing y máquina de estados</h2>
+<p>En un archivo, el inicio y final vienen dados por el archivo. En un protocolo hay que averiguar <strong>dónde termina cada mensaje</strong>:</p>
+<ul><li><strong>Tamaño fijo:</strong> cada mensaje tiene la misma longitud.</li><li><strong>Longitud prefijada:</strong> un encabezado anuncia cuántos bytes siguen; determina si cuenta desde el encabezado o solo el cuerpo.</li><li><strong>Delimitador:</strong> un byte o secuencia separa mensajes; prueba cómo se escapa si aparece en el cuerpo.</li><li><strong>Estado o longitud implícita:</strong> el final depende de una operación o fase del protocolo.</li></ul>
+<p>TCP es un flujo de bytes: los límites de una llamada send no son automáticamente límites de mensaje para quien recibe. El framing pertenece al protocolo de aplicación. Named pipes de Windows pueden operar en modo byte o mensaje; identifica el modo antes de interpretar lecturas, y documenta también la estructura interna definida por la aplicación.</p>
+<pre><code class="lenguaje-text">DESCONECTADO --conectar--&gt; ESPERA_SALUDO
+ESPERA_SALUDO --saludo válido--&gt; LISTO
+LISTO --petición--&gt; ESPERA_RESPUESTA
+ESPERA_RESPUESTA --respuesta/error--&gt; LISTO
+cualquier estado --cierre--&gt; DESCONECTADO</code></pre>
+<p>El diagrama es una hipótesis hasta contrastarla con trazas de una ejecución propia. Anota estado previo, bytes, respuesta y efecto observable para cada transición.</p>
+<h2 id="no-confundir-checksum-hash-mac-compresión-y-cifrado">No confundir checksum, hash, MAC, compresión y cifrado</h2>
+<ul><li><strong>Checksum/CRC:</strong> detecta ciertas corrupciones accidentales; no autentica al emisor.</li><li><strong>Hash:</strong> resumen de tamaño fijo; sin secreto no prueba quién creó el mensaje.</li><li><strong>MAC:</strong> etiqueta con clave compartida que permite verificar integridad/autenticidad bajo ese secreto.</li><li><strong>Cifrado:</strong> transforma datos usando una clave para ocultar contenido; no implica por sí mismo integridad.</li><li><strong>Compresión:</strong> transforma la representación para reducirla; firmas y cambios de tamaño dan pistas, pero entropía alta no prueba compresión ni cifrado.</li><li><strong>Codificación:</strong> cambia la representación (por ejemplo, base64 o UTF-16) sin ser cifrado.</li></ul>
+<p>Cambia un solo byte y compara el tráiler en muchas muestras. Después cambia una propiedad semántica y repite. Si no puedes validar una fórmula o identificar una llamada concreta en el programa propio, registra «campo no resuelto» en vez de adivinar CRC/AES.</p>
+<h2 id="práctica">Práctica</h2>
+<p>En una VM, con <strong>un escritor/parser propio</strong> y, si eliges la rama de protocolo, dos procesos tuyos:</p>
+<ol><li>Genera al menos cuatro muestras con una sola variable distinta por par. Conserva originales y hashes.</li><li>Completa una tabla de offsets, ancho, orden de bytes, valor observado, hipótesis y confianza.</li><li>Identifica el framing y dibuja una máquina de estados para un intercambio local. Si usas named pipe, registra su modo byte/mensaje.</li><li>Investiga un posible tráiler variando un byte y el contenido; distingue qué puedes concluir y qué no sobre checksum, hash, MAC, cifrado o compresión.</li><li>Escribe un esquema breve y un parser de referencia para muestras válidas. Añade límites y casos malformados inocuos.</li><li>Reserva dos muestras para validación: predice sus offsets, longitudes y transiciones antes de abrirlas.</li></ol>
+<h2 id="entregable">Entregable</h2>
+<p>Un mini-informe con hashes, tabla de campos/offsets, diagrama de estados si es protocolo, esquema, pruebas, hipótesis refutadas y límites. Marca cada campo como <strong>confirmado</strong>, <strong>probable</strong> o <strong>sin resolver</strong>, con su evidencia.</p>
+<h2 id="preguntas-de-repaso">Preguntas de repaso</h2>
+<details open class="qa"><summary>¿Por qué un mensaje TCP no termina necesariamente donde terminó la llamada send?</summary><div class="respuesta"><p>TCP entrega un flujo de bytes; el protocolo de aplicación define el framing. Los segmentos y llamadas de envío no garantizan los límites que verá cada lectura.</p></div></details>
+<details open class="qa"><summary>¿Qué experimento ayuda a identificar un campo de longitud?</summary><div class="respuesta"><p>Cambiar solo el tamaño del cuerpo en varias muestras y comprobar si el campo cambia coherentemente y si cuenta encabezado o archivo completo.</p></div></details>
+<details open class="qa"><summary>¿Que un tráiler cambie al modificar el cuerpo demuestra que es un CRC?</summary><div class="respuesta"><p>No. También podría ser hash, MAC, cifrado u otro campo dependiente del contenido. Hay que probar la hipótesis con más muestras y evidencia.</p></div></details>
+<details open class="qa"><summary>¿Qué diferencia hay entre minimizar una muestra y confirmar un formato?</summary><div class="respuesta"><p>Minimizar reduce una entrada manteniendo un comportamiento o cobertura; confirmar exige que una hipótesis estructural prediga muestras independientes y casos límite.</p></div></details>
+<aside class="callout nota"><p class="callout-titulo">Puerta de salida</p><p>Podés reconstruir un formato o protocolo propio desde muestras controladas: marcar campos y offsets, explicar endianness/longitudes/framing, dibujar estados cuando corresponda, separar transformaciones candidatas y validar el esquema con muestras reservadas. No hace falta adivinar todos los campos; sí declarar qué evidencia falta.</p></aside>
+<h2>Fuentes</h2>
+<ul><li>Microsoft Learn: <a href="https://learn.microsoft.com/en-us/windows/win32/winsock/byte-ordering-2">Byte Ordering</a>, <a href="https://learn.microsoft.com/en-us/windows/win32/ipc/named-pipes">Named Pipes</a>, <a href="https://learn.microsoft.com/en-us/windows/win32/ipc/named-pipe-type-read-and-wait-modes">Named Pipe Type, Read, and Wait Modes</a>.</li><li>IETF: <a href="https://www.rfc-editor.org/rfc/rfc9293">RFC 9293, Transmission Control Protocol (TCP)</a>.</li><li><a href="#sec-guia-04-metodo">Método de análisis</a>, <span>IPC en Windows</span> y <a href="#sec-guia-02-opt-fuzzing">fuzzing/análisis simbólico</a>.</li></ul>
 </section>
 <section class="print-sec" id="sec-guia-etapa-5">
 <h1 id="etapa-5-ramas-opcionales">Etapa 5 · Ramas opcionales</h1>
@@ -4654,7 +4974,7 @@ for ins in md.disasm(codigo, 0x401000):
 <h2 id="práctica">Práctica</h2>
 <ol><li>Compilá tu <code>check.exe</code> y abrilo en IDA.</li><li>Corré el script de renombrado y verificá que las funciones <code>sub_</code> cambiaron de nombre.</li><li>Corré el script de búsqueda de <code>0x1E0</code> y comprobá que encuentra la comparación.</li><li>Modificá la constante del programa a <code>0x1B8</code>, recompilá y volvé a correr el script.</li><li>Escribí un script que imprima todas las funciones cuyo nombre contenga "check" o "main".</li><li>Guardá los scripts en tu bitácora y anotá la versión de IDA.</li></ol>
 <h2 id="preguntas-de-repaso">Preguntas de repaso</h2>
-<p><strong>1. ¿Cuándo conviene automatizar?</strong> Cuando la tarea es repetitiva, mecánica y verificable. Primero se hace a mano para entenderla.</p>
+<p><strong>1. ¿Cuál es el criterio de rentabilidad y riesgo antes de escribir un script de reversing?</strong> Conviene cuando la ganancia de tiempo y consistencia supera el costo de desarrollo y verificación. Si la tarea se ejecuta pocas veces o requiere discernimiento heurístico caso por caso, el riesgo de contaminación de la base de datos supera el beneficio.</p>
 <p><strong>2. ¿Qué diferencia hay entre <code>idc</code>, <code>idautils</code> e <code>idaapi</code>?</strong> <code>idc</code> tiene funciones clásicas; <code>idautils</code> ofrece iteradores; <code>idaapi</code> es la API de bajo nivel y la interfaz.</p>
 <p><strong>3. ¿IDAPython funciona en IDA Free?</strong> Depende de la versión. Históricamente IDA Free no incluía Python; las versiones recientes agregaron capacidades. Si no está, usá Ghidra o automatizá con <code>pefile</code>/<code>capstone</code>.</p>
 <p><strong>4. ¿Por qué hay que revisar el resultado de un script?</strong> Porque un script no entiende el contexto: puede renombrar mal, buscar coincidencias falsas o modificar datos que no correspondían.</p>
@@ -5459,19 +5779,6 @@ dx @$cursession.TTD.Calls("ntdll!NtCreateFile")  ; consulta todas las llamadas a
 </tbody></table></div>
 <aside class="callout nota"><p class="callout-titulo">¿Falta un término?</p><p>Si una lección usa una palabra que no está acá, anotala en tu bitácora. El glosario se amplía con las dudas reales, no con definiciones que nadie usa.</p></aside>
 
-<aside class="ampliacion-ext">
-<p class="callout-titulo">Ampliación editorial basada en fuentes externas — Términos adicionales (Revisión 5.2)</p>
-<div class="tabla"><table>
-<thead><tr><th>Término</th><th>Explicación</th></tr></thead>
-<tbody>
-<tr><td><strong><code>arg.get(n)</code> (x64dbg)</strong></td><td>Función de expresión de x64dbg que lee el argumento <code>n</code> (basado en 0) según la arquitectura (<code>[esp+4*(n+1)]</code> en x86; <code>RCX</code>, <code>RDX</code>, <code>R8</code>, <code>R9</code> en x64). Ver <a href="#sec-guia-02-debugger">Debugger</a>.</td></tr>
-<tr><td><strong>ChaCha20</strong></td><td>Cifrado de flujo moderno (RFC 8439) basado en operaciones ARX (<code>ADD</code>, <code>ROTATE</code>, <code>XOR</code>) sobre 16 palabras de 32 bits; se reconoce por la constante ASCII <code>"expand 32-byte k"</code> (<code>0x61707865...</code>). Ver <a href="#sec-guia-04-cripto">Criptografía</a>.</td></tr>
-<tr><td><strong><code>__CxxFrameHandler4</code> (FH4)</strong></td><td>Manejador de excepciones C++ por defecto en MSVC x64 (VS 2019 16.3+ / 2022) que comprime las tablas de <code>.xdata</code> en <code>FuncInfo4</code> sin la firma fija <code>0x19930520</code>. Ver <a href="#sec-guia-02-cpp-profundo">C++ profundo</a>.</td></tr>
-<tr><td><strong><code>ida_typeinf</code> (<code>tinfo_t</code>)</strong></td><td>Módulo de IDAPython que en IDA 9.0+ reemplazó a los módulos eliminados <code>ida_struct</code> e <code>ida_enum</code> para manipular estructuras y enumeraciones. Ver <a href="#sec-guia-05-automatizacion">Automatización</a>.</td></tr>
-<tr><td><strong>ReadyToRun (R2R) / Single-File (.NET)</strong></td><td>Variantes de despliegue en .NET moderno: <em>Single-File</em> concatena las DLLs de IL dentro de un <code>apphost.exe</code> nativo, y <em>R2R</em> agrega código nativo precompilado (<code>READYTORUN_HEADER</code>, <code>"RTR\0"</code>) conservando el IL original. Ver <a href="#sec-guia-03-dotnet-runtime">.NET runtime</a>.</td></tr>
-<tr><td><strong>Segment Heap</strong></td><td>Administrador de heap moderno de Windows 10/11 (firma <code>0xDDEEDDEE</code>), usado por servicios del sistema y apps con manifiesto <code>segmentHeap</code>, distinto del <em>NT Heap</em> clásico (<code>0xEEFFEEFF</code>). Ver <a href="#sec-guia-02-windbg-heap">WinDbg y heap</a>.</td></tr>
-</tbody></table></div>
-</aside>
 </section>
 <section class="print-sec" id="preguntas">
 <h1 id="preguntas-y-respuestas-por-etapa">Preguntas y respuestas por etapa</h1>

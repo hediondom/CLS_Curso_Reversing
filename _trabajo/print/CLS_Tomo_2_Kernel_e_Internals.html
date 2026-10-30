@@ -369,6 +369,14 @@ main { max-width: none; padding: 0; }
 .print-sec .callout, .print-sec .gate, .print-sec details, .print-sec .ampliacion-ext, .print-sec .nota-ed { break-inside: avoid; page-break-inside: avoid; }
 .print-sec h2, .print-sec h3, .print-sec h4 { break-after: avoid; page-break-after: avoid; }
 .print-sec a { color: #000; text-decoration: none; }
+.hoja-compacta { font-size: 8.5pt; line-height: 1.25; }
+.hoja-compacta h2 { font-size: 11pt !important; margin: 0 0 4pt !important; border-bottom: 1px solid #0b5f6b; padding-bottom: 2pt; color: #0b5f6b; }
+.hoja-compacta h3 { font-size: 9.3pt !important; margin: 4pt 0 2pt !important; color: #222; }
+.hoja-compacta table { font-size: 7.6pt !important; margin: 2px 0 4px !important; }
+.hoja-compacta th, .hoja-compacta td { padding: 2px 4px !important; }
+.hoja-compacta pre { font-size: 7.2pt !important; line-height: 1.15 !important; margin: 2px 0 !important; padding: 2px 4px !important; }
+.hoja-compacta ul, .hoja-compacta p { margin: 2px 0 3px !important; }
+.hoja-compacta li { margin-bottom: 2px !important; }
 .portada-pdf { text-align: left; padding-top: 26mm; }
 .portada-pdf .kicker { color: #0b5f6b; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; font-size: 9pt; }
 .portada-pdf h1 { font-size: 34pt; line-height: 1.05; margin: .2em 0 .3em; }
@@ -387,7 +395,7 @@ details.qa summary { font-size: 10pt; }
 </style></head><body><main>
 
 <section class="print-sec portada-pdf" id="portada">
-<p class="kicker">Proyecto CLS · Edición 5 · Revisión 5.2 (Ampliada) · TOMO II DE II</p>
+<p class="kicker">Proyecto CLS · Edición 5 · Revisión 5.4 (Ampliada) · TOMO II DE II</p>
 <h1>Curso de reversing<br><span style="font-size: 20pt; font-weight: 600; color: #0b5f6b;">Tomo II · Ramas Especializadas: Kernel, Drivers y Windows Internals</span></h1>
 <p class="sub">Profundización avanzada en el sistema operativo Windows: arquitectura del kernel NT, drivers WDM/KMDF, IOCTLs, depuración kernel con WinDbg (KDNET), minifiltros, mitigaciones HVCI/VBS, objetos del ejecutivo, procesos/hilos, Registro, servicios, Task Scheduler, COM/DCOM, RPC, WMI, IPC, SEH/VEH/WER, ETW y Hyper-V.</p>
 <p class="sub"><strong>Contenido de este volumen (Tomo II):</strong> <strong>Etapa 6 completa (6.1 a 6.6)</strong> · <strong>Rama 2D completa (2D.1 a 2D.13 + Anexo Hyper-V)</strong>.</p>
@@ -395,7 +403,7 @@ details.qa summary { font-size: 10pt; }
 <div class="aviso"><strong>Seguridad de laboratorio obligatoria.</strong> Toda práctica con drivers de kernel (<code>.sys</code>), <code>bcdedit /debug on</code>, Driver Verifier, servicios o mecanismos de persistencia debe realizarse exclusivamente dentro de una <strong>máquina virtual descartable y aislada</strong>, nunca en el equipo anfitrión.</div>
 </section>
 
-<section class="print-sec" id="toc"><h1>Contenido — Tomo II</h1><div class="toc" style="columns: 1; max-width: 165mm;"><div class="etapa"><a href="#sec-guia-etapa-6">Etapa 6 · Kernel y drivers en Windows (rama optativa)</a><span class="toc-pag" data-anchor="sec-guia-etapa-6">p. 3-4 · 2 págs.</span></div><ol><li><a href="#sec-guia-6-01-arquitectura-kernel">6.1 Arquitectura del kernel</a><span class="toc-pag" data-anchor="sec-guia-6-01-arquitectura-kernel">p. 5-9 · 5 págs.</span></li><li><a href="#sec-guia-6-02-kmdf-ioctl">6.2 KMDF e IOCTL inocuo</a><span class="toc-pag" data-anchor="sec-guia-6-02-kmdf-ioctl">p. 10-17 · 8 págs.</span></li><li><a href="#sec-guia-6-03-debug-kernel">6.3 Debugging de kernel</a><span class="toc-pag" data-anchor="sec-guia-6-03-debug-kernel">p. 18-22 · 5 págs.</span></li><li><a href="#sec-guia-6-04-revision-driver">6.4 Revisión defensiva de drivers</a><span class="toc-pag" data-anchor="sec-guia-6-04-revision-driver">p. 23-28 · 6 págs.</span></li><li><a href="#sec-guia-6-05-minifilters">6.5 Minifilters</a><span class="toc-pag" data-anchor="sec-guia-6-05-minifilters">p. 29-33 · 5 págs.</span></li><li><a href="#sec-guia-6-06-mitigaciones">6.6 Mitigaciones para drivers</a><span class="toc-pag" data-anchor="sec-guia-6-06-mitigaciones">p. 34-38 · 5 págs.</span></li></ol><div class="etapa"><a href="#sec-2d">Rama 2D · Windows internals (rama optativa de Etapa 2)</a><span class="toc-pag" data-anchor="sec-2d">p. 39-40 · 2 págs.</span></div><ol><li><a href="#sec-guia-2d-01-objetos">2D.1 Objetos y tokens</a><span class="toc-pag" data-anchor="sec-guia-2d-01-objetos">p. 41-44 · 4 págs.</span></li><li><a href="#sec-guia-2d-02-memoria-loader">2D.2 Memoria y loader</a><span class="toc-pag" data-anchor="sec-guia-2d-02-memoria-loader">p. 45-49 · 5 págs.</span></li><li><a href="#sec-guia-2d-03-registro">2D.3 Registro</a><span class="toc-pag" data-anchor="sec-guia-2d-03-registro">p. 50-53 · 4 págs.</span></li><li><a href="#sec-guia-2d-04-servicios">2D.4 Servicios</a><span class="toc-pag" data-anchor="sec-guia-2d-04-servicios">p. 54-58 · 5 págs.</span></li><li><a href="#sec-guia-2d-05-task-scheduler">2D.5 Task Scheduler</a><span class="toc-pag" data-anchor="sec-guia-2d-05-task-scheduler">p. 59-61 · 3 págs.</span></li><li><a href="#sec-guia-2d-06-com-interfaces">2D.6 COM interfaces</a><span class="toc-pag" data-anchor="sec-guia-2d-06-com-interfaces">p. 62-71 · 10 págs.</span></li><li><a href="#sec-guia-2d-07-com-activacion">2D.7 COM activación</a><span class="toc-pag" data-anchor="sec-guia-2d-07-com-activacion">p. 72-78 · 7 págs.</span></li><li><a href="#sec-guia-2d-08-dcom-rpc">2D.8 DCOM y RPC</a><span class="toc-pag" data-anchor="sec-guia-2d-08-dcom-rpc">p. 79-87 · 9 págs.</span></li><li><a href="#sec-guia-2d-09-wmi">2D.9 WMI</a><span class="toc-pag" data-anchor="sec-guia-2d-09-wmi">p. 88-97 · 10 págs.</span></li><li><a href="#sec-guia-2d-10-ipc">2D.10 IPC</a><span class="toc-pag" data-anchor="sec-guia-2d-10-ipc">p. 98-103 · 6 págs.</span></li><li><a href="#sec-guia-2d-11-excepciones">2D.11 Excepciones</a><span class="toc-pag" data-anchor="sec-guia-2d-11-excepciones">p. 104-108 · 5 págs.</span></li><li><a href="#sec-guia-2d-12-etw">2D.12 ETW</a><span class="toc-pag" data-anchor="sec-guia-2d-12-etw">p. 109-113 · 5 págs.</span></li><li><a href="#sec-guia-2d-13-integrador">2D.13 Integrador</a><span class="toc-pag" data-anchor="sec-guia-2d-13-integrador">p. 114-117 · 4 págs.</span></li><li><a href="#sec-2d-hyperv">Extensión optativa Hyper-V</a><span class="toc-pag" data-anchor="sec-2d-hyperv">p. 118-119 · 2 págs.</span></li></ol><div class="etapa" style="margin-top:12pt; color:#555;">Referencias cruzadas en Tomo I y Separata de Escritorio</div><ol><li><span>Tronco principal (Etapas 0 a 5)</span><span class="toc-pag">Tomo I · p. 1–268</span></li><li><span>Hilo conductor multi-nivel y Kit de 5 plantillas C/C++</span><span class="toc-pag">Tomo I · p. 269-277 · 9 págs.</span></li><li><span>Hojas de referencia rápida (Cheat Sheets 1, 2 y 3)</span><span class="toc-pag">Separata y Tomo I · p. 278-283 · 6 págs.</span></li><li><span>Glosario y Preguntas frecuentes</span><span class="toc-pag">Tomo I · p. 284–304</span></li></ol></div></section>
+<section class="print-sec" id="toc"><h1>Contenido — Tomo II</h1><div class="toc" style="columns: 1; max-width: 165mm;"><div class="etapa"><a href="#sec-guia-etapa-6">Etapa 6 · Kernel y drivers en Windows (rama optativa)</a><span class="toc-pag" data-anchor="sec-guia-etapa-6">p. 3-4 · 2 págs.</span></div><ol><li><a href="#sec-guia-6-01-arquitectura-kernel">6.1 Arquitectura del kernel</a><span class="toc-pag" data-anchor="sec-guia-6-01-arquitectura-kernel">p. 5-9 · 5 págs.</span></li><li><a href="#sec-guia-6-02-kmdf-ioctl">6.2 KMDF e IOCTL inocuo</a><span class="toc-pag" data-anchor="sec-guia-6-02-kmdf-ioctl">p. 10-17 · 8 págs.</span></li><li><a href="#sec-guia-6-03-debug-kernel">6.3 Debugging de kernel</a><span class="toc-pag" data-anchor="sec-guia-6-03-debug-kernel">p. 18-22 · 5 págs.</span></li><li><a href="#sec-guia-6-04-revision-driver">6.4 Revisión defensiva de drivers</a><span class="toc-pag" data-anchor="sec-guia-6-04-revision-driver">p. 23-29 · 7 págs.</span></li><li><a href="#sec-guia-6-05-minifilters">6.5 Minifilters</a><span class="toc-pag" data-anchor="sec-guia-6-05-minifilters">p. 30-35 · 6 págs.</span></li><li><a href="#sec-guia-6-06-mitigaciones">6.6 Mitigaciones para drivers</a><span class="toc-pag" data-anchor="sec-guia-6-06-mitigaciones">p. 36-40 · 5 págs.</span></li></ol><div class="etapa"><a href="#sec-2d">Rama 2D · Windows internals (rama optativa de Etapa 2)</a><span class="toc-pag" data-anchor="sec-2d">p. 41-42 · 2 págs.</span></div><ol><li><a href="#sec-guia-2d-01-objetos">2D.1 Objetos y tokens</a><span class="toc-pag" data-anchor="sec-guia-2d-01-objetos">p. 43-46 · 4 págs.</span></li><li><a href="#sec-guia-2d-02-memoria-loader">2D.2 Memoria y loader</a><span class="toc-pag" data-anchor="sec-guia-2d-02-memoria-loader">p. 47-51 · 5 págs.</span></li><li><a href="#sec-guia-2d-03-registro">2D.3 Registro</a><span class="toc-pag" data-anchor="sec-guia-2d-03-registro">p. 52-55 · 4 págs.</span></li><li><a href="#sec-guia-2d-04-servicios">2D.4 Servicios</a><span class="toc-pag" data-anchor="sec-guia-2d-04-servicios">p. 56-60 · 5 págs.</span></li><li><a href="#sec-guia-2d-05-task-scheduler">2D.5 Task Scheduler</a><span class="toc-pag" data-anchor="sec-guia-2d-05-task-scheduler">p. 61-63 · 3 págs.</span></li><li><a href="#sec-guia-2d-06-com-interfaces">2D.6 COM interfaces</a><span class="toc-pag" data-anchor="sec-guia-2d-06-com-interfaces">p. 64-73 · 10 págs.</span></li><li><a href="#sec-guia-2d-07-com-activacion">2D.7 COM activación</a><span class="toc-pag" data-anchor="sec-guia-2d-07-com-activacion">p. 74-80 · 7 págs.</span></li><li><a href="#sec-guia-2d-08-dcom-rpc">2D.8 DCOM y RPC</a><span class="toc-pag" data-anchor="sec-guia-2d-08-dcom-rpc">p. 81-89 · 9 págs.</span></li><li><a href="#sec-guia-2d-09-wmi">2D.9 WMI</a><span class="toc-pag" data-anchor="sec-guia-2d-09-wmi">p. 90-99 · 10 págs.</span></li><li><a href="#sec-guia-2d-10-ipc">2D.10 IPC</a><span class="toc-pag" data-anchor="sec-guia-2d-10-ipc">p. 100-106 · 7 págs.</span></li><li><a href="#sec-guia-2d-11-excepciones">2D.11 Excepciones</a><span class="toc-pag" data-anchor="sec-guia-2d-11-excepciones">p. 107-112 · 6 págs.</span></li><li><a href="#sec-guia-2d-12-etw">2D.12 ETW</a><span class="toc-pag" data-anchor="sec-guia-2d-12-etw">p. 113-118 · 6 págs.</span></li><li><a href="#sec-guia-2d-13-integrador">2D.13 Integrador</a><span class="toc-pag" data-anchor="sec-guia-2d-13-integrador">p. 119-122 · 4 págs.</span></li><li><a href="#sec-2d-hyperv">Extensión optativa Hyper-V</a><span class="toc-pag" data-anchor="sec-2d-hyperv">p. 123-124 · 2 págs.</span></li></ol><div class="etapa" style="margin-top:12pt; color:#555;">Referencias cruzadas en Tomo I y Separata de Escritorio</div><ol><li><span>Tronco principal (Etapas 0 a 5)</span><span class="toc-pag">Tomo I · p. 1–283</span></li><li><span>Hilo conductor multi-nivel y Kit de 5 plantillas C/C++</span><span class="toc-pag">Tomo I · p. 284-292 · 9 págs.</span></li><li><span>Hojas de referencia rápida (Cheat Sheets 1 a 5)</span><span class="toc-pag">Separata y Tomo I · p. 293-298 · 6 págs.</span></li><li><span>Glosario y Preguntas frecuentes</span><span class="toc-pag">Tomo I · p. 299–318</span></li></ol></div></section>
 <section class="print-sec" id="sec-guia-etapa-6">
 <h1 id="etapa-6-rama-optativa-kernel-y-drivers">Etapa 6 · Rama optativa · Kernel y drivers</h1>
 <aside class="callout nota"><p class="callout-titulo">Objetivo medible</p><p>Comprender, construir y revisar un driver KMDF didáctico con una interfaz inocua, depurarlo solo en VM descartable y explicar mitigaciones actuales.</p></aside>
@@ -762,6 +770,24 @@ Conclusión: diseño acotado en el fragmento revisado; falta validar build/confi
 <h2>Fuentes</h2>
 <ul><li>Microsoft Learn: <a href="https://learn.microsoft.com/en-us/windows-hardware/drivers/driversecurity/driver-security-checklist">Driver security checklist</a>, <a href="https://learn.microsoft.com/en-us/windows-hardware/drivers/wdf/controlling-device-access-in-kmdf-drivers">Controlling device access in KMDF</a>, <a href="https://learn.microsoft.com/en-us/windows-hardware/drivers/kernel/defining-i-o-control-codes">Using I/O control codes</a>.</li><li>Microsoft Learn, memoria de usuario: <a href="https://learn.microsoft.com/en-us/windows-hardware/drivers/kernel/methods-for-accessing-data-buffers">Methods for Accessing Data Buffers</a>, <a href="https://learn.microsoft.com/en-us/windows-hardware/drivers/kernel/using-neither-buffered-nor-direct-i-o">Using Neither Buffered Nor Direct I/O</a>, <a href="https://learn.microsoft.com/en-us/windows-hardware/drivers/kernel/errors-in-referencing-user-space-addresses">Errors in Referencing User-Space Addresses</a>, <a href="https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-probeforread">ProbeForRead</a>, <a href="https://learn.microsoft.com/en-us/windows-hardware/drivers/kernel/handling-exceptions">Handling Exceptions</a>, <a href="https://learn.microsoft.com/en-us/windows-hardware/drivers/wdf/accessing-data-buffers-in-wdf-drivers">Accessing Data Buffers in WDF Drivers</a>.</li><li>Microsoft Learn, colas y cancelación: <a href="https://learn.microsoft.com/en-us/windows-hardware/drivers/wdf/request-ownership">Request Ownership</a>, <a href="https://learn.microsoft.com/en-us/windows-hardware/drivers/wdf/configuring-dispatch-mode-for-an-i-o-queue">Configuring Dispatch Mode for an I/O Queue</a>, <a href="https://learn.microsoft.com/en-us/windows-hardware/drivers/wdf/canceling-i-o-requests">Canceling I/O Requests</a>, <a href="https://learn.microsoft.com/en-us/windows-hardware/drivers/wdf/synchronizing-cancel-and-completion-code">Synchronizing Cancel and Completion Code</a>.</li><li>Microsoft Learn, PnP y energía: <a href="https://learn.microsoft.com/en-us/windows-hardware/drivers/wdf/supporting-pnp-and-power-management-in-function-drivers">Supporting PnP and Power Management in Function Drivers</a>, <a href="https://learn.microsoft.com/en-us/windows-hardware/drivers/wdf/power-management-for-i-o-queues">Power Management for I/O Queues</a>.</li></ul>
 <aside class="callout nota"><p class="callout-titulo">Etiquetas</p><p><strong>Observado en CLS:</strong> superficie/mitigaciones de user mode. <strong>Conocimiento externo:</strong> seguridad de drivers, métodos de buffer, sondeo de memoria de usuario, propiedad y cancelación de solicitudes WDF, PnP/energía (recuadro). <strong>Ejemplo ilustrativo:</strong> checklist, fragmento <code>METHOD_NEITHER</code> y flujo de cancelación hipotéticos. <strong>Laboratorio verificado:</strong> no; revisión de código fuente.</p></aside>
+
+<aside class="ampliacion-ext">
+<p class="callout-titulo">Ampliación editorial basada en fuentes externas — Localización estática de Dispatch Routines (WDM vs. KMDF) en IDA y Ghidra</p>
+<p>Al abrir un driver <code>.sys</code> sin símbolos en IDA Pro o Ghidra, la ausencia de una función <code>main</code> clásica desorienta al analista; la clave operativa para encontrar el manejador de IOCTLs radica en rastrear cómo el punto de entrada <code>DriverEntry(PDRIVER_OBJECT DriverObject, PUNICODE_STRING RegistryPath)</code> —donde <code>DriverObject</code> se recibe en <code>RCX</code> (x64) o <code>[esp+4]</code> (x86)— inicializa sus tablas de despacho (Microsoft Learn: <em>DRIVER_OBJECT</em> y <em>WDF_IO_QUEUE_CONFIG</em>) <em>(Hecho confirmado)</em>:</p>
+<ul>
+<li><strong>Drivers WDM clásicos (<code>MajorFunction</code>):</strong> El código escribe los punteros a sus rutinas directamente sobre el arreglo <code>DriverObject->MajorFunction</code> (offset <code>+0x70</code> en x64; <code>+0x38</code> en x86). Los desplazamientos clave en x64 son:
+  <ul>
+    <li><code>DriverUnload</code>: <code>[rcx + 0x68]</code> (<code>+0x34</code> en x86).</li>
+    <li><code>IRP_MJ_CREATE (0x00)</code>: <code>[rcx + 0x70]</code> (<code>0x70 + 0 * 8</code>).</li>
+    <li><code>IRP_MJ_CLOSE (0x02)</code>: <code>[rcx + 0x80]</code> (<code>0x70 + 2 * 8</code>).</li>
+    <li><code>IRP_MJ_DEVICE_CONTROL (0x0E = 14)</code>: <strong><code>[rcx + 0xE0]</code></strong> (<code>0x70 + 14 * 8</code>; en x86 es <code>[reg + 0x70]</code>). En el desensamblado se reconoce típicamente por una instrucción como:
+      <pre><code>mov qword ptr [rcx + 0xE0], sub_DispatchIoctl  ; Enlaza el procesador de DeviceControl</code></pre>
+    </li>
+  </ul>
+</li>
+<li><strong>Drivers KMDF (<code>EvtIoDeviceControl</code>):</strong> <code>DriverEntry</code> no puebla <code>MajorFunction</code> manualmente; en su lugar, inicializa la estructura <code>WDF_DRIVER_CONFIG</code> colocando el puntero a <code>EvtDriverDeviceAdd</code> en el offset <strong><code>+0x08</code></strong> (x64), enlaza el runtime con <strong><code>WdfVersionBind</code></strong> e invoca <code>WdfDriverCreate</code> (vía tabla global <code>WdfFunctions</code>). Posteriormente, dentro de <code>EvtDriverDeviceAdd</code>, se busca la inicialización de <code>WDF_IO_QUEUE_CONFIG</code> (96 bytes en x64), donde el puntero a <strong><code>EvtIoDeviceControl</code></strong> se almacena en el offset <strong><code>+0x28</code></strong> antes de invocar a <code>WdfIoQueueCreate</code>.</li>
+</ul>
+</aside>
 </section>
 <section class="print-sec" id="sec-guia-6-05-minifilters">
 <h1 id="minifilters-y-callbacks-observación-del-sistema-de-archivos">Minifilters y callbacks: observación del sistema de archivos</h1>
@@ -849,6 +875,31 @@ Conclusión: diseño acotado en el fragmento revisado; falta validar build/confi
 <h2>Fuentes</h2>
 <ul><li>Microsoft Learn: <a href="https://learn.microsoft.com/en-us/windows-hardware/drivers/ifs/about-file-system-filter-drivers">About File System Filter Drivers</a>, <a href="https://learn.microsoft.com/en-us/windows-hardware/drivers/ifs/filter-manager-concepts">Filter Manager concepts</a>, <a href="https://learn.microsoft.com/en-us/windows-hardware/drivers/ifs/writing-preoperation-callback-routines">Writing Preoperation Callback Routines</a>, <a href="https://learn.microsoft.com/en-us/windows-hardware/drivers/ifs/writing-postoperation-callback-routines">Writing Postoperation Callback Routines</a>.</li><li>Microsoft Learn, altitudes y herramientas: <a href="https://learn.microsoft.com/en-us/windows-hardware/drivers/ifs/load-order-groups-and-altitudes-for-minifilter-drivers">Load Order Groups and Altitudes for Minifilter Drivers</a>, <a href="https://learn.microsoft.com/en-us/windows-hardware/drivers/ifs/allocated-altitudes">Allocated filter altitudes</a>, <a href="https://learn.microsoft.com/en-us/windows-hardware/drivers/ifs/development-and-testing-tools">Tools for Minifilter Development and Testing (Fltmc, !fltkd)</a>.</li></ul>
 <aside class="callout nota"><p class="callout-titulo">Etiquetas</p><p><strong>Observado en CLS:</strong> monitoreo de procesos como contexto. <strong>Conocimiento externo:</strong> Filter Manager/minifilters, altitudes, valores de retorno e IRQL de callbacks. <strong>Ejemplo ilustrativo:</strong> flujo de archivo y ficha de inventario ficticia. <strong>Laboratorio verificado:</strong> no.</p></aside>
+
+<aside class="ampliacion-ext">
+<p class="callout-titulo">Ampliación editorial basada en fuentes externas — Estructuras FLT_REGISTRATION y callbacks de monitoreo en Kernel</p>
+<p>Al auditar en IDA o Ghidra drivers defensivos, EDRs o módulos de filtrado de archivos sin símbolos, el reverser necesita identificar de inmediato qué operaciones y eventos del sistema están siendo interceptados (Microsoft Learn: <em>FLT_REGISTRATION</em> y <em>ObRegisterCallbacks</em>) <em>(Hecho confirmado)</em>:</p>
+
+<p><strong>1. Minifiltros de Filesystem (<code>FltRegisterFilter</code>):</strong> El segundo argumento (<code>RDX</code> en x64) apunta a la estructura estática <code>FLT_REGISTRATION</code> en <code>.rdata</code> / <code>.data</code>. Su campo <strong><code>OperationRegistration</code></strong> (offset <strong><code>+0x20</code></strong> en x64) apunta a un arreglo de estructuras <code>FLT_OPERATION_REGISTRATION</code> de 32 bytes cada una:</p>
+<div class="tabla"><table>
+<thead><tr><th>Offset (x64)</th><th>Campo</th><th>Tipo y Significado</th></tr></thead>
+<tbody>
+<tr><td><strong><code>+0x00</code></strong></td><td><code>MajorFunction</code></td><td><code>UCHAR</code> (ej. <code>0x00</code> = <code>IRP_MJ_CREATE</code>, <code>0x04</code> = <code>IRP_MJ_WRITE</code>; termina con <code>0x80</code> = <code>IRP_MJ_OPERATION_END</code>).</td></tr>
+<tr><td><strong><code>+0x04</code></strong></td><td><code>Flags</code></td><td><code>ULONG</code> (banderas de operación, ej. <code>FLTFL_OPERATION_REGISTRATION_SKIP_CACHED_IO</code>).</td></tr>
+<tr><td><strong><code>+0x08</code></strong></td><td><code>PreOperation</code></td><td><code>PFLT_PRE_OPERATION_CALLBACK</code> (puntero a la rutina previa a la E/S).</td></tr>
+<tr><td><strong><code>+0x10</code></strong></td><td><code>PostOperation</code></td><td><code>PFLT_POST_OPERATION_CALLBACK</code> (puntero a la rutina posterior a la E/S).</td></tr>
+<tr><td><strong><code>+0x18</code></strong></td><td><code>Reserved1</code></td><td><code>PVOID</code> (reservado para el sistema, completa los 32 bytes de la estructura).</td></tr>
+</tbody></table></div>
+
+<p><strong>2. Callbacks de Kernel no relacionados con Filesystem (Telemetría y Protección):</strong></p>
+<div class="tabla"><table>
+<thead><tr><th>API de Registro</th><th>Estructura / Parámetro Clave</th><th>Propósito Defensivo / Intercepción</th></tr></thead>
+<tbody>
+<tr><td><strong><code>PsSetCreateProcessNotifyRoutineEx</code></strong></td><td><code>NotifyRoutine</code> (1.er arg, <code>RCX</code>)</td><td>Notifica creación y terminación de procesos en el sistema; permite denegar la creación retornando error en <code>CreateInfo->CreationStatus</code>.</td></tr>
+<tr><td><strong><code>PsSetLoadImageNotifyRoutine</code></strong></td><td><code>NotifyRoutine</code> (1.er arg, <code>RCX</code>)</td><td>Intercepta cada mapeo de ejecutables (<code>.exe</code>), bibliotecas (<code>.dll</code>) o módulos de kernel (<code>.sys</code>) en el espacio de memoria virtual.</td></tr>
+<tr><td><strong><code>ObRegisterCallbacks</code></strong></td><td><code>OB_CALLBACK_REGISTRATION</code> &rarr; arreglo <code>OB_OPERATION_REGISTRATION</code> (<code>+0x20</code>)</td><td>Intercepta apertura y duplicación de handles sobre <code>PsProcessType</code> y <code>PsThreadType</code>, despojando máscaras de acceso críticas como <code>PROCESS_VM_WRITE</code> o <code>PROCESS_TERMINATE</code> para blindar procesos.</td></tr>
+</tbody></table></div>
+</aside>
 </section>
 <section class="print-sec" id="sec-guia-6-06-mitigaciones">
 <h1 id="mitigaciones-de-windows-para-drivers">Mitigaciones de Windows para drivers</h1>
@@ -992,6 +1043,18 @@ Conclusión: diseño acotado en el fragmento revisado; falta validar build/confi
 <h2>Fuentes</h2>
 <ul><li><strong>Conocimiento externo</strong> (Microsoft Learn; páginas concretas): <a href="https://learn.microsoft.com/en-us/windows/win32/sysinfo/handles-and-objects">Handles and Objects</a>, <a href="https://learn.microsoft.com/en-us/sysinternals/downloads/process-explorer">Process Explorer</a>, <a href="https://learn.microsoft.com/en-us/windows/win32/secauthz/access-tokens">Access Tokens</a>, <a href="https://learn.microsoft.com/en-us/windows/win32/secauthz/privileges">Privileges</a>, <a href="https://learn.microsoft.com/en-us/windows/win32/secauthz/mandatory-integrity-control">Mandatory Integrity Control</a> y <a href="https://learn.microsoft.com/en-us/windows/win32/secauthz/access-control-lists">Access Control Lists</a>. No se citan versiones ni valores reales: el ejemplo es ilustrativo.</li><li><strong>Tie con CLS:</strong> la lectura del <strong>PEB</strong> y el contexto de proceso aparecen en <span>2.15 Anti-análisis</span>; el robo de token en kernel se menciona (de forma ofensiva, fuera de alcance) en los tutes 49–69 del Curso IDA, que acá <strong>no</strong> se usan como guía.</li></ul>
 <aside class="callout nota"><p class="callout-titulo">Etiquetas</p><p><strong>Observado en CLS:</strong> solo el PEB/contexto de 2.15 (referencia). <strong>Conocimiento externo:</strong> todo el modelo de seguridad. <strong>Ejemplo ilustrativo:</strong> la vista de token/handles. <strong>Laboratorio verificado:</strong> ninguno en esta edición (no hay binario compilado con datos reales); la práctica se hace sobre procesos propios en tu VM.</p></aside>
+
+<aside class="ampliacion-ext">
+<p class="callout-titulo">Ampliación editorial basada en fuentes externas — Inspección de _EPROCESS, _EX_FAST_REF y máscaras de privilegios en _TOKEN con WinDbg</p>
+<p>Al analizar privilegios y niveles de integridad desde el depurador de kernel, las herramientas administrativas de user-mode (como Process Explorer) no bastan; el analista debe inspeccionar directamente las estructuras del ejecutivo en memoria (Microsoft Learn: <em>!process</em>, <em>!token</em> y símbolos públicos de <code>ntoskrnl.exe</code>) <em>(Hecho confirmado)</em>:</p>
+<pre><code>kd&gt; !process 0 0 BlocLab.exe                ; Obtiene la dirección de _EPROCESS
+kd&gt; dt nt!_EPROCESS &lt;dir_eprocess&gt; UniqueProcessId ActiveProcessLinks Token Protection</code></pre>
+<ul>
+<li><strong>Puntero <code>Token</code> (<code>_EX_FAST_REF</code>):</strong> En x64, los 4 bits menos significativos del campo <code>Token</code> almacenan un contador de referencias rápidas. Para obtener la dirección virtual real de la estructura <code>_TOKEN</code> se debe aplicar la máscara <strong><code>Token &amp; ~0xF</code></strong> (poniendo en <code>0</code> el último dígito hexadecimal).</li>
+<li><strong>Máscaras de 64 bits en <code>_SEP_TOKEN_PRIVILEGES</code> (<code>dt nt!_TOKEN &lt;dir_token&gt; Privileges</code>):</strong> En lugar de recorrer listas de privilegios, el kernel ubica en el offset <code>+0x40</code> de <code>_TOKEN</code> tres campos <code>QWORD</code> contiguos: <code>Present</code>, <code>Enabled</code> y <code>EnabledByDefault</code>. Cada privilegio corresponde a un bit fijo (p. ej., <code>SeDebugPrivilege</code> es el bit 20 = <code>0x100000</code>), permitiendo verificar privilegios activos mediante una única instrucción bit a bit (<code>bt</code> / <code>test</code>).</li>
+<li><strong>Nivel de protección (<code>PS_PROTECTION</code>):</strong> Un byte que codifica <code>Type</code> (bits 0..2: <code>0</code> = ninguno, <code>1</code> = <code>ProtectedLight</code> / PPL, <code>2</code> = <code>Protected</code>) y <code>Signer</code> (bits 4..7: <code>WinTcb</code>, <code>Antimalware</code>, <code>Lsa</code>), determinando si el proceso puede ser accedido desde user-mode.</li>
+</ul>
+</aside>
 </section>
 <section class="print-sec" id="sec-guia-2d-02-memoria-loader">
 <h1 id="memoria-y-loader-peb-teb-vad-e-image-mapping">Memoria y loader: PEB/TEB, VAD e image mapping</h1>
@@ -1812,6 +1875,24 @@ Seguridad: ACL permite al usuario de la sesión; no acepta datos arbitrarios</co
 <h2>Fuentes</h2>
 <ul><li>Microsoft Learn: <a href="https://learn.microsoft.com/en-us/windows/win32/ipc/interprocess-communications">Interprocess Communications</a>, <a href="https://learn.microsoft.com/en-us/windows/win32/ipc/named-pipes">Named Pipes</a>, <a href="https://learn.microsoft.com/en-us/windows/win32/rpc/rpc-start-page">RPC</a>, <a href="https://learn.microsoft.com/en-us/windows/win32/etw/alpc">ALPC ETW class</a>.</li><li>Microsoft Learn, pipes: <a href="https://learn.microsoft.com/en-us/windows/win32/api/winbase/nf-winbase-createnamedpipea">CreateNamedPipe</a>, <a href="https://learn.microsoft.com/en-us/windows/win32/ipc/named-pipe-security-and-access-rights">Named Pipe Security and Access Rights</a>, <a href="https://learn.microsoft.com/en-us/windows/win32/ipc/impersonating-a-named-pipe-client">Impersonating a Named Pipe Client</a>, <a href="https://learn.microsoft.com/en-us/windows/win32/ipc/named-pipe-type-read-and-wait-modes">Named Pipe Type, Read, and Wait Modes</a>.</li><li>Microsoft Learn, RPC seguro: <a href="https://learn.microsoft.com/en-us/windows/win32/rpc/writing-a-secure-rpc-client-or-server">Writing a Secure RPC Client or Server</a>, <a href="https://learn.microsoft.com/en-us/windows/win32/rpc/be-wary-of-other-rpc-endpoints-running-in-the-same-process">Be Wary of Other RPC Endpoints Running in the Same Process</a>, <a href="https://learn.microsoft.com/en-us/windows/win32/rpc/common-mistake-assuming-rpcserverregisterauthinfo-prevents-unauthorized-users-from-calling-your-server">RpcServerRegisterAuthInfo doesn't deny unauthorized users</a>, <a href="https://learn.microsoft.com/en-us/windows/win32/rpc/interface-registration-flags">Interface Registration Flags</a>, <a href="https://learn.microsoft.com/en-us/windows/win32/rpc/protocol-sequence-constants">Protocol Sequence Constants</a>.</li><li><strong>CLS:</strong> call stack y procesos en <span>1.3</span>; DCOM/RPC en <a href="#sec-guia-2d-08-dcom-rpc">2D.8</a>.</li></ul>
 <aside class="callout nota"><p class="callout-titulo">Etiquetas</p><p><strong>Observado en CLS:</strong> procesos e IPC general. <strong>Conocimiento externo:</strong> IPC Windows, seguridad de named pipes y RPC. <strong>Ejemplo ilustrativo:</strong> protocolo y ficha BlocLab. <strong>Laboratorio verificado:</strong> no; ejemplo propio propuesto.</p></aside>
+
+<aside class="ampliacion-ext">
+<p class="callout-titulo">Ampliación editorial basada en fuentes externas — Reconstrucción estática de interfaces RPC (RPC_SERVER_INTERFACE y MIDL_SERVER_INFO)</p>
+<p>Cuando un binario registra un servidor RPC mediante <code>RpcServerRegisterIf</code> / <code>RpcServerRegisterIf2</code> / <code>RpcServerRegisterIfEx</code>, IDA Pro o Ghidra no resuelven por defecto la relación entre números de procedimiento (opcodes RPC) y funciones C. El primer argumento (<code>IfSpec</code>, registro <code>RCX</code> en x64) apunta a la estructura <code>RPC_SERVER_INTERFACE</code> en <code>.rdata</code> o <code>.data</code> generada por el compilador MIDL (<code>rpcndr.h</code> del Windows SDK) <em>(Hecho confirmado)</em>:</p>
+<div class="tabla"><table>
+<thead><tr><th>Offset (x64)</th><th>Campo en <code>RPC_SERVER_INTERFACE</code></th><th>Tipo y Significado en IDA / Ghidra</th></tr></thead>
+<tbody>
+<tr><td><strong><code>+0x04</code></strong></td><td><code>InterfaceId</code></td><td><code>RPC_SYNTAX_IDENTIFIER</code> (20 bytes: <code>GUID</code> de 16 bytes de la interfaz RPC + <code>MajorVersion</code> de 2B + <code>MinorVersion</code> de 2B).</td></tr>
+<tr><td><strong><code>+0x30</code></strong></td><td><code>DispatchTable</code></td><td><code>PRPC_DISPATCH_TABLE</code>: cantidad de funciones (<code>DispatchTableCount</code>) y puntero al despachador NDR (<code>NdrServerCall2</code> / <code>NdrServerCallAll</code>).</td></tr>
+<tr><td><strong><code>+0x50</code></strong></td><td><code>InterpreterInfo</code></td><td><code>const void*</code> que apunta a <code>MIDL_SERVER_INFO</code>: metadatos de decompilación del servidor.</td></tr>
+</tbody></table></div>
+<p>Siguiendo el puntero <strong><code>InterpreterInfo</code></strong> hacia la estructura <strong><code>MIDL_SERVER_INFO</code></strong>:</p>
+<ul>
+<li>En <strong><code>+0x00</code></strong> (<code>pStubDesc</code>) reside el descriptor de tipos y sintaxis NDR.</li>
+<li>En <strong><code>+0x08</code></strong> (<strong><code>DispatchTable</code></strong>) reside el <strong>arreglo directo de punteros a las funciones C reales del servidor</strong> (<code>ServerRoutineTable[0..N-1]</code>). Navegar a esta dirección revela inmediatamente la lista completa de procedimientos remotos expuestos por el binario.</li>
+</ul>
+<p><strong>Automatización práctica:</strong> En análisis defensivo o auditoría de servicios de Windows, herramientas de código abierto como <strong><code>RpcView</code></strong> o un script de <strong>IDAPython</strong> que automatice la navegación <code>InterfaceId &rarr; InterpreterInfo &rarr; DispatchTable</code> permiten extraer y tipar todas las rutinas del servidor RPC en cuestión de segundos.</p>
+</aside>
 </section>
 <section class="print-sec" id="sec-guia-2d-11-excepciones">
 <h1 id="excepciones-de-windows-y-debugging">Excepciones de Windows y debugging</h1>
@@ -1873,6 +1954,39 @@ x64: .pdata señala RuntimeFunction; .xdata describe unwind del prólogo</code><
 <h2>Fuentes</h2>
 <ul><li>Microsoft Learn: <a href="https://learn.microsoft.com/en-us/cpp/build/exception-handling-x64">x64 exception handling</a>, <a href="https://learn.microsoft.com/en-us/windows/win32/debug/structured-exception-handling">Structured Exception Handling</a>, <a href="https://learn.microsoft.com/en-us/windows-hardware/drivers/debugger/debugging-a-user-mode-process-using-windbg">Debugging a user-mode process using WinDbg</a>.</li><li>Microsoft Learn, despacho y depurador: <a href="https://learn.microsoft.com/en-us/windows/win32/debug/exception-dispatching">Exception Dispatching</a>, <a href="https://learn.microsoft.com/en-us/windows/win32/debug/vectored-exception-handling">Vectored Exception Handling</a>, <a href="https://learn.microsoft.com/en-us/cpp/cpp/try-except-statement">try-except statement</a>, <a href="https://learn.microsoft.com/en-us/windows-hardware/drivers/debugger/controlling-exceptions-and-events">Controlling Exceptions and Events</a>, <a href="https://learn.microsoft.com/en-us/windows-hardware/drivers/debuggercmds/-exr--display-exception-record-">.exr</a>, <a href="https://learn.microsoft.com/en-us/windows-hardware/drivers/debuggercmds/-ecxr--display-exception-context-record-">.ecxr</a>.</li><li><strong>CLS:</strong> stack en <span>1.2</span>, unwind C++ en <span>2.18</span>, WinDbg en <span>2.19</span>, anti-análisis en <span>2.15</span>.</li></ul>
 <aside class="callout nota"><p class="callout-titulo">Etiquetas</p><p><strong>Observado en CLS:</strong> excepciones y stack como conceptos generales. <strong>Conocimiento externo:</strong> SEH/unwind, despacho de excepciones, VEH y control de excepciones en WinDbg; el código de excepción C++ de MSVC como dato de reversing. <strong>Ejemplo ilustrativo:</strong> flujo y cronología de excepción. <strong>Laboratorio verificado:</strong> no.</p></aside>
+
+<aside class="ampliacion-ext">
+<p class="callout-titulo">Ampliación editorial basada en fuentes externas — Layout binario de RUNTIME_FUNCTION (.pdata) y UNWIND_INFO (.xdata) en x64</p>
+<p>A diferencia de x86 (donde la lista SEH se enlaza en la pila mediante <code>FS:[0]</code>), en Windows x64 el desenrollado de pila y el despacho de excepciones se rigen por tablas estáticas en el PE sin tocar la pila en el prólogo (Microsoft Learn: <em>x64 exception handling</em>) <em>(Hecho confirmado)</em>:</p>
+
+<div class="tabla"><table>
+<thead><tr><th>Estructura y Sección</th><th>Offset / Tamaño</th><th>Campos Binarios y Significado</th></tr></thead>
+<tbody>
+<tr>
+<td><strong><code>RUNTIME_FUNCTION</code></strong><br>(Sección <code>.pdata</code>)</td>
+<td><code>12 bytes</code> fijos por función</td>
+<td>
+  &bull; <code>+0x00</code>: <code>DWORD BeginAddress</code> (RVA de inicio de la función).<br>
+  &bull; <code>+0x04</code>: <code>DWORD EndAddress</code> (RVA de fin de la función).<br>
+  &bull; <code>+0x08</code>: <code>DWORD UnwindInfoAddress</code> (RVA que apunta a la cabecera en <code>.xdata</code>).
+</td>
+</tr>
+<tr>
+<td><strong><code>UNWIND_INFO</code></strong><br>(Sección <code>.xdata</code>)</td>
+<td><code>4 bytes</code> cabecera + array variable</td>
+<td>
+  &bull; <code>+0x00</code>: <code>Version : 3</code> (bits 0..2, vale 1 o 2) y <code>Flags : 5</code> (bits 3..7: <code>0x01 = UNW_FLAG_EHANDLER</code>, <code>0x02 = UNW_FLAG_UHANDLER</code>, <code>0x04 = UNW_FLAG_CHAININFO</code>).<br>
+  &bull; <code>+0x01</code>: <code>UBYTE SizeOfProlog</code> (longitud en bytes del prólogo).<br>
+  &bull; <code>+0x02</code>: <code>UBYTE CountOfCodes</code> (cantidad de slots de 2 bytes en <code>UnwindCode[]</code>).<br>
+  &bull; <code>+0x03</code>: <code>UBYTE FrameRegisterAndOffset</code> (registro base y desplazamiento de marco).<br>
+  &bull; <code>+0x04</code>: Arreglo <code>UNWIND_CODE[]</code> (códigos como <code>UWOP_PUSH_NONVOL=0</code>, <code>UWOP_ALLOC_SMALL=2</code> indicando qué registros se salvaron y cuánto creció <code>RSP</code>).<br>
+  &bull; <strong>Tras <code>UnwindCode[]</code></strong> (alineado a 4B): Si <code>Flags &amp; 0x03</code>, sigue la <strong>RVA de 32 bits de <code>ExceptionHandler</code></strong> (<code>__C_specific_handler</code>, <code>__CxxFrameHandler3</code> o <code>__CxxFrameHandler4</code>) y los datos de excepción (<code>SCOPE_TABLE</code> / <code>FuncInfo</code>).
+</td>
+</tr>
+</tbody></table></div>
+
+<p><strong>Inspección en vivo con WinDbg:</strong> El comando <code>!fnent &lt;dirección_de_función&gt;</code> decodifica en vivo tanto la entrada <code>RUNTIME_FUNCTION</code> como todos los códigos <code>UNWIND_CODE</code> de <code>.xdata</code>, siendo fundamental para validar si una dirección de retorno en la pila fue falsificada (Call Stack Spoofing).</p>
+</aside>
 </section>
 <section class="print-sec" id="sec-guia-2d-12-etw">
 <h1 id="etw-y-telemetría-defensiva">ETW y telemetría defensiva</h1>
@@ -1954,6 +2068,23 @@ x64: .pdata señala RuntimeFunction; .xdata describe unwind del prólogo</code><
 <h2>Fuentes</h2>
 <ul><li>Microsoft Learn: <a href="https://learn.microsoft.com/en-us/windows/win32/etw/about-event-tracing">About Event Tracing</a>, <a href="https://learn.microsoft.com/en-us/windows/win32/etw/controlling-event-tracing-sessions">Controlling ETW sessions</a>, <a href="https://learn.microsoft.com/en-us/windows/win32/etw/consuming-events">Consuming Events</a>, <a href="https://learn.microsoft.com/en-us/windows-hardware/test/wpt/windows-performance-recorder">Windows Performance Recorder</a>.</li><li>Microsoft Learn, sesiones y canales: <a href="https://learn.microsoft.com/en-us/windows/win32/etw/event-tracing-sessions">Event Tracing Sessions</a>, <a href="https://learn.microsoft.com/en-us/windows/win32/etw/configuring-and-starting-an-autologger-session">Configuring and Starting an AutoLogger Session</a>, <a href="https://learn.microsoft.com/en-us/windows/win32/wes/defining-channels">Defining Channels</a>, <a href="https://learn.microsoft.com/en-us/windows/win32/tracelogging/trace-logging-portal">TraceLogging</a>, <a href="https://learn.microsoft.com/en-us/windows-server/administration/windows-commands/logman-query">logman query</a>, <a href="https://learn.microsoft.com/en-us/windows/win32/wmisdk/tracing-wmi-activity">Tracing WMI Activity</a>.</li><li><strong>CLS:</strong> temporalidad/debugging en <span>2.19</span>.</li></ul>
 <aside class="callout nota"><p class="callout-titulo">Etiquetas</p><p><strong>Observado en CLS:</strong> debugging y evidencia como método. <strong>Conocimiento externo:</strong> ETW, tipos de providers, sesiones, AutoLogger, canales y causas de pérdida. <strong>Ejemplo ilustrativo:</strong> cronología y ficha de sesión BlocLab. <strong>Laboratorio verificado:</strong> no; requiere herramientas de captura disponibles en la VM.</p></aside>
+
+<aside class="ampliacion-ext">
+<p class="callout-titulo">Ampliación editorial basada en fuentes externas — Extracción estática del Provider GUID (EventRegister) y detección de ETW Patching</p>
+<p>Al analizar un binario en IDA o Ghidra que interactúa con ETW, existen dos patrones opuestos: la telemetría legítima instrumentada por el desarrollador y el intento de malware de cegar la monitorización del sistema (Microsoft Learn: <em>EventRegister</em> y <em>EtwEventWrite</em>) <em>(Hecho confirmado)</em>:</p>
+<ol>
+<li><strong>Localización del Provider GUID en aplicaciones legítimas o instrumentadas:</strong><br>
+Al buscar referencias cruzadas a <code>advapi32!EventRegister</code> (o <code>ntdll!EtwEventRegister</code>), la firma en x64 recibe:
+<pre><code>lea rcx, [rip + GUID_Provider] ; 1.er arg (RCX): Puntero a los 16 bytes del GUID en .rdata
+xor edx, edx                   ; 2.º arg (RDX): EnableCallback (opcional)
+xor r8d, r8d                   ; 3.er arg (R8) : CallbackContext
+lea r9, [rip + g_RegHandle]    ; 4.º arg (R9) : Puntero global donde se guarda el REGHANDLE
+call cs:EventRegister</code></pre>
+El valor guardado a través de <strong><code>R9</code></strong> (<code>REGHANDLE</code>) es el manejador global que <strong>luego usarán todas las llamadas subsiguientes a <code>EventWrite</code> / <code>EtwEventWrite</code></strong> para emitir eventos. Leer los 16 bytes apuntados por <code>RCX</code> permite cruzar de inmediato el GUID con <code>logman query providers</code> en la VM para conocer la identidad y finalidad del proveedor.</li>
+<li><strong>Reconocimiento defensivo de <em>ETW Patching</em> en User-Mode:</strong><br>
+Ciertas muestras evasivas intentan silenciar la telemetría del propio proceso (como los eventos del runtime de <code>.NET CLR</code> o <code>AMSI</code>) resolviendo dinámicamente <code>ntdll!EtwEventWrite</code> (o <code>NtTraceEvent</code>), cambiando la protección de su página de memoria a <code>PAGE_EXECUTE_READWRITE</code> y sobrescribiendo su primer byte con <code>ret</code> (<code>0xC3</code>) o <code>xor eax, eax ; ret</code> (<code>33 C0 C3</code>). En el depurador, el analista lo detecta comparando los primeros bytes de <code>ntdll!EtwEventWrite</code> en memoria frente a la copia intacta de <code>ntdll.dll</code> en disco o monitoreando llamadas a <code>VirtualProtect</code> sobre rangos de memoria de <code>ntdll</code>.</li>
+</ol>
+</aside>
 </section>
 <section class="print-sec" id="sec-guia-2d-13-integrador">
 <h1 id="integrador-windows-internals">Integrador Windows internals</h1>
@@ -2037,36 +2168,4 @@ CPU:                     soporte de virtualización (VT-x/AMD-V)</code></pre>
 <ul><li>Microsoft Learn: <a href="https://learn.microsoft.com/en-us/virtualization/hyper-v-on-windows/reference/hyper-v-architecture">Hyper-V Architecture</a>, <a href="https://learn.microsoft.com/en-us/virtualization/hyper-v-on-windows/">Hyper-V on Windows</a>.</li><li>Intel: <a href="https://www.intel.com/content/www/us/en/developer/articles/technical/intel-sdm.html">Intel 64 and IA-32 Software Developer Manuals</a>. AMD: <a href="https://www.amd.com/en/search/documentation/hub.html">AMD64 Architecture Programmer's Manual</a>.</li></ul>
 <aside class="callout nota"><p class="callout-titulo">Etiquetas</p><p><strong>Observado en CLS:</strong> conceptos de detección de VM en 2B son solo contexto. <strong>Conocimiento externo:</strong> arquitectura Hyper-V y extensiones CPU. <strong>Ejemplo ilustrativo:</strong> diagrama. <strong>Laboratorio verificado:</strong> no; lectura conceptual.</p></aside>
 </section>
-
-<section class="print-sec" id="colofon-notas">
-<h1>Bitácora de laboratorio y notas — Tomo II · Kernel, Drivers y Windows Internals</h1>
-<p><em>Esta página cierra el último pliego en paridad par (múltiplo de 2) para impresión profesional a doble faz en gráfica y sirve como registro rápido de parámetros de tu entorno de laboratorio.</em></p>
-<div class="tabla"><table>
-<thead><tr>
-<th>Parámetro del entorno / VM</th>
-<th>Valor configurado en tu laboratorio</th>
-<th>Notas / Comandos frecuentes</th>
-</tr></thead><tbody>
-<tr><td><strong>Snapshot base de la VM</strong></td><td>&nbsp;<br>&nbsp;</td><td>Verificar red aislada (<em>Host-Only</em> / desconectada) antes de abrir muestras</td></tr>
-<tr><td><strong>Ruta de símbolos (<code>_NT_SYMBOL_PATH</code>)</strong></td><td>&nbsp;<br>&nbsp;</td><td><code>srv*C:\Symbols*https://msdl.microsoft.com/download/symbols</code></td></tr>
-<tr><td><strong>Compilador MSVC / MinGW-w64</strong></td><td>&nbsp;<br>&nbsp;</td><td>x64 Native Tools Command Prompt / <code>cl /Zi /Od</code> vs <code>cl /Zi /O2</code></td></tr>
-<tr><td><strong>VM de depuración Kernel (KDNET)</strong></td><td>&nbsp;<br>&nbsp;</td><td><code>bcdedit /debug on</code> · <code>bcdedit /dbgsettings net hostip:... port:50000</code></td></tr>
-</tbody></table></div>
-<h2>Registro de sesiones, direcciones clave (RVA / VA) e hipótesis</h2>
-<div class="tabla"><table>
-<thead><tr>
-<th>Fecha / Binario</th>
-<th>SHA-256 / Arquitectura</th>
-<th>RVA clave (<code>OEP</code> / <code>main</code> / <code>vtable</code> / <code>IOCTL</code>)</th>
-<th>Observaciones y conclusiones verificadas</th>
-</tr></thead><tbody>
-<tr><td>&nbsp;<br>&nbsp;<br>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td></tr>
-<tr><td>&nbsp;<br>&nbsp;<br>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td></tr>
-<tr><td>&nbsp;<br>&nbsp;<br>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td></tr>
-<tr><td>&nbsp;<br>&nbsp;<br>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td></tr>
-<tr><td>&nbsp;<br>&nbsp;<br>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td></tr>
-<tr><td>&nbsp;<br>&nbsp;<br>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td></tr>
-</tbody></table></div>
-</section>
-
 </main></body></html>
