@@ -73,9 +73,8 @@ En 0x00403020 (arreglo de punteros, terminado en NULL):
    #else
    #pragma comment(linker, "/INCLUDE:__tls_used")
    #endif
-   #pragma const_seg(".CRT$XLB")
-   EXTERN_C const PIMAGE_TLS_CALLBACK p_cb = mi_cb;
-   #pragma const_seg()
+   #pragma section(".CRT$XLB", read)
+   __declspec(allocate(".CRT$XLB")) const PIMAGE_TLS_CALLBACK p_cb = mi_cb;
 
    int main(void) {
        printf("orden al entrar a main = %d  (1 =&gt; el callback ya corrió)\n", orden);
