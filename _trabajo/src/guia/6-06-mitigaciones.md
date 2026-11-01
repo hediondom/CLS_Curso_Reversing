@@ -88,6 +88,10 @@ Lectura de una VM de laboratorio (ilustrativa):
 | Blocklist | Activada en Seguridad de Windows | Interfaz | Aplica la versión incluida en el sistema, no necesariamente la más reciente |
 | App Control | Sin política propia; solo la del sistema | Registro *CodeIntegrity* | No hay lista de permitidos de la organización |
 
+:::{nota} Por qué los drivers x64 no parchean el kernel: PatchGuard (KPP) y el bugcheck 0x109
+En Windows x64, **Kernel Patch Protection (PatchGuard / KPP)** verifica periódicamente la integridad de las estructuras críticas del kernel: el código y las secciones de solo lectura de `ntoskrnl.exe`/`hal.dll`, la **SSDT** (`KeServiceDescriptorTable`), la **IDT/GDT**, MSRs críticos (`IA32_LSTAR` → `KiSystemCall64`) y estructuras internas. Si cualquier driver modifica un byte de esas regiones, PatchGuard detiene el sistema de forma diferida con el bugcheck **`0x109` (CRITICAL_STRUCTURE_CORRUPTION)**. Esa es la razón arquitectónica por la que, en x64, los productos de seguridad y los drivers legítimos **abandonaron el SSDT/inline hooking** de la era de 32 bits y usan solo las interfaces de notificación documentadas de [6.5](6-05-minifilters.html) (`FltRegisterFilter`, `ObRegisterCallbacks`, `PsSetCreateProcessNotifyRoutineEx`).
+:::
+
 ## Práctica de solo lectura
 
 En la VM, consulta Windows Security / System Information y la política administrada disponible. Registra build/edición, estado informado de Secure Boot/VBS/HVCI y fuente de la blocklist. Si la política está oculta por organización, anota “no disponible”; no cambies ajustes ni instales drivers para probarla.

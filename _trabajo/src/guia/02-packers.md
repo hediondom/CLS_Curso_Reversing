@@ -99,6 +99,10 @@ Llegar al OEP y dumpear no garantiza un ejecutable que corra. Las causas típica
 
 Para **analizar** no siempre hace falta que el dump corra: abierto en IDA o Ghidra, con la base correcta, ya muestra el código descomprimido. Que corra es la prueba de que reconstruiste bien, no un requisito para leerlo.
 
+:::{aviso} El dump de Scylla crashea al ejecutarlo: es el ASLR, no la IAT
+Al volcar un proceso que cargó con **ASLR activo**, las direcciones absolutas ya quedaron reubicadas a la base de *esa* ejecución, pero el dump conserva el flag `DYNAMIC_BASE (0x0040)` y Windows intenta re-reubicarlo con una `.reloc` ya consumida → `0xC0000005` al hacer doble clic. No reconstruiste mal la IAT: es el ASLR. Solución: en Scylla activá **Update header ImageBase** (que el `ImageBase` del dump sea la base real del volcado) y en PE-bear **desmarcá Dynamic Base** (o poné `Relocations stripped 0x0001` en File Header). Así el loader lo carga exactamente en la base para la que quedaron fijadas sus direcciones.
+:::
+
 ## Práctica
 
 En tu VM, con un **programa propio** (necesitás UPX, gratis y open source; versiones de referencia: UPX 4.x, x64dbg, Scylla):

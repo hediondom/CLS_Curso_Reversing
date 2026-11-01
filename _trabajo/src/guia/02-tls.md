@@ -56,6 +56,10 @@ En 0x00403020 (arreglo de punteros, terminado en NULL):
 
 Vas a `0x00401020` y ahí está el `TlsCallback_0`: ese código corre **antes** del entry point. Si `AddressOfCallBacks` fuera `0`, no habría callbacks y bastaría el breakpoint en el entry point.
 
+:::{nota} Tamaño del directorio según la arquitectura (x86 vs x64)
+El ejemplo de arriba es de 32 bits. En **PE32**, `IMAGE_TLS_DIRECTORY32` ocupa **0x18 bytes** y `AddressOfCallBacks` está en el offset **+0x0C** (arreglo de DWORDs de 4B). En **PE32+**, `IMAGE_TLS_DIRECTORY64` ocupa **0x28 bytes** y `AddressOfCallBacks` se corre a **+0x18** (arreglo de QWORDs de 8B, terminado en 8 ceros). En ambos casos esos campos son **direcciones virtuales absolutas (VA)**, no RVAs: si hay ASLR, la tabla `.reloc` los ajusta.
+:::
+
 ## Práctica
 
 En tu VM, con un **programa propio**:
@@ -75,16 +79,20 @@ En tu VM, con un **programa propio**:
        if (motivo == DLL_PROCESS_ATTACH) orden = 1;
    }
 
-   /* El símbolo del linker cambia según la arquitectura:
-      x86 -> __tls_used (dos guiones bajos); x64 -> _tls_used (uno). */
-   #ifdef _WIN64
-   #pragma comment(linker, "/INCLUDE:_tls_used")
-   #else
-   #pragma comment(linker, "/INCLUDE:__tls_used")
+   /* Registrar el callback en .CRT$XLB. Con __declspec(allocate) el símbolo NO
+      se elimina aunque compiles con /O1 /O2 /GL (a diferencia de 'const_seg +
+      EXTERN_C const', que el linker puede descartar). Incluye variante MinGW. */
+   #ifdef _MSC_VER
+     #ifdef _WIN64
+       #pragma comment(linker, "/INCLUDE:_tls_used")    /* x64: un guion bajo */
+     #else
+       #pragma comment(linker, "/INCLUDE:__tls_used")   /* x86: dos guiones */
+     #endif
+     #pragma section(".CRT$XLB", long, read)
+     __declspec(allocate(".CRT$XLB")) PIMAGE_TLS_CALLBACK p_cb = mi_cb;
+   #else  /* MinGW-w64 (GCC / Clang) */
+     PIMAGE_TLS_CALLBACK p_cb __attribute__((used, section(".CRT$XLB"))) = mi_cb;
    #endif
-   #pragma const_seg(".CRT$XLB")
-   EXTERN_C const PIMAGE_TLS_CALLBACK p_cb = mi_cb;
-   #pragma const_seg()
 
    int main(void) {
        printf("orden al entrar a main = %d  (1 => el callback ya corrió)\n", orden);

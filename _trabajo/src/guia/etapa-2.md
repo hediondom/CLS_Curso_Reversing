@@ -1,13 +1,13 @@
 ---
 title: "Etapa 2 · Introducción al reversing"
-description: "Leer assembly x86/x64, seguir el flujo y usar debugger y desensamblador con criterio. Se divide en 2A (base, 2.1–2.9), 2B (Windows intermedio, 2.10–2.16: ofuscación, TLS, MFC, huella, PE fino, anti-análisis, Ghidra) y 2C (Windows avanzado, 2.17+: packers didácticos, C++ profundo, WinDbg/heap, patch diffing, scripting). Las rutas de malware dinámico, shellcode/C2 y fuzzing quedan como optativas, fuera de la puerta obligatoria."
+description: "Leer assembly x86/x64, seguir el flujo y usar debugger y desensamblador con criterio. Se divide en 2A (base, 2.1–2.9), 2B (Windows intermedio, 2.10–2.16: ofuscación, TLS, MFC, huella, PE fino, anti-análisis, Ghidra) y 2C (Windows avanzado, 2.17+: packers didácticos, C++ profundo, WinDbg/heap, patch diffing, scripting) y 2E (desofuscación y análisis dinámico avanzado, 2.25+: ejecución simbólica, ofuscación por VM, protectores multicapa, neutralizar anti-análisis, DBI con DynamoRIO/Pin y Frida Stalker, extensiones de Ghidra/SLEIGH, y ampliaciones de Go/Rust y VB6). Las rutas de malware dinámico, shellcode/C2 y fuzzing quedan como optativas, fuera de la puerta obligatoria."
 etapa: "Etapa 2 · Introducción al reversing"
 ---
 
 # Etapa 2 · Introducción al reversing
 
 :::{nota} Objetivo medible
-Leer assembly x86/x64, seguir el flujo y usar debugger y desensamblador con criterio. Se divide en 2A (base, 2.1–2.9), 2B (Windows intermedio, 2.10–2.16: ofuscación, TLS, MFC, huella, PE fino, anti-análisis, Ghidra) y 2C (Windows avanzado, 2.17+: packers didácticos, C++ profundo, WinDbg/heap, patch diffing, scripting). Las rutas de malware dinámico, shellcode/C2 y fuzzing quedan como optativas, fuera de la puerta obligatoria.
+Leer assembly x86/x64, seguir el flujo y usar debugger y desensamblador con criterio. Se divide en 2A (base, 2.1–2.9), 2B (Windows intermedio, 2.10–2.16: ofuscación, TLS, MFC, huella, PE fino, anti-análisis, Ghidra) y 2C (Windows avanzado, 2.17+: packers didácticos, C++ profundo, WinDbg/heap, patch diffing, scripting) y 2E (desofuscación y análisis dinámico avanzado, 2.25+: ejecución simbólica, ofuscación por VM, protectores multicapa, neutralizar anti-análisis, DBI con DynamoRIO/Pin y Frida Stalker, extensiones de Ghidra/SLEIGH, y ampliaciones de Go/Rust y VB6). Las rutas de malware dinámico, shellcode/C2 y fuzzing quedan como optativas, fuera de la puerta obligatoria.
 :::
 
 **Prerrequisitos:** Etapa 1.  
@@ -41,6 +41,15 @@ Leer assembly x86/x64, seguir el flujo y usar debugger y desensamblador con crit
 | 2.22 | [(optativa) Malware dinámico defensivo](02-opt-malware-dinamico.html) | Laboratorio aislado, red simulada, observación de comportamiento e IOCs. |
 | 2.23 | [(optativa) Shellcode, red y C2: reconocer y describir](02-opt-shellcode-c2.html) | Identificar shellcode y describir tráfico de C2; análisis y clasificación, no construcción. |
 | 2.24 | [(optativa) Fuzzing y análisis simbólico](02-opt-fuzzing.html) | Fuzzear un parser/crackme propio y usar ejecución simbólica para hallar condiciones. |
+| 2.25 | [Ejecución simbólica y concólica](02-simbolico-desofuscacion.html) | angr/Triton/Miasm y Z3 para recuperar condiciones y simplificar MBA en binarios propios. |
+| 2.26 | [Ofuscación por máquina virtual](02-ofuscacion-vm.html) | Dispatcher, bytecode y handlers; reconocer virtualización y practicar con una mini-VM propia. |
+| 2.27 | [Protectores comerciales y packers multicapa](02-protectores-multicapa.html) | Reconocer familias y capas (VMProtect, Themida…) sin desempacar software ajeno. |
+| 2.28 | [Neutralizar anti-análisis en laboratorio](02-anti-analisis-neutralizar.html) | ScyllaHide y hooks de Frida sobre binarios propios o malware en VM descartable. |
+| 2.29 | [Instrumentación binaria dinámica: DynamoRIO y Pin](02-dbi-dynamorio-pin.html) | Cobertura (drcov/Lighthouse), conteo y desempaquetado genérico por W⊕X. |
+| 2.30 | [Frida avanzado: Stalker y tracing](02-frida-stalker.html) | Trazar bloques/instrucciones de un hilo, cobertura (frida-drcov) y código en runtime. |
+| 2.31 | [Extensiones de Ghidra y SLEIGH](02-ghidra-sleigh.html) | Scripts (Jython/PyGhidra), headless, P-Code y SLEIGH para modelar bytecode propio. |
+| 2.32 | [Go y Rust en profundidad (amplía 2.13)](02-go-rust.html) | pclntab/itab en Go; manglado v0, monomorfización y trait objects en Rust. |
+| 2.33 | [VB6 y p-code (amplía 2.13)](02-vb6-pcode.html) | Nativo vs p-code, VBHeader y MSVBVM60; VB Decompiler/WKTVBDE (legado). |
 
 ## Recursos de CLS para esta etapa
 
@@ -65,6 +74,7 @@ Leer assembly x86/x64, seguir el flujo y usar debugger y desensamblador con crit
 - **2C** · Reconocer RTTI, `std::string` (SSO), un `std::vector` y un `try/catch` en un binario C++ propio.
 - **2C** · Diagnosticar un bug de heap propio con WinDbg/Page Heap y leer, con un differ, qué cambió un parche.
 - **2C** · Automatizar una tarea de análisis con un script de x64dbg y guardar la evidencia.
+- **2E** · Resolver un crackme propio con un solver (angr/Z3), reconocer una VM de protección y sacar cobertura con DBI o Frida Stalker.
 
 :::{practica} Entregable de la etapa
 Un archivo en tu bitácora con: lecciones completadas, ejercicios resueltos, dudas abiertas y evidencia (capturas, valores, hashes). Sin evidencia no se considera aprobada.

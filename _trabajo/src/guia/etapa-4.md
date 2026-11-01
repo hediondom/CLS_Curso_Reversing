@@ -18,10 +18,11 @@ Analizar programas propios con método, reconstruir un formato o protocolo desde
 | # | Lección | Qué aprendés |
 |---|---|---|
 | 4.1 | [Método de análisis: de la pregunta al hallazgo](04-metodo.html) | Ciclo de cinco pasos, hipótesis y confirmación. |
-| 4.5 | [Reconstruir formatos y protocolos propios](04-formatos-protocolos.html) | Deducir campos, longitudes, framing, estados y transformaciones a partir de muestras controladas. |
 | 4.2 | [Reconocer criptografía y encoding en un binario](04-cripto.html) | XOR, base64, constantes de AES/MD5/RC4 y CryptoAPI/CNG. |
 | 4.3 | [El informe reproducible](04-informe.html) | Estructura, evidencia, límites y divulgación. |
 | 4.4 | [Análisis dinámico seguro: cuándo ejecutar y cuándo no](04-dinamico-seguro.html) | Matriz de decisión, contención y respuesta. |
+| 4.5 | [Reconstruir formatos y protocolos propios](04-formatos-protocolos.html) | Campos, longitudes, framing, estados y transformaciones desde muestras controladas. |
+| 4.6 | [Protocolos de terceros: reconstruir un protocolo propietario](04-protocolos-terceros.html) | Framing, serialización (TLV/Protobuf), hooks en send/recv y disector de Wireshark; solo sistemas propios o autorizados. |
 
 ## Recursos de CLS para esta etapa
 

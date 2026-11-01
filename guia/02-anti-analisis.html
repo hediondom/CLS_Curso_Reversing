@@ -111,16 +111,6 @@ jnz   detectado</code></pre>
 <aside class="callout nota"><p class="callout-titulo">Capas de esta lección</p><p><strong>Contenido observado en CLS:</strong> el <code>hide</code> y la detección de breakpoints del capítulo 22 y la detección por entorno del 24. <strong>Conocimiento externo:</strong> la taxonomía de las cuatro familias y las señales concretas (PEB, NtGlobalFlag, <code>ProcessDebugPort</code>, chequeos de tiempo, <code>CPUID</code>, anti-VM, anti-dump). <strong>Ejemplo ilustrativo:</strong> los listados del PEB y de <code>ProcessDebugPort</code>, y las filas de la tabla de documentación. <strong>Recomendación editorial:</strong> el enfoque de reconocer y no evadir, la tabla de documentación y la práctica con binario propio.</p></aside>
 
 <aside class="ampliacion-ext">
-<p class="callout-titulo">Ampliación editorial basada en fuentes externas — PEB.NtGlobalFlag en x86 vs. x64 y clases 0x1E / 0x1F de NtQueryInformationProcess</p>
-<p>Según <a href="https://learn.microsoft.com/en-us/windows-hardware/drivers/debugger/gflags-flag-table" rel="noopener" target="_blank">GFlags Flag Table</a> y <a href="https://learn.microsoft.com/en-us/windows/win32/api/winternl/nf-winternl-ntqueryinformationprocess" rel="noopener" target="_blank">NtQueryInformationProcess</a> en Microsoft Learn <em>(Hecho confirmado)</em>:</p>
-<ul>
-<li><strong><code>PEB.NtGlobalFlag</code> (valor <code>0x70</code>):</strong> Combina <code>FLG_HEAP_ENABLE_TAIL_CHECK (0x10) | FLG_HEAP_ENABLE_FREE_CHECK (0x20) | FLG_HEAP_VALIDATE_PARAMETERS (0x40) = 0x70</code>. En <strong>x86</strong> se ubica en <code>fs:[30h] -&gt; [peb + 0x68]</code>; en <strong>x64</strong> se desplaza a <code>gs:[60h] -&gt; [peb + 0xBC]</code>.</li>
-<li><strong><code>ProcessDebugObjectHandle</code> (clase <code>0x1E = 30</code>):</strong> Consulta el handle al <code>DEBUG_OBJECT</code> del kernel. Si no hay debugger, <code>NtQueryInformationProcess</code> devuelve <code>0xC0000353</code> (<code>STATUS_PORT_NOT_SET</code>).</li>
-<li><strong><code>ProcessDebugFlags</code> (clase <code>0x1F = 31</code>):</strong> Consulta <code>NoDebugInherit</code>; devuelve <code>0</code> si hay depurador activo y <code>1</code> si no está siendo depurado.</li>
-</ul>
-</aside>
-
-<aside class="ampliacion-ext">
 <p class="callout-titulo">Ampliación editorial basada en fuentes externas — Evasión en User-Mode: API Hooking de EDRs, Syscalls Directas (Hell's Gate / Halo's Gate) y DLL Unhooking</p>
 <p>El análisis de binarios modernos en entornos corporativos exige comprender cómo interactúa el software con los agentes de seguridad (antivirus/EDR) en el espacio de usuario (<a href="https://learn.microsoft.com/en-us/windows-hardware/drivers/debugger/x64-architecture" rel="noopener" target="_blank">Microsoft Learn: x64 Architecture & System Calls</a>):</p>
 
@@ -175,6 +165,16 @@ jmp qword ptr [rip + pfn_syscall]  ; Salta a la instrucción "syscall; ret" dent
 <h4 style="margin: 0.8rem 0 0.4rem 0; color: #1d4f2a;">3. El Problema del Call Stack Walking y Call Stack Spoofing</h4>
 <p>Aun con <em>Indirect Syscalls</em>, los EDRs avanzados inspeccionan la pila de llamadas retrospectiva (<em>Call Stack Unwinding</em> guiado por las tablas <code>.pdata</code> / <code>UNWIND_INFO</code> vistas en la lección 2.14). Si el frame inmediatamente anterior a <code>ntdll!NtAllocateVirtualMemory</code> no es una API de alto nivel (como <code>kernelbase.dll!VirtualAllocEx</code>), sino memoria no respaldada o un salto anómalo, la llamada es detectada. Para evadir esto, los cargadores avanzados implementan <strong>Call Stack Spoofing</strong> (sintetizando marcos de pila falsos para simular que la llamada se originó en una secuencia legítima de Windows).</p>
 <p><em>Nota sobre Tartarus' Gate:</em> Algunos EDRs modernos colocan su hook <code>jmp</code> no en el byte <code>+0</code>, sino después de <code>mov r10, rcx</code> (en el byte <code>+3</code>). La variante <em>Tartarus' Gate</em> verifica si el hook está desplazado y ajusta el puntero de lectura para no confundir el prólogo.</p>
+</aside>
+
+<aside class="ampliacion-ext">
+<p class="callout-titulo">Ampliación editorial basada en fuentes externas — PEB.NtGlobalFlag en x86 vs. x64 y clases 0x1E / 0x1F de NtQueryInformationProcess</p>
+<p>Según <a href="https://learn.microsoft.com/en-us/windows-hardware/drivers/debugger/gflags-flag-table" rel="noopener" target="_blank">GFlags Flag Table</a> y <a href="https://learn.microsoft.com/en-us/windows/win32/api/winternl/nf-winternl-ntqueryinformationprocess" rel="noopener" target="_blank">NtQueryInformationProcess</a> en Microsoft Learn <em>(Hecho confirmado)</em>:</p>
+<ul>
+<li><strong><code>PEB.NtGlobalFlag</code> (valor <code>0x70</code>):</strong> Combina <code>FLG_HEAP_ENABLE_TAIL_CHECK (0x10) | FLG_HEAP_ENABLE_FREE_CHECK (0x20) | FLG_HEAP_VALIDATE_PARAMETERS (0x40) = 0x70</code>. En <strong>x86</strong> se ubica en <code>fs:[30h] -&gt; [peb + 0x68]</code>; en <strong>x64</strong> se desplaza a <code>gs:[60h] -&gt; [peb + 0xBC]</code>.</li>
+<li><strong><code>ProcessDebugObjectHandle</code> (clase <code>0x1E = 30</code>):</strong> Consulta el handle al <code>DEBUG_OBJECT</code> del kernel. Si no hay debugger, <code>NtQueryInformationProcess</code> devuelve <code>0xC0000353</code> (<code>STATUS_PORT_NOT_SET</code>).</li>
+<li><strong><code>ProcessDebugFlags</code> (clase <code>0x1F = 31</code>):</strong> Consulta <code>NoDebugInherit</code>; devuelve <code>0</code> si hay depurador activo y <code>1</code> si no está siendo depurado.</li>
+</ul>
 </aside>
 </main>
 <footer class="pie">

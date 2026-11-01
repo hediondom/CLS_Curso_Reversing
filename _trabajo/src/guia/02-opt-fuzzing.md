@@ -59,6 +59,34 @@ Simbólico (angr) para alcanzar el bloque "formato_v2":
 
 El fuzzer encontró un bug de robustez (no valida `len`); angr encontró **qué bytes** activan una rama concreta. Los dos resultados son **reproducibles** y señalan una línea.
 
+:::{aviso} libFuzzer necesita la firma `LLVMFuzzerTestOneInput` y un flag de compilación
+Los flags `-merge=1` / `-minimize_crash=1` son del **binario instrumentado**, no de un `main()` normal. Hay que exportar `int LLVMFuzzerTestOneInput(const uint8_t *Data, size_t Size)` y compilar con el runtime de fuzzing:
+
+```text
+:: MSVC (VS 2022 Developer Command Prompt x64):
+cl /fsanitize=fuzzer /fsanitize=address /Zi /Od fuzz_clsf.c /Fe:fuzz_clsf.exe
+:: Clang en Windows:
+clang -g -O1 -fsanitize=fuzzer,address fuzz_clsf.c -o fuzz_clsf.exe
+:: Ejecutar y minimizar un crash:
+mkdir corpus && fuzz_clsf.exe corpus -max_total_time=60
+fuzz_clsf.exe -minimize_crash=1 -max_total_time=30 crash-xxxx
+```
+
+El harness mínimo valida la cabecera y deja un *out-of-bounds* a propósito si comentás el chequeo de longitud:
+
+```c
+int LLVMFuzzerTestOneInput(const uint8_t *Data, size_t Size) {
+    if (Size < sizeof(CabeceraCLSF)) return 0;
+    const CabeceraCLSF *h = (const CabeceraCLSF *)Data;
+    if (memcmp(h->magic, "CLSF", 4) != 0 || h->version != 1) return 0;
+    if ((size_t)h->hdr_len + h->body_len > Size) return 0;   // comentá esto y ASan caza el OOB
+    volatile uint8_t sum = 0;
+    for (uint16_t i = 0; i < h->body_len; ++i) sum ^= Data[h->hdr_len + i];
+    return 0;
+}
+```
+:::
+
 ## Práctica
 
 En tu VM, con un **parser propio** y datos de prueba inventados:

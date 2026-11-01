@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>2.25 · Ejecución simbólica y concólica: desofuscar con un solver</title>
+<meta name="description" content="Usar ejecución simbólica y concólica (angr, Triton, Miasm, Z3) para recuperar condiciones y resolver ramas en binarios propios ofuscados, y entender por qué a veces no escala.">
+<link rel="stylesheet" href="../guia/estilo.css">
+</head>
+<body>
+<a class="salto" href="#contenido">Saltar al contenido</a>
+<header class="cabecera">
+  <div class="marca"><a href="../00_EMPEZAR_AQUI.html">CLS · Curso de reversing</a> <span class="edicion">edición 5 · 27/10/2026</span></div>
+  <nav class="principal" aria-label="Navegación principal">
+    <a href="../00_EMPEZAR_AQUI.html">Inicio</a>
+    <a href="../guia/index.html">Curso</a>
+    <a href="../materiales.html">Materiales</a>
+    <a href="../fichas/index.html">Fichas</a>
+    <a href="../glosario.html">Glosario</a>
+    <a href="../preguntas_y_respuestas.html">Repaso</a>
+    <a href="../buscar.html">Buscar</a>
+  </nav>
+</header>
+<main id="contenido">
+<nav class="migas" aria-label="Ubicación"><a href="../00_EMPEZAR_AQUI.html">Inicio</a><span aria-hidden="true">›</span><a href="../guia/index.html">Curso</a><span aria-hidden="true">›</span><span>Etapa 2 · Desofuscación avanzada (2E)</span></nav><h1 id="ejecución-simbólica-y-concólica-desofuscar-con-un-solver">Ejecución simbólica y concólica: desofuscar con un solver</h1>
+<aside class="callout nota"><p class="callout-titulo">Objetivo de la lección</p><p>Entender qué es la <strong>ejecución simbólica</strong> y la <strong>concólica</strong>, y usarlas para recuperar las condiciones de un binario propio ofuscado (qué entrada lo lleva a una rama) y para <strong>simplificar</strong> expresiones enredadas. Saber <strong>cuándo no sirve</strong> y por qué. <strong>Prerrequisitos:</strong> fundamentos de simbólico (<a href="02-opt-fuzzing.html">2.24</a>), ofuscación nativa (<a href="02-ofuscacion.html">2.10</a>), instrucciones (<a href="02-instrucciones.html">2.2</a>) y scripting (<a href="02-scripting-debugger.html">2.21</a>). <em>Contexto recomendado:</em> método de análisis (4.1).</p></aside>
+<p>Esto es <strong>análisis</strong>, no evasión: se usa el solver sobre <strong>binarios propios o crackmes didácticos</strong> para entender su lógica. No se producen cracks, keygens ni parches de software comercial.</p>
+<h2 id="qué-es-la-ejecución-simbólica">Qué es la ejecución simbólica</h2>
+<p>En la ejecución <strong>concreta</strong> (la de siempre), una variable tiene un valor: <code>eax = 0x41</code>. En la <strong>simbólica</strong>, la variable es una <em>incógnita</em> —la llamamos <code>x</code>— y el motor va anotando, instrucción por instrucción, <strong>qué operaciones se le hicieron</strong>. Cuando el programa llega a un salto condicional, en vez de tomar un camino, el motor guarda la <strong>restricción</strong> (<em>path constraint</em>) que haría cierto ese salto y puede explorar <strong>los dos lados</strong> (<strong>conocimiento externo</strong>).</p>
+<p>Al final, cada camino es una lista de restricciones del estilo «<code>(x ^ 0x23) + 7 == 0x62</code>». Esa lista se le entrega a un <strong>solver SMT</strong> (típicamente <strong>Z3</strong>), que responde una de dos cosas: <em>insatisfacible</em> (ninguna entrada llega acá) o <em>satisfacible</em> y, de paso, <strong>un valor concreto de <code>x</code></strong> que cumple. Ese valor es, muchas veces, la «clave» que buscabas: en vez de leer y revertir el algoritmo a mano, le preguntás al solver qué entrada produce el resultado.</p>
+<h2 id="por-qué-concólica-concrete-symbolic">Por qué «concólica» (concrete + symbolic)</h2>
+<p>El simbólico puro se ahoga cuando el programa llama al sistema operativo, lee un archivo o depende del entorno: no todo se puede dejar como incógnita. La <strong>ejecución concólica</strong> mezcla las dos: mantiene simbólico <strong>lo que te interesa</strong> (la entrada del usuario) y <strong>concretiza</strong> el resto (una syscall devuelve un valor fijo, una librería se reemplaza por un modelo). Así el árbol de caminos no explota por cosas que no te importan. En la práctica, casi siempre vas a trabajar en modo concólico.</p>
+<h2 id="los-tres-motores-que-vas-a-encontrar">Los tres motores que vas a encontrar</h2>
+<div class="tabla"><table>
+<thead><tr>
+<th>Motor</th>
+<th>Cómo trabaja</th>
+<th>Cuándo elegirlo</th>
+</tr></thead><tbody>
+<tr><td><strong>angr</strong> (Python)</td><td>Levanta el binario a VEX IR y emula con estados simbólicos; <code>SimulationManager</code> gestiona los caminos</td><td>El más completo para «encontrá la entrada que llega acá»; mucho ejemplo de crackmes</td></tr>
+<tr><td><strong>Triton</strong> (C++/Python)</td><td>Construye el AST simbólico de cada instrucción x86/x64 y lo resuelve con Z3; se engancha a una traza</td><td>Cuando ya tenés una <em>traza</em> concreta y querés razonar sobre ella (ideal junto a DBI, 2.29)</td></tr>
+<tr><td><strong>Miasm</strong> (Python)</td><td>IR propio, ensambla/desensambla, emula y hace simbólico; buen <em>lifting</em></td><td>Reconstrucción de flujo y desofuscación de rutinas puntuales</td></tr>
+</tbody></table></div>
+<p>Los tres apoyan abajo en un solver: <strong>Z3</strong> (de Microsoft Research) es el más usado. No hace falta escribir Z3 a mano para empezar —angr lo maneja por vos—, pero conviene entender que ahí abajo hay un demostrador de teoremas sobre <em>bitvectors</em>.</p>
+<h2 id="el-enemigo-explosión-de-caminos">El enemigo: explosión de caminos</h2>
+<p>Cada salto condicional <strong>duplica</strong> la cantidad de estados a seguir. Un bucle que corre 32 veces con una rama adentro son <code>2³²</code> caminos: inmanejable. La ofuscación <strong>empeora</strong> esto a propósito —el <strong>aplanamiento de flujo</strong> (<a href="02-ofuscacion.html">2.10</a>) convierte un programa lineal en un <em>switch</em> gigante, y los <strong>predicados opacos</strong> agregan ramas falsas—. Mitigaciones:</p>
+<ul><li><strong>Exploración dirigida:</strong> decile al motor <em>adónde</em> querés llegar (<code>find=</code>) y <em>qué</em> evitar (<code>avoid=</code>), para que no explore todo.</li><li><strong>Concretizar:</strong> fijá la longitud de la entrada, modelá las syscalls, saltá funciones de librería con <em>SimProcedures</em>.</li><li><strong>Veritesting / fusión de estados:</strong> angr puede unir caminos equivalentes para no multiplicarlos.</li><li><strong>Límites:</strong> cota de pasos, de memoria y de tiempo; si no cierra, cambiá de técnica (trazá con DBI, 2.29, y pasale la traza a Triton).</li></ul>
+<h2 id="simplificar-expresiones-y-mba">Simplificar expresiones y MBA</h2>
+<p>Una técnica de ofuscación frecuente es el <strong>MBA</strong> (<em>mixed boolean-arithmetic</em>): reemplazar <code>x + y</code> por una maraña equivalente de <code>and</code>, <code>or</code>, <code>xor</code> y sumas. El solver sirve para <strong>probar que dos expresiones son iguales</strong> y así deshacer la maraña. La identidad clásica:</p>
+<pre><code class="lenguaje-python"># Z3: demostrar que una expresión MBA es, en realidad, una suma
+from z3 import BitVec, prove
+x, y = BitVec("x", 32), BitVec("y", 32)
+prove((x ^ y) + 2 * (x &amp; y) == x + y)   # imprime: proved</code></pre>
+<p>Si <code>prove</code> dice <em>proved</em>, esa expresión complicada era <code>x + y</code> disfrazada. Lo mismo sirve para confirmar que un chequeo enrevesado equivale a un simple <code>cmp</code>.</p>
+<h2 id="ejemplo-paso-a-paso-resolver-un-crackme-propio-con-angr">Ejemplo paso a paso: resolver un crackme propio con angr</h2>
+<p><em>(Ejemplo <strong>ilustrativo</strong>: código de referencia sobre un binario propio; no es un volcado de una corrida verificada en esta edición.)</em></p>
+<p>Como el curso es <strong>solo Windows</strong>, no entramos por <code>stdin</code> ni leemos la salida con <code>posix.dumps</code> (eso es de binarios ELF/Linux; en un PE de MSVC devuelve vacío y <code>simgr.found</code> queda siempre <code>[]</code>). Arrancamos <strong>directo en la función de validación</strong> con <code>blank_state</code>, ponemos la entrada en memoria y dirigimos la búsqueda por <strong>direcciones de bloque</strong> (el que devuelve «correcto» vs. el que devuelve «incorrecto»):</p>
+<pre><code class="lenguaje-python"># resolver.py — crackme PROPIO, PE de Windows x64.
+# Entra directo en validar(const char *clave), sin pasar por el CRT.
+import angr, claripy
+
+proj = angr.Project("./crackme_propio.exe", auto_load_libs=False)
+
+ADDR_VALIDAR = 0x140001000   # prólogo de validar()
+ADDR_EXITO   = 0x140001085   # bloque que devuelve 1 (Correcto)
+ADDR_FALLO   = 0x140001090   # bloque que devuelve 0 (Incorrecto)
+BUF_ADDR     = 0x140050000   # memoria escribible donde alojar la clave
+
+clave = claripy.BVS("clave", 16 * 8)
+estado = proj.factory.blank_state(addr=ADDR_VALIDAR)
+
+# escribir el bitvector en memoria y apuntar RCX (1.er arg en Windows x64) al buffer
+estado.memory.store(BUF_ADDR, clave)
+estado.regs.rcx = BUF_ADDR
+
+# 15 bytes ASCII imprimible + terminador nulo
+for b in clave.chop(8)[:-1]:
+    estado.solver.add(b &gt;= 0x20, b &lt;= 0x7e)
+estado.solver.add(clave.chop(8)[-1] == 0x00)
+
+simgr = proj.factory.simulation_manager(estado)
+simgr.explore(find=ADDR_EXITO, avoid=ADDR_FALLO)
+
+if simgr.found:
+    s = simgr.found[0]
+    print("clave:", s.solver.eval(clave, cast_to=bytes).rstrip(b"\x00").decode())</code></pre>
+<p>Qué hizo: arrancó el estado <strong>en el prólogo de <code>validar()</code></strong> (con <code>blank_state</code>, no en el <em>entry point</em>, para no modelar el CRT), puso 16 bytes simbólicos en una dirección escribible y apuntó <code>RCX</code> ahí (primer argumento en la ABI de Windows x64), y dirigió la búsqueda a la <strong>dirección</strong> del bloque «correcto» evitando la del «incorrecto» (esas direcciones las sacás en IDA/Ghidra). Si <strong>no</strong> encuentra nada o tarda infinito, la lección está en el <em>porqué</em>: explosión de caminos, un bucle sin cota, o una comprobación que depende de algo que no modelaste.</p>
+<aside class="callout aviso"><p class="callout-titulo">En Windows: no modeles el CRT, entrá por la función de validación</p><p>Alimentar la entrada por <code>stdin</code> en un <code>.exe</code> de MSVC arrastra a angr por el runtime de C (<code>ReadFile</code>, buffers de <code>conio</code>…) y dispara <em>timeouts</em> o explosión de caminos que no te interesan. Dos salidas: (1) pasá la entrada por <code>sys.argv[1]</code> en vez de stdin; (2) la del ejemplo de arriba —<code>blank_state(addr=…)</code> en el prólogo de la validación (no <code>entry_state</code>, que es para el <em>entry point</em>), con la entrada en memoria y <code>RCX</code> apuntándola—. Y nunca guíes <code>find</code>/<code>avoid</code> con <code>posix.dumps(1)</code>/<code>stdin</code>: eso lee el descriptor POSIX de Linux; en un PE de Windows la salida va por <code>WriteFile</code>/<code>ucrtbase</code>, así que dirigí por <strong>direcciones de bloque</strong>.</p></aside>
+<h2 id="práctica">Práctica</h2>
+<p>En tu VM, con un <strong>crackme propio</strong> (compilá uno en C con una comprobación aritmética sobre la entrada):</p>
+<ol><li>Escribí la comprobación a propósito como una cuenta (p. ej. <code>(entrada[i] ^ 0x5A) + i == tabla[i]</code>) y compilalo.</li><li>Resolvelo con angr usando <code>find</code>/<code>avoid</code>; verificá que la clave que da el solver es aceptada por el programa real.</li><li>Agregá un bucle grande o una rama extra y observá cómo cambia el tiempo: explicá qué pasó con los caminos.</li><li>Tomá una línea con MBA (usá la identidad de arriba) y demostrá con Z3 a qué operación simple equivale.</li></ol>
+<h2 id="preguntas-de-repaso">Preguntas de repaso</h2>
+<details class="qa"><summary>¿Qué le pedís en el fondo a un solver SMT?</summary><div class="respuesta"><p>Que decida si un conjunto de restricciones sobre <em>bitvectors</em> es <strong>satisfacible</strong> y, si lo es, que te dé <strong>un valor concreto</strong> de las incógnitas que las cumple. Ese valor suele ser la entrada que buscabas.</p></div></details>
+<details class="qa"><summary>¿Por qué casi siempre se trabaja en modo concólico y no simbólico puro?</summary><div class="respuesta"><p>Porque dejar <strong>todo</strong> simbólico (syscalls, entorno, librerías) hace explotar el árbol de caminos. El concólico mantiene simbólica solo la entrada de interés y <strong>concretiza</strong> el resto, acotando el problema.</p></div></details>
+<details class="qa"><summary>¿Cómo empeora la ofuscación la ejecución simbólica?</summary><div class="respuesta"><p>El <strong>aplanamiento de flujo</strong> multiplica las ramas (un <em>switch</em> gigante) y los <strong>predicados opacos</strong> agregan caminos falsos. Más ramas = más estados = explosión de caminos. Por eso se usa exploración dirigida, fusión de estados y límites.</p></div></details>
+<details class="qa"><summary>¿Para qué sirve <code>prove</code> de Z3 frente a un MBA?</summary><div class="respuesta"><p>Para <strong>demostrar que la expresión enrevesada es igual</strong> a una operación simple (p. ej. que <code>(x^y)+2*(x&amp;y)</code> es <code>x+y</code>). Así deshacés la maraña con una garantía matemática, no por inspección a ojo.</p></div></details>
+<details class="qa"><summary>El motor no encuentra solución ni termina. ¿Qué revisás?</summary><div class="respuesta"><p>Si hay un <strong>bucle sin cota</strong>, si falta <strong>concretizar</strong> algo (longitud de entrada, una syscall), si conviene <strong>dirigir</strong> con <code>find</code>/<code>avoid</code>, o si el binario está virtualizado (2.26) y hay que trazarlo con DBI (2.29) antes.</p></div></details>
+<aside class="callout nota"><p class="callout-titulo">Puerta de salida</p><p>Podés: (1) explicar qué es un estado simbólico y un <em>path constraint</em>; (2) resolver un crackme propio con angr dirigiendo la búsqueda; (3) nombrar dos causas de explosión de caminos y sus mitigaciones; (4) demostrar con Z3 que un MBA equivale a una operación simple.</p></aside>
+<h2 id="fuentes-de-esta-lección">Fuentes de esta lección</h2>
+<ul><li><a href="https://docs.angr.io/" rel="noopener" target="_blank">docs.angr.io</a> — <code>SimulationManager</code>, <code>explore(find=, avoid=)</code>, <em>SimProcedures</em>, veritesting (conocimiento externo, documentación primaria).</li><li><a href="https://triton-library.github.io/" rel="noopener" target="_blank">triton-library.github.io</a> — AST simbólico por instrucción y resolución con Z3.</li><li><a href="https://github.com/cea-sec/miasm" rel="noopener" target="_blank">github.com/cea-sec/miasm</a> — IR, emulación y simbólico.</li><li><a href="https://github.com/Z3Prover/z3" rel="noopener" target="_blank">github.com/Z3Prover/z3</a> — el solver SMT; API de Python para <em>bitvectors</em>.</li><li><a href="02-opt-fuzzing.html">2.24 Fuzzing y simbólico</a> — la introducción sobre la que se apoya esta lección.</li></ul>
+<aside class="callout nota"><p class="callout-titulo">Capas de esta lección</p><p><strong>Contenido observado en CLS:</strong> la ofuscación y el aplanamiento de flujo de los capítulos 26/30 (vistos en 2.10), como el problema que motiva el solver. <strong>Conocimiento externo (agregado por esta edición):</strong> ejecución simbólica/concólica, angr/Triton/Miasm/Z3, explosión de caminos y MBA. <strong>Recomendación editorial:</strong> los ejemplos y la práctica son ilustrativos; no hay laboratorio compilado con hashes en esta edición.</p></aside>
+</main>
+<footer class="pie">
+  <p>Material educativo y defensivo. Las prácticas se limitan a programas propios, software abierto o crackmes diseñados para aprender. No se enseña a eludir licencias, DRM ni controles de acceso.</p>
+  <p><a href="../00_EMPEZAR_AQUI.html">Inicio</a> · <a href="../guia/etapa-0.html">Etapas</a> · <a href="../fuentes_y_limites.html">Fuentes y límites</a> · <a href="../registro_de_cobertura.csv">Registro de cobertura</a></p>
+</footer>
+</body>
+</html>

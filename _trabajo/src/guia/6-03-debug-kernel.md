@@ -82,6 +82,23 @@ Informe de ese caso, separando observación de inferencia (ilustrativo):
 | La causa es una validación de longitud ausente | Inferencia | Coincide con el parámetro y el código fuente; falta reproducir |
 | Ningún otro driver intervino | No determinado | El dump pequeño no incluye toda la memoria |
 
+:::{aviso} Conectar KDNET a una VM: los pasos que faltan
+`bcdedit /dbgsettings net` genera una **clave** (`Key=w.x.y.z`) que hay que copiar en WinDbg; sin ella —o con un adaptador de red que `kdnet.sys` no soporta— WinDbg se queda en *Waiting to reconnect…*. Secuencia que funciona:
+
+```text
+:: 1. Hipervisor (VirtualBox/VMware): adaptador de red en Host-Only, tipo "Intel PRO/1000 MT Desktop (82540EM)".
+:: 2. En la VM (cmd como Administrador), apuntando a la IP Host-Only del HOST:
+bcdedit /debug on
+bcdedit /dbgsettings net hostip:192.168.56.1 port:50000
+:: 3. Copiá la clave que imprime (Key=1.2.3.4).
+:: 4. En el host:
+windbg -k net:port=50000,key=1.2.3.4
+:: 5. Reiniciá la VM: shutdown /r /t 0
+```
+
+Para inspeccionar requests de KMDF, el nombre del módulo va **sin** `.sys`: `!wdfkd.wdflogdump bloclab`.
+:::
+
 ## Práctica
 
 En VM con snapshot, conecta el debugger a un target de prueba ya configurado y carga solo el driver propio permitido. Captura una solicitud válida, inspecciona lista de módulos/stack y unload. Driver Verifier es opcional y solo si el docente confirma el rollback; no provoques un fallo deliberado ni fuerces un bugcheck. Si aparece uno, conserva el dump, analiza offline y revierte.

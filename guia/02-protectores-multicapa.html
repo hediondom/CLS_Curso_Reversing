@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>2.27 · Protectores comerciales y packers multicapa: reconocer, no evadir</title>
+<meta name="description" content="Identificar familias de protector (VMProtect, Themida, Enigma, ASProtect) y binarios multicapa por sus huellas, y planear el análisis sin producir unpack de software comercial.">
+<link rel="stylesheet" href="../guia/estilo.css">
+</head>
+<body>
+<a class="salto" href="#contenido">Saltar al contenido</a>
+<header class="cabecera">
+  <div class="marca"><a href="../00_EMPEZAR_AQUI.html">CLS · Curso de reversing</a> <span class="edicion">edición 5 · 27/10/2026</span></div>
+  <nav class="principal" aria-label="Navegación principal">
+    <a href="../00_EMPEZAR_AQUI.html">Inicio</a>
+    <a href="../guia/index.html">Curso</a>
+    <a href="../materiales.html">Materiales</a>
+    <a href="../fichas/index.html">Fichas</a>
+    <a href="../glosario.html">Glosario</a>
+    <a href="../preguntas_y_respuestas.html">Repaso</a>
+    <a href="../buscar.html">Buscar</a>
+  </nav>
+</header>
+<main id="contenido">
+<nav class="migas" aria-label="Ubicación"><a href="../00_EMPEZAR_AQUI.html">Inicio</a><span aria-hidden="true">›</span><a href="../guia/index.html">Curso</a><span aria-hidden="true">›</span><span>Etapa 2 · Desofuscación avanzada (2E)</span></nav><h1 id="protectores-comerciales-y-packers-multicapa-reconocer-no-evadir">Protectores comerciales y packers multicapa: reconocer, no evadir</h1>
+<aside class="callout nota"><p class="callout-titulo">Objetivo de la lección</p><p><strong>Identificar</strong> qué familia de protector tiene un binario y reconocer una protección <strong>multicapa</strong> (packer sobre cifrado sobre VM), y <strong>planear</strong> un análisis seguro. <strong>Prerrequisitos:</strong> packers didácticos (<a href="02-packers.html">2.17</a>), taxonomía anti-análisis (<a href="02-anti-analisis.html">2.15</a>) y ofuscación por VM (<a href="02-ofuscacion-vm.html">2.26</a>).</p></aside>
+<aside class="callout peligro"><p class="callout-titulo">Encuadre legal y de alcance</p><p>Esta lección es de <strong>reconocimiento</strong>. <strong>No</strong> se desempaquetan protectores comerciales (Themida, WinLicense, VMProtect, Enigma, ACProtect) como práctica, ni se producen cracks, keygens o parches. La práctica usa <strong>binarios propios</strong> empaquetados con herramientas libres, o malware estudiado <strong>en estático</strong>. Desempaquetar protectores está <a href="05-fuera-de-alcance.html">fuera de alcance</a>.</p></aside>
+<h2 id="packer-vs-protector">Packer vs protector</h2>
+<p>Un <strong>packer</strong> comprime el ejecutable y lo descomprime en memoria al arrancar (su objetivo original era el tamaño). Un <strong>protector</strong> suma <strong>capas de defensa</strong>: cifrado, anti-debug, anti-VM, anti-dump, verificación de integridad y, en la gama alta, <strong>virtualización</strong> (<a href="02-ofuscacion-vm.html">2.26</a>) de las funciones críticas. En 2.17 desempaquetaste un UPX propio llegando al <strong>OEP</strong> (<em>original entry point</em>); acá subimos de dificultad para <strong>reconocer</strong> lo que no vas a poder —ni deber— desempaquetar.</p>
+<h2 id="familias-y-sus-huellas">Familias y sus huellas</h2>
+<div class="tabla"><table>
+<thead><tr>
+<th>Familia</th>
+<th>Tipo</th>
+<th>Huellas típicas (conocimiento externo)</th>
+</tr></thead><tbody>
+<tr><td>UPX</td><td>Packer</td><td>Secciones <code>UPX0</code>/<code>UPX1</code>, IAT mínima, alta entropía; se reconoce con <code>upx -t</code></td></tr>
+<tr><td>ASPack / PECompact</td><td>Packer</td><td>Secciones <code>.aspack</code>/<code>.adata</code>; stub chico</td></tr>
+<tr><td>ASProtect</td><td>Protector</td><td>SEH como flujo, IAT redirigida, trucos de robo de código</td></tr>
+<tr><td>Enigma / Obsidium</td><td>Protector</td><td>Licenciamiento, anti-debug fuerte, VM parcial</td></tr>
+<tr><td>Themida / WinLicense</td><td>Protector</td><td>Anti-todo, virtualización pesada, nombres de sección aleatorios</td></tr>
+<tr><td>VMProtect</td><td>Protector (VM)</td><td>Virtualización dominante, poco código nativo, sección de bytecode</td></tr>
+<tr><td>.NET Reactor / ConfuserEx</td><td>Protector .NET</td><td>Nombres <em>mangled</em>, control-flow en IL, anti-tamper (ver <a href="03-dotnet-runtime.html">3.1</a>)</td></tr>
+</tbody></table></div>
+<h2 id="las-capas-de-una-protección-dura">Las capas de una protección dura</h2>
+<p>Un protector serio no es una capa, son varias apiladas:</p>
+<ol><li><strong>Compresión / cifrado del cuerpo:</strong> el código real no está legible en disco (entropía alta, casi sin imports).</li><li><strong>Stub de arranque:</strong> descifra/descomprime en memoria y reconstruye la IAT.</li><li><strong>Anti-análisis:</strong> chequeos de debugger/VM/tiempo (<a href="02-anti-analisis.html">2.15</a>) que abortan si te detectan.</li><li><strong>Anti-dump y anti-attach:</strong> borran encabezados en memoria, falsean tamaños, detectan <em>attach</em>.</li><li><strong>Virtualización</strong> de las rutinas críticas (licencia, checks): lo más duro de todo.</li></ol>
+<p>Por eso el <strong>OEP</strong> que en UPX era un salto limpio acá <strong>no existe</strong> como punto único: hay código robado, re-cifrado por tramos y funciones que nunca vuelven a ser x86 nativo. Reconocer esto es saber <em>cuándo parar</em>.</p>
+<h2 id="herramientas-de-reconocimiento">Herramientas de reconocimiento</h2>
+<ul><li><strong>Detect It Easy (DIE):</strong> identifica packer/protector/compilador por firmas y muestra la <strong>entropía por sección</strong>.</li><li><strong>PE-bear:</strong> inspección de secciones, encabezados y directorios sin ejecutar nada.</li><li><strong>Entropía:</strong> una sección con entropía ~7,9/8 es casi seguro comprimida o cifrada; una sección de código normal ronda 6–6,5.</li><li><strong>Imports:</strong> una IAT con solo <code>LoadLibrary</code>/<code>GetProcAddress</code> grita «empaquetado».</li></ul>
+<aside class="callout nota"><p class="callout-titulo">IAT vacía: <em>splicing</em> y emulación de APIs</p><p>Los protectores duros van más allá de redirigir la IAT: la dejan <strong>vacía o con entradas ficticias</strong> y reemplazan cada llamada a una API importada por un <em>stub</em> propio que <strong>emula la API</strong> o ejecuta la <em>syscall</em> directamente. Por eso una IAT casi inexistente en un binario que claramente usa el sistema (abre archivos, red, registro) no es un error de lectura: es la huella de que los imports se resuelven y se envuelven en runtime. Reconstruir esa tabla es parte de lo que hace difícil —y, en software comercial, fuera de alcance— el análisis.</p></aside>
+<h2 id="ejemplo-paso-a-paso-leer-las-capas-de-un-binario-propio">Ejemplo paso a paso: leer las capas de un binario propio</h2>
+<p><em>(Ejemplo <strong>ilustrativo</strong>: valores típicos de un binario propio empaquetado; no un volcado verificado.)</em></p>
+<pre><code class="lenguaje-text"># empaquetar un binario PROPIO con una herramienta libre y mirar sus huellas
+upx -9 hola_propio.exe                 # capa 1: compresión (didáctica)
+
+# luego, con Detect It Easy en modo consola:
+diec --entropy hola_propio.exe
+# Sección   Entropía   Estado
+# UPX0        0.00      (vacía en disco; se llena en memoria)
+# UPX1        7.91      packed    &lt;- alta: comprimida
+# .rsrc       4.20      not packed
+
+diec hola_propio.exe
+# packer: UPX(4.x)[NRV,best]    &lt;- identificación por firma</code></pre>
+<p>Qué leíste <strong>sin ejecutar</strong>: dos secciones con nombres de UPX, una vacía en disco y otra con entropía ~7,9 (comprimida), y la firma del packer. Si encima hubiera una <strong>segunda capa</strong> propia (p. ej. un XOR del cuerpo hecho por vos para practicar), DIE mostraría entropía alta en otra sección y <strong>no</strong> reconocería firma: esa es la pista de «multicapa / a medida». El <strong>plan</strong> de análisis se escribe antes de tocar nada: qué capa resuelvo primero, qué espero ver, dónde está el riesgo.</p>
+<h2 id="práctica">Práctica</h2>
+<p>En tu VM, con binarios <strong>propios</strong>:</p>
+<ol><li>Compilá un «hola mundo» propio, empaquetalo con UPX e identificalo con DIE; anotá secciones y entropías.</li><li>Agregá una <strong>segunda capa propia</strong> (cifrá el cuerpo con un XOR en un stub que vos escribís) y volvé a medir: ¿qué cambió en la entropía y en la firma?</li><li>Tomá tres nombres de protector de la tabla y describí, de memoria, una huella de cada uno.</li><li>Escribí un <strong>plan de análisis</strong> de media página para un binario multicapa hipotético: orden de capas, qué herramienta en cada paso y en qué punto decidirías que está <em>fuera de alcance</em>.</li></ol>
+<h2 id="preguntas-de-repaso">Preguntas de repaso</h2>
+<details class="qa"><summary>¿Qué diferencia a un packer de un protector?</summary><div class="respuesta"><p>El packer <strong>comprime</strong> (y descomprime al arrancar). El protector agrega <strong>capas de defensa</strong>: cifrado, anti-debug/anti-VM, anti-dump, integridad y, en la gama alta, <strong>virtualización</strong> de funciones críticas.</p></div></details>
+<details class="qa"><summary>¿Por qué la entropía por sección es una buena primera pista?</summary><div class="respuesta"><p>Porque datos comprimidos o cifrados tienen entropía <strong>cercana a 8</strong>, mientras que el código normal ronda 6–6,5. Una sección en ~7,9 casi seguro está empaquetada o cifrada, y se ve <strong>sin ejecutar</strong> el binario.</p></div></details>
+<details class="qa"><summary>En un protector duro, ¿por qué el OEP «no existe» como en UPX?</summary><div class="respuesta"><p>Porque hay <strong>código robado</strong>, re-cifrado por tramos y funciones <strong>virtualizadas</strong> que nunca vuelven a ser x86 nativo. No hay un salto único y limpio al código original como en un packer de compresión.</p></div></details>
+<details class="qa"><summary>¿Qué delata una IAT con casi solo <code>LoadLibrary</code>/<code>GetProcAddress</code>?</summary><div class="respuesta"><p>Que el binario <strong>resuelve sus imports en runtime</strong> (los reconstruye el stub tras descomprimir): señal clásica de empaquetado. La IAT «real» no está en el PE de disco.</p></div></details>
+<details class="qa"><summary>¿Dónde está el límite de esta lección?</summary><div class="respuesta"><p>En <strong>reconocer e inventariar</strong> la protección y <strong>planear</strong>. Desempaquetar protectores comerciales o software ajeno está fuera de alcance; la práctica es sobre binarios propios y malware en estático.</p></div></details>
+<aside class="callout nota"><p class="callout-titulo">Puerta de salida</p><p>Podés: (1) distinguir packer de protector; (2) identificar una familia por sus huellas con DIE/PE-bear; (3) leer entropía e imports para sospechar empaquetado sin ejecutar; (4) enumerar las capas de una protección dura y escribir un plan de análisis que incluya <em>cuándo parar</em>.</p></aside>
+<h2 id="fuentes-de-esta-lección">Fuentes de esta lección</h2>
+<ul><li><a href="https://github.com/horsicq/Detect-It-Easy" rel="noopener" target="_blank">github.com/horsicq/Detect-It-Easy</a> — identificación de packer/protector y entropía por sección (conocimiento externo).</li><li><a href="https://github.com/hasherezade/pe-bear" rel="noopener" target="_blank">github.com/hasherezade/pe-bear</a> — inspección estática de PE.</li><li><a href="https://upx.github.io/" rel="noopener" target="_blank">upx.github.io</a> — el packer libre que se usa para empaquetar binarios propios de práctica.</li><li><a href="02-packers.html">2.17 Packers didácticos</a> — el OEP/dump/IAT sobre UPX propio, escalón previo.</li><li><a href="02-anti-analisis.html">2.15 Anti-análisis</a> y <a href="02-ofuscacion-vm.html">2.26 VM</a> — las capas de defensa que apila un protector.</li></ul>
+<aside class="callout nota"><p class="callout-titulo">Capas de esta lección</p><p><strong>Contenido observado en CLS:</strong> el desempaquetado didáctico de UPX (2.17) y la exclusión declarada de protectores comerciales en <a href="../fuentes_y_limites.html">Fuentes y límites</a>. <strong>Conocimiento externo (agregado por esta edición):</strong> la taxonomía de familias, sus huellas y las herramientas de reconocimiento. <strong>Recomendación editorial:</strong> los ejemplos y la práctica son ilustrativos y sobre binarios propios.</p></aside>
+</main>
+<footer class="pie">
+  <p>Material educativo y defensivo. Las prácticas se limitan a programas propios, software abierto o crackmes diseñados para aprender. No se enseña a eludir licencias, DRM ni controles de acceso.</p>
+  <p><a href="../00_EMPEZAR_AQUI.html">Inicio</a> · <a href="../guia/etapa-0.html">Etapas</a> · <a href="../fuentes_y_limites.html">Fuentes y límites</a> · <a href="../registro_de_cobertura.csv">Registro de cobertura</a></p>
+</footer>
+</body>
+</html>

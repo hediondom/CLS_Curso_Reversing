@@ -79,7 +79,7 @@ ETAPAS = [
         "n": 2,
         "slug": "etapa-2",
         "titulo": "Introducción al reversing",
-        "objetivo": "Leer assembly x86/x64, seguir el flujo y usar debugger y desensamblador con criterio. Se divide en 2A (base, 2.1–2.9), 2B (Windows intermedio, 2.10–2.16: ofuscación, TLS, MFC, huella, PE fino, anti-análisis, Ghidra) y 2C (Windows avanzado, 2.17+: packers didácticos, C++ profundo, WinDbg/heap, patch diffing, scripting). Las rutas de malware dinámico, shellcode/C2 y fuzzing quedan como optativas, fuera de la puerta obligatoria.",
+        "objetivo": "Leer assembly x86/x64, seguir el flujo y usar debugger y desensamblador con criterio. Se divide en 2A (base, 2.1–2.9), 2B (Windows intermedio, 2.10–2.16: ofuscación, TLS, MFC, huella, PE fino, anti-análisis, Ghidra) y 2C (Windows avanzado, 2.17+: packers didácticos, C++ profundo, WinDbg/heap, patch diffing, scripting) y 2E (desofuscación y análisis dinámico avanzado, 2.25+: ejecución simbólica, ofuscación por VM, protectores multicapa, neutralizar anti-análisis, DBI con DynamoRIO/Pin y Frida Stalker, extensiones de Ghidra/SLEIGH, y ampliaciones de Go/Rust y VB6). Las rutas de malware dinámico, shellcode/C2 y fuzzing quedan como optativas, fuera de la puerta obligatoria.",
         "horas": "32 a 40 h (2A) + ~25 h (2B) + ~30–40 h (2C avanzado)",
         "prereq": "Etapa 1.",
         "lecciones": [
@@ -110,6 +110,16 @@ ETAPAS = [
             ("02-opt-malware-dinamico.html", "(optativa) Malware dinámico defensivo", "Laboratorio aislado, red simulada, observación de comportamiento e IOCs."),
             ("02-opt-shellcode-c2.html", "(optativa) Shellcode, red y C2: reconocer y describir", "Identificar shellcode y describir tráfico de C2; análisis y clasificación, no construcción."),
             ("02-opt-fuzzing.html", "(optativa) Fuzzing y análisis simbólico", "Fuzzear un parser/crackme propio y usar ejecución simbólica para hallar condiciones."),
+            # --- Bloque 2E · Desofuscación y análisis dinámico avanzado (edición 6) ---
+            ("02-simbolico-desofuscacion.html", "Ejecución simbólica y concólica", "angr/Triton/Miasm y Z3 para recuperar condiciones y simplificar MBA en binarios propios."),
+            ("02-ofuscacion-vm.html", "Ofuscación por máquina virtual", "Dispatcher, bytecode y handlers; reconocer virtualización y practicar con una mini-VM propia."),
+            ("02-protectores-multicapa.html", "Protectores comerciales y packers multicapa", "Reconocer familias y capas (VMProtect, Themida…) sin desempacar software ajeno."),
+            ("02-anti-analisis-neutralizar.html", "Neutralizar anti-análisis en laboratorio", "ScyllaHide y hooks de Frida sobre binarios propios o malware en VM descartable."),
+            ("02-dbi-dynamorio-pin.html", "Instrumentación binaria dinámica: DynamoRIO y Pin", "Cobertura (drcov/Lighthouse), conteo y desempaquetado genérico por W⊕X."),
+            ("02-frida-stalker.html", "Frida avanzado: Stalker y tracing", "Trazar bloques/instrucciones de un hilo, cobertura (frida-drcov) y código en runtime."),
+            ("02-ghidra-sleigh.html", "Extensiones de Ghidra y SLEIGH", "Scripts (Jython/PyGhidra), headless, P-Code y SLEIGH para modelar bytecode propio."),
+            ("02-go-rust.html", "Go y Rust en profundidad (amplía 2.13)", "pclntab/itab en Go; manglado v0, monomorfización y trait objects en Rust."),
+            ("02-vb6-pcode.html", "VB6 y p-code (amplía 2.13)", "Nativo vs p-code, VBHeader y MSVBVM60; VB Decompiler/WKTVBDE (legado)."),
         ],
         "recursos": [
             ("../2d.html", "Etapa 2 · Rama optativa 2D — Windows internals (después de 2C)"),
@@ -132,6 +142,7 @@ ETAPAS = [
             "**2C** · Reconocer RTTI, `std::string` (SSO), un `std::vector` y un `try/catch` en un binario C++ propio.",
             "**2C** · Diagnosticar un bug de heap propio con WinDbg/Page Heap y leer, con un differ, qué cambió un parche.",
             "**2C** · Automatizar una tarea de análisis con un script de x64dbg y guardar la evidencia.",
+            "**2E** · Resolver un crackme propio con un solver (angr/Z3), reconocer una VM de protección y sacar cobertura con DBI o Frida Stalker.",
         ],
         "errores": [
             "Confundir F7 con F8 y creer que F8 no ejecuta la función.",
@@ -176,10 +187,11 @@ ETAPAS = [
         "prereq": "Etapas 0 a 3.",
         "lecciones": [
             ("04-metodo.html", "Método de análisis: de la pregunta al hallazgo", "Ciclo de cinco pasos, hipótesis y confirmación."),
-            ("04-formatos-protocolos.html", "Reconstruir formatos y protocolos propios", "Campos, longitudes, framing, estados y transformaciones desde muestras controladas."),
             ("04-cripto.html", "Reconocer criptografía y encoding en un binario", "XOR, base64, constantes de AES/MD5/RC4 y CryptoAPI/CNG."),
             ("04-informe.html", "El informe reproducible", "Estructura, evidencia, límites y divulgación."),
             ("04-dinamico-seguro.html", "Análisis dinámico seguro: cuándo ejecutar y cuándo no", "Matriz de decisión, contención y respuesta."),
+            ("04-formatos-protocolos.html", "Reconstruir formatos y protocolos propios", "Campos, longitudes, framing, estados y transformaciones desde muestras controladas."),
+            ("04-protocolos-terceros.html", "Protocolos de terceros: reconstruir un protocolo propietario", "Framing, serialización (TLV/Protobuf), hooks en send/recv y disector de Wireshark; solo sistemas propios o autorizados."),
         ],
         "recursos": [
             ("../fichas/reversing-desde-cero.html", "Reversing desde cero (ejercicios 1 y 2)"),

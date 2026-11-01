@@ -122,6 +122,63 @@ Sirven tanto para tu driver como para revisar uno ajeno en la [6.4](6-04-revisio
 - Driver Verifier y WDF Verifier sobre **tu** driver, en la VM, para detectar usos incorrectos de buffers o de IRQL.
 - Desde user mode: el `GetLastError` de `DeviceIoControl` y `lpBytesReturned` para cada caso de la tabla.
 
+:::{nota} Plantilla 6: esqueleto mínimo de `BlocLab.sys` para análisis estático
+La lección describe el *contrato* de `BlocLab.sys`, pero el código de referencia vive acá, para que puedas **compilarlo y abrirlo en IDA/Ghidra** (revisión estática de [6.4](6-04-revision-driver.html)) o cargarlo en una VM descartable. Es el KMDF mínimo: `DriverEntry`, `EvtDeviceAdd` y `EvtIoDeviceControl`.
+
+```c
+// bloclab_kmdf_min.c — KMDF mínimo. El SDDL restringe la apertura a SYSTEM + Administradores.
+#include <ntddk.h>
+#include <wdf.h>
+#include <wdmsec.h>
+
+#define IOCTL_BLOCLAB_QUERY_VERSION \
+    CTL_CODE(0x8000, 0x800, METHOD_BUFFERED, FILE_READ_DATA)   // 0x80006000
+
+typedef struct _BLOCLAB_INFO { ULONG Size; ULONG Version; ULONG State; } BLOCLAB_INFO, *PBLOCLAB_INFO;
+
+EVT_WDF_DRIVER_DEVICE_ADD          BlocLabEvtDeviceAdd;
+EVT_WDF_IO_QUEUE_IO_DEVICE_CONTROL BlocLabEvtIoDeviceControl;
+
+NTSTATUS DriverEntry(PDRIVER_OBJECT DriverObject, PUNICODE_STRING RegistryPath) {
+    WDF_DRIVER_CONFIG config;
+    WDF_DRIVER_CONFIG_INIT(&config, BlocLabEvtDeviceAdd);      // +0x08 en x64 = EvtDriverDeviceAdd
+    return WdfDriverCreate(DriverObject, RegistryPath, WDF_NO_OBJECT_ATTRIBUTES, &config, WDF_NO_HANDLE);
+}
+
+NTSTATUS BlocLabEvtDeviceAdd(WDFDRIVER Driver, PWDFDEVICE_INIT DeviceInit) {
+    UNREFERENCED_PARAMETER(Driver);
+    DECLARE_CONST_UNICODE_STRING(ntName,  L"\\Device\\BlocLab");
+    DECLARE_CONST_UNICODE_STRING(symLink, L"\\DosDevices\\BlocLab");
+    NTSTATUS st = WdfDeviceInitAssignName(DeviceInit, &ntName);
+    if (!NT_SUCCESS(st)) return st;
+    st = WdfDeviceInitAssignSDDLString(DeviceInit, &SDDL_DEVOBJ_SYS_ALL_ADM_ALL);  // solo SYSTEM + Admin
+    if (!NT_SUCCESS(st)) return st;
+    WDFDEVICE device;
+    st = WdfDeviceCreate(&DeviceInit, WDF_NO_OBJECT_ATTRIBUTES, &device);
+    if (!NT_SUCCESS(st)) return st;
+    st = WdfDeviceCreateSymbolicLink(device, &symLink);
+    if (!NT_SUCCESS(st)) return st;
+    WDF_IO_QUEUE_CONFIG q;
+    WDF_IO_QUEUE_CONFIG_INIT_DEFAULT_QUEUE(&q, WdfIoQueueDispatchSequential);
+    q.EvtIoDeviceControl = BlocLabEvtIoDeviceControl;          // +0x28 en x64
+    return WdfIoQueueCreate(device, &q, WDF_NO_OBJECT_ATTRIBUTES, WDF_NO_HANDLE);
+}
+
+VOID BlocLabEvtIoDeviceControl(WDFQUEUE Queue, WDFREQUEST Request, size_t OutLen, size_t InLen, ULONG Ioctl) {
+    UNREFERENCED_PARAMETER(Queue); UNREFERENCED_PARAMETER(OutLen);
+    if (Ioctl != IOCTL_BLOCLAB_QUERY_VERSION) { WdfRequestComplete(Request, STATUS_INVALID_DEVICE_REQUEST); return; }
+    if (InLen != 0)                            { WdfRequestComplete(Request, STATUS_INVALID_PARAMETER);      return; }
+    PBLOCLAB_INFO out = NULL;
+    // valida automáticamente OutputBufferLength >= sizeof(BLOCLAB_INFO) (12 bytes):
+    NTSTATUS st = WdfRequestRetrieveOutputBuffer(Request, sizeof(BLOCLAB_INFO), (PVOID*)&out, NULL);
+    if (!NT_SUCCESS(st)) { WdfRequestComplete(Request, st); return; }   // STATUS_BUFFER_TOO_SMALL
+    RtlZeroMemory(out, sizeof(BLOCLAB_INFO));
+    out->Size = sizeof(BLOCLAB_INFO); out->Version = 1; out->State = 1; // READY
+    WdfRequestCompleteWithInformation(Request, STATUS_SUCCESS, sizeof(BLOCLAB_INFO));
+}
+```
+:::
+
 ## Práctica controlada
 
 1. Partí de una muestra KMDF de Microsoft/plantilla WDK y documentá el WDK/SDK, Visual Studio, arquitectura y build de Windows usados; solo completá versiones después de verificarlas localmente.

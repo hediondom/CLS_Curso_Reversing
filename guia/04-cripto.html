@@ -84,15 +84,6 @@
 <aside class="callout nota"><p class="callout-titulo">Capas de esta lección</p><p><strong>Conocimiento externo (agregado por esta edición):</strong> todo el contenido (XOR, base64, constantes de algoritmos, CryptoAPI/CNG, herramientas). No proviene de CLS. <strong>Recomendación editorial:</strong> el método de reconocimiento y el encuadre defensivo.</p></aside>
 
 <aside class="ampliacion-ext">
-<p class="callout-titulo">Ampliación editorial basada en fuentes externas — Reconocimiento de ChaCha20 / Salsa20 (RFC 8439) por sus constantes y operaciones ARX</p>
-<p>En binarios modernos de Windows, el cifrado de flujo <strong>ChaCha20</strong> (<a href="https://www.rfc-editor.org/rfc/rfc8439" rel="noopener" target="_blank">IETF RFC 8439</a>) es sumamente frecuente y no utiliza tablas S-box <em>(Hecho confirmado)</em>:</p>
-<ul>
-<li><strong>Constante mágica de 16 bytes (clave de 256 bits):</strong> La cadena ASCII <strong><code>"expand 32-byte k"</code></strong> o los cuatro <code>DWORD</code> little-endian <strong><code>0x61707865</code>, <code>0x3320646e</code>, <code>0x79622d32</code>, <code>0x6b206574</code></strong> en las palabras <code>0..3</code> de un estado de 16 palabras (64 bytes). (Para clave de 128 bits: <code>"expand 16-byte k"</code>).</li>
-<li><strong>Firma en el código (Quarter-Round ARX):</strong> Un bucle de 20 rondas (10 iteraciones dobles) compuesto exclusivamente por sumas de 32 bits (<code>add</code>), <code>xor</code> y rotaciones (<code>rol</code>) con conteos de <strong>16, 12, 8 y 7 bits</strong> (o 7, 9, 13 y 18 en Salsa20).</li>
-</ul>
-</aside>
-
-<aside class="ampliacion-ext">
 <p class="callout-titulo">Ampliación editorial basada en fuentes externas — Criptografía asimétrica (RSA/ECC) y tabla de intercepción en APIs nativas de Windows (CryptoAPI y CNG)</p>
 <p>El software moderno rara vez implementa algoritmos criptográficos desde cero; en su lugar, utiliza esquemas híbridos apoyados en las bibliotecas criptográficas nativas de Windows (<a href="https://learn.microsoft.com/en-us/windows/win32/seccng/cng-portal" rel="noopener" target="_blank">Microsoft Learn: Cryptography Next Generation</a> y <a href="https://learn.microsoft.com/en-us/windows/win32/seccrypto/cryptography-portal" rel="noopener" target="_blank">CryptoAPI</a>):</p>
 
@@ -158,6 +149,15 @@ def parse_cryptoapi_rsapubkey(data: bytes) -> RSA.RsaKey:
     return RSA.construct((modulus, pubexp))
 
 # Exportar a PEM: print(key.export_key().decode())</code></pre>
+</aside>
+
+<aside class="ampliacion-ext">
+<p class="callout-titulo">Ampliación editorial basada en fuentes externas — Reconocimiento de ChaCha20 / Salsa20 (RFC 8439) por sus constantes y operaciones ARX</p>
+<p>En binarios modernos de Windows, el cifrado de flujo <strong>ChaCha20</strong> (<a href="https://www.rfc-editor.org/rfc/rfc8439" rel="noopener" target="_blank">IETF RFC 8439</a>) es sumamente frecuente y no utiliza tablas S-box <em>(Hecho confirmado)</em>:</p>
+<ul>
+<li><strong>Constante mágica de 16 bytes (clave de 256 bits):</strong> La cadena ASCII <strong><code>"expand 32-byte k"</code></strong> o los cuatro <code>DWORD</code> little-endian <strong><code>0x61707865</code>, <code>0x3320646e</code>, <code>0x79622d32</code>, <code>0x6b206574</code></strong> en las palabras <code>0..3</code> de un estado de 16 palabras (64 bytes). (Para clave de 128 bits: <code>"expand 16-byte k"</code>).</li>
+<li><strong>Firma en el código (Quarter-Round ARX):</strong> Un bucle de 20 rondas (10 iteraciones dobles) compuesto exclusivamente por sumas de 32 bits (<code>add</code>), <code>xor</code> y rotaciones (<code>rol</code>) con conteos de <strong>16, 12, 8 y 7 bits</strong> (o 7, 9, 13 y 18 en Salsa20).</li>
+</ul>
 </aside>
 </main>
 <footer class="pie">

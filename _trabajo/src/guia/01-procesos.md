@@ -37,10 +37,10 @@ El capítulo 15b usa un programa de ejemplo con un hilo que incrementa un contad
 #include <windows.h>
 #include <stdio.h>
 
-int MyCounter = 0;
+volatile int MyCounter = 0;   // 'volatile': impide que el compilador optimice/elimine el bucle
 
 DWORD WINAPI MyThread(LPVOID lpParam) {
-    int *contador = (int *)lpParam;
+    volatile int *contador = (volatile int *)lpParam;
     while (*contador < 0xFFF) {
         (*contador)++;
     }
@@ -57,6 +57,10 @@ int main(void) {
     return 0;
 }
 ```
+
+:::{aviso} Compilá con `volatile` o el bucle desaparece en Release
+Sin `volatile`, en Release (`/O2` en MSVC, `-O2` en GCC) el compilador asume que nadie más toca `MyCounter` y **elimina el bucle** (lo reduce a `*contador = 0xFFF;`) o lee el valor una sola vez en un registro. Con `volatile`, cada iteración lee/escribe memoria de verdad y el ejemplo es reproducible en cualquier flag de compilación.
+:::
 
 Los argumentos de `CreateThread` que importan para el análisis son:
 
@@ -116,6 +120,10 @@ También cada hilo puede tener **TLS** (*Thread Local Storage*): variables globa
 
 No necesitás dominar esto para seguir. Lo importante es que cuando veas `FS:[0]`, `GS:[0]`, `.pdata` o `TlsAlloc`, sepas que estás frente a infraestructura del sistema, no a código del programa.
 
+:::{nota} Qué son FS y GS: apuntan al TEB
+Los registros de segmento `FS` (x86, 32 bits) y `GS` (x64) no hacen segmentación clásica: apuntan siempre al **TEB** (*Thread Environment Block*) del hilo actual. En x86, `FS:[0]` es el primer campo del TEB y guarda el puntero a la cadena de manejadores de excepciones SEH en el stack, y `FS:[0x30]` lleva al **PEB**. En x64, `GS:[0x30]` apunta al TEB y `GS:[0x60]` al PEB. Lo vas a ver constantemente en la resolución de APIs por PEB (2.14) y en los chequeos anti-debug (2.15).
+:::
+
 ## Práctica
 
 1. Compilá el programa de dos hilos de arriba (en el guest, con Visual Studio o MinGW).
@@ -130,7 +138,7 @@ No necesitás dominar esto para seguir. Lo importante es que cuando veas `FS:[0]
 | ¿Qué región de memoria es el stack? ¿Qué permisos tiene? | |
 
 3. Agregá un `Sleep(5000)` dentro del hilo y observá la lista de hilos mientras duerme.
-4. Poné un breakpoint condicional que registre `{EAX}` en el hilo y explicá qué valor ves.
+4. Poné un breakpoint en el `inc`/`add` del bucle y logueá el **valor del contador** leyendo la memoria apuntada, no `{EAX}` a secas: en x64, `MyCounter` llega por `RCX`, así que `{EAX}` loguearía los 32 bits bajos del *puntero*, no el dato. En x64dbg usá `Contador = {[&MyCounter]}` (o `{d:rcx}` si `RCX` tiene el puntero).
 
 ## Preguntas de repaso
 

@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>4.6 · Protocolos de terceros: reconstruir un protocolo propietario</title>
+<meta name="description" content="Reconstruir un protocolo de red propietario a partir de capturas y del reversing del cliente: framing, serialización (TLV/Protobuf), correlación con hooks en send/recv y un disector de Wireshark. Solo sistemas propios o autorizados.">
+<link rel="stylesheet" href="../guia/estilo.css">
+</head>
+<body>
+<a class="salto" href="#contenido">Saltar al contenido</a>
+<header class="cabecera">
+  <div class="marca"><a href="../00_EMPEZAR_AQUI.html">CLS · Curso de reversing</a> <span class="edicion">edición 5 · 27/10/2026</span></div>
+  <nav class="principal" aria-label="Navegación principal">
+    <a href="../00_EMPEZAR_AQUI.html">Inicio</a>
+    <a href="../guia/index.html">Curso</a>
+    <a href="../materiales.html">Materiales</a>
+    <a href="../fichas/index.html">Fichas</a>
+    <a href="../glosario.html">Glosario</a>
+    <a href="../preguntas_y_respuestas.html">Repaso</a>
+    <a href="../buscar.html">Buscar</a>
+  </nav>
+</header>
+<main id="contenido">
+<nav class="migas" aria-label="Ubicación"><a href="../00_EMPEZAR_AQUI.html">Inicio</a><span aria-hidden="true">›</span><a href="../guia/index.html">Curso</a><span aria-hidden="true">›</span><span>Etapa 4 · Práctica guiada</span></nav><h1 id="protocolos-de-terceros-reconstruir-un-protocolo-propietario">Protocolos de terceros: reconstruir un protocolo propietario</h1>
+<aside class="callout nota"><p class="callout-titulo">Objetivo de la lección</p><p>Reconstruir un <strong>protocolo de red propietario</strong> combinando <strong>capturas</strong> de tráfico y el <strong>reversing del cliente</strong>: descubrir el <em>framing</em>, la serialización y la máquina de estados, y documentarlo con un <strong>disector de Wireshark</strong>. <strong>Prerrequisitos:</strong> reconstruir formatos y protocolos (<a href="04-formatos-protocolos.html">formatos y protocolos</a>), ofuscación (<a href="02-ofuscacion.html">2.10</a>), scripting/Frida (<a href="02-scripting-debugger.html">2.21</a>) y simbólico (<a href="02-simbolico-desofuscacion.html">2.25</a>).</p></aside>
+<aside class="callout peligro"><p class="callout-titulo">Solo sistemas propios o autorizados</p><p>Interceptar o descifrar tráfico de servicios ajenos sin permiso es ilegal. Esta lección se practica con un <strong>cliente/servidor propio</strong> o en un entorno con <strong>autorización explícita</strong>. No se reconstruyen protocolos para eludir controles de acceso ni para atacar servicios de terceros.</p></aside>
+<h2 id="de-formatos-a-protocolos">De formatos a protocolos</h2>
+<p>En la lección de formatos reconstruiste un <strong>formato de archivo</strong>: bytes quietos en disco. Un <strong>protocolo</strong> agrega dos cosas: <strong>tiempo</strong> (los mensajes van y vienen en una secuencia) y <strong>estado</strong> (un <em>handshake</em>, una autenticación, un <em>keepalive</em>). Lo reconstruís cruzando <strong>lo que ves en la red</strong> con <strong>lo que hace el binario</strong> (<strong>conocimiento externo</strong>).</p>
+<h2 id="1-capturar-y-aislar">1 · Capturar y aislar</h2>
+<p>Con <strong>Wireshark</strong> aislás la conversación (por IP/puerto) y mirás la dirección de cada mensaje. Si el tráfico está <strong>cifrado</strong> (TLS), <strong>no se rompe la cripto</strong>: se obtienen las claves del <strong>propio cliente</strong> (variable <code>SSLKEYLOGFILE</code>, o un <em>hook</em> que vuelca el buffer antes de cifrar). Analizás el texto claro del lado que controlás, no el de un tercero.</p>
+<h2 id="2-framing-dónde-empieza-y-termina-un-mensaje">2 · Framing: dónde empieza y termina un mensaje</h2>
+<p>TCP es un chorro de bytes; el protocolo define cómo cortarlo. Los tres patrones:</p>
+<ul><li><strong>Prefijo de longitud:</strong> los primeros 2–4 bytes dicen cuánto mide el resto (el más común).</li><li><strong>Delimitador:</strong> un byte/secuencia marca el fin (p. ej. <code>\n</code>).</li><li><strong>Tamaño fijo:</strong> cada mensaje mide lo mismo.</li></ul>
+<h2 id="3-serialización-cómo-se-empaquetan-los-campos">3 · Serialización: cómo se empaquetan los campos</h2>
+<ul><li><strong>TLV</strong> (<em>type-length-value</em>): un byte de tipo, una longitud y el valor. Muy frecuente y fácil de reconocer.</li><li><strong>Protobuf sin <code>.proto</code>:</strong> se reconstruye el esquema con <code>protobuf-inspector</code> (los <em>field numbers</em> y <em>wire types</em> se infieren de los bytes).</li><li><strong>MessagePack / JSON / binario a medida:</strong> cada uno con su huella.</li></ul>
+<h2 id="4-correlación-tráfico-binario-el-paso-clave">4 · Correlación tráfico ↔ binario (el paso clave)</h2>
+<p>El salto de calidad es <strong>enganchar la capa de aplicación</strong>, no la red: poné <em>breakpoints</em> o <em>hooks</em> en <code>send</code>/<code>recv</code>/<code>WSASend</code>/<code>WSARecv</code> y mirá el buffer <strong>antes de cifrar</strong> (en el <code>send</code>) y <strong>después de descifrar</strong> (en el <code>recv</code>). Así ves el mensaje en claro y, subiendo por la pila de llamadas, <strong>qué función lo arma</strong>: ahí está la estructura real del protocolo.</p>
+<h2 id="5-máquina-de-estados-y-documentar">5 · Máquina de estados y documentar</h2>
+<p>Con varios mensajes ordenás la secuencia: <em>handshake</em> → auth → comandos → cierre. Para <strong>validar</strong> tu reconstrucción, escribís un <strong>disector de Wireshark en Lua</strong>: si colorea bien los campos de capturas nuevas, entendiste el protocolo.</p>
+<h2 id="ejemplo-paso-a-paso-un-protocolo-tlv-propio">Ejemplo paso a paso: un protocolo TLV propio</h2>
+<p><em>(Ejemplo <strong>ilustrativo</strong>: cliente/servidor propio; hook y disector de referencia.)</em></p>
+<pre><code class="lenguaje-javascript">// volcar.js — ver el mensaje EN CLARO antes de que el cliente PROPIO lo mande
+Interceptor.attach(Module.getExportByName('ws2_32.dll', 'send'), {
+  onEnter(args) {
+    const buf = args[1], len = args[2].toInt32();
+    console.log(hexdump(buf, { length: len }));   // tipo | longitud | valor
+  }
+});</code></pre>
+<pre><code class="lenguaje-lua">-- miproto.lua — disector de Wireshark para el TLV propio
+local p = Proto("miproto", "Mi protocolo TLV")
+local f_tipo = ProtoField.uint8 ("miproto.tipo", "Tipo")
+local f_len  = ProtoField.uint16("miproto.len",  "Longitud")
+local f_val  = ProtoField.bytes ("miproto.val",  "Valor")
+p.fields = { f_tipo, f_len, f_val }
+
+function p.dissector(buf, pinfo, tree)
+  pinfo.cols.protocol = "MIPROTO"
+  local t   = tree:add(p, buf())
+  -- OJO endianness: un struct C nativo en x86/x64 escribe la longitud en LITTLE-endian (05 00 = 5).
+  -- En Lua, :uint()/:add() leen BIG-endian (05 00 = 1280) -&gt; usá :le_uint()/:add_le().
+  -- Si el cliente usa htons() (network byte order = big-endian), entonces sí van :uint()/:add().
+  local len = buf(1,2):le_uint()
+  t:add(f_tipo, buf(0,1))
+  t:add_le(f_len,  buf(1,2))
+  t:add(f_val,  buf(3, len))
+end
+DissectorTable.get("tcp.port"):add(9000, p)   -- puerto de TU servidor</code></pre>
+<p>El <em>hook</em> te muestra el mensaje en claro (tipo, longitud, valor) <strong>antes</strong> de que salga a la red; el disector formaliza esa estructura y la valida contra capturas nuevas. Cuando Wireshark colorea «Tipo = 3, Longitud = 12, Valor = …» en tus capturas, documentaste el protocolo.</p>
+<aside class="callout nota"><p class="callout-titulo">TCP fragmenta: pedile a Wireshark que reensamble</p><p>Un mensaje TLV puede llegar partido en varios segmentos TCP (o varios mensajes en un mismo segmento). Si el disector lee <code>buf(3, len)</code> y el buffer todavía no está completo, falla. La solución estándar es decirle a Wireshark que <strong>espere el resto</strong> con <code>pinfo.desegment_len</code> y <code>pinfo.desegment_offset</code>:</p>
+<pre><code class="lenguaje-lua">function p.dissector(buf, pinfo, tree)
+  if buf:len() &lt; 3 then                       -- falta el encabezado tipo+longitud
+    pinfo.desegment_len = DESEGMENT_ONE_MORE_SEGMENT
+    return
+  end
+  local total = 3 + buf(1,2):le_uint()        -- tipo(1)+len(2)+valor; le_uint = struct C little-endian
+  if buf:len() &lt; total then                   -- falta parte del valor
+    pinfo.desegment_len = total - buf:len()   -- cuántos bytes más esperar
+    pinfo.desegment_offset = 0                -- re-disectar desde el inicio
+    return
+  end
+  -- acá el mensaje ya está completo: armás el árbol como antes
+end</code></pre></aside>
+<h2 id="práctica">Práctica</h2>
+<p>En tu VM, con un <strong>cliente/servidor propio</strong>:</p>
+<ol><li>Escribí un cliente/servidor con un protocolo TLV simple (tipo + longitud + valor) y capturá una sesión con Wireshark.</li><li>Deducí el <strong>framing</strong> solo mirando los bytes (¿prefijo de longitud?).</li><li>Enganchá <code>send</code> con Frida y confirmá la estructura desde el lado del binario; subí la pila para ver qué función arma el mensaje.</li><li>Escribí el disector Lua y validalo contra una captura nueva; documentá la máquina de estados (handshake → comandos).</li></ol>
+<h2 id="preguntas-de-repaso">Preguntas de repaso</h2>
+<details class="qa"><summary>¿Qué agrega un protocolo frente a un formato de archivo?</summary><div class="respuesta"><p><strong>Tiempo</strong> (mensajes en secuencia) y <strong>estado</strong> (handshake, auth, keepalive). No alcanza con leer bytes quietos: hay que entender el orden y las transiciones.</p></div></details>
+<details class="qa"><summary>Si el tráfico está cifrado, ¿qué hacés (y qué no)?</summary><div class="respuesta"><p><strong>No</strong> se rompe la cripto. Se obtienen las claves del <strong>propio cliente</strong> (<code>SSLKEYLOGFILE</code> o un hook que vuelca el buffer antes de cifrar) y se analiza el lado que controlás, con autorización.</p></div></details>
+<details class="qa"><summary>¿Cuáles son los tres patrones de framing?</summary><div class="respuesta"><p><strong>Prefijo de longitud</strong> (el más común), <strong>delimitador</strong> (un byte/secuencia de fin) y <strong>tamaño fijo</strong>. Definen cómo se corta el chorro de bytes de TCP en mensajes.</p></div></details>
+<details class="qa"><summary>¿Por qué enganchar <code>send</code>/<code>recv</code> y no la red?</summary><div class="respuesta"><p>Porque en esa capa el mensaje está <strong>en claro</strong> (antes de cifrar / después de descifrar) y, subiendo por la pila, encontrás <strong>qué función lo arma</strong>: ahí está la estructura real del protocolo.</p></div></details>
+<details class="qa"><summary>¿Cómo validás que entendiste el protocolo?</summary><div class="respuesta"><p>Escribís un <strong>disector de Wireshark</strong> (Lua): si colorea correctamente los campos de <strong>capturas nuevas</strong> que no usaste para deducirlo, tu reconstrucción es correcta.</p></div></details>
+<aside class="callout nota"><p class="callout-titulo">Puerta de salida</p><p>Podés: (1) aislar una conversación y describir su framing; (2) identificar la serialización (TLV/Protobuf/…); (3) correlacionar tráfico con el binario vía hooks en send/recv; (4) escribir un disector Lua que valide la estructura y documentar la máquina de estados —todo sobre sistemas propios o autorizados.</p></aside>
+<h2 id="fuentes-de-esta-lección">Fuentes de esta lección</h2>
+<ul><li><a href="https://www.wireshark.org/docs/wsdg_html_chunked/wsluarm.html" rel="noopener" target="_blank">Wireshark · Lua dissectors (WSDG)</a> — <code>Proto</code>, <code>ProtoField</code>, <code>DissectorTable</code> (conocimiento externo).</li><li><a href="https://github.com/mildsunrise/protobuf-inspector" rel="noopener" target="_blank">github.com/mildsunrise/protobuf-inspector</a> — reconstruir Protobuf sin <code>.proto</code>.</li><li><a href="https://frida.re/docs/" rel="noopener" target="_blank">frida.re/docs</a> — hooks en <code>send</code>/<code>recv</code>/<code>WSASend</code> para ver el mensaje en claro.</li><li><a href="04-formatos-protocolos.html">Reconstruir formatos y protocolos</a> — el formato de archivo del que parte esta ampliación.</li></ul>
+<aside class="callout nota"><p class="callout-titulo">Capas de esta lección</p><p><strong>Contenido observado en CLS:</strong> la reconstrucción de formatos/protocolos de la Etapa 4 como base. <strong>Conocimiento externo (agregado por esta edición):</strong> framing, serialización, correlación con hooks de red y disectores de Wireshark. <strong>Recomendación editorial:</strong> ejemplos y práctica ilustrativos, sobre sistemas propios o autorizados.</p></aside>
+</main>
+<footer class="pie">
+  <p>Material educativo y defensivo. Las prácticas se limitan a programas propios, software abierto o crackmes diseñados para aprender. No se enseña a eludir licencias, DRM ni controles de acceso.</p>
+  <p><a href="../00_EMPEZAR_AQUI.html">Inicio</a> · <a href="../guia/etapa-0.html">Etapas</a> · <a href="../fuentes_y_limites.html">Fuentes y límites</a> · <a href="../registro_de_cobertura.csv">Registro de cobertura</a></p>
+</footer>
+</body>
+</html>

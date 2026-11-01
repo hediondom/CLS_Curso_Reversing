@@ -101,6 +101,57 @@ Otros códigos / buffer corto -&gt; error y sin escritura fuera del buffer</code
 <ul><li><strong>INF y paquete:</strong> clase de dispositivo, seguridad declarada, servicio que crea.</li><li><strong>Cadenas SDDL</strong> en el binario o en el INF, y llamadas a <code>WdfDeviceInitAssignSDDLString</code>, <code>WdfDeviceInitAssignName</code>, <code>WdfDeviceCreateSymbolicLink</code> o <code>WdfDeviceCreateDeviceInterface</code>.</li><li><strong>Configuración de colas:</strong> dónde se asigna <code>EvtIoDeviceControl</code> y con qué modo de despacho.</li><li><strong>Códigos IOCTL:</strong> constantes del <code>switch</code>, desglosadas en <code>DeviceType</code>, función, método y acceso. Prestá atención a <code>METHOD_NEITHER</code> y a <code>FILE_ANY_ACCESS</code>.</li><li><strong>Validaciones:</strong> si cada rama compara longitudes antes de pedir buffers y si usa un <code>MinimumRequiredSize</code> razonable.</li></ul>
 <p><strong>Dinámico (solo en la VM de pruebas, con el debugger de kernel de la 6.3):</strong></p>
 <ul><li>Extensiones de WDF (<code>wdfkd.dll</code>): <code>!wdfldr</code> para ver la versión del framework cargada y <code>!wdflogdump</code> para leer el <strong>In-flight Recorder</strong> (IFR), un registro circular que WDF mantiene por driver con el progreso de IRPs y requests.</li><li>Breakpoint en tu <code>EvtIoDeviceControl</code> para comparar longitudes y código recibidos con lo que envió la app.</li><li>Driver Verifier y WDF Verifier sobre <strong>tu</strong> driver, en la VM, para detectar usos incorrectos de buffers o de IRQL.</li><li>Desde user mode: el <code>GetLastError</code> de <code>DeviceIoControl</code> y <code>lpBytesReturned</code> para cada caso de la tabla.</li></ul>
+<aside class="callout nota"><p class="callout-titulo">Plantilla 6: esqueleto mínimo de <code>BlocLab.sys</code> para análisis estático</p><p>La lección describe el <em>contrato</em> de <code>BlocLab.sys</code>, pero el código de referencia vive acá, para que puedas <strong>compilarlo y abrirlo en IDA/Ghidra</strong> (revisión estática de <a href="6-04-revision-driver.html">6.4</a>) o cargarlo en una VM descartable. Es el KMDF mínimo: <code>DriverEntry</code>, <code>EvtDeviceAdd</code> y <code>EvtIoDeviceControl</code>.</p>
+<pre><code class="lenguaje-c">// bloclab_kmdf_min.c — KMDF mínimo. El SDDL restringe la apertura a SYSTEM + Administradores.
+#include &lt;ntddk.h&gt;
+#include &lt;wdf.h&gt;
+#include &lt;wdmsec.h&gt;
+
+#define IOCTL_BLOCLAB_QUERY_VERSION \
+    CTL_CODE(0x8000, 0x800, METHOD_BUFFERED, FILE_READ_DATA)   // 0x80006000
+
+typedef struct _BLOCLAB_INFO { ULONG Size; ULONG Version; ULONG State; } BLOCLAB_INFO, *PBLOCLAB_INFO;
+
+EVT_WDF_DRIVER_DEVICE_ADD          BlocLabEvtDeviceAdd;
+EVT_WDF_IO_QUEUE_IO_DEVICE_CONTROL BlocLabEvtIoDeviceControl;
+
+NTSTATUS DriverEntry(PDRIVER_OBJECT DriverObject, PUNICODE_STRING RegistryPath) {
+    WDF_DRIVER_CONFIG config;
+    WDF_DRIVER_CONFIG_INIT(&amp;config, BlocLabEvtDeviceAdd);      // +0x08 en x64 = EvtDriverDeviceAdd
+    return WdfDriverCreate(DriverObject, RegistryPath, WDF_NO_OBJECT_ATTRIBUTES, &amp;config, WDF_NO_HANDLE);
+}
+
+NTSTATUS BlocLabEvtDeviceAdd(WDFDRIVER Driver, PWDFDEVICE_INIT DeviceInit) {
+    UNREFERENCED_PARAMETER(Driver);
+    DECLARE_CONST_UNICODE_STRING(ntName,  L"\\Device\\BlocLab");
+    DECLARE_CONST_UNICODE_STRING(symLink, L"\\DosDevices\\BlocLab");
+    NTSTATUS st = WdfDeviceInitAssignName(DeviceInit, &amp;ntName);
+    if (!NT_SUCCESS(st)) return st;
+    st = WdfDeviceInitAssignSDDLString(DeviceInit, &amp;SDDL_DEVOBJ_SYS_ALL_ADM_ALL);  // solo SYSTEM + Admin
+    if (!NT_SUCCESS(st)) return st;
+    WDFDEVICE device;
+    st = WdfDeviceCreate(&amp;DeviceInit, WDF_NO_OBJECT_ATTRIBUTES, &amp;device);
+    if (!NT_SUCCESS(st)) return st;
+    st = WdfDeviceCreateSymbolicLink(device, &amp;symLink);
+    if (!NT_SUCCESS(st)) return st;
+    WDF_IO_QUEUE_CONFIG q;
+    WDF_IO_QUEUE_CONFIG_INIT_DEFAULT_QUEUE(&amp;q, WdfIoQueueDispatchSequential);
+    q.EvtIoDeviceControl = BlocLabEvtIoDeviceControl;          // +0x28 en x64
+    return WdfIoQueueCreate(device, &amp;q, WDF_NO_OBJECT_ATTRIBUTES, WDF_NO_HANDLE);
+}
+
+VOID BlocLabEvtIoDeviceControl(WDFQUEUE Queue, WDFREQUEST Request, size_t OutLen, size_t InLen, ULONG Ioctl) {
+    UNREFERENCED_PARAMETER(Queue); UNREFERENCED_PARAMETER(OutLen);
+    if (Ioctl != IOCTL_BLOCLAB_QUERY_VERSION) { WdfRequestComplete(Request, STATUS_INVALID_DEVICE_REQUEST); return; }
+    if (InLen != 0)                            { WdfRequestComplete(Request, STATUS_INVALID_PARAMETER);      return; }
+    PBLOCLAB_INFO out = NULL;
+    // valida automáticamente OutputBufferLength &gt;= sizeof(BLOCLAB_INFO) (12 bytes):
+    NTSTATUS st = WdfRequestRetrieveOutputBuffer(Request, sizeof(BLOCLAB_INFO), (PVOID*)&amp;out, NULL);
+    if (!NT_SUCCESS(st)) { WdfRequestComplete(Request, st); return; }   // STATUS_BUFFER_TOO_SMALL
+    RtlZeroMemory(out, sizeof(BLOCLAB_INFO));
+    out-&gt;Size = sizeof(BLOCLAB_INFO); out-&gt;Version = 1; out-&gt;State = 1; // READY
+    WdfRequestCompleteWithInformation(Request, STATUS_SUCCESS, sizeof(BLOCLAB_INFO));
+}</code></pre></aside>
 <h2 id="práctica-controlada">Práctica controlada</h2>
 <ol><li>Partí de una muestra KMDF de Microsoft/plantilla WDK y documentá el WDK/SDK, Visual Studio, arquitectura y build de Windows usados; solo completá versiones después de verificarlas localmente.</li><li>Implementá el contrato fijo de consulta y las comprobaciones de longitud/código; revisá SDDL, exposición del dispositivo y configuración INF con la lista de seguridad de Microsoft. Elegí los bits Access del código y justificalos.</li><li>Compilá y analizá el paquete con la lista de <strong>puntos de observación estática</strong>. La carga es opcional y solo en VM compatible con firma de prueba siguiendo WDK actual; no uses comandos de relajación en el host.</li><li>Si cargaste el driver, la app cliente prueba todos los casos de la tabla: respuesta correcta, buffer de salida corto, entrada no vacía, código no admitido y handle sin derecho de lectura. Resultado esperado: respuesta fija o error limpio; nunca acceso genérico a memoria.</li><li>Desinstalá el paquete propio con el procedimiento documentado para esa VM, confirmá que ya no está cargado/registrado y revertí el snapshot.</li></ol>
 <p><strong>Alternativa sin carga:</strong> si no compilaste o no podés cargar el driver en una VM compatible, hacé solo análisis estático del código fuente y del binario compilado (o de una muestra KMDF de Microsoft): recorré los siete pasos del recorrido señalando en qué línea ocurre cada uno, completá la tabla de controles y marcá cada caso de la tabla de pruebas como “esperado según el código, no ejecutado”.</p>

@@ -49,6 +49,24 @@ Fuzzing (WinAFL, 2 h, corpus de 5 archivos válidos):
 Simbólico (angr) para alcanzar el bloque "formato_v2":
   entrada hallada: primeros 4 bytes = "RG02"  → toma ese camino</code></pre>
 <p>El fuzzer encontró un bug de robustez (no valida <code>len</code>); angr encontró <strong>qué bytes</strong> activan una rama concreta. Los dos resultados son <strong>reproducibles</strong> y señalan una línea.</p>
+<aside class="callout aviso"><p class="callout-titulo">libFuzzer necesita la firma <code>LLVMFuzzerTestOneInput</code> y un flag de compilación</p><p>Los flags <code>-merge=1</code> / <code>-minimize_crash=1</code> son del <strong>binario instrumentado</strong>, no de un <code>main()</code> normal. Hay que exportar <code>int LLVMFuzzerTestOneInput(const uint8_t *Data, size_t Size)</code> y compilar con el runtime de fuzzing:</p>
+<pre><code class="lenguaje-text">:: MSVC (VS 2022 Developer Command Prompt x64):
+cl /fsanitize=fuzzer /fsanitize=address /Zi /Od fuzz_clsf.c /Fe:fuzz_clsf.exe
+:: Clang en Windows:
+clang -g -O1 -fsanitize=fuzzer,address fuzz_clsf.c -o fuzz_clsf.exe
+:: Ejecutar y minimizar un crash:
+mkdir corpus &amp;&amp; fuzz_clsf.exe corpus -max_total_time=60
+fuzz_clsf.exe -minimize_crash=1 -max_total_time=30 crash-xxxx</code></pre>
+<p>El harness mínimo valida la cabecera y deja un <em>out-of-bounds</em> a propósito si comentás el chequeo de longitud:</p>
+<pre><code class="lenguaje-c">int LLVMFuzzerTestOneInput(const uint8_t *Data, size_t Size) {
+    if (Size &lt; sizeof(CabeceraCLSF)) return 0;
+    const CabeceraCLSF *h = (const CabeceraCLSF *)Data;
+    if (memcmp(h-&gt;magic, "CLSF", 4) != 0 || h-&gt;version != 1) return 0;
+    if ((size_t)h-&gt;hdr_len + h-&gt;body_len &gt; Size) return 0;   // comentá esto y ASan caza el OOB
+    volatile uint8_t sum = 0;
+    for (uint16_t i = 0; i &lt; h-&gt;body_len; ++i) sum ^= Data[h-&gt;hdr_len + i];
+    return 0;
+}</code></pre></aside>
 <h2 id="práctica">Práctica</h2>
 <p>En tu VM, con un <strong>parser propio</strong> y datos de prueba inventados:</p>
 <ol><li>Definí un harness determinista que procese una entrada y termine sin depender de red, reloj, rutas personales ni servicios externos.</li><li>Prepará un corpus pequeño de archivos válidos y anotá qué estructura cubre cada uno. Guardá una copia inmutable del corpus inicial.</li><li>Activá cobertura si la herramienta lo permite; ejecutá con límites razonables de tiempo y memoria. Conservá cada entrada que produzca un fallo.</li><li>Reproducí un crash sin el fuzzer, minimizá esa entrada para conservar el mismo fallo y registra versión de herramienta, comando, hash del original y del caso reducido, y pila/síntoma.</li><li>Reducí por separado el corpus preservando cobertura (en libFuzzer, -merge=1); compara cobertura y cantidad de casos. No borres el corpus original ni los crashes.</li><li>Corregí el parser y añadí el caso reducido como regresión; comprobá que los ejemplos válidos siguen pasando.</li><li>Como ejercicio separado, usá angr sobre un binario propio pequeño para hallar una entrada que alcance una rama concreta; explicá qué restricciones resolvió y qué quedó fuera del modelo.</li></ol>

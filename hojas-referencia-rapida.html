@@ -144,7 +144,7 @@ Interceptor.attach(addr, {
 
 <div style="break-before: page; page-break-before: always;"></div>
 
-<h2 id="hoja-3-nivel-avanzado-etapas-2-18-2-20-2-24-5-2-2d-6-2d-13-y-etapa-6">Hoja 3 · Nivel Avanzado (Etapas 2.18–2.20, 2.24, 5.2, 2D.6–2D.13 y Etapa 6)</h2>
+<h2 id="hoja-3-nivel-avanzado-etapas-2-18-2-20-2-24-5-2-2d-6-2d-13-y-etapa-6">Hoja 3 · Nivel Avanzado (Etapas 2.18–2.20, 2.24–2.33, 5.2, 2D.6–2D.13 y Etapa 6)</h2>
 
 <h3 id="3-1-layout-en-memoria-de-c-en-msvc-x64-rtti-sso-stl-y-excepciones-lección-2-18">3.1 Layout en memoria de C++ en MSVC x64: RTTI, SSO, STL y excepciones (Lección 2.18)</h3>
 <div class="tabla"><table>
@@ -208,6 +208,27 @@ ba w4 &lt;addr&gt;  ;  g-          ; frena en la instrucción pasada exacta que 
 dx @$cursession.TTD.Calls("ntdll!NtCreateFile")  ; consulta todas las llamadas a una API en la traza
 !drvobj &lt;driver&gt; 7           ; muestra el DRIVER_OBJECT y su tabla de rutinas MajorFunction (IRP_MJ_*)
 !wdfkd.wdflogdump &lt;driver&gt;   ; vuelca el In-flight Recorder (IFR) de un driver KMDF</code></pre>
+
+<h3 id="3-4-desofuscación-y-dbi-bloque-2e-lecciones-2-25-2-33">3.4 · Desofuscación y análisis dinámico avanzado (Bloque 2E, Lecciones 2.25–2.33)</h3>
+<div class="tabla"><table>
+<thead><tr>
+<th>Tarea</th>
+<th>Herramienta y comando / API clave</th>
+<th>Lección</th>
+</tr></thead><tbody>
+<tr><td><strong>Resolver una condición / clave</strong></td><td><strong>angr</strong>: <code>simgr.explore(find=…, avoid=…)</code>. En Windows arrancá en el prólogo de la validación (<code>entry_state(addr=…)</code>) para no modelar el CRT.</td><td>2.25</td></tr>
+<tr><td><strong>Demostrar que un MBA es una op simple</strong></td><td><strong>Z3</strong>: <code>prove((x ^ y) + 2*(x &amp; y) == x + y)</code> &rarr; <code>proved</code>.</td><td>2.25</td></tr>
+<tr><td><strong>Reconocer una VM de protección</strong></td><td>Bucle <em>dispatcher</em> + tabla de <em>handlers</em> + VIP. Ojo con <em>threaded code</em>: handlers encadenados (<code>jmp [tabla+rbx*8]</code>) sin despachador central.</td><td>2.26</td></tr>
+<tr><td><strong>Identificar packer / protector</strong></td><td><strong>DIE</strong> (<code>diec --entropy</code>): sección con entropía ~7,9 = comprimida/cifrada; IAT mínima o vacía (<em>splicing</em>/emulación de APIs) = empaquetado.</td><td>2.27</td></tr>
+<tr><td><strong>Neutralizar anti-debug (en VM)</strong></td><td><strong>ScyllaHide</strong> (x64dbg) o hook de <strong>Frida</strong> sobre <code>IsDebuggerPresent</code>, PEB <code>BeingDebugged</code>, <code>rdtsc</code> y DRx (vía <code>NtGetContextThread</code> / VEH).</td><td>2.28</td></tr>
+<tr><td><strong>Cobertura (colorear caminos)</strong></td><td><strong>DynamoRIO</strong>: <code>drrun -t drcov -- app.exe</code> &rarr; abrir en Lighthouse. <strong>Frida</strong>: <code>frida-drcov</code> / Stalker <code>compile</code>.</td><td>2.29 / 2.30</td></tr>
+<tr><td><strong>Traza de instrucciones (reconstruir algoritmo)</strong></td><td><strong>Pin</strong>: <code>pin -t pinatrace.dll -- app.exe</code>; <strong>DynamoRIO</strong>: <code>drcachesim</code>; Frida Stalker <code>exec</code>.</td><td>2.29 / 2.30</td></tr>
+<tr><td><strong>OEP genérico (sin conocer el packer)</strong></td><td>Regla <strong>W&oplus;X</strong>: avisar cuando se ejecuta una página escrita antes (DBI nativa o Stalker).</td><td>2.29 / 2.30</td></tr>
+<tr><td><strong>Modelar un bytecode en Ghidra</strong></td><td><strong>SLEIGH</strong> (<code>.slaspec</code>) + <strong>PyGhidra</strong> (Python 3, estándar en Ghidra 11+; podés usar <code>z3-solver</code> en el script).</td><td>2.31</td></tr>
+<tr><td><strong>Recuperar nombres Go / Rust</strong></td><td><strong>GoReSym</strong> (pclntab de un Go <em>stripped</em>); <strong>rustfilt</strong> (demangle v0 <code>_R…</code>); los <em>panics</em> (<code>panic_bounds_check</code>) revelan tamaños de buffer.</td><td>2.32</td></tr>
+<tr><td><strong>VB6 en p-code</strong></td><td><strong>VB Decompiler</strong> (IDA/Ghidra solo muestran el intérprete de <code>MSVBVM60</code>, no la lógica).</td><td>2.33</td></tr>
+<tr><td><strong>Protocolo propietario</strong></td><td>Hook en <code>send</code>/<code>recv</code> (texto claro) + disector <strong>Lua</strong> de Wireshark (<code>Proto</code>/<code>ProtoField</code>); reensamblar TCP con <code>pinfo.desegment_len</code>.</td><td>4.6</td></tr>
+</tbody></table></div>
 <aside class="callout nota"><p class="callout-titulo">Volver</p><p><a href="guia/index.html">Mapa del curso</a> · <a href="00_EMPEZAR_AQUI.html">Inicio</a></p></aside>
 </main>
 <footer class="pie">

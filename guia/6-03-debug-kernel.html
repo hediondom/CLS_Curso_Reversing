@@ -85,6 +85,16 @@ Conclusión: revisar la longitud del buffer en el callback; confirmar parámetro
 <tr><td>La causa es una validación de longitud ausente</td><td>Inferencia</td><td>Coincide con el parámetro y el código fuente; falta reproducir</td></tr>
 <tr><td>Ningún otro driver intervino</td><td>No determinado</td><td>El dump pequeño no incluye toda la memoria</td></tr>
 </tbody></table></div>
+<aside class="callout aviso"><p class="callout-titulo">Conectar KDNET a una VM: los pasos que faltan</p><p><code>bcdedit /dbgsettings net</code> genera una <strong>clave</strong> (<code>Key=w.x.y.z</code>) que hay que copiar en WinDbg; sin ella —o con un adaptador de red que <code>kdnet.sys</code> no soporta— WinDbg se queda en <em>Waiting to reconnect…</em>. Secuencia que funciona:</p>
+<pre><code class="lenguaje-text">:: 1. Hipervisor (VirtualBox/VMware): adaptador de red en Host-Only, tipo "Intel PRO/1000 MT Desktop (82540EM)".
+:: 2. En la VM (cmd como Administrador), apuntando a la IP Host-Only del HOST:
+bcdedit /debug on
+bcdedit /dbgsettings net hostip:192.168.56.1 port:50000
+:: 3. Copiá la clave que imprime (Key=1.2.3.4).
+:: 4. En el host:
+windbg -k net:port=50000,key=1.2.3.4
+:: 5. Reiniciá la VM: shutdown /r /t 0</code></pre>
+<p>Para inspeccionar requests de KMDF, el nombre del módulo va <strong>sin</strong> <code>.sys</code>: <code>!wdfkd.wdflogdump bloclab</code>.</p></aside>
 <h2 id="práctica">Práctica</h2>
 <p>En VM con snapshot, conecta el debugger a un target de prueba ya configurado y carga solo el driver propio permitido. Captura una solicitud válida, inspecciona lista de módulos/stack y unload. Driver Verifier es opcional y solo si el docente confirma el rollback; no provoques un fallo deliberado ni fuerces un bugcheck. Si aparece uno, conserva el dump, analiza offline y revierte.</p>
 <ol><li>Configurá la ruta de símbolos con el PDB de tu build y verificá con <code>lm</code> que el driver propio tiene símbolos.</li><li>Con el target vivo, ubicá tu driver con <code>!drvobj</code> y su dispositivo con <code>!devobj</code>; si estás en el callback, seguí la solicitud con <code>!wdfkd</code> o <code>!irp</code>.</li><li>Si tenés un dump (propio o de un ejercicio provisto), recorré la tabla de lectura guiada paso por paso y completá la tabla de afirmaciones.</li></ol>

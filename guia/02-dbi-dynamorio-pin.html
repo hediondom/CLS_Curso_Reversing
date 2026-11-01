@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>2.29 · Instrumentación binaria dinámica: DynamoRIO y Pin</title>
+<meta name="description" content="Escribir herramientas de DBI (Pin, DynamoRIO) que cuentan instrucciones, miden cobertura y detectan código auto-modificado para desempaquetado genérico, y cómo se integran con la cobertura y el fuzzing.">
+<link rel="stylesheet" href="../guia/estilo.css">
+</head>
+<body>
+<a class="salto" href="#contenido">Saltar al contenido</a>
+<header class="cabecera">
+  <div class="marca"><a href="../00_EMPEZAR_AQUI.html">CLS · Curso de reversing</a> <span class="edicion">edición 5 · 27/10/2026</span></div>
+  <nav class="principal" aria-label="Navegación principal">
+    <a href="../00_EMPEZAR_AQUI.html">Inicio</a>
+    <a href="../guia/index.html">Curso</a>
+    <a href="../materiales.html">Materiales</a>
+    <a href="../fichas/index.html">Fichas</a>
+    <a href="../glosario.html">Glosario</a>
+    <a href="../preguntas_y_respuestas.html">Repaso</a>
+    <a href="../buscar.html">Buscar</a>
+  </nav>
+</header>
+<main id="contenido">
+<nav class="migas" aria-label="Ubicación"><a href="../00_EMPEZAR_AQUI.html">Inicio</a><span aria-hidden="true">›</span><a href="../guia/index.html">Curso</a><span aria-hidden="true">›</span><span>Etapa 2 · Desofuscación avanzada (2E)</span></nav><h1 id="instrumentación-binaria-dinámica-dynamorio-y-pin">Instrumentación binaria dinámica: DynamoRIO y Pin</h1>
+<aside class="callout nota"><p class="callout-titulo">Objetivo de la lección</p><p>Entender qué es la <strong>DBI</strong> (instrumentación binaria dinámica) y usarla para <strong>contar instrucciones</strong>, <strong>medir cobertura</strong> y <strong>detectar código auto-modificado</strong> (desempaquetado genérico), sobre binarios propios. <strong>Prerrequisitos:</strong> scripting de debugger (<a href="02-scripting-debugger.html">2.21</a>) y packers didácticos (<a href="02-packers.html">2.17</a>).</p></aside>
+<p>Esto es <strong>análisis dinámico instrumentado</strong> sobre programas propios o crackmes. El malware, si se instrumenta, va en <strong>VM descartable</strong> (<a href="04-dinamico-seguro.html">4.4</a>).</p>
+<h2 id="qué-es-la-dbi">Qué es la DBI</h2>
+<p>Una herramienta de DBI (<strong>conocimiento externo</strong>) toma el proceso mientras corre, <strong>re-compila su código en bloques</strong> (JIT) justo antes de ejecutarlos e <strong>inserta tu código</strong> en los puntos que elijas: antes de cada instrucción, al entrar a una función, cuando se escribe memoria. A diferencia de un debugger (que para en breakpoints), la DBI observa <strong>todo</strong> a escala de instrucción y es <strong>mucho más rápida</strong>, porque no hay <em>trap</em> por instrucción. El precio: tu código corre dentro del mismo proceso, así que hay que cuidar la <em>transparencia</em> (no alterar el comportamiento observado).</p>
+<h2 id="los-dos-frameworks">Los dos frameworks</h2>
+<div class="tabla"><table>
+<thead><tr>
+<th>Framework</th>
+<th>Cómo se programa</th>
+<th>Herramientas que ya trae</th>
+</tr></thead><tbody>
+<tr><td><strong>Intel Pin</strong></td><td><em>pintools</em> en C++; registrás <em>callbacks</em> por instrucción, <em>trace</em>, rutina o imagen (<code>INS_AddInstrumentFunction</code>, <code>TRACE_</code>, <code>IMG_</code>)</td><td>Ejemplos: <code>inscount</code>, <code>pinatrace</code>, <code>itrace</code></td></tr>
+<tr><td><strong>DynamoRIO</strong></td><td><em>clients</em> en C; API de eventos (<code>dr_register_bb_event</code>)</td><td><strong><code>drcov</code></strong> (cobertura), <strong><code>drltrace</code></strong> (llamadas a librería), <code>drcachesim</code></td></tr>
+</tbody></table></div>
+<p>Para empezar no hace falta escribir un <em>client</em>: <code>drcov</code> y <code>drltrace</code> de DynamoRIO resuelven el 80% de los casos de reversing sin compilar nada.</p>
+<h2 id="para-qué-sirve-en-reversing">Para qué sirve en reversing</h2>
+<ul><li><strong>Cobertura:</strong> qué bloques se ejecutaron con una entrada dada. Se vuelca con <code>drcov</code> y se colorea en IDA/Ghidra/Binary Ninja con <strong>Lighthouse</strong>: ves «por dónde pasó» el programa.</li><li><strong>Fuzzing dirigido:</strong> esa misma cobertura es la señal que usan los fuzzers (<a href="02-opt-fuzzing.html">2.24</a>) para saber si una entrada llegó a código nuevo.</li><li><strong>Desempaquetado genérico:</strong> un packer <strong>escribe</strong> una página y luego <strong>ejecuta</strong> desde ella. Una herramienta DBI que marca las páginas escritas y avisa cuando se ejecuta una de ellas encuentra el <strong>OEP</strong> sin conocer el packer (regla W⊕X).</li><li><strong>Conteo y perfil:</strong> cuántas instrucciones corre una rutina (útil para hallar la función «cara», p. ej. la de descifrado).</li></ul>
+<aside class="callout nota"><p class="callout-titulo">Cobertura ≠ traza: elegí según el objetivo</p><p>Son dos niveles de detalle distintos. La <strong>cobertura</strong> (<code>drcov</code>) registra <em>qué bloques básicos</em> se ejecutaron —basta para colorear en Lighthouse y comparar caminos, y es barata—. La <strong>traza de instrucciones</strong> registra <em>cada instrucción con los valores de los registros</em> (p. ej. <code>pinatrace</code> de Pin, o <code>drcachesim</code>/<code>drtrace</code> de DynamoRIO): es mucho más pesada, pero es la que necesitás para <strong>reconstruir un algoritmo</strong> —seguir cómo se transforma un dato paso a paso, como una rutina de descifrado—. Regla: para «¿por dónde pasó?» usá cobertura; para «¿qué le hizo al dato?» usá traza.</p></aside>
+<h2 id="ejemplo-paso-a-paso-cobertura-con-drcov-y-oep-por-w-x">Ejemplo paso a paso: cobertura con drcov y OEP por W⊕X</h2>
+<p><em>(Ejemplo <strong>ilustrativo</strong>: comandos típicos sobre un binario propio; no un volcado verificado.)</em></p>
+<pre><code class="lenguaje-text"># 1) cobertura de un binario PROPIO con DynamoRIO (no hay que compilar nada)
+drrun -t drcov -- .\crackme_propio.exe entrada1
+#   -&gt; genera  drcov.crackme_propio.exe.&lt;pid&gt;.0000.proc.log
+#   abrilo en Lighthouse (IDA/Ghidra) para colorear los bloques ejecutados
+
+# 2) contar instrucciones con un pintool de ejemplo de Intel Pin
+pin -t inscount0.dll -- .\crackme_propio.exe
+#   -&gt; Count 1234567   (cuántas instrucciones corrió)</code></pre>
+<pre><code class="lenguaje-text">// idea de un client/pintool de "unpacking genérico" (resumen conceptual)
+//  - marcar cada página donde el programa ESCRIBE
+//  - en cada bloque a ejecutar, si su página fue escrita antes -&gt; candidato a OEP
+on_memory_write(addr):      paginas_escritas.add(page_of(addr))
+on_basic_block(bb):         if page_of(bb) in paginas_escritas:
+                                print("posible OEP:", bb); dump_module()</code></pre>
+<p>La cobertura de <code>drcov</code> + Lighthouse te muestra <strong>qué caminos tomó</strong> cada entrada (comparás dos corridas y ves la rama que cambió). El esquema W⊕X encuentra el OEP de un UPX propio <strong>sin</strong> saber que era UPX: es el mismo OEP que en 2.17 buscabas a mano, ahora detectado por la regla «se ejecutó una página que antes se escribió».</p>
+<h2 id="práctica">Práctica</h2>
+<p>En tu VM, con binarios <strong>propios</strong>:</p>
+<ol><li>Sacá la cobertura con <code>drcov</code> de tu crackme para dos entradas distintas y coloreala en Lighthouse; identificá la rama que separa «bien» de «mal».</li><li>Contá las instrucciones con un pintool de ejemplo (<code>inscount</code>) y encontrá la rutina que más ejecuta (candidata a descifrado/bucle).</li><li>Sobre tu «hola mundo» empaquetado con UPX (de 2.17), explicá cómo la regla W⊕X marcaría el OEP.</li><li>Escribí dos diferencias prácticas entre instrumentar con DBI y depurar con breakpoints.</li></ol>
+<h2 id="preguntas-de-repaso">Preguntas de repaso</h2>
+<details class="qa"><summary>¿En qué se diferencia la DBI de un debugger?</summary><div class="respuesta"><p>La DBI <strong>re-compila el código (JIT) e inserta tu código</strong> en cada punto de interés, observando a escala de instrucción y <strong>mucho más rápido</strong> (sin <em>trap</em> por instrucción). El debugger para en breakpoints puntuales.</p></div></details>
+<details class="qa"><summary>¿Qué herramienta de DynamoRIO usás para cobertura y con qué la visualizás?</summary><div class="respuesta"><p><strong><code>drcov</code></strong> genera el archivo de cobertura; <strong>Lighthouse</strong> lo colorea sobre IDA/Ghidra/Binary Ninja para ver qué bloques se ejecutaron.</p></div></details>
+<details class="qa"><summary>¿Cómo encuentra la DBI un OEP sin conocer el packer?</summary><div class="respuesta"><p>Con la regla <strong>W⊕X</strong>: marca las páginas donde el programa <strong>escribe</strong> y avisa cuando se <strong>ejecuta</strong> una de ellas. Ese salto a código recién escrito es el candidato a OEP, sea cual sea el packer.</p></div></details>
+<details class="qa"><summary>¿Qué relación hay entre cobertura y fuzzing?</summary><div class="respuesta"><p>La cobertura (qué bloques nuevos tocó una entrada) es la <strong>señal</strong> que guía al fuzzer (2.24): si una entrada llega a código nuevo, vale la pena mutarla. La DBI puede proveer esa cobertura.</p></div></details>
+<details class="qa"><summary>¿Por qué importa la «transparencia» en DBI?</summary><div class="respuesta"><p>Porque tu código corre <strong>dentro del mismo proceso</strong>: si altera tiempos, memoria o APIs observables, el binario puede comportarse distinto (o detectarte). Hay que medir sin cambiar lo que se mide.</p></div></details>
+<aside class="callout nota"><p class="callout-titulo">Puerta de salida</p><p>Podés: (1) explicar qué hace la DBI y en qué se diferencia de un debugger; (2) sacar cobertura con <code>drcov</code> y leerla en Lighthouse; (3) contar instrucciones con un pintool; (4) describir el desempaquetado genérico por W⊕X.</p></aside>
+<h2 id="fuentes-de-esta-lección">Fuentes de esta lección</h2>
+<ul><li><a href="https://software.intel.com/sites/landingpage/pintool/docs/" rel="noopener" target="_blank">Intel Pin · Pin User Guide</a> — <code>INS_AddInstrumentFunction</code>, granularidades y pintools de ejemplo (conocimiento externo).</li><li><a href="https://dynamorio.org/" rel="noopener" target="_blank">dynamorio.org</a> — API de clients y herramientas <code>drcov</code>/<code>drltrace</code>/<code>drcachesim</code>.</li><li><a href="https://github.com/gaasedelen/lighthouse" rel="noopener" target="_blank">github.com/gaasedelen/lighthouse</a> — visualizar cobertura en IDA/Ghidra/Binary Ninja.</li><li><a href="02-packers.html">2.17 Packers</a> (OEP a mano) y <a href="02-opt-fuzzing.html">2.24 Fuzzing</a> (la cobertura como señal).</li></ul>
+<aside class="callout nota"><p class="callout-titulo">Capas de esta lección</p><p><strong>Contenido observado en CLS:</strong> el OEP/dump de 2.17 como problema que la DBI automatiza. <strong>Conocimiento externo (agregado por esta edición):</strong> Pin, DynamoRIO, <code>drcov</code>/Lighthouse y la regla W⊕X. <strong>Recomendación editorial:</strong> ejemplos y práctica ilustrativos, sobre binarios propios.</p></aside>
+</main>
+<footer class="pie">
+  <p>Material educativo y defensivo. Las prácticas se limitan a programas propios, software abierto o crackmes diseñados para aprender. No se enseña a eludir licencias, DRM ni controles de acceso.</p>
+  <p><a href="../00_EMPEZAR_AQUI.html">Inicio</a> · <a href="../guia/etapa-0.html">Etapas</a> · <a href="../fuentes_y_limites.html">Fuentes y límites</a> · <a href="../registro_de_cobertura.csv">Registro de cobertura</a></p>
+</footer>
+</body>
+</html>

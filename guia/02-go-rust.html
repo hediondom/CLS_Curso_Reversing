@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>2.32 · Go y Rust en profundidad: recuperar tipos, nombres y estructuras</title>
+<meta name="description" content="Recuperar nombres de función (gopclntab), tipos e interfaces en binarios Go, y desmanglar símbolos, trait objects y layouts en binarios Rust; reconocer cada runtime. Profundiza 2.13.">
+<link rel="stylesheet" href="../guia/estilo.css">
+</head>
+<body>
+<a class="salto" href="#contenido">Saltar al contenido</a>
+<header class="cabecera">
+  <div class="marca"><a href="../00_EMPEZAR_AQUI.html">CLS · Curso de reversing</a> <span class="edicion">edición 5 · 27/10/2026</span></div>
+  <nav class="principal" aria-label="Navegación principal">
+    <a href="../00_EMPEZAR_AQUI.html">Inicio</a>
+    <a href="../guia/index.html">Curso</a>
+    <a href="../materiales.html">Materiales</a>
+    <a href="../fichas/index.html">Fichas</a>
+    <a href="../glosario.html">Glosario</a>
+    <a href="../preguntas_y_respuestas.html">Repaso</a>
+    <a href="../buscar.html">Buscar</a>
+  </nav>
+</header>
+<main id="contenido">
+<nav class="migas" aria-label="Ubicación"><a href="../00_EMPEZAR_AQUI.html">Inicio</a><span aria-hidden="true">›</span><a href="../guia/index.html">Curso</a><span aria-hidden="true">›</span><span>Etapa 2 · Ampliación de 2.13 (Huella de compilador)</span></nav><h1 id="go-y-rust-en-profundidad">Go y Rust en profundidad</h1>
+<aside class="callout nota"><p class="callout-titulo">Objetivo de la lección</p><p>Ir más allá de «reconocer el compilador» (lo que viste en <a href="02-huella-compilador.html">2.13</a>) y <strong>recuperar la lógica</strong> de un binario Go o Rust: nombres de función, tipos, interfaces/traits y cómo se ven sus estructuras en memoria. <strong>Prerrequisitos:</strong> huella de compilador (<a href="02-huella-compilador.html">2.13</a>) y C++ profundo (<a href="02-cpp-profundo.html">2.18</a>, para vtables y layouts).</p></aside>
+<p>Esto es una <strong>ampliación profunda</strong> de 2.13: ahí ya identificabas que un binario era Go o Rust; acá aprendés a leerlos.</p>
+<h2 id="por-qué-cuestan-y-por-qué-hay-esperanza">Por qué cuestan (y por qué hay esperanza)</h2>
+<p>Go y Rust producen binarios <strong>estáticos y grandes</strong>, con su propio <em>runtime</em> adentro y sin los símbolos «clásicos» de C. La buena noticia: ambos dejan <strong>metadatos recuperables</strong>. En Go son casi un regalo; en Rust hay que desmanglar y entender la monomorfización (<strong>conocimiento externo</strong>).</p>
+<h2 id="go-el-runtime-que-se-deja-leer">Go: el runtime que se deja leer</h2>
+<ul><li><strong><code>gopclntab</code> (pclntab):</strong> una tabla que mapea direcciones a <strong>nombres de función</strong>, pensada para los <em>stack traces</em>. Aunque el binario esté «stripeado», esta tabla suele estar: recuperás casi todos los nombres. Es el primer paso siempre.</li><li><strong><code>moduledata</code>:</strong> la estructura raíz del runtime; desde ahí se llega a la pclntab y a las tablas de tipos.</li><li><strong>Tipos (<code>_type</code>/rtype):</strong> Go guarda descriptores de tipo para reflexión; con ellos recuperás nombres de structs y campos.</li><li><strong>Interfaces (<code>itab</code>):</strong> una interfaz es un par <code>(itab, data)</code>; el <code>itab</code> tiene el tipo concreto y la <strong>tabla de métodos</strong>. Reconocer este par te dice qué método se llama en un despacho dinámico.</li><li><strong>Strings:</strong> <code>(puntero, longitud)</code>, <strong>sin terminador NUL</strong>. En el listado vas a ver una carga de puntero seguida de una longitud inmediata.</li><li><strong>Convención de llamada:</strong> hasta Go 1.16 los argumentos iban por <strong>stack</strong>; desde <strong>Go 1.17</strong> hay ABI por <strong>registros</strong> (amd64). Saber la versión cambia cómo leés los argumentos.</li></ul>
+<p>Herramienta clave: <strong>GoReSym</strong> (Mandiant) recupera pclntab, tipos y metadatos y los exporta para IDA/Ghidra.</p>
+<h2 id="rust-manglado-monomorfización-y-traits">Rust: manglado, monomorfización y traits</h2>
+<ul><li><strong>Name mangling:</strong> dos esquemas. El <strong>legacy</strong> (estilo Itanium, <code>_ZN...E</code> con longitudes y un hash) y el <strong>v0</strong> (<code>_R...</code>, RFC 2603). Se desmanglan con <strong><code>rustfilt</code></strong> (o el soporte de Ghidra/IDA).</li><li><strong>Monomorfización:</strong> los genéricos no existen en runtime: el compilador genera <strong>una copia por cada tipo</strong> usado. Por eso un <code>Vec&lt;T&gt;</code> aparece muchas veces, una por <code>T</code>: no te confundas creyendo que son funciones distintas.</li><li><strong>Trait objects (<code>dyn Trait</code>):</strong> un <em>fat pointer</em> = <strong>puntero a datos + puntero a vtable</strong>. La vtable trae <em>drop</em>, tamaño, alineación y los métodos. Es el despacho dinámico de Rust y se lee parecido a una vtable de C++ (2.18).</li><li><strong>Strings y colecciones:</strong> <code>&amp;str</code> es <code>(ptr, len)</code> UTF-8; <code>String</code> es <code>(ptr, len, cap)</code>; <code>Vec&lt;T&gt;</code> igual. <strong>Sin NUL</strong>.</li><li><strong><code>Option</code>/<code>Result</code>:</strong> con <em>niche optimization</em>, un <code>Option&lt;&amp;T&gt;</code> no ocupa un byte extra: usa el valor <code>0</code> (puntero nulo) como <code>None</code>.</li><li>**Los <em>panics</em> son oráculos:<strong> en modo seguro, Rust inyecta antes de indexar un array/slice una llamada a <code>core::panicking::panic_bounds_check</code> (y a <code>panic_fmt</code>/<code>panic</code> en otros casos), muchas veces con el <code>file:line</code> del fuente embebido. Esas comprobaciones te </strong>revelan la longitud esperada de los buffers** y marcan dónde empieza cada acceso a datos: un regalo para reconstruir estructuras.</li></ul>
+<h2 id="cómo-se-ve-cada-cosa-en-memoria">Cómo se ve cada cosa en memoria</h2>
+<div class="tabla"><table>
+<thead><tr>
+<th>Concepto</th>
+<th>Go</th>
+<th>Rust</th>
+</tr></thead><tbody>
+<tr><td>String</td><td><code>(ptr, len)</code> sin NUL</td><td><code>&amp;str (ptr,len)</code> · <code>String (ptr,len,cap)</code></td></tr>
+<tr><td>Despacho dinámico</td><td>interfaz = <code>(itab, data)</code></td><td><code>dyn Trait</code> = <code>(data, vtable)</code></td></tr>
+<tr><td>Nombres recuperables</td><td>pclntab (casi siempre)</td><td>símbolos manglados → <code>rustfilt</code></td></tr>
+<tr><td>Genéricos</td><td>parcial (desde 1.18, por <em>shape</em>)</td><td>monomorfizados: una copia por tipo</td></tr>
+</tbody></table></div>
+<h2 id="ejemplo-paso-a-paso-recuperar-nombres-y-un-trait-object">Ejemplo paso a paso: recuperar nombres y un trait object</h2>
+<p><em>(Ejemplo <strong>ilustrativo</strong>: comandos sobre binarios propios compilados por vos.)</em></p>
+<pre><code class="lenguaje-text"># GO: recuperar nombres aunque esté "stripeado"
+GoReSym.exe -t -p .\mi_programa_go.exe &gt; go_meta.json
+#   -&gt; funciones (pclntab) + tipos; se importan en IDA/Ghidra
+
+# RUST: desmanglar un símbolo
+echo _ZN4core3fmt9Formatter3pad17h0123456789abcdefE | rustfilt
+#   -&gt; core::fmt::Formatter::pad</code></pre>
+<p>En Go, con los nombres de la pclntab cargados, el binario «stripeado» vuelve a tener etiquetas (<code>main.main</code>, <code>main.validar</code>…) y navegás como si tuviera símbolos. En Rust, al desmanglar ves el <em>path</em> real (<code>core::fmt::Formatter::pad</code>); y cuando encontrás un par <strong>(puntero a datos, puntero a vtable)</strong> pasándose junto, es un <code>dyn Trait</code>: la vtable te dice qué métodos hay.</p>
+<h2 id="práctica">Práctica</h2>
+<p>En tu VM, con binarios <strong>propios</strong>:</p>
+<ol><li>Compilá un programa en Go, «stripealo» (<code>-ldflags "-s -w"</code>) y recuperá los nombres con GoReSym; confirmá que reaparecen <code>main.*</code>.</li><li>Identificá una <strong>interfaz</strong> en el Go: encontrá el par <code>(itab, data)</code> y el método que se llama.</li><li>Compilá un programa en Rust con un <code>dyn Trait</code>; desmanglá sus símbolos con <code>rustfilt</code> y ubicá la vtable del trait.</li><li>Mostrá en ambos cómo se ve un string (ptr+len, sin NUL) frente a un string C (con NUL) de 2.1.</li></ol>
+<h2 id="preguntas-de-repaso">Preguntas de repaso</h2>
+<details class="qa"><summary>¿Qué recuperás de la <code>gopclntab</code> y por qué es el primer paso en Go?</summary><div class="respuesta"><p>Los <strong>nombres de función</strong> (mapa dirección → nombre), pensados para <em>stack traces</em>. Suele estar aun en binarios «stripeados», así que recuperás casi todas las etiquetas y navegás como con símbolos.</p></div></details>
+<details class="qa"><summary>¿Qué es una interfaz de Go en memoria?</summary><div class="respuesta"><p>Un par <code>(itab, data)</code>: el <code>itab</code> tiene el <strong>tipo concreto</strong> y la <strong>tabla de métodos</strong>; <code>data</code> apunta al valor. Ese par te dice qué método resuelve un despacho dinámico.</p></div></details>
+<details class="qa"><summary>¿Por qué una misma función genérica de Rust aparece muchas veces?</summary><div class="respuesta"><p>Por la <strong>monomorfización</strong>: Rust genera una copia por cada tipo concreto con el que se instancia el genérico. No son funciones distintas, son instancias del mismo genérico.</p></div></details>
+<details class="qa"><summary>¿Cómo se ve un <code>dyn Trait</code> y a qué se parece?</summary><div class="respuesta"><p>A un <strong>fat pointer</strong>: puntero a datos + puntero a <strong>vtable</strong>. La vtable trae drop, tamaño, alineación y los métodos. Se lee parecido a una vtable de C++ (2.18).</p></div></details>
+<details class="qa"><summary>¿Qué dos esquemas de manglado tiene Rust y cómo los leés?</summary><div class="respuesta"><p>El <strong>legacy</strong> (<code>_ZN...E</code>, estilo Itanium con hash) y el <strong>v0</strong> (<code>_R...</code>, RFC 2603). Se desmanglan con <strong><code>rustfilt</code></strong> o el soporte del desensamblador.</p></div></details>
+<aside class="callout nota"><p class="callout-titulo">Puerta de salida</p><p>Podés: (1) recuperar nombres de un Go «stripeado» con la pclntab; (2) leer una interfaz Go como par (itab, data); (3) desmanglar símbolos Rust y reconocer monomorfización; (4) identificar un <code>dyn Trait</code> por su vtable y describir el layout de strings en ambos.</p></aside>
+<h2 id="fuentes-de-esta-lección">Fuentes de esta lección</h2>
+<ul><li><a href="https://github.com/mandiant/GoReSym" rel="noopener" target="_blank">github.com/mandiant/GoReSym</a> — recuperar pclntab, tipos y metadatos de Go (conocimiento externo).</li><li><a href="https://go.dev/src/runtime/symtab.go" rel="noopener" target="_blank">go.dev · runtime/symtab.go</a> — formato de la pclntab y moduledata.</li><li><a href="https://rust-lang.github.io/rfcs/2603-rust-symbol-name-mangling-v0.html" rel="noopener" target="_blank">RFC 2603 · Rust symbol mangling v0</a> y <a href="https://github.com/luser/rustfilt" rel="noopener" target="_blank">rustfilt</a>.</li><li><a href="02-huella-compilador.html">2.13 Huella de compilador</a> (identificación) y <a href="02-cpp-profundo.html">2.18 C++ profundo</a> (vtables y layouts).</li></ul>
+<aside class="callout nota"><p class="callout-titulo">Capas de esta lección</p><p><strong>Contenido observado en CLS:</strong> la identificación de Go/Rust/Delphi incorporada a 2.13 en la revisión de esta edición. <strong>Conocimiento externo (agregado por esta edición):</strong> pclntab/itab, manglado v0, monomorfización, trait objects y layouts, con documentación primaria. <strong>Recomendación editorial:</strong> ejemplos y práctica ilustrativos, sobre binarios propios.</p></aside>
+</main>
+<footer class="pie">
+  <p>Material educativo y defensivo. Las prácticas se limitan a programas propios, software abierto o crackmes diseñados para aprender. No se enseña a eludir licencias, DRM ni controles de acceso.</p>
+  <p><a href="../00_EMPEZAR_AQUI.html">Inicio</a> · <a href="../guia/etapa-0.html">Etapas</a> · <a href="../fuentes_y_limites.html">Fuentes y límites</a> · <a href="../registro_de_cobertura.csv">Registro de cobertura</a></p>
+</footer>
+</body>
+</html>

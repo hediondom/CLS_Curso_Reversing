@@ -51,6 +51,7 @@ En 0x00403020 (arreglo de punteros, terminado en NULL):
   → callback[0] = 0x00401020
   → callback[1] = NULL  (fin de la lista)</code></pre>
 <p>Vas a <code>0x00401020</code> y ahí está el <code>TlsCallback_0</code>: ese código corre <strong>antes</strong> del entry point. Si <code>AddressOfCallBacks</code> fuera <code>0</code>, no habría callbacks y bastaría el breakpoint en el entry point.</p>
+<aside class="callout nota"><p class="callout-titulo">Tamaño del directorio según la arquitectura (x86 vs x64)</p><p>El ejemplo de arriba es de 32 bits. En <strong>PE32</strong>, <code>IMAGE_TLS_DIRECTORY32</code> ocupa <strong>0x18 bytes</strong> y <code>AddressOfCallBacks</code> está en el offset <strong>+0x0C</strong> (arreglo de DWORDs de 4B). En <strong>PE32+</strong>, <code>IMAGE_TLS_DIRECTORY64</code> ocupa <strong>0x28 bytes</strong> y <code>AddressOfCallBacks</code> se corre a <strong>+0x18</strong> (arreglo de QWORDs de 8B, terminado en 8 ceros). En ambos casos esos campos son <strong>direcciones virtuales absolutas (VA)</strong>, no RVAs: si hay ASLR, la tabla <code>.reloc</code> los ajusta.</p></aside>
 <h2 id="práctica">Práctica</h2>
 <p>En tu VM, con un <strong>programa propio</strong>:</p>
 <ol><li>Compilá algo mínimo con un callback TLS. En MSVC, el código mínimo es:</li></ol>
@@ -66,15 +67,20 @@ En 0x00403020 (arreglo de punteros, terminado en NULL):
        if (motivo == DLL_PROCESS_ATTACH) orden = 1;
    }
 
-   /* El símbolo del linker cambia según la arquitectura:
-      x86 -&gt; __tls_used (dos guiones bajos); x64 -&gt; _tls_used (uno). */
-   #ifdef _WIN64
-   #pragma comment(linker, "/INCLUDE:_tls_used")
-   #else
-   #pragma comment(linker, "/INCLUDE:__tls_used")
+   /* Registrar el callback en .CRT$XLB. Con __declspec(allocate) el símbolo NO
+      se elimina aunque compiles con /O1 /O2 /GL (a diferencia de 'const_seg +
+      EXTERN_C const', que el linker puede descartar). Incluye variante MinGW. */
+   #ifdef _MSC_VER
+     #ifdef _WIN64
+       #pragma comment(linker, "/INCLUDE:_tls_used")    /* x64: un guion bajo */
+     #else
+       #pragma comment(linker, "/INCLUDE:__tls_used")   /* x86: dos guiones */
+     #endif
+     #pragma section(".CRT$XLB", long, read)
+     __declspec(allocate(".CRT$XLB")) PIMAGE_TLS_CALLBACK p_cb = mi_cb;
+   #else  /* MinGW-w64 (GCC / Clang) */
+     PIMAGE_TLS_CALLBACK p_cb __attribute__((used, section(".CRT$XLB"))) = mi_cb;
    #endif
-   #pragma section(".CRT$XLB", read)
-   __declspec(allocate(".CRT$XLB")) const PIMAGE_TLS_CALLBACK p_cb = mi_cb;
 
    int main(void) {
        printf("orden al entrar a main = %d  (1 =&gt; el callback ya corrió)\n", orden);

@@ -11,9 +11,9 @@ El recorrido obligatorio son las Etapas 0–4. Las Etapas 5–6 y la rama 2D son
 |---|---|---|---|
 | **0** | [Laboratorio y método seguro](etapa-0.html) | 4 a 6 horas | 1 |
 | **1** | [Fundamentos](etapa-1.html) | 21 a 25 horas | 5 |
-| **2** | [Introducción al reversing](etapa-2.html) | 32 a 40 h (2A) + ~25 h (2B) + ~30–40 h (2C avanzado) | 24 |
+| **2** | [Introducción al reversing](etapa-2.html) | 32 a 40 h (2A) + ~25 h (2B) + ~30–40 h (2C avanzado) | 33 |
 | **3** | [.NET como primera victoria](etapa-3.html) | 7 a 10 horas | 2 |
-| **4** | [Práctica guiada](etapa-4.html) | 14 a 18 horas | 4 |
+| **4** | [Práctica guiada](etapa-4.html) | 19 a 25 horas | 6 |
 | **5** | [Ramas opcionales](etapa-5.html) | Variable: 5 a 10 horas por rama | 4 |
 | **6** | [Rama optativa · Kernel y drivers](etapa-6.html) | 45–65 horas como estimación inicial; puede requerir más tiempo si C, WinDbg o WDK son nuevos. | 6 |
 
@@ -41,7 +41,7 @@ Prerrequisitos: Etapa 0.
 
 ### Etapa 2 · Introducción al reversing
 
-Leer assembly x86/x64, seguir el flujo y usar debugger y desensamblador con criterio. Se divide en 2A (base, 2.1–2.9), 2B (Windows intermedio, 2.10–2.16: ofuscación, TLS, MFC, huella, PE fino, anti-análisis, Ghidra) y 2C (Windows avanzado, 2.17+: packers didácticos, C++ profundo, WinDbg/heap, patch diffing, scripting). Las rutas de malware dinámico, shellcode/C2 y fuzzing quedan como optativas, fuera de la puerta obligatoria.
+Leer assembly x86/x64, seguir el flujo y usar debugger y desensamblador con criterio. Se divide en 2A (base, 2.1–2.9), 2B (Windows intermedio, 2.10–2.16: ofuscación, TLS, MFC, huella, PE fino, anti-análisis, Ghidra) y 2C (Windows avanzado, 2.17+: packers didácticos, C++ profundo, WinDbg/heap, patch diffing, scripting) y 2E (desofuscación y análisis dinámico avanzado, 2.25+: ejecución simbólica, ofuscación por VM, protectores multicapa, neutralizar anti-análisis, DBI con DynamoRIO/Pin y Frida Stalker, extensiones de Ghidra/SLEIGH, y ampliaciones de Go/Rust y VB6). Las rutas de malware dinámico, shellcode/C2 y fuzzing quedan como optativas, fuera de la puerta obligatoria.
 
 Prerrequisitos: Etapa 1.
 
@@ -53,7 +53,7 @@ Prerrequisitos: Etapa 2.
 
 ### Etapa 4 · Práctica guiada
 
-Analizar un programa propio con método, contener la ejecución y escribir un informe reproducible.
+Analizar programas propios con método, reconstruir un formato o protocolo desde muestras, contener la ejecución y escribir un informe reproducible.
 
 Prerrequisitos: Etapas 0 a 3.
 

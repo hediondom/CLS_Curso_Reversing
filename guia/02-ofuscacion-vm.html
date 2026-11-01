@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>2.26 · Ofuscación por máquina virtual: dispatcher, bytecode y handlers</title>
+<meta name="description" content="Reconocer un binario virtualizado (dispatcher, VPC, tabla de handlers y bytecode), entender la devirtualización a alto nivel y practicar sobre una mini-VM propia. No se desvirtualizan protectores comerciales.">
+<link rel="stylesheet" href="../guia/estilo.css">
+</head>
+<body>
+<a class="salto" href="#contenido">Saltar al contenido</a>
+<header class="cabecera">
+  <div class="marca"><a href="../00_EMPEZAR_AQUI.html">CLS · Curso de reversing</a> <span class="edicion">edición 5 · 27/10/2026</span></div>
+  <nav class="principal" aria-label="Navegación principal">
+    <a href="../00_EMPEZAR_AQUI.html">Inicio</a>
+    <a href="../guia/index.html">Curso</a>
+    <a href="../materiales.html">Materiales</a>
+    <a href="../fichas/index.html">Fichas</a>
+    <a href="../glosario.html">Glosario</a>
+    <a href="../preguntas_y_respuestas.html">Repaso</a>
+    <a href="../buscar.html">Buscar</a>
+  </nav>
+</header>
+<main id="contenido">
+<nav class="migas" aria-label="Ubicación"><a href="../00_EMPEZAR_AQUI.html">Inicio</a><span aria-hidden="true">›</span><a href="../guia/index.html">Curso</a><span aria-hidden="true">›</span><span>Etapa 2 · Desofuscación avanzada (2E)</span></nav><h1 id="ofuscación-por-máquina-virtual-dispatcher-bytecode-y-handlers">Ofuscación por máquina virtual: dispatcher, bytecode y handlers</h1>
+<aside class="callout nota"><p class="callout-titulo">Objetivo de la lección</p><p><strong>Reconocer</strong> un binario protegido por virtualización de código e identificar sus piezas (<em>dispatcher</em>, puntero de instrucción virtual, tabla de <em>handlers</em> y región de <em>bytecode</em>), y entender a alto nivel cómo se <strong>devirtualiza</strong>. La práctica es sobre una <strong>mini-VM propia</strong>. <strong>Prerrequisitos:</strong> ofuscación nativa (<a href="02-ofuscacion.html">2.10</a>) y ejecución simbólica (<a href="02-simbolico-desofuscacion.html">2.25</a>).</p></aside>
+<aside class="callout peligro"><p class="callout-titulo">Límite declarado</p><p>Esta lección enseña a <strong>reconocer y entender</strong> la virtualización. <strong>No</strong> se desvirtualizan protectores comerciales (VMProtect, Themida/WinLicense) ni se practica sobre software ajeno: eso queda <a href="05-fuera-de-alcance.html">fuera de alcance</a>. Se practica sobre una VM didáctica que vos mismo escribís.</p></aside>
+<h2 id="qué-es-virtualizar-código">Qué es virtualizar código</h2>
+<p>En vez de proteger el x86 original, el protector lo <strong>traduce a un bytecode propio</strong> —un juego de instrucciones inventado, distinto en cada binario— y embebe un <strong>intérprete</strong> que lo ejecuta. El resultado: cuando abrís la función en IDA/Ghidra, el x86 original <strong>ya no está</strong>; lo que ves es el intérprete corriendo un «programa» que no entendés, porque su lenguaje es secreto (<strong>conocimiento externo</strong>). Es la protección nativa más dura que vas a cruzar.</p>
+<h2 id="anatomía-de-una-vm-de-protección">Anatomía de una VM de protección</h2>
+<ul><li><strong>Bytecode:</strong> una región de datos (a menudo cifrada) con el «programa» virtual.</li><li><strong>VIP</strong> (<em>virtual instruction pointer</em>): puntero al bytecode; hace de «EIP» de la VM.</li><li><strong>VSP</strong> (<em>virtual stack pointer</em>): la VM suele ser de pila; opera sobre su propio stack.</li><li><strong>Contexto virtual:</strong> un bloque de memoria con los «registros» virtuales.</li><li><strong>VMEnter / VMExit:</strong> al entrar, guarda los registros nativos (típico <code>pushad</code>/<code>pushfd</code>); al salir, los restaura. Marca la frontera entre lo nativo y lo virtual.</li><li><strong>Dispatcher:</strong> el gran bucle <em>fetch → decode → dispatch</em>: lee el opcode que apunta el VIP y salta al handler que lo implementa, normalmente por una <strong>tabla</strong> (salto indirecto).</li><li><strong>Handlers:</strong> muchas rutinas chicas, una por operación virtual (sumar, xor, cargar, saltar…). Terminan volviendo al dispatcher.</li></ul>
+<h2 id="cómo-reconocerla-las-señales">Cómo reconocerla (las señales)</h2>
+<ol><li>Un <strong>bucle central enorme</strong> con un <strong>salto indirecto</strong> a una tabla de direcciones.</li><li><strong>Muchos bloques pequeños</strong> parecidos entre sí, todos terminando en el mismo lugar (vuelta al dispatcher): son los handlers.</li><li>Un <strong>guardado masivo de contexto</strong> al entrar y restaurarlo al salir (frontera VMEnter/VMExit).</li><li>Una <strong>región de datos</strong> que se recorre con un puntero que solo avanza (el VIP sobre el bytecode).</li><li>El <em>decompiler</em> produce algo gigante y sin sentido para una función que debería ser corta.</li></ol>
+<aside class="callout aviso"><p class="callout-titulo">Si no ves un despachador central: <em>threaded code</em></p><p>No todas las VM convergen en un único <code>switch</code>. En protectores agresivos (VMProtect, Tigress en modo duro) se usa <em>indirect threading</em>: **cada handler termina con su propio <em>fetch</em><strong> del siguiente opcode y </strong>salta directo al siguiente handler** (<code>jmp [tabla_handlers + rbx*8]</code>), sin volver a un despachador común. Si en IDA no aparece un bucle que converja en un solo bloque, buscá handlers encadenados que saltan de uno a otro por una tabla: también es una VM, solo que sin dispatcher central.</p></aside>
+<h2 id="devirtualizar-la-idea-a-alto-nivel">Devirtualizar: la idea, a alto nivel</h2>
+<p>No se «desvirtualiza con un botón». El flujo de trabajo de investigación es:</p>
+<ol><li><strong>Ubicar</strong> el dispatcher y la tabla de handlers; aislar la frontera VMEnter/VMExit.</li><li><strong>Trazar</strong> una corrida (con DBI, <a href="02-dbi-dynamorio-pin.html">2.29</a>, o Triton) para ver qué handlers se ejecutan y en qué orden.</li><li><strong>Dar semántica</strong> a cada handler: qué operación x86 equivale (este suma, este hace xor, este salta).</li><li><strong>Levantar</strong> la traza a una IR (Triton/Miasm) y <strong>simplificar</strong> (deshacer MBA con el solver, <a href="02-simbolico-desofuscacion.html">2.25</a>), hasta recuperar la lógica original.</li></ol>
+<p>Es trabajoso y específico de cada VM. Para aprender el mecanismo —sin tocar un protector comercial— lo mejor es construir y analizar una VM propia.</p>
+<h2 id="ejemplo-paso-a-paso-una-mini-vm-didáctica">Ejemplo paso a paso: una mini-VM didáctica</h2>
+<p><em>(Ejemplo <strong>ilustrativo</strong>: VM propia en C para ver el patrón </em>fetch-decode-dispatch<em>, no un volcado de un protector.)</em></p>
+<pre><code class="lenguaje-c">// mini_vm.c — intérprete de un bytecode propio (didáctico)
+enum { OP_SET=1, OP_XOR, OP_ADD, OP_CMP, OP_JNZ, OP_HALT };
+
+// "programa" virtual: SET acc,0x41 ; XOR acc,0x23 ; CMP acc,0x62 ; HALT
+unsigned char bytecode[] = { OP_SET,0x41,  OP_XOR,0x23,  OP_CMP,0x62,  OP_HALT };
+
+int vm(unsigned char *vip) {       // vip = puntero de instrucción virtual
+    int acc = 0, zf = 0;
+    for (;;) {
+        unsigned char op = *vip++;         // FETCH
+        switch (op) {                       // DECODE + DISPATCH (la tabla)
+            case OP_SET: acc  = *vip++;              break;   // handler SET
+            case OP_XOR: acc ^= *vip++;              break;   // handler XOR
+            case OP_ADD: acc += *vip++;              break;   // handler ADD
+            case OP_CMP: zf   = (acc == *vip++);     break;   // handler CMP
+            case OP_JNZ: { char d=*vip++; if(!zf) vip+=d; } break;
+            case OP_HALT: return acc;                          // VMExit
+        }
+    }
+}</code></pre>
+<p>Reconocé las piezas: <code>vip</code> es el VIP, el <code>for(;;)</code> + <code>switch</code> es el <strong>dispatcher</strong>, cada <code>case</code> es un <strong>handler</strong> y <code>bytecode[]</code> es el programa virtual. Un protector real tiene handlers cifrados, decenas de operaciones, el bytecode ofuscado y la frontera VMEnter/VMExit con <code>pushad</code>; pero el <strong>esqueleto es este</strong>. Si lo compilás y lo abrís en IDA, vas a ver el bucle con el salto a tabla: esa es la huella que hay que aprender a reconocer.</p>
+<h2 id="práctica">Práctica</h2>
+<p>En tu VM, sobre tu <strong>propia</strong> mini-VM:</p>
+<ol><li>Compilá <code>mini_vm.c</code> y abrilo en IDA/Ghidra; señalá el dispatcher, la tabla de saltos y la región de bytecode.</li><li>Agregá dos operaciones nuevas (p. ej. <code>OP_SHL</code> y <code>OP_SUB</code>) y mirá cómo crece la tabla de handlers.</li><li>A partir del binario (sin mirar el fuente), <strong>reconstruí el programa virtual</strong>: qué hace cada opcode y qué calcula <code>bytecode[]</code>.</li><li>Escribí en dos renglones por qué un <em>decompiler</em> no puede recuperar la lógica original mirando solo el intérprete.</li></ol>
+<h2 id="preguntas-de-repaso">Preguntas de repaso</h2>
+<details class="qa"><summary>¿Qué le pasó al x86 original cuando una función está virtualizada?</summary><div class="respuesta"><p>Se <strong>tradujo a un bytecode propio</strong> del protector y se reemplazó por un <strong>intérprete</strong> que lo ejecuta. El x86 original ya no aparece en el listado; ves el intérprete corriendo un «programa» en un lenguaje secreto.</p></div></details>
+<details class="qa"><summary>Nombrá tres piezas de una VM de protección.</summary><div class="respuesta"><p><strong>Dispatcher</strong> (el bucle fetch-decode-dispatch), <strong>tabla de handlers</strong> (una rutina por operación virtual), <strong>VIP</strong> (puntero al bytecode). También VSP, contexto virtual y la frontera VMEnter/VMExit.</p></div></details>
+<details class="qa"><summary>¿Cuál es la señal más característica en el listado?</summary><div class="respuesta"><p>Un <strong>bucle central</strong> con un <strong>salto indirecto a una tabla</strong> y <strong>muchos handlers chicos</strong> que vuelven todos al mismo punto. Más el guardado masivo de contexto al entrar.</p></div></details>
+<details class="qa"><summary>¿Por qué no se «desvirtualiza con un botón»?</summary><div class="respuesta"><p>Porque el juego de instrucciones es <strong>distinto en cada binario</strong>. Hay que darle semántica a cada handler, trazar una corrida, levantar a IR y simplificar. Es trabajo específico de cada VM.</p></div></details>
+<details class="qa"><summary>¿Dónde queda la línea de lo que se practica?</summary><div class="respuesta"><p>Sobre una <strong>VM propia</strong> y para <strong>reconocer</strong> la técnica en general. Desvirtualizar protectores comerciales o software ajeno está <strong>fuera de alcance</strong>.</p></div></details>
+<aside class="callout nota"><p class="callout-titulo">Puerta de salida</p><p>Podés: (1) explicar qué significa virtualizar código y por qué desaparece el x86 original; (2) identificar dispatcher, tabla de handlers, VIP y bytecode en tu mini-VM; (3) listar las señales de virtualización en un listado; (4) describir el flujo de devirtualización a alto nivel (trazar → dar semántica → levantar → simplificar).</p></aside>
+<h2 id="fuentes-de-esta-lección">Fuentes de esta lección</h2>
+<ul><li><a href="https://www.usenix.org/legacy/events/woot09/tech/full_papers/rolles.pdf" rel="noopener" target="_blank">Rolles, «Unpacking Virtualization Obfuscators» (USENIX WOOT 2009)</a> — anatomía dispatcher/handlers y estrategia de devirtualización (conocimiento externo).</li><li><a href="https://tigress.wtf/" rel="noopener" target="_blank">tigress.wtf</a> — obfuscador académico (Collberg) que incluye virtualización; sirve para generar muestras propias de estudio.</li><li><a href="https://triton-library.github.io/" rel="noopener" target="_blank">Triton</a> y <a href="https://github.com/cea-sec/miasm" rel="noopener" target="_blank">Miasm</a> — <em>lifting</em> y simplificación de trazas.</li><li><a href="02-ofuscacion.html">2.10 Ofuscación nativa</a> y <a href="02-simbolico-desofuscacion.html">2.25 Simbólico</a> — el aplanamiento de flujo y el solver que se usan al simplificar.</li></ul>
+<aside class="callout nota"><p class="callout-titulo">Capas de esta lección</p><p><strong>Contenido observado en CLS:</strong> la ofuscación nativa de 2.10 como escalón previo. <strong>Conocimiento externo (agregado por esta edición):</strong> la arquitectura de las VM de protección y el flujo de devirtualización, basados en literatura pública. <strong>Recomendación editorial:</strong> la mini-VM, los ejemplos y la práctica son ilustrativos; no se analizó ningún protector comercial.</p></aside>
+</main>
+<footer class="pie">
+  <p>Material educativo y defensivo. Las prácticas se limitan a programas propios, software abierto o crackmes diseñados para aprender. No se enseña a eludir licencias, DRM ni controles de acceso.</p>
+  <p><a href="../00_EMPEZAR_AQUI.html">Inicio</a> · <a href="../guia/etapa-0.html">Etapas</a> · <a href="../fuentes_y_limites.html">Fuentes y límites</a> · <a href="../registro_de_cobertura.csv">Registro de cobertura</a></p>
+</footer>
+</body>
+</html>

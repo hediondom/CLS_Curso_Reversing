@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>2.33 · VB6 y p-code: nativo vs interpretado</title>
+<meta name="description" content="Distinguir un ejecutable Visual Basic 6 nativo de uno en p-code, leer la VBHeader y las llamadas a MSVBVM60, y usar VB Decompiler / P32Dasm / WKTVBDE. Tecnología legada. Profundiza 2.13.">
+<link rel="stylesheet" href="../guia/estilo.css">
+</head>
+<body>
+<a class="salto" href="#contenido">Saltar al contenido</a>
+<header class="cabecera">
+  <div class="marca"><a href="../00_EMPEZAR_AQUI.html">CLS · Curso de reversing</a> <span class="edicion">edición 5 · 27/10/2026</span></div>
+  <nav class="principal" aria-label="Navegación principal">
+    <a href="../00_EMPEZAR_AQUI.html">Inicio</a>
+    <a href="../guia/index.html">Curso</a>
+    <a href="../materiales.html">Materiales</a>
+    <a href="../fichas/index.html">Fichas</a>
+    <a href="../glosario.html">Glosario</a>
+    <a href="../preguntas_y_respuestas.html">Repaso</a>
+    <a href="../buscar.html">Buscar</a>
+  </nav>
+</header>
+<main id="contenido">
+<nav class="migas" aria-label="Ubicación"><a href="../00_EMPEZAR_AQUI.html">Inicio</a><span aria-hidden="true">›</span><a href="../guia/index.html">Curso</a><span aria-hidden="true">›</span><span>Etapa 2 · Ampliación de 2.13 (Huella de compilador)</span></nav><h1 id="vb6-y-p-code-nativo-vs-interpretado">VB6 y p-code: nativo vs interpretado</h1>
+<aside class="callout nota"><p class="callout-titulo">Objetivo de la lección</p><p>Distinguir un ejecutable <strong>Visual Basic 6 nativo</strong> de uno en <strong>p-code</strong>, leer la <strong>VBHeader</strong> para orientarte, reconocer las llamadas al runtime <code>MSVBVM60</code> y saber qué herramienta usar en cada caso. <strong>Prerrequisitos:</strong> huella de compilador (<a href="02-huella-compilador.html">2.13</a>).</p></aside>
+<aside class="callout aviso"><p class="callout-titulo">Tecnología legada</p><p>VB6 es de ~1998 y está discontinuado, pero <strong>sigue apareciendo</strong>: malware viejo, crackmes de la escena y software heredado. Se incluye como contexto histórico, igual que OllyDbg y MASM32 en <a href="02-herramientas.html">2.9</a>.</p></aside>
+<h2 id="por-qué-vb6-es-distinto">Por qué VB6 es distinto</h2>
+<p>Un ejecutable VB6 no es C compilado: apoya casi todo en un <strong>runtime</strong>, <code>MSVBVM60.dll</code> (<em>Microsoft Visual Basic Virtual Machine</em>). Y puede estar compilado de dos maneras muy distintas —nativo o p-code—, que se analizan de forma diferente (<strong>conocimiento externo</strong>).</p>
+<h2 id="la-vbheader-tu-punto-de-entrada">La VBHeader: tu punto de entrada</h2>
+<p>El <em>entry point</em> de un VB6 es casi siempre el mismo <em>stub</em>: llama a <code>ThunRTMain</code> de <code>MSVBVM60</code> pasándole un puntero a la <strong>VBHeader</strong> (firma <code>VB5!</code>). Desde esa estructura se llega a:</p>
+<ul><li><strong><code>ProjectInfo</code></strong> — datos del proyecto y tabla de objetos.</li><li><strong><code>ObjectTable</code></strong> — los forms y clases, con sus controles y <strong>eventos</strong>.</li><li>La info que te dice si hay <strong>tablas de p-code</strong> o código nativo por evento.</li></ul>
+<p>Encontrar la VBHeader es el «abrir la puerta»: a partir de ahí reconstruís la estructura del programa (qué forms, qué botones, qué maneja cada evento).</p>
+<h2 id="nativo-vs-p-code">Nativo vs p-code</h2>
+<div class="tabla"><table>
+<thead><tr>
+<th></th>
+<th>VB6 nativo</th>
+<th>VB6 p-code</th>
+</tr></thead><tbody>
+<tr><td>Qué contiene</td><td>x86 real, con <strong>muchísimas</strong> llamadas a <code>MSVBVM60</code></td><td><strong>Bytecode</strong> interpretado por el motor dentro de <code>MSVBVM60</code></td></tr>
+<tr><td>En IDA/Ghidra</td><td>Se lee como x86 (plagado de <em>thunks</em> <code>__vba*</code>)</td><td>Ves el <strong>intérprete</strong>, no la lógica (como una VM, 2.26)</td></tr>
+<tr><td>Herramienta</td><td>Desensamblador normal + VB Decompiler</td><td>VB Decompiler / P32Dasm; debug con <strong>WKTVBDE</strong></td></tr>
+</tbody></table></div>
+<p>La clave: en <strong>nativo</strong>, la lógica está en el x86 (aunque enterrada entre llamadas al runtime); en <strong>p-code</strong>, el x86 que ves es el <em>intérprete</em> genérico y la lógica está en un bytecode —muy parecido conceptualmente a la virtualización de 2.26, pero <strong>estándar y documentado</strong> por la comunidad, no secreto—.</p>
+<aside class="callout aviso"><p class="callout-titulo">Ante un p-code, IDA/Ghidra no alcanzan</p><p>Con un binario en p-code, un desensamblador clásico solo te muestra el <strong>intérprete de VB</strong> (código de <code>MSVBVM60</code>), no tu lógica. La única vía operativa es una herramienta especializada —<strong>VB Decompiler</strong>— que entiende el bytecode de VB y reconstruye el pseudocódigo y los formularios. No pierdas tiempo intentando leer la lógica en el listado x86: ahí no está.</p></aside>
+<h2 id="reconocer-las-llamadas-del-runtime">Reconocer las llamadas del runtime</h2>
+<p>En VB6 nativo, los nombres <code>__vba*</code> son el mapa de la lógica (aunque no tengas símbolos propios):</p>
+<ul><li><code>__vbaStrCmp</code>, <code>__vbaStrComp</code> — comparación de strings (típico de un <em>check</em> de serial).</li><li><code>__vbaVarTstEq</code>, <code>__vbaVarTstNe</code> — comparación de <code>Variant</code>.</li><li><code>rtcMsgBox</code> — un <code>MsgBox</code> («clave correcta/incorrecta»).</li><li><code>__vbaStrCat</code>, <code>__vbaStrMove</code> — armado de strings.</li></ul>
+<h2 id="ejemplo-paso-a-paso-un-check-de-serial-en-vb6-nativo">Ejemplo paso a paso: un check de serial en VB6 nativo</h2>
+<p><em>(Ejemplo <strong>ilustrativo</strong>: patrón típico de un crackme VB6 propio/didáctico.)</em></p>
+<pre><code class="lenguaje-asm">; en VB6 nativo, el "check" se delata por las llamadas al runtime
+push   offset serial_ingresado
+push   offset serial_esperado
+call   __vbaStrCmp            ; compara los dos strings
+test   eax, eax              ; 0 = iguales
+jnz    short serial_malo
+push   offset msg_ok
+call   rtcMsgBox             ; "Correcto"</code></pre>
+<p>No hace falta entender todo el runtime: la secuencia <strong><code>__vbaStrCmp</code> → <code>test</code> → salto → <code>rtcMsgBox</code></strong> es la firma de un chequeo de serial. En p-code, en cambio, esto no se ve como x86: hay que abrirlo con <strong>VB Decompiler</strong>, que reconstruye los forms y el bytecode de cada evento, y para seguir la ejecución se usa <strong>WKTVBDE</strong>, un debugger específico de p-code.</p>
+<h2 id="práctica">Práctica</h2>
+<p>En tu VM, con binarios <strong>propios o crackmes didácticos</strong>:</p>
+<ol><li>Tomá (o compilá, si tenés el IDE) un VB6 y clasificalo <strong>nativo vs p-code</strong> con DIE y con la VBHeader.</li><li>En uno nativo, ubicá la VBHeader desde el entry point y listá los forms/eventos.</li><li>Encontrá un chequeo con <code>__vbaStrCmp</code> + <code>rtcMsgBox</code> y explicá la lógica.</li><li>Abrí un p-code en VB Decompiler y describí por qué IDA no mostraba esa lógica.</li></ol>
+<h2 id="preguntas-de-repaso">Preguntas de repaso</h2>
+<details class="qa"><summary>¿Qué papel cumple <code>MSVBVM60.dll</code>?</summary><div class="respuesta"><p>Es el <strong>runtime</strong> de VB6: provee las funciones (<code>__vba*</code>, <code>rtc*</code>) y, en los binarios p-code, el <strong>intérprete</strong> que ejecuta el bytecode. Casi todo VB6 depende de él.</p></div></details>
+<details class="qa"><summary>¿Para qué buscás la VBHeader?</summary><div class="respuesta"><p>Es la estructura (firma <code>VB5!</code>) a la que apunta el stub de arranque; desde ella llegás a <code>ProjectInfo</code> y <code>ObjectTable</code> para reconstruir forms, controles y eventos, y ver si hay p-code.</p></div></details>
+<details class="qa"><summary>¿Cuál es la diferencia práctica entre nativo y p-code al analizar?</summary><div class="respuesta"><p>En <strong>nativo</strong> la lógica está en el x86 (entre llamadas <code>__vba*</code>) y se lee con un desensamblador normal. En <strong>p-code</strong> el x86 es el intérprete; la lógica está en bytecode y hay que usar VB Decompiler / WKTVBDE.</p></div></details>
+<details class="qa"><summary>¿Por qué el p-code se parece a la virtualización de 2.26?</summary><div class="respuesta"><p>Porque también hay un <strong>intérprete</strong> ejecutando un <strong>bytecode</strong> en vez de x86 directo. La diferencia: el p-code de VB6 es <strong>estándar y documentado</strong>, no un lenguaje secreto por binario.</p></div></details>
+<details class="qa"><summary>¿Qué secuencia delata un check de serial en VB6 nativo?</summary><div class="respuesta"><p><code>__vbaStrCmp</code> (comparar) → <code>test</code>/salto → <code>rtcMsgBox</code> (mensaje). Reconocer esos nombres del runtime te da la lógica sin entender todo el motor.</p></div></details>
+<aside class="callout nota"><p class="callout-titulo">Puerta de salida</p><p>Podés: (1) clasificar un VB6 como nativo o p-code; (2) ubicar la VBHeader y reconstruir forms/eventos; (3) leer un chequeo por las llamadas <code>__vba*</code>/<code>rtc*</code>; (4) explicar por qué el p-code necesita VB Decompiler/WKTVBDE y en qué se parece a una VM.</p></aside>
+<h2 id="fuentes-de-esta-lección">Fuentes de esta lección</h2>
+<ul><li><a href="https://www.vb-decompiler.org/" rel="noopener" target="_blank">vb-decompiler.org</a> — reconstrucción de forms, nativo y p-code (conocimiento externo).</li><li><a href="https://github.com/horsicq/Detect-It-Easy" rel="noopener" target="_blank">Detect It Easy</a> — identifica VB6 y si es nativo o p-code.</li><li>Formato <strong>VBHeader</strong>/<code>ProjectInfo</code>/<code>ObjectTable</code> — documentación de la comunidad de reversing de VB6 (P32Dasm, WKTVBDE).</li><li><a href="02-huella-compilador.html">2.13 Huella de compilador</a> y <a href="02-ofuscacion-vm.html">2.26 VM</a> (el paralelo intérprete/bytecode).</li></ul>
+<aside class="callout nota"><p class="callout-titulo">Capas de esta lección</p><p><strong>Contenido observado en CLS:</strong> VB6 como una de las huellas de compilador de 2.13 y el contexto legado del material (VB en Teorias_Numeradas). <strong>Conocimiento externo (agregado por esta edición):</strong> VBHeader, nativo vs p-code, las llamadas del runtime y las herramientas. <strong>Recomendación editorial:</strong> ejemplos y práctica ilustrativos, sobre binarios propios/didácticos.</p></aside>
+</main>
+<footer class="pie">
+  <p>Material educativo y defensivo. Las prácticas se limitan a programas propios, software abierto o crackmes diseñados para aprender. No se enseña a eludir licencias, DRM ni controles de acceso.</p>
+  <p><a href="../00_EMPEZAR_AQUI.html">Inicio</a> · <a href="../guia/etapa-0.html">Etapas</a> · <a href="../fuentes_y_limites.html">Fuentes y límites</a> · <a href="../registro_de_cobertura.csv">Registro de cobertura</a></p>
+</footer>
+</body>
+</html>

@@ -89,6 +89,15 @@ bool check(char *clave) {
 }
 ```
 
+:::{aviso} `analyzeHeadless` en Windows: ruta, `-scriptPath` y `-overwrite`
+El ejecutable es `analyzeHeadless.bat`, dentro de `<ghidra>\support\` (no está en el PATH). Si tu script no está en los directorios internos de Ghidra ni en `%USERPROFILE%\ghidra_scripts`, pasá **`-scriptPath`** o falla con *Script not found*. En Ghidra 11.x conviene ponerle al `.py` la cabecera de runtime (`#@runtime Jython` o `#@runtime PyGhidra`). Y si reimportás el mismo binario al mismo proyecto (p. ej. al repetir la práctica), agregá **`-overwrite`** (o `-process`) o choca con el archivo ya existente:
+
+```text
+C:\ghidra_11.3.2\support\analyzeHeadless.bat C:\proyectos_ghidra LabCLS ^
+  -import C:\lab\hola.exe -overwrite -scriptPath C:\lab\scripts -postScript listar_fun.py
+```
+:::
+
 ## Práctica
 
 En tu VM, con el **mismo crackme** que analizaste en IDA (ver [Banco de prácticas](../practicas.html)):

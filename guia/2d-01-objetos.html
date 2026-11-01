@@ -49,6 +49,20 @@
     0x120  Key    HKCU\Software\BlocLab\Settings                (su propia config)
     0x134  Mutant \Sessions\1\BaseNamedObjects\BlocLab_SingleInstance</code></pre>
 <p>Lectura: proceso propio de integridad <strong>Medium</strong>, con <code>SeDebugPrivilege</code> <strong>presente pero apagado</strong> (no está usando debug de otros procesos ahora). Los handles muestran el documento que abriste, su <strong>propia</strong> clave de configuración y un <strong>mutex</strong> de instancia única. En un análisis real, el nombre del mutex o una ruta son <strong>pistas</strong> a corroborar, no evidencia por sí solos.</p>
+<aside class="callout aviso"><p class="callout-titulo">Los offsets de <code>nt!_EPROCESS</code> cambian entre builds: nunca los fijes</p><p>A diferencia de los primeros campos del PEB, la estructura <code>_EPROCESS</code> es opaca y el kernel <strong>reorganiza sus campos entre versiones de Windows</strong>. Un driver en IDA con <code>mov rax, [rcx+0x4B8]</code> (Token en Win10 2004–22H2) apunta a otra cosa en Win11 24H2 (Token se corrió a +0x248) o en Win7 (+0x208). En x64:</p>
+<div class="tabla"><table>
+<thead><tr>
+<th>Campo (<code>nt!_EPROCESS</code>)</th>
+<th>Win10 1507–1809</th>
+<th>Win10 2004–22H2 / Win11 21H2–23H2</th>
+<th>Win11 24H2+</th>
+</tr></thead><tbody>
+<tr><td><code>UniqueProcessId</code></td><td>+0x2E0</td><td>+0x440</td><td>+0x1D0</td></tr>
+<tr><td><code>ActiveProcessLinks</code></td><td>+0x2E8</td><td>+0x448</td><td>+0x1D8</td></tr>
+<tr><td><code>Token</code> (<code>_EX_FAST_REF</code>)</td><td>+0x358</td><td>+0x4B8</td><td>+0x248</td></tr>
+<tr><td><code>Protection</code> (<code>_PS_PROTECTION</code>)</td><td>+0x6CA</td><td>+0x87A</td><td>+0x5FA</td></tr>
+</tbody></table></div>
+<p>Nunca asumas un offset fijo: verificá el build o corré <code>dt nt!_EPROCESS UniqueProcessId ActiveProcessLinks Token Protection</code> contra los símbolos (<code>.pdb</code>) de <code>ntoskrnl.exe</code> de <strong>esa</strong> máquina.</p></aside>
 <h2 id="práctica-segura">Práctica segura</h2>
 <p>En tu VM, con un <strong>programa propio</strong> (o Process Explorer sobre uno benigno):</p>
 <ol><li>Con <strong>Process Explorer</strong>, abrí un proceso propio y mirá su cuenta y sus <strong>handles</strong>. Para los grupos y privilegios de tu sesión, ejecutá <code>whoami /all</code>; anotá cuáles figuran habilitados y cuáles no.</li><li>Identificá handles a un archivo, una clave y un objeto con nombre (evento/mutex). Si el proceso no tiene uno de esos objetos, anotalo: no hace falta crearlo para completar la observación.</li><li>Compará el token del proceso propio con el de la sesión solo si ambos pertenecen a la misma cuenta y nivel de integridad; no eleves privilegios para la práctica.</li><li>Mirá la <strong>DACL</strong> de un objeto propio (p. ej. <code>icacls</code> sobre un archivo tuyo) y explicá quién tiene qué.</li></ol>

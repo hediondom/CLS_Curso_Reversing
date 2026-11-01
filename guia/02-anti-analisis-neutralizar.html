@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>2.28 · Neutralizar anti-análisis en laboratorio: del reconocimiento a poder analizar</title>
+<meta name="description" content="Aplicar contramedidas controladas (parches, ScyllaHide, hooks de Frida) sobre binarios propios o malware en VM descartable para poder analizar, entendiendo que neutralizar un chequeo puede disparar el payload.">
+<link rel="stylesheet" href="../guia/estilo.css">
+</head>
+<body>
+<a class="salto" href="#contenido">Saltar al contenido</a>
+<header class="cabecera">
+  <div class="marca"><a href="../00_EMPEZAR_AQUI.html">CLS · Curso de reversing</a> <span class="edicion">edición 5 · 27/10/2026</span></div>
+  <nav class="principal" aria-label="Navegación principal">
+    <a href="../00_EMPEZAR_AQUI.html">Inicio</a>
+    <a href="../guia/index.html">Curso</a>
+    <a href="../materiales.html">Materiales</a>
+    <a href="../fichas/index.html">Fichas</a>
+    <a href="../glosario.html">Glosario</a>
+    <a href="../preguntas_y_respuestas.html">Repaso</a>
+    <a href="../buscar.html">Buscar</a>
+  </nav>
+</header>
+<main id="contenido">
+<nav class="migas" aria-label="Ubicación"><a href="../00_EMPEZAR_AQUI.html">Inicio</a><span aria-hidden="true">›</span><a href="../guia/index.html">Curso</a><span aria-hidden="true">›</span><span>Etapa 2 · Desofuscación avanzada (2E)</span></nav><h1 id="neutralizar-anti-análisis-en-laboratorio">Neutralizar anti-análisis en laboratorio</h1>
+<aside class="callout nota"><p class="callout-titulo">Objetivo de la lección</p><p>Pasar de <strong>reconocer</strong> un chequeo anti-análisis (lo que viste en 2.15) a <strong>neutralizarlo de forma controlada</strong> para poder analizar: parches, plugins de ocultación y <em>hooks</em>, sobre <strong>binarios propios</strong> o malware en <strong>VM descartable</strong>. <strong>Prerrequisitos:</strong> taxonomía anti-análisis (<a href="02-anti-analisis.html">2.15</a>), scripting de debugger (<a href="02-scripting-debugger.html">2.21</a>), debugger (<a href="02-debugger.html">2.6</a>) y el laboratorio de <a href="02-opt-malware-dinamico.html">malware dinámico defensivo (2.22)</a>.</p></aside>
+<aside class="callout peligro"><p class="callout-titulo">Riesgo: neutralizar un chequeo puede ejecutar el payload</p><p>Muchos binarios maliciosos <strong>esconden su comportamiento detrás del anti-análisis</strong>: si hacés que crean que nadie los observa, <strong>corren su carga real</strong>. Hacé esto solo en una <strong>VM descartable con snapshot</strong>, sin red o con red controlada, tal como se define en <a href="04-dinamico-seguro.html">4.4 Dinámico seguro</a>. Para <strong>aprender la técnica</strong>, usá binarios propios con chequeos que escribís vos.</p></aside>
+<h2 id="por-qué-a-veces-hay-que-neutralizar">Por qué, a veces, hay que neutralizar</h2>
+<p>En 2.15 aprendiste a <strong>detectar</strong> que un binario se defiende. Pero para analizarlo en dinámico a veces necesitás que <strong>no aborte</strong>: un programa que llama a <code>IsDebuggerPresent</code> y sale si estás enganchado no se deja estudiar bajo debugger. Neutralizar el chequeo —hacer que devuelva «no hay debugger»— te deja seguir. La regla de oro: <strong>neutralizás para observar, no para romper protecciones de software ajeno</strong>.</p>
+<h2 id="chequeos-y-su-contramedida">Chequeos y su contramedida</h2>
+<div class="tabla"><table>
+<thead><tr>
+<th>Chequeo (2.15)</th>
+<th>Dónde mira</th>
+<th>Contramedida en lab</th>
+</tr></thead><tbody>
+<tr><td><code>IsDebuggerPresent</code></td><td>PEB <code>BeingDebugged</code> (byte en PEB+2)</td><td>Hook que devuelve 0; o poner a 0 el byte del PEB</td></tr>
+<tr><td><code>CheckRemoteDebuggerPresent</code> / <code>NtQueryInformationProcess(ProcessDebugPort)</code></td><td><em>debug port</em> del proceso</td><td>Forzar el resultado a «sin debugger» (ScyllaHide)</td></tr>
+<tr><td><code>NtGlobalFlag</code> / <em>heap</em> <code>ForceFlags</code></td><td>Flags que cambian bajo debugger</td><td>Normalizar los flags al valor «sin debugger»</td></tr>
+<tr><td>Tiempos (<code>rdtsc</code>, <code>QueryPerformanceCounter</code>, <code>GetTickCount</code>)</td><td>Mide cuánto tardó entre dos puntos</td><td>Acortar el delta (hook que devuelve tiempos cercanos)</td></tr>
+<tr><td>Anti-VM (<code>cpuid</code> bit de hipervisor, artefactos)</td><td>Detecta que corre en VM</td><td>Ocultar artefactos de la VM; parchear el chequeo</td></tr>
+<tr><td><em>Hardware breakpoints</em> (DR0–DR3)</td><td>Lee el contexto de depuración</td><td>Usar bp de software; limpiar DRx vía hook</td></tr>
+</tbody></table></div>
+<aside class="callout aviso"><p class="callout-titulo">Un VEH que lee DR0–DR3 te delata al poner un breakpoint de hardware</p><p>En x64, un truco frecuente es registrar un <em>vectored exception handler</em> (<code>AddVectoredExceptionHandler</code>) que, ante cualquier excepción, inspecciona <code>ContextRecord-&gt;Dr0..Dr3</code>: si alguno es distinto de cero, hay un breakpoint de hardware y el binario aborta. Un bp de hardware tuyo en x64dbg cae en la trampa. Para neutralizarlo en lab: enganchá <code>NtGetContextThread</code> (o el VEH registrado) con Frida y <strong>forzá <code>Dr0..Dr3 = 0</code></strong> en el <code>CONTEXT</code> antes de que el código los evalúe. Alternativa: usá solo breakpoints de software en ese tramo.</p></aside>
+<h2 id="herramientas">Herramientas</h2>
+<ul><li><strong>ScyllaHide / TitanHide:</strong> plugins (de x64dbg el primero; driver el segundo) que <strong>ocultan el debugger</strong> interceptando las APIs y estructuras de arriba. Es el camino rápido para «hacer invisible» el debugger sin parchear a mano.</li><li><strong>Frida:</strong> <em>hooks</em> en runtime para reemplazar el valor que devuelve una API concreta (fino y reproducible).</li><li><strong>Parche estático</strong> en x64dbg: cuando el chequeo está en el propio binario propio (p. ej. forzar el salto), con <em>Patch</em> → <em>Apply patches</em>. Igual que en 2.10, <strong>no a ciegas</strong>.</li></ul>
+<h2 id="ejemplo-paso-a-paso-neutralizar-tres-chequeos-propios-con-frida">Ejemplo paso a paso: neutralizar tres chequeos propios con Frida</h2>
+<p><em>(Ejemplo <strong>ilustrativo</strong>: script sobre un binario propio con chequeos que escribiste vos, en VM.)</em></p>
+<pre><code class="lenguaje-javascript">// ocultar.js — en VM, sobre binario PROPIO. frida -f .\propio.exe -l ocultar.js
+const k32 = Process.getModuleByName('kernel32.dll');
+const ntdll = Process.getModuleByName('ntdll.dll');
+
+// 1) IsDebuggerPresent -&gt; siempre 0
+Interceptor.replace(
+  k32.getExportByName('IsDebuggerPresent'),
+  new NativeCallback(() =&gt; 0, 'int', []));
+
+// 2) limpiar PEB.BeingDebugged (+0x02) y PEB.NtGlobalFlag (+0xBC en x64 / +0x68 en x86).
+//    En Frida no hay un objeto 'gs'; se obtiene el PEB llamando a ntdll!RtlGetCurrentPeb.
+const RtlGetCurrentPeb = new NativeFunction(
+  ntdll.getExportByName('RtlGetCurrentPeb'), 'pointer', []);
+const peb = RtlGetCurrentPeb();
+peb.add(0x02).writeU8(0);                                   // BeingDebugged = 0
+const offNtGlobalFlag = (Process.pointerSize === 8) ? 0xBC : 0x68;
+peb.add(offNtGlobalFlag).writeU32(0);                       // NtGlobalFlag = 0
+
+// 3) chequeo de tiempo: devolver un delta chico y estable
+let ticks = 100000;
+Interceptor.replace(
+  k32.getExportByName('GetTickCount64'),
+  new NativeCallback(() =&gt; { ticks += 10; return uint64(ticks); }, 'uint64', []));
+
+console.log('[*] PEB limpiado en ' + peb + '; hooks anti-debug activos.');</code></pre>
+<p>Con estos tres <em>hooks</em>, tu binario de práctica —que sin esto salía con «debugger detectado»— sigue hasta el <strong>flujo protegido</strong> y podés analizarlo. En un debugger, <strong>ScyllaHide</strong> hace lo equivalente con un par de clics. Lo importante es entender <strong>qué</strong> estás falseando y <strong>por qué</strong>, para no engañarte a vos mismo sobre lo que hace el binario.</p>
+<h2 id="práctica">Práctica</h2>
+<p>En tu VM, con un <strong>binario propio</strong>:</p>
+<ol><li>Compilá un programa con tres chequeos (<code>IsDebuggerPresent</code>, lectura de <code>BeingDebugged</code> en el PEB y un chequeo de tiempo con <code>rdtsc</code>) que imprima «protegido» solo si ninguno detecta nada.</li><li>Verificá que bajo debugger <strong>detecta</strong> y sale.</li><li>Neutralizalos con ScyllaHide o con un script de Frida y confirmá que ahora llega a «protegido».</li><li>Escribí dos renglones sobre por qué este mismo procedimiento, aplicado a malware, se hace <strong>solo en VM descartable</strong>.</li></ol>
+<h2 id="preguntas-de-repaso">Preguntas de repaso</h2>
+<details class="qa"><summary>¿Cuál es el riesgo específico de neutralizar anti-análisis en malware?</summary><div class="respuesta"><p>Que el binario <strong>esconde su payload detrás del chequeo</strong>: al hacerle creer que no lo observan, <strong>ejecuta su carga real</strong>. Por eso se hace solo en VM descartable con snapshot y red controlada (4.4).</p></div></details>
+<details class="qa"><summary>¿Qué mira <code>IsDebuggerPresent</code> y cómo se neutraliza?</summary><div class="respuesta"><p>Lee el byte <strong><code>BeingDebugged</code> del PEB</strong> (PEB+2). Se neutraliza con un <em>hook</em> que devuelve 0, o poniendo a 0 ese byte del PEB; ScyllaHide lo hace automáticamente.</p></div></details>
+<details class="qa"><summary>¿Por qué un chequeo de tiempo detecta al analista?</summary><div class="respuesta"><p>Porque entre dos puntos mide un <strong>delta</strong> (con <code>rdtsc</code>/<code>QueryPerformanceCounter</code>); bajo debugger o con breakpoints, el tiempo se dispara. Se neutraliza <strong>achicando el delta</strong> que devuelve el contador.</p></div></details>
+<details class="qa"><summary>¿Qué hace ScyllaHide que te ahorra parchear a mano?</summary><div class="respuesta"><p>Intercepta las APIs y estructuras del PEB que usan los chequeos (<code>IsDebuggerPresent</code>, <code>NtQueryInformationProcess</code>, <code>NtGlobalFlag</code>, etc.) y les devuelve valores de «sin debugger», <strong>ocultando el debugger</strong> de forma centralizada.</p></div></details>
+<details class="qa"><summary>¿Por qué «no parchear a ciegas» sigue valiendo acá?</summary><div class="respuesta"><p>Porque falsear un valor sin entenderlo puede ocultarte el comportamiento real o romper la lógica. Primero entendés qué chequea y qué estás cambiando; recién después neutralizás, y solo lo necesario.</p></div></details>
+<aside class="callout nota"><p class="callout-titulo">Puerta de salida</p><p>Podés: (1) explicar por qué neutralizar un chequeo puede disparar el payload y qué recaudos exige; (2) relacionar cada chequeo de 2.15 con su contramedida; (3) ocultar el debugger con ScyllaHide o un hook de Frida sobre un binario propio; (4) justificar por qué se hace solo en VM descartable.</p></aside>
+<h2 id="fuentes-de-esta-lección">Fuentes de esta lección</h2>
+<ul><li><a href="https://github.com/x64dbg/ScyllaHide" rel="noopener" target="_blank">github.com/x64dbg/ScyllaHide</a> — ocultación de debugger (PEB, APIs, NtGlobalFlag) (conocimiento externo).</li><li><a href="https://frida.re/docs/" rel="noopener" target="_blank">frida.re/docs</a> — <code>Interceptor.replace</code>/<code>attach</code> para falsear el resultado de una API.</li><li><a href="https://github.com/LordNoteworthy/al-khaser" rel="noopener" target="_blank">github.com/LordNoteworthy/al-khaser</a> — catálogo de chequeos anti-análisis para generar binarios propios de práctica.</li><li><a href="02-anti-analisis.html">2.15 Anti-análisis</a> (reconocer) y <a href="04-dinamico-seguro.html">4.4 Dinámico seguro</a> (la VM descartable).</li></ul>
+<aside class="callout nota"><p class="callout-titulo">Capas de esta lección</p><p><strong>Contenido observado en CLS:</strong> los chequeos y el encuadre de reconocimiento de 2.15; el dinámico seguro de la Etapa 4. <strong>Conocimiento externo (agregado por esta edición):</strong> las contramedidas concretas, ScyllaHide/TitanHide y los hooks de Frida. <strong>Recomendación editorial:</strong> ejemplos y práctica ilustrativos, sobre binarios propios y malware solo en VM descartable.</p></aside>
+</main>
+<footer class="pie">
+  <p>Material educativo y defensivo. Las prácticas se limitan a programas propios, software abierto o crackmes diseñados para aprender. No se enseña a eludir licencias, DRM ni controles de acceso.</p>
+  <p><a href="../00_EMPEZAR_AQUI.html">Inicio</a> · <a href="../guia/etapa-0.html">Etapas</a> · <a href="../fuentes_y_limites.html">Fuentes y límites</a> · <a href="../registro_de_cobertura.csv">Registro de cobertura</a></p>
+</footer>
+</body>
+</html>

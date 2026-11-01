@@ -104,6 +104,17 @@ El método para leerlo no es mirar el grafo, que ya no dice nada, sino **reconst
 | Ráfaga de `mov` con constantes imprimibles | Cadena armada en el stack | Leer las constantes como bytes en little-endian |
 | El listado no arma funciones | Basura o saltos al medio | Seguir la ejecución, no el listado |
 
+:::{aviso} Desactivar ASLR sin romper la cabecera (ni depender de *Manual Load*)
+El campo `DllCharacteristics` (2 bytes, WORD) está en el offset **+0x46** del Optional Header (`e_lfanew + 0x5E`), igual en PE32 y PE32+. El bit de ASLR es `IMAGE_DLLCHARACTERISTICS_DYNAMIC_BASE = 0x0040` (en x64 suele venir con `HIGH_ENTROPY_VA = 0x0020`). **No pongas todo el WORD en cero**: pisarías `NXCOMPAT (0x0100)`, `GUARD_CF (0x4000)`, etc. Y ojo: **IDA no carga la cabecera PE** salvo que elijas *Manual Load*, así que ahí no vas a encontrar el campo. Hacelo en PE-bear/CFF Explorer (Optional Header → DllCharacteristics → desmarcá *Dynamic Base*) o con Python sobre una copia:
+
+```python
+import pefile
+pe = pefile.PE("copia_lab.exe")
+pe.OPTIONAL_HEADER.DllCharacteristics &= ~0x0060   # limpia DYNAMIC_BASE (0x40) y HIGH_ENTROPY_VA (0x20)
+pe.write("copia_lab_noaslr.exe")
+```
+:::
+
 ## Práctica
 
 En tu VM, sobre un **ejercicio propio o un crackme didáctico** (hay varios en el [Banco de prácticas](../practicas.html)):

@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>2.30 · Frida avanzado: Stalker y tracing de código</title>
+<meta name="description" content="Usar Stalker de Frida para trazar instrucciones y bloques, medir cobertura (frida-drcov) y detectar código generado en runtime, y cuándo conviene frente a la DBI nativa.">
+<link rel="stylesheet" href="../guia/estilo.css">
+</head>
+<body>
+<a class="salto" href="#contenido">Saltar al contenido</a>
+<header class="cabecera">
+  <div class="marca"><a href="../00_EMPEZAR_AQUI.html">CLS · Curso de reversing</a> <span class="edicion">edición 5 · 27/10/2026</span></div>
+  <nav class="principal" aria-label="Navegación principal">
+    <a href="../00_EMPEZAR_AQUI.html">Inicio</a>
+    <a href="../guia/index.html">Curso</a>
+    <a href="../materiales.html">Materiales</a>
+    <a href="../fichas/index.html">Fichas</a>
+    <a href="../glosario.html">Glosario</a>
+    <a href="../preguntas_y_respuestas.html">Repaso</a>
+    <a href="../buscar.html">Buscar</a>
+  </nav>
+</header>
+<main id="contenido">
+<nav class="migas" aria-label="Ubicación"><a href="../00_EMPEZAR_AQUI.html">Inicio</a><span aria-hidden="true">›</span><a href="../guia/index.html">Curso</a><span aria-hidden="true">›</span><span>Etapa 2 · Desofuscación avanzada (2E)</span></nav><h1 id="frida-avanzado-stalker-y-tracing-de-código">Frida avanzado: Stalker y tracing de código</h1>
+<aside class="callout nota"><p class="callout-titulo">Objetivo de la lección</p><p>Dar el salto de los <em>hooks</em> puntuales (que ya usaste) al <strong>tracing de todo un hilo</strong> con <strong>Stalker</strong>: seguir instrucciones y bloques, medir <strong>cobertura</strong> y detectar <strong>código generado en runtime</strong>. Saber cuándo conviene Stalker y cuándo la DBI nativa. <strong>Prerrequisitos:</strong> scripting de debugger y Frida básico (<a href="02-scripting-debugger.html">2.21</a>) y DBI (<a href="02-dbi-dynamorio-pin.html">2.29</a>).</p></aside>
+<p>Análisis dinámico sobre binarios propios o crackmes; el malware se instrumenta solo en <strong>VM descartable</strong> (<a href="04-dinamico-seguro.html">4.4</a>).</p>
+<h2 id="de-los-hooks-al-tracing">De los hooks al tracing</h2>
+<p>En 2.21 usaste <code>Interceptor</code> para engancharte a una función concreta (entrar, leer argumentos, salir). Eso es puntual. <strong>Stalker</strong> es otra cosa: es el motor de <em>tracing</em> de Frida que <strong>sigue el flujo completo</strong> de un hilo, reescribiendo el código <strong>bloque por bloque</strong> a medida que se ejecuta e informándote de cada bloque, llamada o retorno (<strong>conocimiento externo</strong>). Es la versión «scriptable en JavaScript» de lo que viste con Pin/DynamoRIO.</p>
+<h2 id="qué-te-da-stalker">Qué te da Stalker</h2>
+<ul><li><strong>Eventos:</strong> <code>exec</code> (cada instrucción), <code>block</code>/<code>compile</code> (cada bloque básico), <code>call</code> y <code>ret</code>. Elegís la granularidad según cuánto <em>overhead</em> tolerás.</li><li><strong><code>transform</code>:</strong> podés <strong>reescribir</strong> el flujo mientras se traza (insertar <em>callouts</em>, saltar, instrumentar). Es el gancho más potente.</li><li><strong>Cobertura:</strong> con <strong><code>frida-drcov</code></strong> generás un archivo de cobertura <strong>compatible con Lighthouse</strong> (el mismo visor de 2.29).</li><li><strong>Código en runtime:</strong> como Stalker ve el código <em>cuando se va a ejecutar</em>, detecta bloques en regiones recién escritas (útil para OEP y descifrado en memoria).</li></ul>
+<h2 id="stalker-vs-dbi-nativa-2-29">Stalker vs DBI nativa (2.29)</h2>
+<div class="tabla"><table>
+<thead><tr>
+<th></th>
+<th>Frida Stalker</th>
+<th>Pin / DynamoRIO</th>
+</tr></thead><tbody>
+<tr><td>Se programa en</td><td>JavaScript (rápido de iterar)</td><td>C/C++ (compilar el tool)</td></tr>
+<tr><td>Plataformas</td><td>Windows, Linux, macOS, Android, iOS</td><td>sobre todo desktop x86/x64 (+ ARM en DynamoRIO)</td></tr>
+<tr><td><em>Overhead</em> / transparencia</td><td>Mayor <em>overhead</em>; menos transparente</td><td>Más rápido y maduro para trazas largas</td></tr>
+<tr><td>Fuerte en</td><td>enganchar APIs + trazar en el mismo script</td><td>trazas masivas, cobertura a gran escala</td></tr>
+</tbody></table></div>
+<p>Regla práctica: si ya estás en Frida haciendo <em>hooks</em> y querés cobertura o una traza acotada, usá Stalker. Si necesitás trazar millones de instrucciones o integrarte con un fuzzer nativo, andá a Pin/DynamoRIO.</p>
+<h2 id="ejemplo-paso-a-paso-trazar-los-bloques-de-un-hilo">Ejemplo paso a paso: trazar los bloques de un hilo</h2>
+<p><em>(Ejemplo <strong>ilustrativo</strong>: script sobre un binario propio en VM; <code>frida -f .\propio.exe -l stalker.js</code>.)</em></p>
+<pre><code class="lenguaje-javascript">// stalker.js — trazar SOLO dentro de la función objetivo (frida -f .\propio.exe -l stalker.js)
+// Clave: activá Stalker al ENTRAR a la función y detenelo al salir. Si hacés follow/unfollow
+// en la carga del script, Stalker corre y se apaga antes de que el hilo llegue a main -&gt; imprime 0.
+const objetivo = DebugSymbol.fromName('validar').address;  // o Module.getBaseAddress('propio.exe').add(0x1000)
+let total = 0;
+
+Interceptor.attach(objetivo, {
+  onEnter() {
+    this.tid = this.threadId;
+    Stalker.follow(this.tid, {
+      events: { compile: true },        // un evento por bloque básico compilado
+      onReceive(raw) {
+        // annotate:false devuelve pares limpios [inicio, fin] (sin el tag 'compile')
+        const bloques = Stalker.parse(raw, { annotate: false, stringify: false });
+        total += bloques.length;
+        for (const [ini, fin] of bloques) {
+          // ini/fin son NativePointer reales del bloque básico compilado
+        }
+      }
+    });
+  },
+  onLeave() {
+    Stalker.unfollow(this.tid);
+    Stalker.flush();
+    console.log('[*] bloques ejecutados dentro de validar:', total);
+  }
+});</code></pre>
+<p>Con <code>compile: true</code> recibís un evento por <strong>bloque básico</strong> (barato): es la <strong>cobertura</strong>. Con <code>exec: true</code> tendrías uno por <strong>instrucción</strong> (caro, pero fino): es la <strong>traza</strong> que sirve para reconstruir un algoritmo (la misma distinción cobertura/traza de <a href="02-dbi-dynamorio-pin.html">2.29</a>). Para cobertura real no reinventes el parser: <code>frida-drcov</code> ya emite el formato de Lighthouse. Para ver la transición <strong>stub → OEP</strong> en un packer propio, marcás las regiones que se escriben y avisás cuando Stalker compila un bloque dentro de una de ellas: ahí saltó al código desempaquetado.</p>
+<h2 id="práctica">Práctica</h2>
+<p>En tu VM, con binarios <strong>propios</strong>:</p>
+<ol><li>Seguí con Stalker el hilo principal de tu crackme y contá los bloques de una corrida «clave correcta» vs «incorrecta»; ¿qué bloque aparece solo en una?</li><li>Generá cobertura con <code>frida-drcov</code> y abrila en Lighthouse; comparala con la que sacaste con <code>drcov</code> nativo en 2.29.</li><li>Sobre tu binario empaquetado con UPX, detectá con Stalker el salto a una región recién escrita (OEP).</li><li>Anotá dos casos en los que preferirías Pin/DynamoRIO antes que Stalker.</li></ol>
+<h2 id="preguntas-de-repaso">Preguntas de repaso</h2>
+<details class="qa"><summary>¿Qué diferencia a <code>Interceptor</code> de <code>Stalker</code>?</summary><div class="respuesta"><p><code>Interceptor</code> engancha funciones <strong>puntuales</strong>; <code>Stalker</code> <strong>traza el flujo completo</strong> de un hilo, bloque por bloque, informando cada instrucción/bloque/llamada/retorno.</p></div></details>
+<details class="qa"><summary>¿Por qué elegirías <code>compile</code>/<code>block</code> en vez de <code>exec</code>?</summary><div class="respuesta"><p>Porque <code>exec</code> emite un evento <strong>por instrucción</strong> (mucho <em>overhead</em>), mientras que <code>compile</code>/<code>block</code> emiten uno <strong>por bloque básico</strong>: suficiente para cobertura y mucho más barato.</p></div></details>
+<details class="qa"><summary>¿Cómo detecta Stalker código generado en runtime?</summary><div class="respuesta"><p>Porque ve el código <strong>justo cuando se va a ejecutar</strong>: si un bloque cae en una región que se <strong>escribió antes</strong>, es código nuevo (descifrado o desempaquetado), candidato a OEP.</p></div></details>
+<details class="qa"><summary>¿Qué ventaja da que la cobertura sea formato Lighthouse?</summary><div class="respuesta"><p>Que la <strong>visualizás igual</strong> que la de <code>drcov</code> nativo (2.29), coloreando los bloques en IDA/Ghidra. Podés comparar trazas de Stalker y de Pin/DynamoRIO con el mismo visor.</p></div></details>
+<details class="qa"><summary>¿Cuándo preferís Pin/DynamoRIO a Stalker?</summary><div class="respuesta"><p>Para <strong>trazas muy largas</strong> (millones de instrucciones), cuando importa el <em>overhead</em>/transparencia, o para integrarte con un fuzzer nativo. Stalker gana cuando ya estás en Frida y querés iterar rápido en JavaScript.</p></div></details>
+<aside class="callout nota"><p class="callout-titulo">Puerta de salida</p><p>Podés: (1) explicar la diferencia entre hook puntual y tracing; (2) seguir un hilo con Stalker y elegir granularidad; (3) sacar cobertura con <code>frida-drcov</code> y leerla en Lighthouse; (4) detectar el salto al OEP por bloques en regiones recién escritas, y decidir entre Stalker y DBI nativa.</p></aside>
+<h2 id="fuentes-de-esta-lección">Fuentes de esta lección</h2>
+<ul><li><a href="https://frida.re/docs/stalker/" rel="noopener" target="_blank">frida.re/docs/stalker</a> — <code>Stalker.follow</code>, eventos, <code>transform</code> (conocimiento externo).</li><li><a href="https://github.com/gaasedelen/lighthouse" rel="noopener" target="_blank">frida-drcov (Lighthouse)</a> — emitir cobertura en formato Lighthouse.</li><li><a href="02-scripting-debugger.html">2.21 Scripting</a> (Frida básico) y <a href="02-dbi-dynamorio-pin.html">2.29 DBI</a> (la comparación con Pin/DynamoRIO).</li></ul>
+<aside class="callout nota"><p class="callout-titulo">Capas de esta lección</p><p><strong>Contenido observado en CLS:</strong> la automatización dinámica de 2.21 como base. <strong>Conocimiento externo (agregado por esta edición):</strong> Stalker, sus eventos y <code>transform</code>, y la cobertura con frida-drcov. <strong>Recomendación editorial:</strong> ejemplos y práctica ilustrativos, sobre binarios propios.</p></aside>
+</main>
+<footer class="pie">
+  <p>Material educativo y defensivo. Las prácticas se limitan a programas propios, software abierto o crackmes diseñados para aprender. No se enseña a eludir licencias, DRM ni controles de acceso.</p>
+  <p><a href="../00_EMPEZAR_AQUI.html">Inicio</a> · <a href="../guia/etapa-0.html">Etapas</a> · <a href="../fuentes_y_limites.html">Fuentes y límites</a> · <a href="../registro_de_cobertura.csv">Registro de cobertura</a></p>
+</footer>
+</body>
+</html>

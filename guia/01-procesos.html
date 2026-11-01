@@ -46,10 +46,10 @@
 <pre><code class="lenguaje-c">#include &lt;windows.h&gt;
 #include &lt;stdio.h&gt;
 
-int MyCounter = 0;
+volatile int MyCounter = 0;   // 'volatile': impide que el compilador optimice/elimine el bucle
 
 DWORD WINAPI MyThread(LPVOID lpParam) {
-    int *contador = (int *)lpParam;
+    volatile int *contador = (volatile int *)lpParam;
     while (*contador &lt; 0xFFF) {
         (*contador)++;
     }
@@ -65,6 +65,7 @@ int main(void) {
     CloseHandle(h);
     return 0;
 }</code></pre>
+<aside class="callout aviso"><p class="callout-titulo">Compilá con <code>volatile</code> o el bucle desaparece en Release</p><p>Sin <code>volatile</code>, en Release (<code>/O2</code> en MSVC, <code>-O2</code> en GCC) el compilador asume que nadie más toca <code>MyCounter</code> y <strong>elimina el bucle</strong> (lo reduce a <code>*contador = 0xFFF;</code>) o lee el valor una sola vez en un registro. Con <code>volatile</code>, cada iteración lee/escribe memoria de verdad y el ejemplo es reproducible en cualquier flag de compilación.</p></aside>
 <p>Los argumentos de <code>CreateThread</code> que importan para el análisis son:</p>
 <div class="tabla"><table>
 <thead><tr>
@@ -106,6 +107,7 @@ int main(void) {
 <p>Cada hilo tiene su propio estado de excepciones. En 32 bits, el sistema encadena los manejadores en el stack y el primer DWORD del bloque de información del hilo (<code>FS:[0]</code>) apunta al primero de la cadena (cap. 16b, 00:02:29). En 64 bits, esa información se guarda en tablas <code>.pdata</code>/<code>.rdata</code> y no en el stack (cap. 36, 00:00:27).</p>
 <p>También cada hilo puede tener <strong>TLS</strong> (<em>Thread Local Storage</em>): variables globales que en realidad tienen una copia por hilo. El capítulo 38 lo trata en detalle; acá alcanza con saber que existe y que explica por qué una variable "global" puede tener valores distintos según el hilo.</p>
 <p>No necesitás dominar esto para seguir. Lo importante es que cuando veas <code>FS:[0]</code>, <code>GS:[0]</code>, <code>.pdata</code> o <code>TlsAlloc</code>, sepas que estás frente a infraestructura del sistema, no a código del programa.</p>
+<aside class="callout nota"><p class="callout-titulo">Qué son FS y GS: apuntan al TEB</p><p>Los registros de segmento <code>FS</code> (x86, 32 bits) y <code>GS</code> (x64) no hacen segmentación clásica: apuntan siempre al <strong>TEB</strong> (<em>Thread Environment Block</em>) del hilo actual. En x86, <code>FS:[0]</code> es el primer campo del TEB y guarda el puntero a la cadena de manejadores de excepciones SEH en el stack, y <code>FS:[0x30]</code> lleva al <strong>PEB</strong>. En x64, <code>GS:[0x30]</code> apunta al TEB y <code>GS:[0x60]</code> al PEB. Lo vas a ver constantemente en la resolución de APIs por PEB (2.14) y en los chequeos anti-debug (2.15).</p></aside>
 <h2 id="práctica">Práctica</h2>
 <ol><li>Compilá el programa de dos hilos de arriba (en el guest, con Visual Studio o MinGW).</li><li>Abrilo en x64dbg y completá esta tabla:</li></ol>
 <div class="tabla"><table>
@@ -119,7 +121,7 @@ int main(void) {
 <tr><td>¿Qué pasa si usás <code>CREATE_SUSPENDED</code> (<code>4</code>)?</td><td></td></tr>
 <tr><td>¿Qué región de memoria es el stack? ¿Qué permisos tiene?</td><td></td></tr>
 </tbody></table></div>
-<ol><li>Agregá un <code>Sleep(5000)</code> dentro del hilo y observá la lista de hilos mientras duerme.</li><li>Poné un breakpoint condicional que registre <code>{EAX}</code> en el hilo y explicá qué valor ves.</li></ol>
+<ol><li>Agregá un <code>Sleep(5000)</code> dentro del hilo y observá la lista de hilos mientras duerme.</li><li>Poné un breakpoint en el <code>inc</code>/<code>add</code> del bucle y logueá el <strong>valor del contador</strong> leyendo la memoria apuntada, no <code>{EAX}</code> a secas: en x64, <code>MyCounter</code> llega por <code>RCX</code>, así que <code>{EAX}</code> loguearía los 32 bits bajos del <em>puntero</em>, no el dato. En x64dbg usá <code>Contador = {[&amp;MyCounter]}</code> (o <code>{d:rcx}</code> si <code>RCX</code> tiene el puntero).</li></ol>
 <h2 id="preguntas-de-repaso">Preguntas de repaso</h2>
 <p><strong>1. ¿Qué comparte un hilo con los demás hilos del mismo proceso?</strong> El espacio de direcciones (código, datos globales, heap) y los handles. No comparte el stack ni los registros.</p>
 <p><strong>2. ¿Un proceso puede tener varios hilos? ¿Y varios procesos el mismo código?</strong> Sí a las dos. Varios procesos pueden ejecutar la misma imagen (por ejemplo, dos instancias del mismo <code>.exe</code>), cada uno con su propio espacio de direcciones.</p>

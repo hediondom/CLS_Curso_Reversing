@@ -63,6 +63,10 @@ La clave está en el **sufijo**:
 Igual que `xor eax, eax` pone `EAX` en cero, `xorps xmm0, xmm0` pone `xmm0` en cero. Es el modismo del compilador para inicializar un flotante en 0.0.
 :::
 
+:::{aviso} `movaps` exige alineación a 16 bytes (el crash nº 1 al parchear en x64)
+`movaps` requiere que la dirección sea múltiplo de 16 (`addr % 16 == 0`); `movups` no. Si al parchear o inyectar una llamada en x64 dejás `RSP` **desalineado** (típico: 8 bytes de más), el programa muere con `0xC0000005` (`STATUS_ACCESS_VIOLATION`) dentro de `ntdll`/`msvcrt` sobre un `movaps xmmword ptr [rsp+...], xmm0`, aunque la memoria sea perfectamente escribible. Por eso la ABI de Windows x64 exige el stack alineado a 16 bytes antes de cada `call`.
+:::
+
 ## Ejemplo paso a paso: `double` en x64
 
 ```c
@@ -111,7 +115,7 @@ Se lee como una calculadora de pila: `fld` empuja, las operaciones trabajan sobr
 1. Compilá `promedio.c` con `gcc -O0` (x64) y mirá el listado: ubicá `xmm0`, `xmm1`, `addsd`, `divsd` y la constante `2.0` en `.rdata`.
 2. Tomá la constante que carga tu binario y convertila con un conversor IEEE 754. ¿Coincide con `2.0`?
 3. Agregá una comparación `if (a > b)` y mirá cómo aparece `ucomisd` + salto sin signo (y quizás un `jp`).
-4. Compilá una versión de 32 bits con `-mfpmath=387` y compará: ahora deberías ver `fld`/`faddp` en vez de `xmm`.
+4. Compilá una versión que use el **x87** y compará (deberías ver `fld`/`faddp` en vez de `xmm`). **Ojo en Windows x64:** `-mfpmath=387` sin `-m32` se **ignora** (x86-64 exige SSE2 por ABI) y `-m32` falla si tu MinGW no es *multilib*. Comandos que sí funcionan: MSVC de 32 bits (*x86 Native Tools Command Prompt*) `cl /Od /arch:IA32 promedio.c`; o MinGW de 32 bits `i686-w64-mingw32-gcc -O0 -mfpmath=387 -mno-sse -o promedio32.exe promedio.c`.
 :::
 
 ## Preguntas de repaso

@@ -79,6 +79,13 @@ Para diffear binarios de Windows, Microsoft publica **símbolos públicos** en s
 
 **Version Tracking** de Ghidra ([2.16](02-ghidra.html)) hace un trabajo parecido con otro enfoque: corrés **correlacionadores** (bytes exactos, instrucciones exactas, mismas referencias a datos, mismos símbolos, y otros más permisivos), revisás las coincidencias propuestas, las **aceptás** y trasladás nombres y comentarios del origen al destino. Lo que queda sin aceptar es el candidato a cambio. Es más manual que BinDiff, pero todo queda dentro de un solo proyecto y no necesita IDA.
 
+:::{aviso} Paso a paso según tu herramienta (IDA Free no carga BinExport)
+BinDiff necesita **BinExport**, un plugin **nativo** que **IDA Free no carga** (es para el SDK de IDA Pro). Por eso, sin pagar:
+
+- **Ghidra Version Tracking** (ver sección anterior): el *Version Tracking Wizard* (source = v1, destination = v2) → *Add to Existing Session* con **Exact Function Bytes/Instructions Match** → filtrá las parcialmente emparejadas: la que cambió salta de inmediato.
+- **Diaphora en IDA (dos fases):** corré `diaphora.py` sobre `v1` y exportá `v1.sqlite`; después corrélo sobre `v2` apuntando a `v1.sqlite` y revisá la pestaña **Partial** (Ratio < 1.00).
+:::
+
 ## Práctica
 
 En tu VM:

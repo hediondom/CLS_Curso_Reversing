@@ -120,6 +120,7 @@ Debug Directory  (type = CODEVIEW / RSDS)
 <p class="callout-titulo">Nota de lectura sobre el listado x64 — Por qué [rsi+20h] apunta a DllBase al recorrer el PEB</p>
 <p>En el listado ilustrativo x64 de esta lección, <code>mov rsi, [rax+20h]</code> lee <code>Ldr-&gt;InMemoryOrderModuleList.Flink</code>. Como ese enlace apunta al campo <code>InMemoryOrderLinks</code> (ubicado en el offset <code>+0x10</code> dentro de <code>LDR_DATA_TABLE_ENTRY</code> en x64, o <code>+0x08</code> en x86) y no al inicio <code>+0x00</code> de la estructura, todos los accesos posteriores con base en <code>rsi</code> llevan restado ese desplazamiento.</p>
 </aside>
+
 <aside class="ampliacion-ext">
 <p class="callout-titulo">Ampliación editorial basada en fuentes externas — Tabla completa de offsets de PEB, PEB_LDR_DATA y LDR_DATA_TABLE_ENTRY en x86 y x64</p>
 <p>De acuerdo con <a href="https://learn.microsoft.com/en-us/windows/win32/api/winternl/ns-winternl-peb" rel="noopener" target="_blank">PEB (winternl.h)</a> y <a href="https://learn.microsoft.com/en-us/windows/win32/api/winternl/ns-winternl-peb_ldr_data" rel="noopener" target="_blank">PEB_LDR_DATA (winternl.h)</a> en Microsoft Learn <em>(Hecho confirmado)</em>:</p>

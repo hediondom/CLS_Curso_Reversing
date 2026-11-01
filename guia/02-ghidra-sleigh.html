@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>2.31 · Extensiones de Ghidra y SLEIGH</title>
+<meta name="description" content="Escribir scripts y plugins de Ghidra (Jython, PyGhidra, Java), correr el analizador headless, usar P-Code y entender SLEIGH para modelar arquitecturas o bytecode propio.">
+<link rel="stylesheet" href="../guia/estilo.css">
+</head>
+<body>
+<a class="salto" href="#contenido">Saltar al contenido</a>
+<header class="cabecera">
+  <div class="marca"><a href="../00_EMPEZAR_AQUI.html">CLS · Curso de reversing</a> <span class="edicion">edición 5 · 27/10/2026</span></div>
+  <nav class="principal" aria-label="Navegación principal">
+    <a href="../00_EMPEZAR_AQUI.html">Inicio</a>
+    <a href="../guia/index.html">Curso</a>
+    <a href="../materiales.html">Materiales</a>
+    <a href="../fichas/index.html">Fichas</a>
+    <a href="../glosario.html">Glosario</a>
+    <a href="../preguntas_y_respuestas.html">Repaso</a>
+    <a href="../buscar.html">Buscar</a>
+  </nav>
+</header>
+<main id="contenido">
+<nav class="migas" aria-label="Ubicación"><a href="../00_EMPEZAR_AQUI.html">Inicio</a><span aria-hidden="true">›</span><a href="../guia/index.html">Curso</a><span aria-hidden="true">›</span><span>Etapa 2 · Desofuscación avanzada (2E)</span></nav><h1 id="extensiones-de-ghidra-y-sleigh">Extensiones de Ghidra y SLEIGH</h1>
+<aside class="callout nota"><p class="callout-titulo">Objetivo de la lección</p><p>Automatizar Ghidra con <strong>scripts</strong> (descifrar strings, renombrar, resolver imports) y entender <strong>P-Code</strong> y <strong>SLEIGH</strong> lo suficiente para leer el IR y, si hace falta, <strong>modelar un bytecode propio</strong> (el de tu mini-VM de 2.26). <strong>Prerrequisitos:</strong> Ghidra/Cutter (<a href="02-ghidra.html">2.16</a>) y C++ profundo (<a href="02-cpp-profundo.html">2.18</a>).</p></aside>
+<p>Ampliación de <a href="02-ghidra.html">2.16</a>: ahí recorriste Ghidra «a mano»; acá lo <strong>programás</strong>.</p>
+<h2 id="por-qué-extender-ghidra">Por qué extender Ghidra</h2>
+<p>Dos motivos (<strong>conocimiento externo</strong>): <strong>automatizar</strong> lo repetitivo (descifrar cientos de strings, renombrar por patrón, anotar structs) y <strong>enseñarle algo que no sabe</strong> (una arquitectura rara, un bytecode a medida). Lo primero son <em>scripts</em>; lo segundo es <strong>SLEIGH</strong>.</p>
+<h2 id="scripts-jython-pyghidra-y-java">Scripts: Jython, PyGhidra y Java</h2>
+<ul><li><strong>Jython (Python 2):</strong> el scripting histórico, integrado en el <em>Script Manager</em>. Cómodo para tareas rápidas; el lenguaje es viejo.</li><li><strong>PyGhidra (Python 3):</strong> desde <strong>Ghidra 11+</strong> viene integrado y es el <strong>estándar actual</strong>: corre CPython 3 real contra la API, así que podés usar librerías de Python 3 dentro del script (<code>z3-solver</code> para resolver una condición, <code>requests</code>, <code>capstone</code>…). En versiones previas se lograba lo mismo con Ghidrathon. Jython queda para scripts viejos.</li><li><strong>Java (GhidraScript):</strong> la API nativa, la más completa y la de los <em>plugins</em>/analizadores.</li></ul>
+<p>Las piezas de la API que más vas a tocar: <code>FlatProgramAPI</code> (<code>getInstructionAt</code>, <code>getBytes</code>, <code>createFunction</code>, <code>setEOLComment</code>, <code>getSymbolAt</code>) y la interfaz de decompilado <code>DecompInterface</code> (pedir el C decompilado de una función desde el script).</p>
+<h2 id="headless-ghidra-sin-interfaz">Headless: Ghidra sin interfaz</h2>
+<p>Para procesar muchos binarios o integrar en CI, <code>analyzeHeadless</code> corre el análisis y tus scripts <strong>sin GUI</strong>:</p>
+<pre><code class="lenguaje-text">analyzeHeadless C:\proyectos miProyecto ^
+  -import .\muestra_propia.exe ^
+  -postScript descifrar_strings.py ^
+  -scriptPath .\scripts</code></pre>
+<h2 id="p-code-el-ir-de-ghidra">P-Code: el IR de Ghidra</h2>
+<p>Ghidra no razona sobre x86 directamente: traduce cada instrucción a <strong>P-Code</strong>, un lenguaje intermedio de operaciones chiquitas (<code>COPY</code>, <code>INT_ADD</code>, <code>LOAD</code>, <code>STORE</code>, <code>CBRANCH</code>…). Hay dos niveles: <strong>raw</strong> (crudo, 1 instrucción → varias ops) y <strong>refined/high</strong> (tras el análisis, el que alimenta el decompilador). Trabajar sobre P-Code te da análisis de flujo de datos <strong>independiente de la arquitectura</strong>: el mismo script sirve para x86 y para ARM.</p>
+<h2 id="sleigh-enseñarle-una-arquitectura-o-tu-bytecode">SLEIGH: enseñarle una arquitectura (o tu bytecode)</h2>
+<p><strong>SLEIGH</strong> es el lenguaje con que Ghidra describe un procesador: un <code>.slaspec</code> (cómo se decodifican los bytes y qué P-Code produce cada instrucción), más <code>.pspec</code>/<code>.cspec</code>/<code>.ldefs</code> (registros, convención de llamada, variantes). Modelar una instrucción es decir tres cosas: <strong>qué bits</strong> la identifican, <strong>cómo se muestra</strong> (el <em>display</em>) y <strong>qué hace</strong> (su semántica en P-Code). Esto es lo que te deja <strong>liftear el bytecode de tu mini-VM</strong> (2.26) y que Ghidra lo decompile como si fuera código normal.</p>
+<pre><code class="lenguaje-text"># fragmento SLEIGH (ESQUEMÁTICO) para el OP_XOR de la mini-VM de 2.26
+# opcode de 8 bits + inmediato de 8 bits; 'acc' es un registro virtual
+define token instr (16) op=(8,15) imm=(0,7);
+:XOR imm is op=0x02 &amp; imm { acc = acc ^ imm; }     # semántica = P-Code
+:ADD imm is op=0x03 &amp; imm { acc = acc + imm; }</code></pre>
+<h2 id="ejemplo-paso-a-paso-descifrar-strings-con-un-script">Ejemplo paso a paso: descifrar strings con un script</h2>
+<p><em>(Ejemplo <strong>ilustrativo</strong>: script Jython sobre un binario propio; Window → Script Manager.)</em></p>
+<pre><code class="lenguaje-python"># descifrar_strings.py (Jython) — XOR 0x5A y dejar el claro como comentario
+addr = toAddr(0x00403020)
+n = 16
+data = getBytes(addr, n)                      # byte[] (con signo)
+claro = "".join(chr((b &amp; 0xff) ^ 0x5A) for b in data)
+setEOLComment(addr, "desc: " + claro)         # queda anotado en el listado
+print("descifrado:", claro)</code></pre>
+<p>Qué hiciste: leíste 16 bytes, los pasaste por <code>XOR 0x5A</code> y dejaste el texto claro <strong>anotado en el propio listado</strong>, de forma reproducible. Escalado a un bucle sobre todas las referencias a la rutina de descifrado, resolvés cientos de strings en segundos —lo que a mano sería una tarde—.</p>
+<h2 id="práctica">Práctica</h2>
+<p>En tu VM, sobre binarios <strong>propios</strong>:</p>
+<ol><li>Compilá un binario que guarde sus strings con <code>XOR 0x5A</code> y escribí un script Ghidra que las descifre y comente todas.</li><li>Corré ese mismo script en modo <strong>headless</strong> sobre dos binarios de una.</li><li>Pedí con <code>DecompInterface</code> el C decompilado de una función y guardalo a archivo.</li><li>Escribí (esquemático) las líneas SLEIGH de dos opcodes más de tu mini-VM (2.26) y explicá qué P-Code generarían.</li></ol>
+<h2 id="preguntas-de-repaso">Preguntas de repaso</h2>
+<details class="qa"><summary>¿Cuándo escribís un script y cuándo tocás SLEIGH?</summary><div class="respuesta"><p><strong>Script</strong> para automatizar sobre una arquitectura que Ghidra <strong>ya entiende</strong> (descifrar, renombrar, anotar). <strong>SLEIGH</strong> cuando hay que <strong>enseñarle una arquitectura o un bytecode nuevo</strong> que no trae.</p></div></details>
+<details class="qa"><summary>¿Qué es P-Code y por qué conviene razonar sobre él?</summary><div class="respuesta"><p>Es el <strong>IR</strong> de Ghidra: cada instrucción se traduce a operaciones chicas (<code>INT_ADD</code>, <code>LOAD</code>…). Razonar sobre P-Code es <strong>independiente de la arquitectura</strong>: el mismo análisis vale para x86 y ARM.</p></div></details>
+<details class="qa"><summary>¿Qué tres cosas define una instrucción en SLEIGH?</summary><div class="respuesta"><p><strong>Qué bits</strong> la identifican (el patrón del token), <strong>cómo se muestra</strong> (el display/mnemónico) y <strong>qué hace</strong> (su semántica expresada en P-Code).</p></div></details>
+<details class="qa"><summary>¿Para qué sirve <code>analyzeHeadless</code>?</summary><div class="respuesta"><p>Para correr el análisis y tus scripts <strong>sin la GUI</strong>: procesar lotes de binarios, integrar en CI o automatizar pipelines de triage.</p></div></details>
+<details class="qa"><summary>¿Cómo se conecta esta lección con la VM de 2.26?</summary><div class="respuesta"><p>Con SLEIGH podés <strong>modelar el bytecode de tu mini-VM</strong> para que Ghidra lo desensamble y decompile como código normal: es la vía de <em>lifting</em> para devirtualizar lo que vos mismo virtualizaste.</p></div></details>
+<aside class="callout nota"><p class="callout-titulo">Puerta de salida</p><p>Podés: (1) escribir un script de Ghidra (Jython/PyGhidra) que descifre y anote; (2) correrlo en headless; (3) explicar qué es P-Code y sus niveles; (4) describir cómo SLEIGH modela una instrucción y para qué liftearías tu bytecode propio.</p></aside>
+<h2 id="fuentes-de-esta-lección">Fuentes de esta lección</h2>
+<ul><li><a href="https://ghidra.re/ghidra_docs/api/" rel="noopener" target="_blank">ghidra.re · API (FlatProgramAPI, DecompInterface)</a> — scripting en Java/Jython (conocimiento externo).</li><li><a href="https://htmlpreview.github.io/?https://github.com/NationalSecurityAgency/ghidra/blob/master/GhidraDocs/languages/html/sleigh.html" rel="noopener" target="_blank">SLEIGH language docs</a> — tokens, display y semántica P-Code.</li><li><a href="https://github.com/mandiant/Ghidrathon" rel="noopener" target="_blank">github.com/mandiant/Ghidrathon</a> — Python 3 en Ghidra (alternativa a Jython).</li><li><a href="02-ghidra.html">2.16 Ghidra/Cutter</a> (recorrido a mano) y <a href="02-ofuscacion-vm.html">2.26 VM</a> (el bytecode que se liftea).</li></ul>
+<aside class="callout nota"><p class="callout-titulo">Capas de esta lección</p><p><strong>Contenido observado en CLS:</strong> el recorrido de Ghidra de 2.16 como base. <strong>Conocimiento externo (agregado por esta edición):</strong> la API de scripting, headless, P-Code y SLEIGH. <strong>Recomendación editorial:</strong> los ejemplos (incluida la línea SLEIGH, marcada como esquemática) y la práctica son ilustrativos.</p></aside>
+</main>
+<footer class="pie">
+  <p>Material educativo y defensivo. Las prácticas se limitan a programas propios, software abierto o crackmes diseñados para aprender. No se enseña a eludir licencias, DRM ni controles de acceso.</p>
+  <p><a href="../00_EMPEZAR_AQUI.html">Inicio</a> · <a href="../guia/etapa-0.html">Etapas</a> · <a href="../fuentes_y_limites.html">Fuentes y límites</a> · <a href="../registro_de_cobertura.csv">Registro de cobertura</a></p>
+</footer>
+</body>
+</html>

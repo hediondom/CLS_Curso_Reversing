@@ -89,15 +89,6 @@ Secciones: .text .rdata .data        Símbolos: __mingw_*, ___chkstk_ms
 <aside class="callout nota"><p class="callout-titulo">Capas de esta lección</p><p><strong>Contenido observado en CLS:</strong> la huella de MFC del capítulo 39 y los conteos por título de <code>Teorias_Numeradas</code>. <strong>Conocimiento externo:</strong> la tabla de huellas (Rich header, <code>MSVBVM60.DLL</code>, VMT de Delphi, <code>.eh_frame</code> de MinGW, Go y Rust), el caso p-code y las particularidades de lectura de Go, Rust y Delphi. <strong>Recomendación editorial:</strong> mirar imports y strings primero y la práctica comparativa MSVC/MinGW.</p></aside>
 
 <aside class="ampliacion-ext">
-<p class="callout-titulo">Ampliación editorial basada en fuentes externas — ABI register, cabecera StrRec en offsets negativos y firma TPF0 en Delphi</p>
-<ul>
-<li><strong>Convención <code>register</code> en 32 bits vs. x64 (<a href="https://docwiki.embarcadero.com/RADStudio/en/Program_Control" rel="noopener" target="_blank">Embarcadero DocWiki: Program Control</a>):</strong> En Delphi x86 (<code>DCC32</code>), los tres primeros argumentos de hasta 32 bits van en <code>EAX</code> (1.º, o <code>Self</code> en métodos), <code>EDX</code> (2.º) y <code>ECX</code> (3.º); los restantes se apilan de izquierda a derecha y la función llamada limpia el stack (<code>ret N</code>). En Delphi x64 (<code>DCC64</code>), el compilador usa la ABI estándar de Microsoft (<code>RCX</code>, <code>RDX</code>, <code>R8</code>, <code>R9</code>) <em>(Hecho confirmado)</em>.</li>
-<li><strong>Layout en memoria de cadenas largas (<a href="https://docwiki.embarcadero.com/RADStudio/en/Internal_Data_Formats_(Delphi)" rel="noopener" target="_blank">Embarcadero DocWiki: Internal Data Formats</a>):</strong> El puntero de cadena (Delphi 2009+) apunta al primer carácter (<code>offset 0</code>), precedido por una cabecera de 12 bytes en desplazamientos negativos: <code>[ptr - 12]</code> = <code>codePage</code> (2 B), <code>[ptr - 10]</code> = <code>elemSize</code> (2 B), <code>[ptr - 8]</code> = <code>refCnt</code> (4 B; <code>-1</code> en literales constantes) y <code>[ptr - 4]</code> = <code>length</code> en caracteres (4 B). Por eso <code>Length(s)</code> se traduce como <code>mov eax, [eax - 4]</code> <em>(Hecho confirmado)</em>.</li>
-<li><strong>Formularios en <code>.rsrc</code> (<code>TPF0</code>) (<a href="https://docwiki.embarcadero.com/RADStudio/en/Using_Resource_Files" rel="noopener" target="_blank">Embarcadero DocWiki: Using Resource Files</a>):</strong> Los formularios VCL/FMX compilados en recursos <code>RT_RCDATA</code> comienzan con los 4 bytes ASCII <code>54 50 46 30</code> (<code>"TPF0"</code>) generados por <code>TWriter</code> y asocian cada control con el nombre de su método de evento publicado <em>(Hecho confirmado)</em>.</li>
-</ul>
-</aside>
-
-<aside class="ampliacion-ext">
 <p class="callout-titulo">Ampliación editorial basada en fuentes externas — Metodología de reversing para binarios en Go (pclntab, strings y ABI) y Rust (mangling v0 y enums)</p>
 <p>Dada la proliferación de binarios compilados en <strong>Go</strong> y <strong>Rust</strong> en software de sistema, herramientas defensivas y amenazas modernas, su análisis requiere técnicas específicas que difieren sustancialmente del código compilado en C/C++ clásico:</p>
 
@@ -142,6 +133,15 @@ En ensamblador se observa la comprobación del byte discriminante previa a opera
 <pre><code>test rax, rax     ; Comprueba si el Option&lt;&amp;T&gt; o Option&lt;Box&lt;T&gt;&gt; es nulo
 jz es_none        ; Si es cero, equivale a la rama None
 ; ... continúa en la rama Some(&amp;T) usando RAX directamente como puntero</code></pre></li>
+</ul>
+</aside>
+
+<aside class="ampliacion-ext">
+<p class="callout-titulo">Ampliación editorial basada en fuentes externas — ABI register, cabecera StrRec en offsets negativos y firma TPF0 en Delphi</p>
+<ul>
+<li><strong>Convención <code>register</code> en 32 bits vs. x64 (<a href="https://docwiki.embarcadero.com/RADStudio/en/Program_Control" rel="noopener" target="_blank">Embarcadero DocWiki: Program Control</a>):</strong> En Delphi x86 (<code>DCC32</code>), los tres primeros argumentos de hasta 32 bits van en <code>EAX</code> (1.º, o <code>Self</code> en métodos), <code>EDX</code> (2.º) y <code>ECX</code> (3.º); los restantes se apilan de izquierda a derecha y la función llamada limpia el stack (<code>ret N</code>). En Delphi x64 (<code>DCC64</code>), el compilador usa la ABI estándar de Microsoft (<code>RCX</code>, <code>RDX</code>, <code>R8</code>, <code>R9</code>) <em>(Hecho confirmado)</em>.</li>
+<li><strong>Layout en memoria de cadenas largas (<a href="https://docwiki.embarcadero.com/RADStudio/en/Internal_Data_Formats_(Delphi)" rel="noopener" target="_blank">Embarcadero DocWiki: Internal Data Formats</a>):</strong> El puntero de cadena (Delphi 2009+) apunta al primer carácter (<code>offset 0</code>), precedido por una cabecera de 12 bytes en desplazamientos negativos: <code>[ptr - 12]</code> = <code>codePage</code> (2 B), <code>[ptr - 10]</code> = <code>elemSize</code> (2 B), <code>[ptr - 8]</code> = <code>refCnt</code> (4 B; <code>-1</code> en literales constantes) y <code>[ptr - 4]</code> = <code>length</code> en caracteres (4 B). Por eso <code>Length(s)</code> se traduce como <code>mov eax, [eax - 4]</code> <em>(Hecho confirmado)</em>.</li>
+<li><strong>Formularios en <code>.rsrc</code> (<code>TPF0</code>) (<a href="https://docwiki.embarcadero.com/RADStudio/en/Using_Resource_Files" rel="noopener" target="_blank">Embarcadero DocWiki: Using Resource Files</a>):</strong> Los formularios VCL/FMX compilados en recursos <code>RT_RCDATA</code> comienzan con los 4 bytes ASCII <code>54 50 46 30</code> (<code>"TPF0"</code>) generados por <code>TWriter</code> y asocian cada control con el nombre de su método de evento publicado <em>(Hecho confirmado)</em>.</li>
 </ul>
 </aside>
 </main>
