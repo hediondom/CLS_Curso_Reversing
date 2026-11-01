@@ -47,8 +47,8 @@ La profundización **Etapa 2 · Rama optativa 2D — Windows internals** tiene 1
 
 Las horas son **estimaciones editoriales**, no mediciones de alumnos ni duraciones declaradas por CLS. Las de 2B/2C se estiman por bloque; 2D/Etapa 6 pueden requerir más tiempo según las prácticas y experiencia previa.
 
-:::{nota} Cómo se cuentan las lecciones
-La **Etapa 2** reúne 2A, 2B y 2C, además de 3 rutas optativas (2.22–2.24) que no son obligatorias. La rama optativa 2D se asocia a la Etapa 2 después de 2C y aporta 13 lecciones fuera de sus horas obligatorias. La Etapa 6 tiene 6 lecciones optativas. La extensión Hyper-V está fuera de ambos núcleos. El apartado 5.4 «Fuera de alcance» es una página de límites, no una lección a cursar.
+::: {nota} Cómo se cuentan las lecciones y en qué orden cursar 2.22–2.24
+La **Etapa 2** reúne 2A (2.1–2.9), 2B (2.10–2.16) y 2C (2.17–2.21), además de 3 rutas optativas (2.22–2.24) y el Bloque 2E avanzado (2.25–2.33). Como las optativas 2.22–2.24 declaran como prerrequisitos las lecciones 4.1, 4.2, 4.4 y 5.1, se recomienda cursarlas después de completar la Etapa 4 y la lección 5.1, manteniendo intacta la numeración del curso. La Etapa 4 comprende **5 lecciones base** (4.1 a 4.5; 19–25 h) más la ampliación **4.6** de protocolos de terceros. La rama optativa 2D aporta 13 lecciones fuera de las horas obligatorias y la Etapa 6 suma 6 lecciones optativas. El apartado 5.4 «Fuera de alcance» es una página de límites, no una lección a cursar.
 :::
 
 ## Cómo estudiar

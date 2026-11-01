@@ -44,6 +44,10 @@ def buscar_chrome():
 
 CHROME = buscar_chrome()
 
+# Carpeta base para el perfil temporal de Chrome headless (faltaba definir tras el refactor).
+SCRATCH_BRAIN = ARTIFACT_DIR if ARTIFACT_DIR else os.path.join(DST_GUIA, "_trabajo")
+os.makedirs(os.path.join(SCRATCH_BRAIN, "chrome-prof"), exist_ok=True)
+
 
 def copiar_estructura_base():
     """Copia CLS_Guia a DST_GUIA excluyendo carpetas de backup pesadas."""
@@ -344,13 +348,13 @@ def aplicar_6_mejoras_html():
     p_home = os.path.join(DST_GUIA, "00_EMPEZAR_AQUI.html")
     h_home = open(p_home, encoding="utf-8").read()
     old_row4 = '<tr><td><strong>4</strong></td><td><a href="guia/etapa-4.html">Práctica guiada</a></td><td>14–18 h</td><td>Análisis completo + informe reproducible</td></tr>'
-    new_row4 = '<tr><td><strong>4</strong></td><td><a href="guia/etapa-4.html">Práctica guiada</a></td><td>19–25 h</td><td>Método, formatos/protocolos, cripto, informe y dinámico seguro (5 lecciones)</td></tr>'
+    new_row4 = '<tr><td><strong>4</strong></td><td><a href="guia/etapa-4.html">Práctica guiada</a></td><td>19–25 h</td><td>Método, formatos/protocolos, cripto, informe y dinámico seguro (6 lecciones: 5 base + 4.6)</td></tr>'
     if old_row4 in h_home:
         pass
     h_home = h_home.replace(old_row4, new_row4, 1)
 
     old_callout = '<aside class="callout nota"><p class="callout-titulo">Cómo se cuentan las lecciones</p><p>La <strong>Etapa 2</strong> reúne 2A, 2B y 2C, además de 3 rutas optativas (2.22–2.24) que no son obligatorias. La rama optativa 2D se asocia a la Etapa 2 después de 2C y aporta 13 lecciones fuera de sus horas obligatorias. La Etapa 6 tiene 6 lecciones optativas. La extensión Hyper-V está fuera de ambos núcleos. El apartado 5.4 «Fuera de alcance» es una página de límites, no una lección a cursar.</p></aside>'
-    new_callout = '<aside class="callout nota"><p class="callout-titulo">Cómo se cuentan las lecciones y en qué orden cursar 2.22–2.24</p><p>La <strong>Etapa 2</strong> reúne 2A (2.1–2.9), 2B (2.10–2.16) y 2C (2.17–2.21), además de 3 rutas optativas (<a href="guia/02-opt-malware-dinamico.html">2.22</a>, <a href="guia/02-opt-shellcode-c2.html">2.23</a> y <a href="guia/02-opt-fuzzing.html">2.24</a>) que no son obligatorias. Como esas tres optativas declaran como prerrequisitos las lecciones <code>4.1</code>, <code>4.2</code>, <code>4.4</code> y <code>5.1</code>, se recomienda cursarlas <strong>después de completar la Etapa 4 y la lección 5.1</strong>, manteniendo intacta la numeración del curso. La Etapa 4 comprende <strong>5 lecciones</strong> (<code>4.1</code>, <code>4.5</code>, <code>4.2</code>, <code>4.3</code> y <code>4.4</code>; 19–25 h). La rama optativa 2D aporta 13 lecciones fuera de las horas obligatorias y la Etapa 6 suma 6 lecciones optativas. El apartado 5.4 «Fuera de alcance» es una página de límites, no una lección a cursar.</p></aside>'
+    new_callout = '<aside class="callout nota"><p class="callout-titulo">Cómo se cuentan las lecciones y en qué orden cursar 2.22–2.24</p><p>La <strong>Etapa 2</strong> reúne 2A (2.1–2.9), 2B (2.10–2.16) y 2C (2.17–2.21), además de 3 rutas optativas (<a href="guia/02-opt-malware-dinamico.html">2.22</a>, <a href="guia/02-opt-shellcode-c2.html">2.23</a> y <a href="guia/02-opt-fuzzing.html">2.24</a>) que no son obligatorias. Como esas tres optativas declaran como prerrequisitos las lecciones <code>4.1</code>, <code>4.2</code>, <code>4.4</code> y <code>5.1</code>, se recomienda cursarlas <strong>después de completar la Etapa 4 y la lección 5.1</strong>, manteniendo intacta la numeración del curso. La Etapa 4 comprende <strong>5 lecciones base</strong> (<code>4.1</code> a <code>4.5</code>; 19–25 h) más la ampliación <strong>4.6</strong> de protocolos de terceros. La rama optativa 2D aporta 13 lecciones fuera de las horas obligatorias y la Etapa 6 suma 6 lecciones optativas. El apartado 5.4 «Fuera de alcance» es una página de límites, no una lección a cursar.</p></aside>'
     if old_callout in h_home:
         pass
     h_home = h_home.replace(old_callout, new_callout, 1)
@@ -758,6 +762,15 @@ def generar_pdf_completo():
         ("guia/02-opt-malware-dinamico.html", "2.22 (opt) Malware dinámico"),
         ("guia/02-opt-shellcode-c2.html", "2.23 (opt) Shellcode, red y C2"),
         ("guia/02-opt-fuzzing.html", "2.24 (opt) Fuzzing y simbólico"),
+        ("guia/02-simbolico-desofuscacion.html", "2.25 Ejecución simbólica y concólica"),
+        ("guia/02-ofuscacion-vm.html", "2.26 Ofuscación por máquina virtual"),
+        ("guia/02-protectores-multicapa.html", "2.27 Protectores y packers multicapa"),
+        ("guia/02-anti-analisis-neutralizar.html", "2.28 Neutralizar anti-análisis"),
+        ("guia/02-dbi-dynamorio-pin.html", "2.29 DBI: DynamoRIO y Pin"),
+        ("guia/02-frida-stalker.html", "2.30 Frida Stalker"),
+        ("guia/02-ghidra-sleigh.html", "2.31 Extensiones de Ghidra y SLEIGH"),
+        ("guia/02-go-rust.html", "2.32 Go y Rust en profundidad"),
+        ("guia/02-vb6-pcode.html", "2.33 VB6 y p-code"),
         ("guia/03-dotnet-runtime.html", "3.1 .NET runtime"),
         ("guia/03-dotnet-il.html", "3.2 Leer IL"),
         ("guia/04-metodo.html", "4.1 Método de análisis"),
@@ -765,6 +778,7 @@ def generar_pdf_completo():
         ("guia/04-informe.html", "4.3 Informe"),
         ("guia/04-dinamico-seguro.html", "4.4 Dinámico seguro"),
         ("guia/04-formatos-protocolos.html", "4.5 Reconstruir formatos y protocolos"),
+        ("guia/04-protocolos-terceros.html", "4.6 Protocolos de terceros"),
         ("guia/05-malware.html", "5.1 Malware"),
         ("guia/05-vulnerabilidades.html", "5.2 Vulnerabilidades"),
         ("guia/05-automatizacion.html", "5.3 Automatización"),
@@ -973,9 +987,9 @@ details.qa summary { font-size: 10pt; }
     orden = [
         ("Etapa 0", ["guia/00-laboratorio.html"]),
         ("Etapa 1", ["guia/01-numeros.html", "guia/01-memoria.html", "guia/01-procesos.html", "guia/01-pe.html", "guia/01-c-python.html"]),
-        ("Etapa 2", ["guia/02-registros.html", "guia/02-instrucciones.html", "guia/02-flotante.html", "guia/02-flujo.html", "guia/02-llamadas.html", "guia/02-debugger.html", "guia/02-ida.html", "guia/02-optimizaciones.html", "guia/02-herramientas.html", "guia/02-ofuscacion.html", "guia/02-tls.html", "guia/02-mfc.html", "guia/02-huella-compilador.html", "guia/02-pe-fino.html", "guia/02-anti-analisis.html", "guia/02-ghidra.html", "guia/02-packers.html", "guia/02-cpp-profundo.html", "guia/02-windbg-heap.html", "guia/02-patch-diffing.html", "guia/02-scripting-debugger.html", "guia/02-opt-malware-dinamico.html", "guia/02-opt-shellcode-c2.html", "guia/02-opt-fuzzing.html"]),
+        ("Etapa 2", ["guia/02-registros.html", "guia/02-instrucciones.html", "guia/02-flotante.html", "guia/02-flujo.html", "guia/02-llamadas.html", "guia/02-debugger.html", "guia/02-ida.html", "guia/02-optimizaciones.html", "guia/02-herramientas.html", "guia/02-ofuscacion.html", "guia/02-tls.html", "guia/02-mfc.html", "guia/02-huella-compilador.html", "guia/02-pe-fino.html", "guia/02-anti-analisis.html", "guia/02-ghidra.html", "guia/02-packers.html", "guia/02-cpp-profundo.html", "guia/02-windbg-heap.html", "guia/02-patch-diffing.html", "guia/02-scripting-debugger.html", "guia/02-opt-malware-dinamico.html", "guia/02-opt-shellcode-c2.html", "guia/02-opt-fuzzing.html", "guia/02-simbolico-desofuscacion.html", "guia/02-ofuscacion-vm.html", "guia/02-protectores-multicapa.html", "guia/02-anti-analisis-neutralizar.html", "guia/02-dbi-dynamorio-pin.html", "guia/02-frida-stalker.html", "guia/02-ghidra-sleigh.html", "guia/02-go-rust.html", "guia/02-vb6-pcode.html"]),
         ("Etapa 3", ["guia/03-dotnet-runtime.html", "guia/03-dotnet-il.html"]),
-        ("Etapa 4", ["guia/04-metodo.html", "guia/04-cripto.html", "guia/04-informe.html", "guia/04-dinamico-seguro.html", "guia/04-formatos-protocolos.html"]),
+        ("Etapa 4", ["guia/04-metodo.html", "guia/04-cripto.html", "guia/04-informe.html", "guia/04-dinamico-seguro.html", "guia/04-formatos-protocolos.html", "guia/04-protocolos-terceros.html"]),
         ("Etapa 5", ["guia/05-malware.html", "guia/05-vulnerabilidades.html", "guia/05-automatizacion.html", "guia/05-fuera-de-alcance.html"]),
         ("Etapa 6 · Rama optativa", ["guia/6-01-arquitectura-kernel.html", "guia/6-02-kmdf-ioctl.html", "guia/6-03-debug-kernel.html", "guia/6-04-revision-driver.html", "guia/6-05-minifilters.html", "guia/6-06-mitigaciones.html"]),
     ]
@@ -1374,9 +1388,9 @@ def generar_tomos_y_separata(ctx):
     orden_t1 = [
         ("Etapa 0", ["guia/00-laboratorio.html"]),
         ("Etapa 1", ["guia/01-numeros.html", "guia/01-memoria.html", "guia/01-procesos.html", "guia/01-pe.html", "guia/01-c-python.html"]),
-        ("Etapa 2", ["guia/02-registros.html", "guia/02-instrucciones.html", "guia/02-flotante.html", "guia/02-flujo.html", "guia/02-llamadas.html", "guia/02-debugger.html", "guia/02-ida.html", "guia/02-optimizaciones.html", "guia/02-herramientas.html", "guia/02-ofuscacion.html", "guia/02-tls.html", "guia/02-mfc.html", "guia/02-huella-compilador.html", "guia/02-pe-fino.html", "guia/02-anti-analisis.html", "guia/02-ghidra.html", "guia/02-packers.html", "guia/02-cpp-profundo.html", "guia/02-windbg-heap.html", "guia/02-patch-diffing.html", "guia/02-scripting-debugger.html", "guia/02-opt-malware-dinamico.html", "guia/02-opt-shellcode-c2.html", "guia/02-opt-fuzzing.html"]),
+        ("Etapa 2", ["guia/02-registros.html", "guia/02-instrucciones.html", "guia/02-flotante.html", "guia/02-flujo.html", "guia/02-llamadas.html", "guia/02-debugger.html", "guia/02-ida.html", "guia/02-optimizaciones.html", "guia/02-herramientas.html", "guia/02-ofuscacion.html", "guia/02-tls.html", "guia/02-mfc.html", "guia/02-huella-compilador.html", "guia/02-pe-fino.html", "guia/02-anti-analisis.html", "guia/02-ghidra.html", "guia/02-packers.html", "guia/02-cpp-profundo.html", "guia/02-windbg-heap.html", "guia/02-patch-diffing.html", "guia/02-scripting-debugger.html", "guia/02-opt-malware-dinamico.html", "guia/02-opt-shellcode-c2.html", "guia/02-opt-fuzzing.html", "guia/02-simbolico-desofuscacion.html", "guia/02-ofuscacion-vm.html", "guia/02-protectores-multicapa.html", "guia/02-anti-analisis-neutralizar.html", "guia/02-dbi-dynamorio-pin.html", "guia/02-frida-stalker.html", "guia/02-ghidra-sleigh.html", "guia/02-go-rust.html", "guia/02-vb6-pcode.html"]),
         ("Etapa 3", ["guia/03-dotnet-runtime.html", "guia/03-dotnet-il.html"]),
-        ("Etapa 4", ["guia/04-metodo.html", "guia/04-cripto.html", "guia/04-informe.html", "guia/04-dinamico-seguro.html", "guia/04-formatos-protocolos.html"]),
+        ("Etapa 4", ["guia/04-metodo.html", "guia/04-cripto.html", "guia/04-informe.html", "guia/04-dinamico-seguro.html", "guia/04-formatos-protocolos.html", "guia/04-protocolos-terceros.html"]),
         ("Etapa 5", ["guia/05-malware.html", "guia/05-vulnerabilidades.html", "guia/05-automatizacion.html", "guia/05-fuera-de-alcance.html"]),
     ]
     for etapa, lecs in orden_t1:
@@ -1649,9 +1663,9 @@ VM con Windows x64 aislada, Visual Studio Developer Command Prompt (<code>cl.exe
 <tr><td><strong>Etapa 2A · Núcleo x86/x64, IDA y x64dbg</strong> (<code>2.1–2.9</code>)</td><td>Principiante</td><td><strong>Tomo I</strong></td><td>{rango_en(info_t1, ancla("guia/etapa-2.html"), ancla("guia/02-ofuscacion.html"))}</td><td>{rango_en(ctx, ancla("guia/etapa-2.html"), ancla("guia/02-ofuscacion.html"))}</td></tr>
 <tr><td><strong>Etapa 2B · Ofuscación, TLS, MFC, PEB, Anti-debug, Ghidra</strong> (<code>2.10–2.16</code>)</td><td>Intermedio</td><td><strong>Tomo I</strong></td><td>{rango_en(info_t1, ancla("guia/02-ofuscacion.html"), ancla("guia/02-packers.html"))}</td><td>{rango_en(ctx, ancla("guia/02-ofuscacion.html"), ancla("guia/02-packers.html"))}</td></tr>
 <tr><td><strong>Etapa 2C · Packers, C++ profundo, WinDbg/TTD, Diffing, Frida</strong> (<code>2.17–2.21</code>)</td><td>Interm. / Avanzado</td><td><strong>Tomo I</strong></td><td>{rango_en(info_t1, ancla("guia/02-packers.html"), ancla("guia/02-opt-malware-dinamico.html"))}</td><td>{rango_en(ctx, ancla("guia/02-packers.html"), ancla("guia/02-opt-malware-dinamico.html"))}</td></tr>
-<tr><td><strong>Etapa 2 Optativas · Malware dinámico, Shellcode, Fuzzing</strong> (<code>2.22–2.24</code>)</td><td>Interm. / Avanzado</td><td><strong>Tomo I</strong></td><td>{rango_en(info_t1, ancla("guia/02-opt-malware-dinamico.html"), ancla("guia/etapa-3.html"))}</td><td>{rango_en(ctx, ancla("guia/02-opt-malware-dinamico.html"), ancla("guia/etapa-3.html"))}</td></tr>
+<tr><td><strong>Etapa 2 Optativas (2.22–2.24) y Bloque 2E Avanzado (2.25–2.33)</strong></td><td>Interm. / Avanzado</td><td><strong>Tomo I</strong></td><td>{rango_en(info_t1, ancla("guia/02-opt-malware-dinamico.html"), ancla("guia/etapa-3.html"))}</td><td>{rango_en(ctx, ancla("guia/02-opt-malware-dinamico.html"), ancla("guia/etapa-3.html"))}</td></tr>
 <tr><td><strong>Etapa 3 · Reversing en .NET e IL</strong> (<code>3.1–3.2</code>)</td><td>Principiante</td><td><strong>Tomo I</strong></td><td>{rango_en(info_t1, ancla("guia/etapa-3.html"), ancla("guia/etapa-4.html"))}</td><td>{rango_en(ctx, ancla("guia/etapa-3.html"), ancla("guia/etapa-4.html"))}</td></tr>
-<tr><td><strong>Etapa 4 · Método de 5 pasos, protocolos, cripto e informe</strong> (<code>4.1–4.5</code>)</td><td>Princ. / Intermedio</td><td><strong>Tomo I</strong></td><td>{rango_en(info_t1, ancla("guia/etapa-4.html"), ancla("guia/etapa-5.html"))}</td><td>{rango_en(ctx, ancla("guia/etapa-4.html"), ancla("guia/etapa-5.html"))}</td></tr>
+<tr><td><strong>Etapa 4 · Método de 5 pasos, protocolos, cripto e informe</strong> (<code>4.1–4.6</code>)</td><td>Princ. / Intermedio</td><td><strong>Tomo I</strong></td><td>{rango_en(info_t1, ancla("guia/etapa-4.html"), ancla("guia/etapa-5.html"))}</td><td>{rango_en(ctx, ancla("guia/etapa-4.html"), ancla("guia/etapa-5.html"))}</td></tr>
 <tr><td><strong>Etapa 5 · Malware estático, vulnerabilidades, automatización</strong> (<code>5.1–5.4</code>)</td><td>Interm. / Avanzado</td><td><strong>Tomo I</strong></td><td>{rango_en(info_t1, ancla("guia/etapa-5.html"), "hilo-plantillas")}</td><td>{rango_en(ctx, ancla("guia/etapa-5.html"), ancla("guia/etapa-6.html"))}</td></tr>
 <tr><td><strong>Etapa 6 · Kernel y drivers KMDF/WDM en Windows</strong> (<code>6.1–6.6</code>)</td><td>Avanzado</td><td><strong>Tomo II</strong></td><td>{rango_en(info_t2, ancla("guia/etapa-6.html"), ancla("2d.html"))}</td><td>{rango_en(ctx, ancla("guia/etapa-6.html"), ancla("2d.html"))}</td></tr>
 <tr><td><strong>Rama 2D · Windows internals y Hyper-V</strong> (<code>2D.1–2D.13</code> + Hyper-V)</td><td>Interm. / Avanzado</td><td><strong>Tomo II</strong></td><td>{rango_en(info_t2, ancla("2d.html"), None)}</td><td>{rango_en(ctx, ancla("2d.html"), "hilo-plantillas")}</td></tr>

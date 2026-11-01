@@ -654,7 +654,7 @@ dx @$cursession.TTD.Calls("ntdll!NtCreateFile")  ; consulta todas las llamadas a
 <th>Herramienta y comando / API clave</th>
 <th>Lección</th>
 </tr></thead><tbody>
-<tr><td><strong>Resolver una condición / clave</strong></td><td><strong>angr</strong>: <code>simgr.explore(find=…, avoid=…)</code>. En Windows arrancá en el prólogo de la validación (<code>entry_state(addr=…)</code>) para no modelar el CRT.</td><td>2.25</td></tr>
+<tr><td><strong>Resolver una condición / clave</strong></td><td><strong>angr</strong>: <code>simgr.explore(find=…, avoid=…)</code>. En Windows arrancá en el prólogo de la validación (<code>blank_state(addr=…)</code> + <code>estado.regs.rcx = BUF_ADDR</code>) para no modelar el CRT.</td><td>2.25</td></tr>
 <tr><td><strong>Demostrar que un MBA es una op simple</strong></td><td><strong>Z3</strong>: <code>prove((x ^ y) + 2*(x &amp; y) == x + y)</code> &rarr; <code>proved</code>.</td><td>2.25</td></tr>
 <tr><td><strong>Reconocer una VM de protección</strong></td><td>Bucle <em>dispatcher</em> + tabla de <em>handlers</em> + VIP. Ojo con <em>threaded code</em>: handlers encadenados (<code>jmp [tabla+rbx*8]</code>) sin despachador central.</td><td>2.26</td></tr>
 <tr><td><strong>Identificar packer / protector</strong></td><td><strong>DIE</strong> (<code>diec --entropy</code>): sección con entropía ~7,9 = comprimida/cifrada; IAT mínima o vacía (<em>splicing</em>/emulación de APIs) = empaquetado.</td><td>2.27</td></tr>
