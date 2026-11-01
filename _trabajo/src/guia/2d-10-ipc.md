@@ -95,6 +95,42 @@ Ficha del análisis, separando observación de inferencia:
 | Validación | Mensaje de tamaño fijo; versión distinta de 1 se rechaza | Observación en código propio |
 | “Ningún otro proceso puede hacerse pasar por servidor” | — | Inferencia: la sostiene la primera instancia con bandera, no el nombre |
 
+> **Ampliación editorial basada en fuentes externas — Inspección práctica de puertos y conexiones ALPC en user-mode y WinDbg (`!alpc`)**
+>
+> Aunque ALPC (*Advanced Local Procedure Call*) es una interfaz interna de `ntdll.dll`, el analista necesita saber reconocer sus llamadas en un binario y auditar qué procesos están conectados a un puerto local durante una sesión de depuración (*Windows Internals 7th Ed., Cap. 3 / extensión `!alpc` de WinDbg*) (**Hecho confirmado**):
+>
+> 1. **Las tres primitivas de `ntdll.dll` y el espacio de nombres `\RPC Control\`:**
+>    * **Servidor:** Llama a `ntdll!NtAlpcCreatePort(&PortHandle, &ObjectAttributes, &PortInformation)` publicando un objeto de tipo `ALPC Port` en el directorio del Object Manager (casi siempre bajo `\RPC Control\<NombreDelPuerto>` o `\Sessions\<N>\BaseNamedObjects\...`).
+>    * **Cliente:** Se conecta con `ntdll!NtAlpcConnectPort` (o `NtAlpcConnectPortEx`) especificando el `UNICODE_STRING` del puerto destino.
+>    * **Intercambio de mensajes:** Ambos lados usan `ntdll!NtAlpcSendWaitReceivePort(PortHandle, Flags, SendMessage, SendMessageAttributes, ReceiveMessage, &BufferLength, ReceiveMessageAttributes, Timeout)`.
+>
+> 2. **Cabecera `PORT_MESSAGE` en memoria (`+0x00..+0x27`, 40 bytes en x64 / 24 bytes en x86):**
+>    Todo mensaje enviado o recibido por ALPC comienza con una cabecera fija `PORT_MESSAGE` seguida inmediatamente por los datos de la aplicación:
+>    ```c
+>    typedef struct _PORT_MESSAGE_X64 {
+>        USHORT DataLength;     // +0x00 (2B): Bytes útiles del payload después de esta cabecera
+>        USHORT TotalLength;    // +0x02 (2B): sizeof(PORT_MESSAGE) (0x28 en x64) + DataLength
+>        USHORT Type;           // +0x04 (2B): LPC_REQUEST (1), LPC_REPLY (2), LPC_CONNECTION_REQUEST (10)
+>        USHORT DataInfoOffset; // +0x06 (2B)
+>        PVOID  ClientIdUniqueProcess; // +0x08 (8B): PID del emisor (CLIENT_ID.UniqueProcess)
+>        PVOID  ClientIdUniqueThread;  // +0x10 (8B): TID del emisor (CLIENT_ID.UniqueThread)
+>        ULONG  MessageId;      // +0x18 (4B): ID correlativo del mensaje
+>        ULONG  Reserved;       // +0x1C (4B)
+>        ULONG_PTR ClientViewSize; // +0x20 (8B): Total cabecera = 0x28 (40 bytes en x64)
+>    } PORT_MESSAGE_X64;
+>    ```
+>
+> 3. **Comandos de inspección en solo lectura (Sysinternals y WinDbg de kernel):**
+>    ```text
+>    # En user-mode (consola elevada en la VM): listar todos los puertos ALPC abiertos y su proceso dueño
+>    handle.exe -a -p <PID_o_nombre> "ALPC Port"
+>
+>    # En WinDbg conectado al kernel de la VM (extensión !alpc):
+>    kd> !alpc /lpp <dir_EPROCESS>    ; Lista todos los puertos ALPC creados y conectados por ese proceso
+>    kd> !alpc /p <dir_PortObject>    ; Muestra el proceso servidor, la cola de mensajes y todos los clientes conectados
+>    kd> !alpc /m <dir_Message>       ; Decodifica un mensaje ALPC en vuelo y quién lo envió
+>    ```
+
 ## Práctica
 
 Con un cliente/servidor propios ya preparados:

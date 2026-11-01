@@ -88,6 +88,42 @@ Secciones: .text .rdata .data        Símbolos: __mingw_*, ___chkstk_ms
 
 Con solo mirar imports y secciones ya decidís: Rich header + `api-ms-win-crt-*` + `__C_specific_handler` ⇒ **MSVC**; `msvcrt.dll` + `__mingw_*` + `.eh_frame` y sin Rich header ⇒ **MinGW** (recordá la salvedad de arriba: es indicio, no prueba).
 
+> **Ampliación editorial basada en fuentes externas — Reversing de ejecutables empaquetados de Python (`PyInstaller`) y aplicaciones Electron (`ASAR`)**
+>
+> Un error frecuente de triage ocurre cuando el analista abre en IDA o Ghidra un `.exe` de varios megabytes y empieza a desensamblar funciones en C como `pyi_main`, `pyi_arch_open_archive` o llamadas a `uv_run`, creyendo que está viendo la lógica del programa, cuando en realidad está frente al *bootloader* nativo de un lenguaje interpretado (**Hecho confirmado**):
+>
+> 1. **Ejecutables de Python empaquetados con `PyInstaller`:**
+>    PyInstaller empaqueta el intérprete (`python3XX.dll`), las extensiones `.pyd` y los scripts compilados a bytecode (`.pyc`) dentro de un archivo `CArchive` adjunto al final del PE (en el *overlay* o como recurso).
+>    * **Huella estática inequívoca:**
+>      * Strings en `.rdata`: `"PyInstaller: FormatMessageW failed."`, `"_MEIPASS2"`, `"python311.dll"` (o `310`, `312`, `313`).
+>      * Magic de la estructura `COOKIE` buscando desde el final del archivo: los 8 bytes `4D 45 49 0C 0B 0A 0B 0E` (`MEI\x0c\x0b\x0a\x0b\x0e`).
+>    * **Flujo de extracción y decompilación en laboratorio (sin ejecutar el binario):**
+>      1. **Extraer el contenedor:** Ejecutar `pyinstxtractor.py` sobre una copia del `.exe`:
+>         ```powershell
+>         python pyinstxtractor.py muestra_pyinstaller.exe
+>         ```
+>         Esto crea la carpeta `muestra_pyinstaller.exe_extracted/`, indica la versión exacta de Python (p. ej. `Python 3.11`) y señala los posibles puntos de entrada (`Possible entry points: main.pyc`).
+>      2. **Estructura del encabezado `.pyc` (Python 3.7 a 3.13+):** Todo archivo `.pyc` válido en Python 3.7+ tiene una cabecera de **16 bytes** antes del objeto `code` serializado con `marshal`:
+>         * `+0x00` (4B): *Magic number* de la versión de Python (p. ej. `A7 0D 0D 0A` en Python 3.11; `CB 0D 0D 0A` en 3.12).
+>         * `+0x04` (4B): Bit field (`0x00000000` para timestamp).
+>         * `+0x08` (4B): Timestamp o hash parcial.
+>         * `+0x0C` (4B): Tamaño del archivo fuente `.py` original.
+>         *(Nota: versiones recientes de `pyinstxtractor.py` ya reconstruyen estos 16 bytes automáticamente al extraer).*
+>      3. **Decompilar o desensamblar el bytecode:** Con `pycdc` (*Decompyle++*) se recupera código fuente `.py`; si el bytecode es de Python 3.11/3.12/3.13 y el decompilador falla en algún opcode nuevo, el módulo estándar `dis` + `marshal` corrido con **esa misma versión de Python** muestra el desensamblado exacto e infalible:
+>         ```python
+>         # volcar_pyc.py — ejecutar con la MISMA versión menor de Python que informó pyinstxtractor
+>         import dis, marshal
+>
+>         with open("main.pyc", "rb") as f:
+>             f.seek(16)  # salta los 16 bytes del encabezado .pyc (Python 3.7+)
+>             code_obj = marshal.load(f)
+>         dis.dis(code_obj)
+>         ```
+>
+> 2. **Aplicaciones empaquetadas con Electron / Node.js (`app.asar`):**
+>    * **Huella:** Binario PE enorme (> 100 MB) que importa `ffmpeg.dll`, `d3dcompiler_47.dll`, contiene strings de `Chromium` / `Node.js` y va acompañado de una carpeta `resources/` con un archivo `app.asar` (magic header con longitud JSON prefijada).
+>    * **Extracción estática:** La lógica no está en el `.exe`, sino en el JavaScript dentro de `resources/app.asar`. Se extrae en modo lectura con `npx @electron/asar extract resources/app.asar ./codigo_extraido`.
+
 ## Práctica
 
 En tu VM, con **programas propios**:
@@ -98,8 +134,8 @@ En tu VM, con **programas propios**:
 4. Escribí en una línea, para cada binario, "esto es X porque veo Y".
 5. Si tenés Go o Rust instalados, compilá un programa propio mínimo que compare una cadena ingresada con una fija. En el de Go, ubicá `main.main` y la comprobación de pila del inicio; en el de Rust, buscá las rutas `.rs` y mirá si hay Rich header. En ambos, encontrá la cadena fija y anotá dónde está su longitud.
 
-:::{nota} Lo que queda fuera
-Reconstruir tipos de Go (interfaces, *maps*, canales) o los genéricos y *traits* de Rust, analizar p-code de VB6 y usar herramientas específicas de Delphi. Esta lección enseña a **reconocer** el lenguaje y a no leerlo con expectativas de C; profundizar cada uno es un tema propio.
+::: {nota} Dónde profundizar cada lenguaje (Bloque 2E)
+Esta lección enseña a identificar el compilador en el triage inicial. Para reconstruir tipos e interfaces (`itab`, `pclntab`) en Go y *trait objects* (`dyn Trait`), monomorfización y mangling `v0` en Rust, seguí a la lección **2.32 · Go y Rust en profundidad**. Para analizar `VBHeader`, llamadas `__vba*` y bytecode *p-code* en Visual Basic 6, consultá la lección **2.33 · VB6 y p-code**.
 :::
 
 ## Preguntas de repaso

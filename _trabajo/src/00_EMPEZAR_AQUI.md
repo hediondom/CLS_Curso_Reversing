@@ -37,7 +37,7 @@ Las **Etapas 0–4** forman el recorrido obligatorio. La **Etapa 5**, la **Etapa
 |---|---|---|---|
 | **0** | [Laboratorio y método seguro](guia/etapa-0.html) | 4–6 h | VM aislada, snapshot, hash y bitácora |
 | **1** | [Fundamentos](guia/etapa-1.html) | 21–25 h | Números, memoria, PE y un programa propio en C |
-| **2** | [Introducción al reversing](guia/etapa-2.html) | 32–40 h (2A) + ~25 h (2B) + ~30–40 h (2C) | Assembly, debugger e IDA; bloques **2B intermedio** y **2C avanzado** (+ 3 rutas optativas) |
+| **2** | [Introducción al reversing](guia/etapa-2.html) | 32–40 h (2A) + ~25 h (2B) + ~30–40 h (2C) + ~25–30 h (2E) | Assembly, debugger e IDA; bloques **2B intermedio**, **2C avanzado** y **2E desofuscación/DBI** (+ 3 rutas optativas) |
 | **3** | [.NET como primera victoria](guia/etapa-3.html) | 7–10 h | Leer IL y comparar tres vistas |
 | **4** | [Práctica guiada](guia/etapa-4.html) | 14–18 h | Análisis completo + informe reproducible |
 | **5** | [Ramas opcionales](guia/etapa-5.html) | variable | Una rama con práctica propia y límites claros |

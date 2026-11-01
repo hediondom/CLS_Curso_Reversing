@@ -361,7 +361,7 @@ def aplicar_6_mejoras_html():
 
     old_pkg_row = '<tr><td><a href="glosario.html">glosario.html</a></td><td>Términos en lenguaje de principiante</td></tr>'
     new_pkg_rows = (
-        '<tr><td><a href="hilo-conductor-y-plantillas.html">hilo-conductor-y-plantillas.html</a></td><td>Evolución de un mismo binario en los 3 niveles (<code>check.c</code> &rarr; <code>BlocLab</code>) y kit de 5 plantillas C/C++ en <code>plantillas_codigo/</code></td></tr>\n'
+        '<tr><td><a href="hilo-conductor-y-plantillas.html">hilo-conductor-y-plantillas.html</a></td><td>Evolución de un mismo binario en los 3 niveles (<code>check.c</code> &rarr; <code>BlocLab</code>) y kit de 7 plantillas C/C++ en <code>plantillas_codigo/</code></td></tr>\n'
         '<tr><td><a href="hojas-referencia-rapida.html">hojas-referencia-rapida.html</a></td><td>Hojas de referencia rápida (<em>Cheat Sheets</em>) para Principiante, Intermedio y Avanzado</td></tr>\n'
         + old_pkg_row
     )
@@ -971,7 +971,7 @@ details.qa summary { font-size: 10pt; }
 <h1>Curso de reversing</h1>
 <p class="sub">De los fundamentos al análisis guiado. Un curso en español, progresivo y verificable, construido a partir del material del proyecto CLS.</p>
 <p class="sub"><strong>Actualizado 29 de octubre de 2026</strong> · Ruta base: Etapas 0–4 · Optativas: Etapas 5–6 y rama 2D de la Etapa 2</p>
-<p class="sub">Incluye 3 perfiles o rutas de estudio (Principiante, Intermedio y Avanzado), Árbol de decisión de triage inicial, Hilo conductor multi-nivel (<code>check.c</code> &rarr; <code>BlocLab</code>), Kit de 5 plantillas C/C++ listas para compilar y 3 Hojas de referencia rápida (<em>Cheat Sheets</em>).</p>
+<p class="sub">Incluye 3 perfiles o rutas de estudio (Principiante, Intermedio y Avanzado), Árbol de decisión de triage inicial, Hilo conductor multi-nivel (<code>check.c</code> &rarr; <code>BlocLab</code>), Kit de 7 plantillas C/C++ listas para compilar y 3 Hojas de referencia rápida (<em>Cheat Sheets</em>).</p>
 <p class="sub"><em>Edición de estudio — teoría y referencia práctica. Para abrir los videos, los tutes ilustrados de IDA, el banco de prácticas, las transcripciones, los audios y el buscador usá la versión <strong>HTML</strong> del curso, entrando por <code>00_EMPEZAR_AQUI.html</code>.</em></p>
 <div class="aviso"><strong>Material educativo y defensivo.</strong> Las prácticas usan programas propios, software abierto o crackmes diseñados para aprender. No se enseña a eludir licencias, DRM ni controles de acceso. No se ejecutaron binarios del corpus ni se extrajeron comprimidos.</div>
 <p class="sub">Esta edición es una cobertura parcial y declarada del corpus. Lo que falta está en <em>Fuentes y límites</em>, al final del documento.</p>
@@ -1373,7 +1373,7 @@ def generar_tomos_y_separata(ctx):
 <p class="kicker">Proyecto CLS · Edición 5 · Revisión 5.4 (Ampliada) · TOMO I DE II</p>
 <h1>Curso de reversing<br><span style="font-size: 20pt; font-weight: 600; color: #0b5f6b;">Tomo I · Tronco Principal (Etapas 0 a 5) y Material de Apoyo</span></h1>
 <p class="sub">De los fundamentos al análisis guiado en user-mode: arquitectura x86/x64, formato PE y DLLs (ciclo de vida y sideloading), IDA, Ghidra, x64dbg (flujo táctico y extracción masiva de strings), reversing de Go y Rust, evasión en user-mode (API hooking, direct/indirect syscalls y call stack spoofing), inyección de procesos en memoria, criptografía híbrida y APIs nativas (CryptoAPI/CNG), .NET, C++ profundo, WinDbg/TTD, malware y vulnerabilidades.</p>
-<p class="sub"><strong>Contenido de este volumen (Tomo I):</strong> Apertura y 3 Rutas de Estudio · Etapas 0, 1, 2 (2A, 2B, 2C y optativas 2.22–2.24), 3, 4 y 5 · Hilo conductor multi-nivel y Kit de 5 plantillas C/C++ · 3 Hojas de referencia rápida (<em>Cheat Sheets</em>) · Glosario · Preguntas y respuestas · Fuentes y límites.</p>
+<p class="sub"><strong>Contenido de este volumen (Tomo I):</strong> Apertura y 3 Rutas de Estudio · Etapas 0, 1, 2 (2A, 2B, 2C, bloque avanzado 2E con 2.25–2.33, y optativas 2.22–2.24), 3, 4 (incluida 4.6 Protocolos de terceros) y 5 · Hilo conductor multi-nivel y Kit de 7 plantillas C/C++ · 3 Hojas de referencia rápida (<em>Cheat Sheets</em>, con la Hoja 3.4 de desofuscación y DBI) · Glosario · Preguntas y respuestas · Fuentes y límites.</p>
 <p class="sub"><strong>En el Tomo II y Separata:</strong> La <strong>Etapa 6 (Kernel y drivers KMDF)</strong> y la <strong>Rama 2D (Windows internals y Hyper-V)</strong> se encuentran encuadernadas en el <strong>Tomo II</strong>. Para consulta rápida junto al teclado, usá la <strong>Separata de Escritorio</strong>.</p>
 <div class="aviso"><strong>Material educativo y defensivo.</strong> Las prácticas usan programas propios, software abierto o crackmes diseñados para aprender. No se enseña a eludir licencias, DRM ni controles de acceso.</div>
 </section>
@@ -1439,7 +1439,7 @@ def generar_tomos_y_separata(ctx):
 <h2 style="font-size: 15pt; color: #2b5797; font-weight: 600; margin: 0 0 16pt; border: none;">Reversing Avanzado, Ecosistemas y Material de Apoyo</h2>
 <hr style="width: 60px; height: 3px; background: #2b5797; border: none; margin: 0 auto 16pt;">
 <p style="font-size: 9.8pt; color: #333; line-height: 1.6; max-width: 480px; margin: 0 auto 12pt; text-align: left;">
-Este volumen continúa el <strong>Bloque 2C (Windows Avanzado)</strong> a partir del análisis profundo de C++ y sus estructuras en memoria (RTTI, vtables, STL y excepciones), cubriendo además las <strong>Etapas 3 (.NET), 4 (Método y Criptografía) y 5 (Malware y Automatización)</strong>, culminando con el <strong>Kit de 5 Plantillas C/C++</strong>, las <strong>Hojas de Referencia Rápida</strong>, el <strong>Glosario A–Z unificado</strong> y las <strong>Preguntas de Repaso</strong>.
+Este volumen continúa el <strong>Bloque 2C (Windows Avanzado)</strong> a partir del análisis profundo de C++ y sus estructuras en memoria (RTTI, vtables, STL y excepciones), cubriendo además las <strong>Etapas 3 (.NET), 4 (Método y Criptografía) y 5 (Malware y Automatización)</strong>, culminando con el <strong>Kit de 7 Plantillas C/C++</strong>, las <strong>Hojas de Referencia Rápida</strong>, el <strong>Glosario A–Z unificado</strong> y las <strong>Preguntas de Repaso</strong>.
 </p>
 <div style="margin-top: 20pt; padding: 10pt 14pt; background: #eef3f8; border-left: 4px solid #2b5797; font-size: 8.8pt; color: #2d3748; text-align: left;">
 <strong>Entorno activo de laboratorio para la Parte B:</strong><br>
@@ -1545,7 +1545,7 @@ VM con Windows x64 aislada, Visual Studio Developer Command Prompt (<code>cl.exe
 
     toc_t2.append('<div class="etapa" style="margin-top:12pt; color:#555;">Referencias cruzadas en Tomo I y Separata de Escritorio</div><ol>')
     toc_t2.append(f'<li><span>Tronco principal (Etapas 0 a 5)</span><span class="toc-pag">Tomo I · p. 1–{info_t1["paginas"]["hilo-plantillas"] - 1}</span></li>')
-    toc_t2.append(f'<li><span>Hilo conductor multi-nivel y Kit de 5 plantillas C/C++</span><span class="toc-pag">Tomo I · {info_t1["etiquetas"]["hilo-plantillas"]}</span></li>')
+    toc_t2.append(f'<li><span>Hilo conductor multi-nivel y Kit de 7 plantillas C/C++</span><span class="toc-pag">Tomo I · {info_t1["etiquetas"]["hilo-plantillas"]}</span></li>')
     toc_t2.append(f'<li><span>Hojas de referencia rápida (Cheat Sheets 1 a 5)</span><span class="toc-pag">Separata y Tomo I · {info_t1["etiquetas"]["hojas-referencia"]}</span></li>')
     toc_t2.append(f'<li><span>Glosario y Preguntas frecuentes</span><span class="toc-pag">Tomo I · p. {info_t1["paginas"]["glosario"]}–{info_t1["paginas"]["fuentes"] - 1}</span></li>')
     toc_t2.append('</ol></div></section>')
@@ -1669,7 +1669,7 @@ VM con Windows x64 aislada, Visual Studio Developer Command Prompt (<code>cl.exe
 <tr><td><strong>Etapa 5 · Malware estático, vulnerabilidades, automatización</strong> (<code>5.1–5.4</code>)</td><td>Interm. / Avanzado</td><td><strong>Tomo I</strong></td><td>{rango_en(info_t1, ancla("guia/etapa-5.html"), "hilo-plantillas")}</td><td>{rango_en(ctx, ancla("guia/etapa-5.html"), ancla("guia/etapa-6.html"))}</td></tr>
 <tr><td><strong>Etapa 6 · Kernel y drivers KMDF/WDM en Windows</strong> (<code>6.1–6.6</code>)</td><td>Avanzado</td><td><strong>Tomo II</strong></td><td>{rango_en(info_t2, ancla("guia/etapa-6.html"), ancla("2d.html"))}</td><td>{rango_en(ctx, ancla("guia/etapa-6.html"), ancla("2d.html"))}</td></tr>
 <tr><td><strong>Rama 2D · Windows internals y Hyper-V</strong> (<code>2D.1–2D.13</code> + Hyper-V)</td><td>Interm. / Avanzado</td><td><strong>Tomo II</strong></td><td>{rango_en(info_t2, ancla("2d.html"), None)}</td><td>{rango_en(ctx, ancla("2d.html"), "hilo-plantillas")}</td></tr>
-<tr><td><strong>Hilo conductor multi-nivel y Kit de 5 plantillas C/C++</strong></td><td>Todos</td><td><strong>Tomo I</strong></td><td>{rango_en(info_t1, "hilo-plantillas", "hojas-referencia")}</td><td>{rango_en(ctx, "hilo-plantillas", "hojas-referencia")}</td></tr>
+<tr><td><strong>Hilo conductor multi-nivel y Kit de 7 plantillas C/C++</strong></td><td>Todos</td><td><strong>Tomo I</strong></td><td>{rango_en(info_t1, "hilo-plantillas", "hojas-referencia")}</td><td>{rango_en(ctx, "hilo-plantillas", "hojas-referencia")}</td></tr>
 <tr><td><strong>Hojas de referencia rápida (Cheat Sheets 1 a 5)</strong></td><td>Todos</td><td><strong>Separata y Tomo I</strong></td><td>{rango_en(info_t1, "hojas-referencia", "glosario")}</td><td>{rango_en(ctx, "hojas-referencia", "glosario")}</td></tr>
 <tr><td><strong>Glosario, Preguntas frecuentes y Fuentes/límites</strong></td><td>Todos</td><td><strong>Tomo I</strong></td><td>{rango_en(info_t1, "glosario", None)}</td><td>{rango_en(ctx, "glosario", None)}</td></tr>
 </tbody></table></div>
@@ -1684,7 +1684,7 @@ VM con Windows x64 aislada, Visual Studio Developer Command Prompt (<code>cl.exe
     triage_limpio = limpiar_enlaces(BLOQUE_ARBOL_TRIAGE, {})
     partes_sep.append(f'<section class="print-sec" id="arbol-triage">{triage_limpio}</section>')
 
-    # Sección 3 de Separata: Resumen del Hilo Conductor + Guía rápida de compilación de las 5 plantillas C/C++
+    # Sección 3 de Separata: Resumen del Hilo Conductor + Guía rápida de compilación de las 7 plantillas C/C++
     partes_sep.append("""
 <section class="print-sec" id="resumen-hilo">
 <h2>Mapa del Hilo Conductor Multi-Nivel (<code>check_v1</code> &rarr; <code>check_v2</code> &rarr; <code>BlocLab</code>)</h2>
@@ -1716,7 +1716,7 @@ VM con Windows x64 aislada, Visual Studio Developer Command Prompt (<code>cl.exe
 </tr>
 </tbody></table></div>
 
-<h2>Referencia rápida de compilación y prueba del Kit de 5 Plantillas C/C++</h2>
+<h2>Referencia rápida de compilación y prueba del Kit de 7 Plantillas C/C++</h2>
 <div class="tabla"><table>
 <thead><tr>
 <th>Archivo en <code>plantillas_codigo/</code></th>
@@ -1748,6 +1748,16 @@ VM con Windows x64 aislada, Visual Studio Developer Command Prompt (<code>cl.exe
 <td><code>cl /Zi /O1 pipe_server_min.c /Fe:pipe_server_min.exe</code></td>
 <td>Inspeccionar flags de <code>CreateNamedPipeW</code> (<code>PIPE_REJECT_REMOTE_CLIENTS</code>) y la máquina de estados en <code>\\\\.\\pipe\\BlocLabPipe</code> (4.5 y 2D.10).</td>
 </tr>
+<tr>
+<td><strong>6. <code>bloclab_kmdf_min.c</code></strong><br><em>(Avanzado · KMDF Kernel Driver)</em></td>
+<td>Compilar con WDK (Visual Studio x64 Driver Environment):<br><code>cl /W4 /WX /Gz /kernel /I"%WDKContentRoot%\Include\wdf\kmdf\1.15" bloclab_kmdf_min.c</code></td>
+<td>Localizar <code>WdfVersionBind</code> y tabla <code>WdfFunctions</code> (+0x18). Auditar <code>EvtDeviceAdd</code> (+0x08) y <code>EvtIoDeviceControl</code> (+0x28). Identificar decodificación de <code>CTL_CODE</code> (0x80006000) y validación de buffers (6.2 y 6.4).</td>
+</tr>
+<tr>
+<td><strong>7. <code>svclab_min.c</code></strong><br><em>(Intermedio · Servicios Win32 y SCM)</em></td>
+<td><code>cl /Zi /O1 /DUNICODE /D_UNICODE svclab_min.c advapi32.lib /Fe:SvcLab.exe</code><br>Prueba consola: <code>SvcLab.exe --console</code></td>
+<td>Auditar el contrato SCM en IDA: <code>StartServiceCtrlDispatcherW</code>, <code>ServiceMain</code> y <code>RegisterServiceCtrlHandlerExW</code>. Instalar en VM con <code>sc.exe create CLSLabSvc</code> y verificar transiciones de estado y privilegios (2D.4).</td>
+</tr>
 </tbody></table></div>
 </section>
 """)
@@ -1763,7 +1773,7 @@ VM con Windows x64 aislada, Visual Studio Developer Command Prompt (<code>cl.exe
     arbol_sep = [
         ("1. Tres perfiles o rutas de estudio", "rutas-estudio", []),
         ("2. Árbol de decisión de triage inicial y 10 señales", "arbol-triage", []),
-        ("3. Mapa del Hilo Conductor y Kit de 5 plantillas C/C++", "resumen-hilo", []),
+        ("3. Mapa del Hilo Conductor y Kit de 7 plantillas C/C++", "resumen-hilo", []),
         ("4. Hoja 1 · Nivel Principiante (Registros, saltos, VA/RVA, ABIs)", "hoja-1", []),
         ("5. Hoja 2 · Nivel Intermedio (PEB/LDR, cripto, x64dbg, Frida)", "hoja-2", []),
         ("6. Hoja 3 · Nivel Avanzado (C++ RTTI/SSO, CTL_CODE, IRQL, WinDbg)", "hoja-3", []),

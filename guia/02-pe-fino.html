@@ -97,6 +97,49 @@ Debug Directory  (type = CODEVIEW / RSDS)
   PDB: D:\dev\miapp\x64\Release\miapp.pdb
   GUID: 7F3A... age 1</code></pre>
 <p>Sin ejecutar nada ya sabés: tiene <strong>/GS</strong> y <strong>CFG</strong>, es <strong>x64</strong> (SEH por tablas), y el <code>.pdb</code> filtra la ruta de compilación (<code>D:\dev\miapp\...</code>: usuario, proyecto, configuración Release). Ese GUID + age es lo que usarías para cargar los símbolos correctos.</p>
+
+<aside class="ampliacion-ext">
+<p class="callout-titulo">Ampliación editorial basada en fuentes externas — Anatomía de DllMain, PEB->LoaderLock y detección de Export Forwarding / DLL Sideloading</p>
+<p>Cuando el binario analizado es una biblioteca dinámica (<code>.dll</code> con el flag <code>IMAGE_FILE_DLL = 0x2000</code> en <code>FileHeader.Characteristics</code>), el punto de entrada (<code>AddressOfEntryPoint</code>) no tiene la firma de <code>main</code>, sino la de <code>DllMain</code>, invocada por el cargador de Windows (<code>ntdll!LdrpCallInitRoutine</code>) bajo reglas estrictas de sincronización (<em>Microsoft Learn: Dynamic-Link Library Entry-Point Function y Best Practices for Creating DLLs</em>) <em>(Hecho confirmado)</em>:</p>
+<ol>
+<li><strong>Firma de <code>DllMain</code> y códigos <code>fdwReason</code>:</strong>
+<pre><code class="lenguaje-c">BOOL WINAPI DllMain(
+    HINSTANCE hinstDLL,  // RCX (x64) / [esp+4] (x86): Dirección base (ImageBase) donde se mapeó la DLL
+    DWORD     fdwReason, // RDX (x64) / [esp+8] (x86): Motivo de la llamada (0 a 3)
+    LPVOID    lpvReserved // R8  (x64) / [esp+0Ch]: NULL si es carga/descarga dinámica (LoadLibrary/FreeLibrary)
+);</code></pre>
+<ul>
+<li><code>DLL_PROCESS_ATTACH (1)</code>: La DLL se mapea por primera vez en el proceso. Si devuelve <code>FALSE (0)</code>, el cargador aborta o descarga la DLL.</li>
+<li><code>DLL_THREAD_ATTACH (2)</code> y <code>DLL_THREAD_DETACH (3)</code>: Se crea o termina un hilo en el proceso (a menos que la DLL haya llamado a <code>DisableThreadLibraryCalls</code>).</li>
+<li><code>DLL_PROCESS_DETACH (0)</code>: La DLL se descarga (<code>lpvReserved == NULL</code> vía <code>FreeLibrary</code>, o <code>lpvReserved != NULL</code> cuando el proceso está terminando).</li>
+</ul></li>
+<li><strong>El <em>Loader Lock</em> (<code>PEB->LoaderLock</code>) y por qué importa en el análisis:</strong> Antes de ejecutar cualquier <code>DllMain</code> (o cualquier TLS callback), <code>ntdll.dll</code> adquiere la sección crítica global del cargador apuntada por <code>PEB->LoaderLock</code> (offset <code>+0x110</code> en x64; <code>+0xA0</code> en x86). Mientras ese candado está tomado, ninguna otra operación de carga o enumeración de módulos puede avanzar en otro hilo. Por eso:
+<ul>
+<li>Llamar dentro de <code>DllMain</code> a <code>LoadLibraryEx</code>, <code>CoInitializeEx</code>, funciones de <code>user32.dll</code> / <code>shell32.dll</code>, o crear un hilo y esperarlo con <code>WaitForSingleObject</code> produce un interbloqueo (<em>deadlock</em>), porque el hilo nuevo intenta adquirir el mismo <code>LoaderLock</code> para recibir <code>DLL_THREAD_ATTACH</code>.</li>
+<li>Para depurar el arranque de una DLL en <code>x64dbg</code>, activá <code>Options -&gt; Preferences -&gt; Events -&gt; DLL Entry</code> (o <code>DLL Load</code>) y ejecutá la DLL con un anfitrión propio o <code>rundll32.exe copia_dll.dll,FuncionExportada</code>.</li>
+</ul></li>
+<li><strong>Export Forwarding y <em>DLL Proxying / Sideloading</em>:</strong> En escenarios de <em>DLL Sideloading</em>, un ejecutable legítimo firmado busca una DLL por nombre en su propio directorio (p. ej. <code>version.dll</code> o <code>winhttp.dll</code>). Si un tercero coloca allí una DLL propia con el mismo nombre, tiene que reenviar (<em>forward</em>) las exportaciones originales hacia la DLL real de <code>C:\Windows\System32</code> para que la aplicación anfitriona no falle.
+<ul>
+<li><strong>Cómo se codifica en el PE un <em>Forwarded Export</em>:</strong> En <code>IMAGE_EXPORT_DIRECTORY</code>, si el valor de <code>AddressOfFunctions[i]</code> (una RVA) cae <strong>dentro del rango del propio directorio de exportaciones</strong> (<code>DataDirectory[0].VirtualAddress &lt;= RVA &lt; DataDirectory[0].VirtualAddress + DataDirectory[0].Size</code>), el cargador no lo interpreta como código ejecutable, sino como un puntero a una cadena ASCII con el formato <code>"NombreDLLDestino.NombreFuncion"</code> (o <code>"NombreDLL.#Ordinal"</code>).</li>
+<li><strong>Cómo se genera en C (MSVC) para pruebas de laboratorio:</strong>
+<pre><code class="lenguaje-c">// Reenvío estático en el linker sin escribir código wrapper:
+#pragma comment(linker, "/export:GetFileVersionInfoW=C:\\Windows\\System32\\version.GetFileVersionInfoW")</code></pre></li>
+<li><strong>Script de auditoría en Python (<code>pefile</code>) para detectar exportaciones reenviadas:</strong>
+<pre><code class="lenguaje-python">import pefile
+
+pe = pefile.PE("muestra.dll")
+if hasattr(pe, "DIRECTORY_ENTRY_EXPORT"):
+    for exp in pe.DIRECTORY_ENTRY_EXPORT.symbols:
+        name = exp.name.decode() if exp.name else f"ord_{exp.ordinal}"
+        if exp.forwarder:
+            print(f"[FORWARDED] {name} -&gt; {exp.forwarder.decode()}")
+        else:
+            print(f"[CODE RVA ] {name} -&gt; {exp.address:#08x}")</code></pre></li>
+</ul></li>
+</ol>
+</aside>
+
+
 <h2 id="práctica">Práctica</h2>
 <p>En tu VM, con un <strong>binario propio</strong> (compilá con /GS /guard:cf en MSVC) y PE-bear:</p>
 <ol><li>Encontrá el <strong>Rich header</strong> y confirma qué sugiere al compararlo con una compilación propia de MinGW.</li><li>Abrí el directorio de <strong>recursos</strong> y ubicá version info y, si pusiste uno, un RCDATA.</li><li>Mirá <strong>Load Config</strong>: ¿apunta a un security cookie? ¿Hay tabla CFG?</li><li>Mirá el <strong>debug directory</strong>: ¿quedó la ruta del PDB? Anotá qué revela de tu entorno.</li><li>En un programa propio, obtené una API con LoadLibraryW + GetProcAddress y confirma por qué no figura como import estático.</li><li>En el depurador, seguí una llamada de tu programa hasta ntdll y registra lo que puedes concluir del stub en tu build, sin generalizar números de servicio entre versiones.</li><li>Con Get-AuthenticodeSignature (PowerShell) o signtool verify /pa (Windows SDK), registra el estado de firma y los datos del firmante; anota que una firma válida no demuestra que el programa sea benigno.</li><li>En una aplicación propia, identifica si está empaquetada y qué manifiesto/flags de carga aplican; compara el nombre solicitado de una DLL con la ruta realmente observada en el proceso.</li></ol>

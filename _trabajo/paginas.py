@@ -80,7 +80,7 @@ ETAPAS = [
         "slug": "etapa-2",
         "titulo": "Introducción al reversing",
         "objetivo": "Leer assembly x86/x64, seguir el flujo y usar debugger y desensamblador con criterio. Se divide en 2A (base, 2.1–2.9), 2B (Windows intermedio, 2.10–2.16: ofuscación, TLS, MFC, huella, PE fino, anti-análisis, Ghidra) y 2C (Windows avanzado, 2.17+: packers didácticos, C++ profundo, WinDbg/heap, patch diffing, scripting) y 2E (desofuscación y análisis dinámico avanzado, 2.25+: ejecución simbólica, ofuscación por VM, protectores multicapa, neutralizar anti-análisis, DBI con DynamoRIO/Pin y Frida Stalker, extensiones de Ghidra/SLEIGH, y ampliaciones de Go/Rust y VB6). Las rutas de malware dinámico, shellcode/C2 y fuzzing quedan como optativas, fuera de la puerta obligatoria.",
-        "horas": "32 a 40 h (2A) + ~25 h (2B) + ~30–40 h (2C avanzado)",
+        "horas": "32 a 40 h (2A) + ~25 h (2B) + ~30–40 h (2C) + ~25–30 h (2E)",
         "prereq": "Etapa 1.",
         "lecciones": [
             ("02-registros.html", "Registros, subregistros y flags", "Registros, solapamiento y flags ZF/SF/CF/OF."),

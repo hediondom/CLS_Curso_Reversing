@@ -66,7 +66,11 @@ Lectura: es un servicio didáctico de proceso propio, detenido y de inicio manua
 
 ## Práctica segura: servicio propio y limpieza
 
-Realizá el ejercicio solo en una VM descartable con snapshot. Se requiere un `SvcLab.exe` propio, compilado como **servicio Win32** (con dispatcher, `ServiceMain` y handler); un ejecutable de consola genérico no sirve. La guía no incluye un binario compilado ni verificó esta práctica en esta edición.
+Realizá el ejercicio solo en una VM descartable con snapshot. Realizá el ejercicio en una VM descartable con snapshot. Compilá el servicio didáctico desde el archivo `plantillas_codigo/svclab_min.c` (**Plantilla 7 del Kit de Código**), que implementa `StartServiceCtrlDispatcherW`, `ServiceMain` y `RegisterServiceCtrlHandlerExW` para Windows x86/x64:
+```cmd
+cl /Zi /O1 /DUNICODE /D_UNICODE svclab_min.c advapi32.lib /Fe:C:\CLS-Lab\SvcLab.exe
+```
+(O con MinGW: `gcc -O1 -g -municode svclab_min.c -ladvapi32 -o C:\CLS-Lab\SvcLab.exe`).
 
 **Materiales y resultado esperado:** VM/build registrados, snapshot recuperable, `sc.exe`, AccessChk de Sysinternals y el binario propio identificado por hash. El resultado esperado es registrar un servicio manual, verlo pasar a `RUNNING` y `STOPPED`, y confirmar que desaparece después de solicitar su eliminación. Guardá el build de Windows, hash, salidas de consulta y evidencia de limpieza; no se fija una versión de herramienta que no se haya probado.
 

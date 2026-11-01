@@ -167,6 +167,32 @@ Para aprender, usá Debug. Para analizar un binario real, asumí Release y no te
 
 El decompilador sigue siendo útil, pero hay que **verificar**. Una condición reconstruida puede ser incorrecta si el flujo está ofuscado. La regla es la misma que en nativo: contrastar estático con dinámico, sobre un programa propio o autorizado.
 
+> **Ampliación editorial basada en fuentes externas — Desempaquetado dinámico en .NET: `Assembly.Load(byte[])`, intercepción en `AmsiScanBuffer` y descifrado de strings por token**
+>
+> Cuando un ensamblado .NET ofuscado o empaquetado oculta su carga real o cifra todas sus cadenas, el análisis estático en ILSpy muestra métodos ilegibles o un único recurso binario comprimido. En laboratorio aislado existen dos técnicas estándar para recuperar el código y los textos sin desarmar el ofuscador a mano (*Microsoft Learn: Assembly.Load Method y Antimalware Scan Interface — AmsiScanBuffer*) (**Hecho confirmado**):
+>
+> 1. **Volcado de ensamblados cargados en memoria (`Assembly.Load(byte[])`) vía `amsi.dll!AmsiScanBuffer`:**
+>    Los *packers* .NET suelen descifrar en memoria un arreglo `byte[] rawAssembly` e invocar `Assembly.Load(rawAssembly)` (o `AppDomain.CurrentDomain.Load`). Desde .NET Framework 4.8+ y .NET moderno en Windows 10/11, el CLR envía automáticamente ese buffer en claro a `amsi.dll!AmsiScanBuffer` antes de cargarlo:
+>    ```c
+>    HRESULT AmsiScanBuffer(
+>        HAMSICONTEXT amsiContext, // RCX (x64)
+>        PVOID        buffer,      // RDX (x64): Puntero al inicio del PE/IL en claro ("MZ" = 4D 5A)
+>        ULONG        length,      // R8D (x64): Tamaño exacto del ensamblado en bytes
+>        LPCWSTR      contentName, // R9  (x64)
+>        HAMSISESSION amsiSession, // [rsp+20h]
+>        AMSI_RESULT  *result      // [rsp+28h]
+>    );
+>    ```
+>    * **En `x64dbg`:** Poné un breakpoint en `amsi.dll!AmsiScanBuffer`. Cuando frene y veas que `[rdx]` empieza con `4D 5A` (`MZ`), ejecutá en la barra de comandos de `x64dbg`:
+>      ```text
+>      savedata C:\lab\dump_stage2.bin, rdx, r8
+>      ```
+>    * **En `dnSpyEx`:** Poné un breakpoint en `System.Reflection.Assembly.Load(byte[])`, iniciá con `F5` y, tras ejecutarse el paso (`F10`), abrí `Debug -> Windows -> Modules`, hacé clic derecho sobre el ensamblado recién aparecido en memoria (marcado como *In-Memory*) y elegí **Save Module...**.
+>
+> 2. **Patrón de descifrado de strings por token de metadatos (`0x70XXXXXX`):**
+>    Los ofuscadores .NET reemplazan cada instrucción `ldstr "texto"` por una llamada como `ClaseOculta.Descifrar(int id)` pasando un entero constante.
+>    * Para recuperarlas sin reescribir el algoritmo en Python: si el método descifrador es puro (solo depende del entero y de una tabla en los recursos del propio ensamblado), podés usar la herramienta defensiva de código abierto `de4dot` con `--strtyp delegate --strtok <token_del_metodo>` en la VM aislada, o evaluar el método en el panel *Immediate / Watch* de `dnSpyEx` una vez que el constructor estático (`.cctor`) haya inicializado la tabla.
+
 ## Práctica
 
 1. Compilá el método `Check` en Debug y en Release. Pegá las dos versiones de IL y marcá tres diferencias.

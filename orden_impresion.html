@@ -2,153 +2,170 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title>Orden de Impresión y Encuadernación - Curso CLS Reversing</title>
+<title>Especificación de Impresión y Encuadernación - Curso CLS Reversing</title>
 <style>
   @page {
     size: A4 landscape;
-    margin: 1.2cm;
+    margin: 1.2cm 1.5cm;
   }
-  body {
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-    color: #111;
-    background-color: #fff;
-    margin: 0;
-    padding: 20px;
+  * {
     box-sizing: border-box;
   }
-  h2 {
-    margin: 0 0 15px 0;
+  body {
+    font-family: Arial, "Segoe UI", Helvetica, sans-serif;
+    color: #111;
+    background-color: #ffffff;
+    margin: 0;
+    padding: 20px 30px;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  .header-titulo {
     font-size: 20px;
-    color: #1a202c;
+    font-weight: bold;
+    color: #111;
+    margin-bottom: 18px;
     text-transform: uppercase;
     letter-spacing: 0.5px;
-    border-bottom: 2px solid #2b6cb0;
-    padding-bottom: 6px;
   }
   table {
     width: 100%;
     border-collapse: collapse;
-    margin-bottom: 25px;
+    margin-bottom: 22px;
   }
   th, td {
-    border: 1.5px solid #2d3748;
-    padding: 12px 14px;
+    border: 1.2px solid #222;
+    padding: 10px 12px;
     text-align: left;
     vertical-align: middle;
-    font-size: 14.5px;
+    font-size: 14px;
+    line-height: 1.35;
   }
   th {
-    background-color: #edf2f7;
-    font-weight: 700;
-    color: #1a202c;
+    background-color: #f7f7f7;
+    font-weight: bold;
+    color: #000;
   }
-  .col-vol { width: 23%; font-weight: bold; }
-  .col-arch { width: 30%; font-family: "Consolas", "Courier New", monospace; font-size: 13.5px; }
-  .col-pags { width: 11%; text-align: center; }
-  .col-hojas { width: 14%; text-align: center; font-weight: bold; }
-  .col-enc { width: 22%; }
+  .col-vol { width: 25%; font-weight: bold; }
+  .col-arch { width: 28%; font-family: "Consolas", "Courier New", monospace; font-size: 13px; font-weight: 500; }
+  .col-pags { width: 10%; text-align: center; }
+  .col-hojas { width: 13%; text-align: center; font-weight: bold; font-size: 14.5px; }
+  .col-enc { width: 24%; font-size: 13.5px; }
   
-  .badge {
-    display: inline-block;
-    padding: 3px 8px;
-    border-radius: 4px;
+  .sub-vol {
+    display: block;
     font-size: 12px;
-    font-weight: 600;
+    font-weight: normal;
+    color: #444;
+    margin-top: 3px;
   }
-  .badge-blue { background-color: #ebf8ff; color: #2b6cb0; border: 1px solid #bee3f8; }
-  .badge-green { background-color: #f0fff4; color: #276749; border: 1px solid #c6f6d5; }
-  
-  .specs {
-    font-size: 15px;
-    line-height: 1.6;
-    background: #f7fafc;
-    border-left: 5px solid #2b6cb0;
-    padding: 14px 18px;
-    border-radius: 0 6px 6px 0;
+  .fila-total {
+    background-color: #fdfdfd;
+    font-weight: bold;
   }
-  .specs p {
-    margin: 5px 0;
+  .fila-total td {
+    border-top: 2px solid #000;
   }
-  .destacado {
-    font-weight: 800;
-    font-size: 18px;
-    color: #c53030;
-    margin-top: 8px;
-    text-transform: uppercase;
+
+  .footer-specs {
+    margin-top: 15px;
+    font-size: 14.5px;
+    line-height: 1.5;
+    color: #111;
+  }
+  .footer-flex {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    margin-top: 10px;
+  }
+  .destacado-papel {
+    font-size: 28px;
+    font-weight: 900;
+    letter-spacing: 1.5px;
+    color: #000;
+    text-align: right;
+    margin: 0;
+    padding-top: 5px;
   }
 </style>
 </head>
 <body>
 
-<h2>Especificación de Impresión y Encuadernación — Obra CLS Reversing (4 Cuadernillos)</h2>
+<div class="header-titulo">Orden de Impresión y Encuadernación · Suite CLS Reversing (4 Cuadernillos)</div>
 
 <table>
   <thead>
     <tr>
       <th class="col-vol">Volumen</th>
-      <th class="col-arch">Archivo PDF exacto</th>
+      <th class="col-arch">Archivo</th>
       <th class="col-pags">Páginas</th>
-      <th class="col-hojas">Hojas físicas (doble faz)</th>
-      <th class="col-enc">Encuadernación sugerida</th>
+      <th class="col-hojas">Hojas (doble faz)</th>
+      <th class="col-enc">Encuadernación</th>
     </tr>
   </thead>
   <tbody>
     <tr>
       <td class="col-vol">
         1. Tomo I · Parte A<br>
-        <small style="font-weight: normal; color: #4a5568;">Fundamentos, x86/x64, PE, Debugger y Packers (Etapas 0–2C)</small>
+        <span class="sub-vol">Tronco Inicial: Fundamentos, x86/x64, PE, Debugger y Packers (Etapas 0 a 2C base)</span>
       </td>
       <td class="col-arch">CLS_Tomo_1_Parte_A_pags_1-172.pdf</td>
       <td class="col-pags">172 págs.</td>
-      <td class="col-hojas"><strong>86 hojas</strong></td>
+      <td class="col-hojas">86 hojas</td>
       <td class="col-enc">
-        Anillado metálico <em>Ring Wire</em> / espiral plástico (anillo ~14 mm) con tapa transparente y contratapa negra.
+        Anillado metálico Ring Wire / espiral o binder con tapa transparente y contratapa
       </td>
     </tr>
     <tr>
       <td class="col-vol">
         2. Tomo I · Parte B<br>
-        <small style="font-weight: normal; color: #4a5568;">Desofuscación, angr, Frida, Go/Rust, .NET, Protocolos y Guía</small>
+        <span class="sub-vol">Tronco Avanzado: Desofuscación simbólica (angr/Z3), VM, Frida Stalker, Go/Rust, VB6, .NET, C++ y Apoyo (Bloque 2E, 3, 4 y 5)</span>
       </td>
-      <td class="col-arch">CLS_Tomo_1_Parte_B_pags_173-368.pdf</td>
-      <td class="col-pags">196 págs.</td>
-      <td class="col-hojas"><strong>98 hojas</strong></td>
+      <td class="col-arch">CLS_Tomo_1_Parte_B_pags_173-386.pdf<br><span style="font-size: 11px; color: #666; font-family: Arial;">(o versión 173-368: 196 págs / 98 hojas)</span></td>
+      <td class="col-pags">214 págs.</td>
+      <td class="col-hojas">107 hojas</td>
       <td class="col-enc">
-        Anillado metálico <em>Ring Wire</em> / espiral plástico (anillo ~16 mm) con tapa transparente y contratapa negra.
+        Anillado metálico Ring Wire / espiral o binder con tapa transparente y contratapa
       </td>
     </tr>
     <tr>
       <td class="col-vol">
-        3. Tomo II · Kernel<br>
-        <small style="font-weight: normal; color: #4a5568;">KMDF, Drivers, WinDbg KDNET y Windows Internals (Etapa 6 + 2D)</small>
+        3. Tomo II · Kernel, Drivers y Windows Internals<br>
+        <span class="sub-vol">KMDF, Drivers de dispositivo, WinDbg KDNET y Windows Internals (Etapa 6 y Rama 2D completa)</span>
       </td>
       <td class="col-arch">CLS_Tomo_2_Kernel_e_Internals.pdf</td>
-      <td class="col-pags">128 págs.</td>
-      <td class="col-hojas"><strong>64 hojas</strong></td>
+      <td class="col-pags">132 págs.<br><span style="font-size: 11px; color: #666;">(base: 128 págs / 64 hojas)</span></td>
+      <td class="col-hojas">66 hojas</td>
       <td class="col-enc">
-        Anillado metálico <em>Ring Wire</em> / espiral plástico (anillo ~12 mm) con tapa transparente y contratapa negra.
+        Anillado metálico Ring Wire / espiral o binder con tapa transparente y contratapa
       </td>
     </tr>
     <tr>
       <td class="col-vol">
-        4. Separata de Escritorio<br>
-        <small style="font-weight: normal; color: #4a5568;">Hojas de Referencia Rápida (Cheat Sheets 1 a 5) y Rutas</small>
+        4. Separata de Escritorio y Referencia Rápida<br>
+        <span class="sub-vol">Hojas de Referencia Rápida (Cheat Sheets 1 a 5), Hilo Conductor y 3 Rutas de Estudio</span>
       </td>
       <td class="col-arch">CLS_Separata_Escritorio.pdf</td>
       <td class="col-pags">18 págs.</td>
-      <td class="col-hojas"><strong>9 hojas</strong></td>
+      <td class="col-hojas">9 hojas</td>
       <td class="col-enc">
-        Cuadernillo abrochado al caballete / grapa central (<em>saddle-stitch</em>) o anillado fino flexible.
+        Cuadernillo abrochado a caballete (saddle-stitch / grapa al medio) o anillado fino
       </td>
+    </tr>
+    <tr class="fila-total">
+      <td>Total Suite Completa (4 Cuadernillos)</td>
+      <td>4 archivos PDF listos</td>
+      <td class="col-pags">536 págs.</td>
+      <td class="col-hojas">268 hojas</td>
+      <td>3 Anillados Ring Wire independientes + 1 Cuadernillo abrochado al medio</td>
     </tr>
   </tbody>
 </table>
 
-<div class="specs">
-  <p>• <strong>Formato y papel:</strong> A4 (210 &times; 297 mm), impresión al 100 % de escala (tamaño real, sin reescalar márgenes ni ajustar a página).</p>
-  <p>• <strong>Modo de impresión:</strong> A doble faz automática, orientación vertical, girando sobre el <strong>borde largo</strong>.</p>
-  <p>• <strong>Calidad de papel recomendada:</strong> <span class="destacado">PAPEL OBRA DE 80 GRAMOS</span> (evita transparencias al imprimir a doble faz y soporta resaltadores).</p>
-  <p>• <strong>Total de la suite completa:</strong> 257 hojas de papel obra (divididas cómodamente en 3 anillados medianos + 1 cuadernillo abrochado).</p>
+<div class="footer-specs">
+  <div>Formato y papel: A4 (210 &times; 297 mm), impresión al 100 % de escala (tamaño real, sin reescalar márgenes) a doble faz sobre el borde largo, en papel obra</div>
+  <div class="destacado-papel">PAPEL OBRA DE 80 GR</div>
 </div>
 
 </body>

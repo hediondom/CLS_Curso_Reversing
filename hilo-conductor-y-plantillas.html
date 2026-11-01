@@ -23,7 +23,7 @@
 </header>
 <main id="contenido">
 <h1 id="hilo-conductor-multi-nivel-y-kit-de-plantillas-c-c">Hilo conductor multi-nivel y kit de plantillas C/C++</h1>
-<aside class="callout nota"><p class="callout-titulo">Propósito de esta sección transversal</p><p>Conectar de forma práctica los tres niveles del curso (Principiante, Intermedio y Avanzado). En la <strong>Parte I</strong> vemos cómo un único programa de validación (desde el <code>check.c</code> básico de la Etapa 1 hasta el componente <code>BlocLab</code> de las Etapas 2C, 2D y 6) cambia en el desensamblador y en el debugger a medida que evoluciona. En la <strong>Parte II</strong> tenés <strong>5 plantillas mínimas en C y C++</strong> listas para copiar y compilar en tu VM para practicar todas las lecciones intermedias y avanzadas sin depender de muestras externas.</p></aside>
+<aside class="callout nota"><p class="callout-titulo">Propósito de esta sección transversal</p><p>Conectar de forma práctica los tres niveles del curso (Principiante, Intermedio y Avanzado). En la <strong>Parte I</strong> vemos cómo un único programa de validación (desde el <code>check.c</code> básico de la Etapa 1 hasta el componente <code>BlocLab</code> de las Etapas 2C, 2D y 6) cambia en el desensamblador y en el debugger a medida que evoluciona. En la <strong>Parte II</strong> tenés <strong>7 plantillas mínimas en C y C++</strong> listas para copiar y compilar en tu VM para practicar todas las lecciones intermedias y avanzadas sin depender de muestras externas.</p></aside>
 
 <h2 id="parte-i-el-hilo-conductor-un-mismo-binario-a-través-de-los-tres-niveles">Parte I · El hilo conductor: un mismo binario a través de los tres niveles</h2>
 <p>Una de las dificultades más comunes al estudiar reversing es sentir que cada tema nuevo (optimizaciones, TLS callbacks, packers, C++ con vtables, named pipes o drivers KMDF) pertenece a un mundo desconectado del anterior. Para unirlos, sigamos <strong>la misma regla de negocio</strong> en sus tres estadios de evolución:</p>
@@ -100,8 +100,8 @@ fallo:
 
 <hr>
 
-<h2 id="parte-ii-kit-de-5-plantillas-de-código-mínimo-boilerplates-listos-para-compilar">Parte II · Kit de 5 plantillas de código mínimo (Boilerplates listos para compilar)</h2>
-<p>Todas las prácticas del curso están pensadas para ejecutarse sobre <strong>programas propios en tu VM aislada</strong> (Etapa 0). Para que no tengas que escribir desde cero cada escenario técnico, acá tenés cinco esqueletos autocontenidos de ~35 líneas en C y C++ estándar (también guardados como archivos sueltos en la carpeta <code>plantillas_codigo/</code> del paquete HTML). Compilalos en la VM con <strong>Visual Studio Developer Command Prompt (<code>cl.exe</code>)</strong> o con <strong>MinGW-w64 (<code>gcc</code> / <code>g++</code>)</strong>.</p>
+<h2 id="parte-ii-kit-de-5-plantillas-de-código-mínimo-boilerplates-listos-para-compilar">Parte II · Kit de 7 plantillas de código mínimo (Boilerplates listos para compilar)</h2>
+<p>Todas las prácticas del curso están pensadas para ejecutarse sobre <strong>programas propios en tu VM aislada</strong> (Etapa 0). Para que no tengas que escribir desde cero cada escenario técnico, acá tenés siete esqueletos autocontenidos de ~35 líneas en C y C++ estándar (también guardados como archivos sueltos en la carpeta <code>plantillas_codigo/</code> del paquete HTML). Compilalos en la VM con <strong>Visual Studio Developer Command Prompt (<code>cl.exe</code>)</strong> o con <strong>MinGW-w64 (<code>gcc</code> / <code>g++</code>)</strong>.</p>
 
 <h3 id="plantilla-1-check-evolucion-c-práctica-para-1-5-2-4-2-8-2-10-2-11-2-15-2-17-y-4-1">Plantilla 1 · <code>check_evolucion.c</code> (Práctica para 1.5, 2.4, 2.8, 2.10, 2.11, 2.15, 2.17 y 4.1)</h3>
 <p>Un único archivo en C que podés compilar en modo Principiante (por defecto) o en modo Intermedio (pasando <code>/DMODO_INTERMEDIO</code> o <code>-DMODO_INTERMEDIO</code>), lo que activa un <strong>TLS Callback</strong> que comprueba <code>IsDebuggerPresent()</code> y una rutina de descifrado <strong>XOR</strong> sobre el mensaje de éxito:</p>
@@ -342,6 +342,186 @@ int main(void) {
     CloseHandle(hPipe);
     return 0;
 }</code></pre>
+<h3 id="plantilla-6-bloclab-kmdf-min-c-práctica-para-6-1-a-6-5">Plantilla 6 · <code>bloclab_kmdf_min.c</code> (Práctica para 6.1 a 6.5)</h3>
+<p>Esqueleto mínimo de driver KMDF para Windows x64. Implementa el registro de <code>EvtDriverDeviceAdd</code>, creación de dispositivo con SDDL restrictivo (solo SYSTEM y Administradores), y despacho de IOCTLs con validación estricta de buffer de salida (<code>WdfRequestRetrieveOutputBuffer</code>) para auditoría en IDA/Ghidra y prueba dinámica en VM descartable:</p>
+<pre><code class="lenguaje-c">// Archivo: plantillas_codigo/bloclab_kmdf_min.c
+// Plantilla 6 (Tomo II, Lección 6.2): bloclab_kmdf_min.c
+// Esqueleto mínimo KMDF para análisis estático en IDA/Ghidra y prueba en VM descartable.
+// El SDDL restringe la apertura únicamente a SYSTEM y Administradores.
+#include &lt;ntddk.h&gt;
+#include &lt;wdf.h&gt;
+#include &lt;wdmsec.h&gt;
+
+#define IOCTL_BLOCLAB_QUERY_VERSION     CTL_CODE(0x8000, 0x800, METHOD_BUFFERED, FILE_READ_DATA) // 0x80006000
+
+typedef struct _BLOCLAB_INFO {
+    ULONG Size;
+    ULONG Version;
+    ULONG State;
+} BLOCLAB_INFO, *PBLOCLAB_INFO;
+
+EVT_WDF_DRIVER_DEVICE_ADD BlocLabEvtDeviceAdd;
+EVT_WDF_IO_QUEUE_IO_DEVICE_CONTROL BlocLabEvtIoDeviceControl;
+
+NTSTATUS DriverEntry(PDRIVER_OBJECT DriverObject, PUNICODE_STRING RegistryPath) {
+    WDF_DRIVER_CONFIG config;
+    WDF_DRIVER_CONFIG_INIT(&amp;config, BlocLabEvtDeviceAdd); // +0x08 en x64 = EvtDriverDeviceAdd
+    return WdfDriverCreate(DriverObject, RegistryPath, WDF_NO_OBJECT_ATTRIBUTES, &amp;config, WDF_NO_HANDLE);
+}
+
+NTSTATUS BlocLabEvtDeviceAdd(WDFDRIVER Driver, PWDFDEVICE_INIT DeviceInit) {
+    UNREFERENCED_PARAMETER(Driver);
+    DECLARE_CONST_UNICODE_STRING(ntDeviceName, L"\Device\BlocLab");
+    DECLARE_CONST_UNICODE_STRING(symbolicLink, L"\DosDevices\BlocLab");
+
+    NTSTATUS status = WdfDeviceInitAssignName(DeviceInit, &amp;ntDeviceName);
+    if (!NT_SUCCESS(status)) return status;
+
+    // Restringe apertura únicamente a SYSTEM y Administradores:
+    status = WdfDeviceInitAssignSDDLString(DeviceInit, &amp;SDDL_DEVOBJ_SYS_ALL_ADM_ALL);
+    if (!NT_SUCCESS(status)) return status;
+
+    WDFDEVICE device;
+    status = WdfDeviceCreate(&amp;DeviceInit, WDF_NO_OBJECT_ATTRIBUTES, &amp;device);
+    if (!NT_SUCCESS(status)) return status;
+
+    status = WdfDeviceCreateSymbolicLink(device, &amp;symbolicLink);
+    if (!NT_SUCCESS(status)) return status;
+
+    WDF_IO_QUEUE_CONFIG queueConfig;
+    WDF_IO_QUEUE_CONFIG_INIT_DEFAULT_QUEUE(&amp;queueConfig, WdfIoQueueDispatchSequential);
+    queueConfig.EvtIoDeviceControl = BlocLabEvtIoDeviceControl; // +0x28 en x64
+
+    return WdfIoQueueCreate(device, &amp;queueConfig, WDF_NO_OBJECT_ATTRIBUTES, WDF_NO_HANDLE);
+}
+
+VOID BlocLabEvtIoDeviceControl(WDFQUEUE Queue, WDFREQUEST Request,
+                               size_t OutputBufferLength, size_t InputBufferLength,
+                               ULONG IoControlCode) {
+    UNREFERENCED_PARAMETER(Queue);
+    UNREFERENCED_PARAMETER(OutputBufferLength);
+
+    if (IoControlCode != IOCTL_BLOCLAB_QUERY_VERSION) {
+        WdfRequestComplete(Request, STATUS_INVALID_DEVICE_REQUEST);
+        return;
+    }
+    if (InputBufferLength != 0) {
+        WdfRequestComplete(Request, STATUS_INVALID_PARAMETER);
+        return;
+    }
+
+    PBLOCLAB_INFO outBuf = NULL;
+    NTSTATUS status = WdfRequestRetrieveOutputBuffer(Request, sizeof(BLOCLAB_INFO), (PVOID*)&amp;outBuf, NULL);
+    if (!NT_SUCCESS(status)) {
+        WdfRequestComplete(Request, status);
+        return;
+    }
+
+    RtlZeroMemory(outBuf, sizeof(BLOCLAB_INFO));
+    outBuf-&gt;Size    = sizeof(BLOCLAB_INFO);
+    outBuf-&gt;Version = 1;
+    outBuf-&gt;State   = 1; // READY
+    WdfRequestCompleteWithInformation(Request, STATUS_SUCCESS, sizeof(BLOCLAB_INFO));
+}
+</code></pre>
+
+<h3 id="plantilla-7-svclab-min-c-práctica-para-2d-4-2d-1-y-2-21">Plantilla 7 · <code>svclab_min.c</code> (Práctica para 2D.4, 2D.1 y 2.21)</h3>
+<p>Servicio Win32 nativo completo que implementa el contrato SCM (<code>StartServiceCtrlDispatcherW</code>, <code>ServiceMain</code>, <code>RegisterServiceCtrlHandlerExW</code>) y soporta modo consola con <code>--console</code>. Ideal para practicar depuración de servicios, transiciones de estado y elevación de privilegios:</p>
+<pre><code class="lenguaje-c">// Archivo: plantillas_codigo/svclab_min.c
+// Práctica para Lección 2D.4 (Servicios: SCM, ciclo de vida, cuentas y auditoría)
+// Compilar (MSVC) : cl /Zi /O1 /DUNICODE /D_UNICODE svclab_min.c advapi32.lib /Fe:SvcLab.exe
+// Compilar (MinGW): gcc -O1 -g -municode svclab_min.c -ladvapi32 -o SvcLab.exe
+// Probar en consola antes de registrar: SvcLab.exe --console
+// Registrar en VM (cmd elevado):
+//   sc.exe create CLSLabSvc binPath= "C:\CLS-Lab\SvcLab.exe" start= demand obj= "NT AUTHORITY\LocalService"
+//   sc.exe start CLSLabSvc
+//   sc.exe query CLSLabSvc
+//   sc.exe stop CLSLabSvc
+//   sc.exe delete CLSLabSvc
+
+#include &lt;windows.h&gt;
+#include &lt;stdio.h&gt;
+
+#ifdef _MSC_VER
+#pragma comment(lib, "advapi32.lib")
+#endif
+
+#define SVC_NAME L"CLSLabSvc"
+
+static SERVICE_STATUS        g_Status = {0};
+static SERVICE_STATUS_HANDLE g_hStatus = NULL;
+static HANDLE                g_hStopEvent = NULL;
+
+static void ReportarEstado(DWORD dwCurrentState, DWORD dwWin32ExitCode, DWORD dwWaitHint) {
+    static DWORD dwCheckPoint = 1;
+    g_Status.dwServiceType      = SERVICE_WIN32_OWN_PROCESS;
+    g_Status.dwCurrentState     = dwCurrentState;
+    g_Status.dwWin32ExitCode    = dwWin32ExitCode;
+    g_Status.dwWaitHint         = dwWaitHint;
+    g_Status.dwControlsAccepted = (dwCurrentState == SERVICE_START_PENDING) ? 0 : (SERVICE_ACCEPT_STOP | SERVICE_ACCEPT_SHUTDOWN);
+    g_Status.dwCheckPoint       = (dwCurrentState == SERVICE_RUNNING || dwCurrentState == SERVICE_STOPPED) ? 0 : dwCheckPoint++;
+    if (g_hStatus) {
+        SetServiceStatus(g_hStatus, &amp;g_Status);
+    }
+}
+
+static DWORD WINAPI SvcCtrlHandlerEx(DWORD dwControl, DWORD dwEventType, LPVOID lpEventData, LPVOID lpContext) {
+    (void)dwEventType; (void)lpEventData; (void)lpContext;
+    switch (dwControl) {
+        case SERVICE_CONTROL_STOP:
+        case SERVICE_CONTROL_SHUTDOWN:
+            ReportarEstado(SERVICE_STOP_PENDING, NO_ERROR, 2000);
+            if (g_hStopEvent) SetEvent(g_hStopEvent);
+            return NO_ERROR;
+        case SERVICE_CONTROL_INTERROGATE:
+            return NO_ERROR;
+        default:
+            return ERROR_CALL_NOT_IMPLEMENTED;
+    }
+}
+
+static VOID WINAPI SvcLabMain(DWORD dwArgc, LPWSTR* lpszArgv) {
+    (void)dwArgc; (void)lpszArgv;
+    g_hStatus = RegisterServiceCtrlHandlerExW(SVC_NAME, SvcCtrlHandlerEx, NULL);
+    if (!g_hStatus) return;
+
+    ReportarEstado(SERVICE_START_PENDING, NO_ERROR, 2000);
+    g_hStopEvent = CreateEventW(NULL, TRUE, FALSE, NULL);
+    if (!g_hStopEvent) {
+        ReportarEstado(SERVICE_STOPPED, GetLastError(), 0);
+        return;
+    }
+
+    ReportarEstado(SERVICE_RUNNING, NO_ERROR, 0);
+    WaitForSingleObject(g_hStopEvent, INFINITE);
+
+    CloseHandle(g_hStopEvent);
+    g_hStopEvent = NULL;
+    ReportarEstado(SERVICE_STOPPED, NO_ERROR, 0);
+}
+
+int wmain(int argc, wchar_t* argv[]) {
+    if (argc &gt; 1 &amp;&amp; wcscmp(argv[1], L"--console") == 0) {
+        wprintf(L"[SvcLab] Modo diagnóstico de consola OK. Para usar con el SCM, registralo con sc.exe create.
+");
+        return 0;
+    }
+    SERVICE_TABLE_ENTRYW DispatchTable[] = {
+        { (LPWSTR)SVC_NAME, (LPSERVICE_MAIN_FUNCTIONW)SvcLabMain },
+        { NULL, NULL }
+    };
+    if (!StartServiceCtrlDispatcherW(DispatchTable)) {
+        DWORD err = GetLastError();
+        if (err == ERROR_FAILED_SERVICE_CONTROLLER_CONNECT) {
+            wprintf(L"Error 1063 (ERROR_FAILED_SERVICE_CONTROLLER_CONNECT): este binario es un servicio Win32.
+"
+                    L"Inicialo con 'sc.exe start CLSLabSvc' o probalo con 'SvcLab.exe --console'.
+");
+        }
+        return (int)err;
+    }
+    return 0;
+}
 <aside class="callout nota"><p class="callout-titulo">Volver</p><p><a href="guia/index.html">Mapa del curso</a> · <a href="00_EMPEZAR_AQUI.html">Inicio</a></p></aside>
 </main>
 <footer class="pie">

@@ -135,6 +135,35 @@ return (a + b) * 4 == 480;</code></pre>
 <tr><td>State machine</td><td>Convierte métodos en una máquina de estados</td><td><code>switch</code> sobre un estado, <code>MoveNext</code></td></tr>
 </tbody></table></div>
 <p>El decompilador sigue siendo útil, pero hay que <strong>verificar</strong>. Una condición reconstruida puede ser incorrecta si el flujo está ofuscado. La regla es la misma que en nativo: contrastar estático con dinámico, sobre un programa propio o autorizado.</p>
+
+<aside class="ampliacion-ext">
+<p class="callout-titulo">Ampliación editorial basada en fuentes externas — Desempaquetado dinámico en .NET: Assembly.Load(byte[]), intercepción en AmsiScanBuffer y descifrado de strings por token</p>
+<p>Cuando un ensamblado .NET ofuscado o empaquetado oculta su carga real o cifra todas sus cadenas, el análisis estático en ILSpy muestra métodos ilegibles o un único recurso binario comprimido. En laboratorio aislado existen dos técnicas estándar para recuperar el código y los textos sin desarmar el ofuscador a mano (<em>Microsoft Learn: Assembly.Load Method y Antimalware Scan Interface — AmsiScanBuffer</em>) <em>(Hecho confirmado)</em>:</p>
+<ol>
+<li><strong>Volcado de ensamblados cargados en memoria (<code>Assembly.Load(byte[])</code>) vía <code>amsi.dll!AmsiScanBuffer</code>:</strong>
+Los <em>packers</em> .NET suelen descifrar en memoria un arreglo <code>byte[] rawAssembly</code> e invocar <code>Assembly.Load(rawAssembly)</code> (o <code>AppDomain.CurrentDomain.Load</code>). Desde .NET Framework 4.8+ y .NET moderno en Windows 10/11, el CLR envía automáticamente ese buffer en claro a <code>amsi.dll!AmsiScanBuffer</code> antes de cargarlo:
+<pre><code class="lenguaje-c">HRESULT AmsiScanBuffer(
+    HAMSICONTEXT amsiContext, // RCX (x64)
+    PVOID        buffer,      // RDX (x64): Puntero al inicio del PE/IL en claro ("MZ" = 4D 5A)
+    ULONG        length,      // R8D (x64): Tamaño exacto del ensamblado en bytes
+    LPCWSTR      contentName, // R9  (x64)
+    HAMSISESSION amsiSession, // [rsp+20h]
+    AMSI_RESULT  *result      // [rsp+28h]
+);</code></pre>
+<ul>
+<li><strong>En <code>x64dbg</code>:</strong> Poné un breakpoint en <code>amsi.dll!AmsiScanBuffer</code>. Cuando frene y veas que <code>[rdx]</code> empieza con <code>4D 5A</code> (<code>MZ</code>), ejecutá en la barra de comandos de <code>x64dbg</code>:
+<pre><code class="lenguaje-text">savedata C:\lab\dump_stage2.bin, rdx, r8</code></pre></li>
+<li><strong>En <code>dnSpyEx</code>:</strong> Poné un breakpoint en <code>System.Reflection.Assembly.Load(byte[])</code>, iniciá con <code>F5</code> y, tras ejecutarse el paso (<code>F10</code>), abrí <code>Debug -&gt; Windows -&gt; Modules</code>, hacé clic derecho sobre el ensamblado recién aparecido en memoria (marcado como <em>In-Memory</em>) y elegí <strong>Save Module...</strong>.</li>
+</ul></li>
+<li><strong>Patrón de descifrado de strings por token de metadatos (<code>0x70XXXXXX</code>):</strong>
+Los ofuscadores .NET reemplazan cada instrucción <code>ldstr "texto"</code> por una llamada como <code>ClaseOculta.Descifrar(int id)</code> pasando un entero constante.
+<ul>
+<li>Para recuperarlas sin reescribir el algoritmo en Python: si el método descifrador es puro (solo depende del entero y de una tabla en los recursos del propio ensamblado), podés usar la herramienta defensiva de código abierto <code>de4dot</code> con <code>--strtyp delegate --strtok &lt;token_del_metodo&gt;</code> en la VM aislada, o evaluar el método en el panel <em>Immediate / Watch</em> de <code>dnSpyEx</code> una vez que el constructor estático (<code>.cctor</code>) haya inicializado la tabla.</li>
+</ul></li>
+</ol>
+</aside>
+
+
 <h2 id="práctica">Práctica</h2>
 <ol><li>Compilá el método <code>Check</code> en Debug y en Release. Pegá las dos versiones de IL y marcá tres diferencias.</li><li>Escribí un método con un <code>for</code> que sume 1..10. Encontrá en el IL el salto que vuelve al inicio del bucle.</li><li>Escribí una propiedad <code>public int Edad { get; set; }</code> y buscá el getter y el setter en ILSpy. ¿Qué métodos genera el compilador?</li><li>Escribí un método <code>async</code> que espere un segundo e imprima algo. Buscá la máquina de estados que genera el compilador. No hace falta entenderla entera: identificá <code>MoveNext</code>.</li><li>Compará la decompilación con tu fuente. Marcá al menos una diferencia de estilo y explicá por qué es equivalente.</li><li>Escribí en tu bitácora: qué método analizaste, qué IL te sorprendió y qué parte no entendés todavía.</li></ol>
 <h2 id="preguntas-de-repaso">Preguntas de repaso</h2>

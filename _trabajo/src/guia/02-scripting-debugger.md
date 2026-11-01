@@ -149,8 +149,8 @@ En tu VM, con un **crackme propio o didáctico** (ver [Banco de prácticas](../p
 Podés: (1) escribir un script de x64dbg que automatice una tarea y escriba al log; (2) hacer que un breakpoint loggee sin pausar (log + break-condition 0); (3) guardar el log como evidencia reproducible; (4) reconocer un OllyScript y explicar cómo adaptarlo; (5) acotar una traza condicional y comparar dos trazas; (6) explicar qué hace un agente de Frida con `Interceptor.attach` y qué cambia en el proceso. **Con esto cerrás el núcleo del bloque 2C.**
 :::
 
-:::{nota} Lo que queda fuera
-*Stalker* (el trazador de Frida) y la reescritura de funciones con `Interceptor.replace`, los marcos de instrumentación binaria como DynamoRIO o Intel Pin y el uso de Frida en Android o iOS. La lección enseña a registrar evidencia sin cambiar la lógica del programa.
+::: {nota} Dónde sigue esto (Bloque 2E)
+Esta lección enseña a registrar evidencia con `Interceptor.attach` y scripts de `x64dbg` sin alterar la lógica del binario. La reescritura de funciones con `Interceptor.replace` se aborda en **2.28**; los frameworks de instrumentación binaria dinámica (**DynamoRIO** e **Intel Pin**) en **2.29**; y el trazado de bloques e instrucciones con **Frida Stalker** en **2.30**. El uso de Frida en Android o iOS queda fuera por ser esta una edición exclusiva de Windows.
 :::
 
 ## Fuentes de esta lección

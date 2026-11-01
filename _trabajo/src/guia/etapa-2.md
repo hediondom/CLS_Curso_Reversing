@@ -11,7 +11,7 @@ Leer assembly x86/x64, seguir el flujo y usar debugger y desensamblador con crit
 :::
 
 **Prerrequisitos:** Etapa 1.  
-**Duración estimada:** 32 a 40 h (2A) + ~25 h (2B) + ~30–40 h (2C avanzado). Es una estimación de esta guía, derivada de la suma de las lecciones; no es una duración declarada por CLS.
+**Duración estimada:** 32 a 40 h (2A) + ~25 h (2B) + ~30–40 h (2C) + ~25–30 h (2E). Es una estimación de esta guía, derivada de la suma de las lecciones; no es una duración declarada por CLS.
 
 ## Lecciones
 

@@ -143,6 +143,23 @@ Señales rápidas para saber qué ABI tenés delante:
 | Cadena de tipo | `.?AVMiClase@@` | `7MiClase` (en `_ZTS…`) |
 | Excepciones | `__CxxFrameHandler*`, `_CxxThrowException` | `__cxa_throw`, `__gxx_personality_*` |
 
+> **Ampliación editorial basada en fuentes externas — Layout en memoria de `std::unique_ptr`, `std::shared_ptr` (`_Ref_count_base`) y `std::function` (SFO) en MSVC x64**
+>
+> En C++ moderno (C++17/20/23 compilado con MSVC x64), la gestión de memoria y los callbacks rara vez usan `new`/`delete` o punteros a función desnudos; el código desensamblado está dominado por tres plantillas de la STL cuyos layouts en memoria conviene reconocer de inmediato (*cabeceras `<memory>` y `<functional>` de MSVC STL*) (**Hecho confirmado**):
+>
+> | Tipo STL (MSVC x64 Release) | Tamaño (`sizeof`) | Layout interno por offset | Patrón característico en ensamblador x64 |
+> | :--- | :--- | :--- | :--- |
+> | `std::unique_ptr<T>` | `8 bytes` (`0x08`) | `+0x00`: `T* _Mypair._Myval2` (sin sobrecarga si el *deleter* no tiene estado). | Se lee igual que un puntero crudo `T*`, pero el compilador genera un *funclet* de limpieza en `.xdata` que pone el slot en `0` y llama a `operator delete` si ocurre una excepción. |
+> | `std::shared_ptr<T>` | `16 bytes` (`0x10`) | `+0x00`: `T* _Ptr` (puntero al objeto)<br>`+0x08`: `_Ref_count_base* _Rep` (puntero al bloque de control).<br>Dentro de `_Rep` (`16B` cabecera):<br>• `+0x00`: `vptr` (`[vptr+0]` = `_Destroy()`, `[vptr+8]` = `_Delete_this()`)<br>• `+0x08`: `long _Uses` (referencias fuertes)<br>• `+0x0C`: `long _Weaks` (referencias débiles). | Al copiar un `shared_ptr` se observa el incremento atómico del contador en `+0x08` del bloque de control:<br>`mov rdx, [rcx+8]`<br>`lock inc dword ptr [rdx+8]`<br>Al salir de ámbito: `lock dec dword ptr [rbx+8]` seguido de `jnz` y llamada virtual a `[rax]` (`_Destroy`) si llegó a cero. |
+> | `std::function<R(Args...)>` | `64 bytes` (`0x40`) | Usa *Small Functor Optimization* (SFO) en `_Func_class`:<br>• `+0x00..+0x37`: `_Mystorage` (buffer inline de 56 bytes para lambdas pequeñas)<br>• `+0x38`: `_Func_base* _Ptr` (apunta a `+0x00` si cabe en SFO, al heap si es grande, o vale `0` si está vacía). | Antes de invocar el callback carga el puntero de `+0x38`, comprueba nulidad y llama al **slot 2 (`+0x10`)** de su vtable (`_Do_call`):<br>`mov rcx, [rbx+38h]`<br>`test rcx, rcx`<br>`jz std::_Xbad_function_call`<br>`mov rax, [rcx]`<br>`call qword ptr [rax+10h]` |
+>
+> **Cómo encontrar el cuerpo de una lambda dentro de `std::function`:**
+> Cuando ves `call qword ptr [rax+10h]` sobre el puntero cargado desde `[obj+38h]`, poné un breakpoint ahí o seguí en estático dónde se inicializó la vtable del `_Func_impl_no_alloc`:
+> * Slot 0 (`+0x00`): `_Copy` (clona el functor).
+> * Slot 1 (`+0x08`): `_Move` (mueve el functor).
+> * **Slot 2 (`+0x10`): `_Do_call` — acá está el código real de la lambda o función envuelta.**
+> * Slot 3 (`+0x18`): `_Target_type` (devuelve el `type_info` RTTI de la lambda).
+
 ## Práctica
 
 En tu VM, con un **programa propio** compilado con C++ (clases con métodos virtuales, un `std::vector`, un `std::string` corto y uno largo, y un `try/catch`):

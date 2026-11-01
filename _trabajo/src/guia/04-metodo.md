@@ -233,8 +233,8 @@ Tenés que poder:
 Si podés analizar un programa propio y explicar la condición sin mirar el fuente, aprobaste el método. La lección siguiente convierte ese trabajo en un informe.
 :::
 
-:::{nota} Lo que queda fuera
-El objetivo es reconocer y documentar compresión, checksums, hashes, MAC y cifrado, no romper cifrado ni recuperar claves. Tampoco se reconstruyen protocolos de servicios de terceros. La lección [4.5](04-formatos-protocolos.html) enseña el procedimiento con formatos y comunicaciones de programas propios; el *fuzzing* guiado por formato se presenta en la optativa [2.24](02-opt-fuzzing.html).
+::: {nota} Lo que sigue en 4.5, 4.6 y 2.24
+El objetivo es reconocer y documentar compresión, checksums, hashes, MAC y cifrado, no romper cifrado ni atacar servicios ajenos. La lección **4.5** sistematiza la reconstrucción de formatos y protocolos propios; la lección **4.6** aborda la correlación de tráfico con hooks en `send`/`recv` y la escritura de disectores Lua en Wireshark sobre sistemas propios o autorizados; y el fuzzing guiado por cobertura se desarrolla en la optativa **2.24**.
 :::
 
 ## Fuentes de esta lección

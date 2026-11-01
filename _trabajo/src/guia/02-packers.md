@@ -145,8 +145,8 @@ En tu VM, con un **programa propio** (necesitás UPX, gratis y open source; vers
 Podés: (1) reconocer un binario UPX por sus secciones/entry/imports; (2) explicar qué es el OEP; (3) llegar al OEP por el patrón `popad`/`jmp` y dumpear; (4) decir por qué hay que reconstruir la IAT; (5) validar tu resultado con `upx -d`; (6) llegar al OEP de un UPX de 64 bits sin el patrón `popad`; (7) reconocer un posible empaquetado por señales genéricas y explicar por qué una sola no alcanza; (8) diagnosticar por qué un dump no corre.
 :::
 
-:::{nota} Lo que queda fuera
-Packers con varias capas, código que se descifra por partes durante la ejecución, redirección de la IAT, *stolen bytes* y, por el límite del curso, todo protector comercial. La lección enseña el mecanismo con un compresor abierto y reversible.
+::: {nota} Dónde sigue esto (Bloque 2E) y límite del curso
+El reconocimiento de protectores multicapa se amplía en **2.27 · Protectores comerciales y packers multicapa**, y la detección genérica del OEP mediante la regla $W \oplus X$ (página escrita y luego ejecutada) se practica con DynamoRIO/Pin en **2.29** y con Frida Stalker en **2.30**. Por el límite ético del curso, no se desempaquetan protectores comerciales sobre software ajeno.
 :::
 
 ## Fuentes de esta lección

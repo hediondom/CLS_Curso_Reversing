@@ -143,6 +143,49 @@ Debug Directory  (type = CODEVIEW / RSDS)
 
 Sin ejecutar nada ya sabés: tiene **/GS** y **CFG**, es **x64** (SEH por tablas), y el `.pdb` filtra la ruta de compilación (`D:\dev\miapp\...`: usuario, proyecto, configuración Release). Ese GUID + age es lo que usarías para cargar los símbolos correctos.
 
+> **Ampliación editorial basada en fuentes externas — Anatomía de `DllMain`, `PEB->LoaderLock` y detección de *Export Forwarding / DLL Sideloading***
+>
+> Cuando el binario analizado es una biblioteca dinámica (`.dll` con el flag `IMAGE_FILE_DLL = 0x2000` en `FileHeader.Characteristics`), el punto de entrada (`AddressOfEntryPoint`) no tiene la firma de `main`, sino la de `DllMain`, invocada por el cargador de Windows (`ntdll!LdrpCallInitRoutine`) bajo reglas estrictas de sincronización (*Microsoft Learn: Dynamic-Link Library Entry-Point Function y Best Practices for Creating DLLs*) (**Hecho confirmado**):
+>
+> 1. **Firma de `DllMain` y códigos `fdwReason`:**
+>    ```c
+>    BOOL WINAPI DllMain(
+>        HINSTANCE hinstDLL,  // RCX (x64) / [esp+4] (x86): Dirección base (ImageBase) donde se mapeó la DLL
+>        DWORD     fdwReason, // RDX (x64) / [esp+8] (x86): Motivo de la llamada (0 a 3)
+>        LPVOID    lpvReserved // R8  (x64) / [esp+0Ch]: NULL si es carga/descarga dinámica (LoadLibrary/FreeLibrary)
+>    );
+>    ```
+>    * `DLL_PROCESS_ATTACH (1)`: La DLL se mapea por primera vez en el proceso. Si devuelve `FALSE (0)`, el cargador aborta o descarga la DLL.
+>    * `DLL_THREAD_ATTACH (2)` y `DLL_THREAD_DETACH (3)`: Se crea o termina un hilo en el proceso (a menos que la DLL haya llamado a `DisableThreadLibraryCalls`).
+>    * `DLL_PROCESS_DETACH (0)`: La DLL se descarga (`lpvReserved == NULL` vía `FreeLibrary`, o `lpvReserved != NULL` cuando el proceso está terminando).
+>
+> 2. **El *Loader Lock* (`PEB->LoaderLock`) y por qué importa en el análisis:**
+>    Antes de ejecutar cualquier `DllMain` (o cualquier TLS callback), `ntdll.dll` adquiere la sección crítica global del cargador apuntada por `PEB->LoaderLock` (offset `+0x110` en x64; `+0xA0` en x86). Mientras ese candado está tomado, ninguna otra operación de carga o enumeración de módulos puede avanzar en otro hilo. Por eso:
+>    * Llamar dentro de `DllMain` a `LoadLibraryEx`, `CoInitializeEx`, funciones de `user32.dll` / `shell32.dll`, o crear un hilo y esperarlo con `WaitForSingleObject` produce un interbloqueo (*deadlock*), porque el hilo nuevo intenta adquirir el mismo `LoaderLock` para recibir `DLL_THREAD_ATTACH`.
+>    * Para depurar el arranque de una DLL en `x64dbg`, activá `Options -> Preferences -> Events -> DLL Entry` (o `DLL Load`) y ejecutá la DLL con un anfitrión propio o `rundll32.exe copia_dll.dll,FuncionExportada`.
+>
+> 3. **Export Forwarding y *DLL Proxying / Sideloading*:**
+>    En escenarios de *DLL Sideloading*, un ejecutable legítimo firmado busca una DLL por nombre en su propio directorio (p. ej. `version.dll` o `winhttp.dll`). Si un tercero coloca allí una DLL propia con el mismo nombre, tiene que reenviar (*forward*) las exportaciones originales hacia la DLL real de `C:\Windows\System32` para que la aplicación anfitriona no falle.
+>    * **Cómo se codifica en el PE un *Forwarded Export*:** En `IMAGE_EXPORT_DIRECTORY`, si el valor de `AddressOfFunctions[i]` (una RVA) cae **dentro del rango del propio directorio de exportaciones** (`DataDirectory[0].VirtualAddress <= RVA < DataDirectory[0].VirtualAddress + DataDirectory[0].Size`), el cargador no lo interpreta como código ejecutable, sino como un puntero a una cadena ASCII con el formato `"NombreDLLDestino.NombreFuncion"` (o `"NombreDLL.#Ordinal"`).
+>    * **Cómo se genera en C (MSVC) para pruebas de laboratorio:**
+>      ```c
+>      // Reenvío estático en el linker sin escribir código wrapper:
+>      #pragma comment(linker, "/export:GetFileVersionInfoW=C:\\Windows\\System32\\version.GetFileVersionInfoW")
+>      ```
+>    * **Script de auditoría en Python (`pefile`) para detectar exportaciones reenviadas:**
+>      ```python
+>      import pefile
+>
+>      pe = pefile.PE("muestra.dll")
+>      if hasattr(pe, "DIRECTORY_ENTRY_EXPORT"):
+>          for exp in pe.DIRECTORY_ENTRY_EXPORT.symbols:
+>              name = exp.name.decode() if exp.name else f"ord_{exp.ordinal}"
+>              if exp.forwarder:
+>                  print(f"[FORWARDED] {name} -> {exp.forwarder.decode()}")
+>              else:
+>                  print(f"[CODE RVA ] {name} -> {exp.address:#08x}")
+>      ```
+
 ## Práctica
 
 En tu VM, con un **binario propio** (compilá con /GS /guard:cf en MSVC) y PE-bear:

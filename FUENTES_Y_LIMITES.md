@@ -222,11 +222,21 @@ Para que quien termine el recorrido encuentre explicados los temas que más apar
 - **Lecciones finas ampliadas:** 2.15 (`CheckRemoteDebuggerPresent`, `ProcessDebugPort`, tiempos, `CPUID`, tabla de documentación), 2.16 (tipos y estructuras, scripting, headless, Version Tracking), 2.17 (OEP en x64, señales genéricas, por qué falla un dump) y 2.20 (cómo empareja un differ, ruido, símbolos públicos).
 - **Estimaciones:** el PDF pasó de 371 a 395 páginas. 2B sumó unas once páginas y nueve pasos de práctica que piden compilar programas propios (APIs dinámicas, cadenas cifradas, flujo aplanado, Go/Rust, chequeos anti-debug, estructuras y scripts en Ghidra): pasa de **~20 h** a **~25 h**. 2C sumó unas ocho páginas y seis pasos (UPX de 64 bits, entropía, diff con ruido de compilación, Version Tracking, trazas y Frida): pasa de **~25–35 h** a **~30–40 h**. La lección 4.1 sumó dos páginas y un ejercicio de formato propio con lector en Python: pasa de 4 h a 6 h y la Etapa 4 de **12–16 h** a **14–18 h**. La lección de IDA (2A) creció dos páginas y dos pasos que entran en su rango de 32–40 h. Ninguna estimación está medida con alumnos.
 - **Fuentes:** documentación de Microsoft Learn, Go, Rust, Ghidra, x64dbg, Frida, BinDiff, UPX y Python, comprobada en esta revisión. Lo de Delphi (convención `register`, firma `TPF0`, cabecera de los `string`) queda como conocimiento externo sin enlace, porque la documentación de Embarcadero no respondió durante la verificación.
-- **Siguen fuera, y así lo dice cada lección:** ofuscación por máquina virtual y desofuscación simbólica, tipos de Go y *traits* de Rust, p-code de VB6, neutralizar anti-análisis, packers multicapa y protectores comerciales, extensiones de Ghidra y SLEIGH, diff de parches completos de Windows, Stalker de Frida, DynamoRIO/Pin y protocolos de terceros.
+- **Lo que esta revisión declaraba fuera ya está cubierto por el Bloque 2E (ver 10.5):** ofuscación por máquina virtual y desofuscación simbólica (2.25–2.26), tipos de Go y *traits* de Rust (2.32), p-code de VB6 (2.33), neutralizar anti-análisis (2.28), reconocer packers multicapa (2.27), extensiones de Ghidra y SLEIGH (2.31), Stalker de Frida (2.30), DynamoRIO/Pin (2.29) y protocolos de terceros autorizados (4.6). **Siguen fuera** únicamente el **diff de parches mensuales completos de Windows** (a escala de symbol server) y el **desempaquetado de protectores comerciales** de terceros.
 
 Ningún ejemplo nuevo se compiló ni se ejecutó: están marcados como **ilustrativos** y las prácticas nuevas no están verificadas.
 
-### 10.5 Pendiente / futuro
+### 10.5 Edición 6 — Bloque 2E · Desofuscación y análisis dinámico avanzado (2.25–2.33) y 4.6
+
+Se agregó a la Etapa 2 un bloque optativo **2E** (después de 2C), con nueve lecciones, y a la Etapa 4 la lección **4.6**, que cubren los temas que la revisión del 28/10 declaraba fuera:
+
+- **2.25** ejecución simbólica/concólica (angr/Triton/Miasm/Z3, MBA) · **2.26** ofuscación por máquina virtual · **2.27** protectores comerciales y packers multicapa (reconocer, no evadir) · **2.28** neutralizar anti-análisis en laboratorio · **2.29** DBI (DynamoRIO/Pin) · **2.30** Frida Stalker · **2.31** extensiones de Ghidra y SLEIGH · **2.32** Go y Rust en profundidad · **2.33** VB6 y p-code. Y **4.6** protocolos de terceros (reconstrucción sobre sistemas propios o autorizados).
+- Se sumó la **Hoja 3.4** (Desofuscación y DBI) a las Hojas de referencia rápida y una fila al Índice Maestro de la Separata.
+- **Estimación editorial del bloque 2E:** ~25–30 h, no medida con alumnos. El libro pasó a ~494 páginas (Tomo I ~368).
+- **Marco:** todo es **conocimiento externo** y los ejemplos son **ilustrativos** (no compilados ni ejecutados en esta edición). Se mantiene el límite ético: no se desempaquetan protectores comerciales ni se producen cracks/keygens; neutralizar anti-análisis e instrumentar en dinámico es solo sobre **binarios propios** o malware en **VM descartable**.
+- **Fuentes:** documentación primaria de angr, Triton, Miasm, Z3, DynamoRIO, Intel Pin, Frida, Ghidra/SLEIGH, GoReSym, Rust RFC 2603, VB Decompiler y Wireshark; la taxonomía de protectores (VMProtect, Themida…) es pública y solo para reconocimiento.
+
+### 10.6 Pendiente / futuro
 
 - **Laboratorios reproducibles:** compilar los binarios de práctica propios y publicar versiones de herramientas, archivos y hashes/salidas esperadas. Los ejemplos de 2B, 2C, 2D y Etapa 6 están marcados como **ilustrativos** cuando no hay ejecución verificada.
 - Continúan fuera del recorrido Windows: exploiting comercial, Android, Linux/ELF, macOS y ARM.

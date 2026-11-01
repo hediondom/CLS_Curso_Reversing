@@ -11,7 +11,7 @@ El recorrido obligatorio son las Etapas 0–4. Las Etapas 5–6 y la rama 2D son
 |---|---|---|---|
 | **0** | [Laboratorio y método seguro](etapa-0.html) | 4 a 6 horas | 1 |
 | **1** | [Fundamentos](etapa-1.html) | 21 a 25 horas | 5 |
-| **2** | [Introducción al reversing](etapa-2.html) | 32 a 40 h (2A) + ~25 h (2B) + ~30–40 h (2C avanzado) | 33 |
+| **2** | [Introducción al reversing](etapa-2.html) | 32 a 40 h (2A) + ~25 h (2B) + ~30–40 h (2C) + ~25–30 h (2E) | 33 |
 | **3** | [.NET como primera victoria](etapa-3.html) | 7 a 10 horas | 2 |
 | **4** | [Práctica guiada](etapa-4.html) | 19 a 25 horas | 6 |
 | **5** | [Ramas opcionales](etapa-5.html) | Variable: 5 a 10 horas por rama | 4 |

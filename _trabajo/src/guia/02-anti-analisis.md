@@ -99,6 +99,33 @@ Cada chequeo hallado se registra en una fila, con la misma disciplina de evidenc
 
 La columna "cómo se confirmó" es la que distingue una sospecha de un hallazgo: sin ella, la fila es una hipótesis.
 
+> **Ampliación editorial basada en fuentes externas — Verificación de marcos de pila y detección de *Call Stack Spoofing* mediante `.pdata` y validación de sitios de `CALL`**
+>
+> En la lección 2.15 vimos que las técnicas de *Call Stack Spoofing* fabrican marcos de pila sintéticos para ocultar el origen real de una llamada al sistema, y en 2D.11 vimos el layout binario de `RUNTIME_FUNCTION` (`.pdata`) y `UNWIND_INFO` (`.xdata`) (*Microsoft Learn: x64 stack usage y RtlVirtualUnwind*) (**Hecho confirmado**). Un analista o motor defensivo verifica la autenticidad de una pila de llamadas en x64 aplicando tres comprobaciones encadenadas sobre cada marco:
+>
+> 1. **Respaldo de módulo (`RtlLookupFunctionEntry`):**
+>    Para cada `ControlPc` (`RIP` actual o dirección de retorno en la pila), debe existir una entrada `RUNTIME_FUNCTION` válida dentro de la sección `.pdata` de un módulo PE firmado/respaldado en disco (`Image` en el VAD, no `MEM_PRIVATE`). Las únicas funciones x64 sin `.pdata` son las *funciones hoja* (*leaf functions*), que por definición de la ABI **no pueden modificar `RSP` ni llamar a ninguna otra función** (solo pueden estar en el frame `0` del tope de la pila, nunca en un frame intermedio).
+>
+> 2. **Coherencia del tamaño de marco (`UNWIND_CODE`):**
+>    La distancia entre el `RSP` de un marco y el `RSP` del marco padre debe coincidir exactamente con la suma de los códigos `UWOP_ALLOC_SMALL` (`OpInfo * 8 + 8`), `UWOP_ALLOC_LARGE` y `UWOP_PUSH_NONVOL` (`8` bytes por registro no volátil salvado) declarados en `UNWIND_INFO`.
+>
+> 3. **Validación de la instrucción previa a `ReturnAddress` (detección de *Gadgets*):**
+>    Cuando `call destino` se ejecuta, empuja en la pila la dirección de la instrucción inmediatamente siguiente (`ReturnAddress`). Por lo tanto, los **2 a 7 bytes anteriores a `ReturnAddress`** en memoria ejecutable deben decodificarse como una instrucción `CALL` legítima:
+>
+> | Bytes previos a `ReturnAddress` | Instrucción x64 | Interpretación en auditoría de pila |
+> | :--- | :--- | :--- |
+> | `E8 xx xx xx xx` (`ReturnAddress - 5`) | `call rel32` | Llamada directa normal. Se verifica que el destino calculado (`ReturnAddress + rel32`) coincida con el inicio de la función hija. |
+> | `FF 15 xx xx xx xx` (`ReturnAddress - 6`) | `call qword ptr [rip+disp32]` | Llamada indirecta vía IAT o puntero global (normal en llamadas a DLLs). |
+> | `FF D0`..`FF D7` o `41 FF D0`..`D7` (`-2` / `-3`) | `call rax`..`r15` | Llamada indirecta por registro (vtable, callback o `GetProcAddress`). |
+> | `FF 23` / `FF 26` / `FF 27` (`jmp [rbx]` / `[rsi]` / `[rdi]`) | `jmp qword ptr [reg]` | **Anomalía crítica (*Gadget de Call Stack Spoofing*):** la dirección en la pila apunta después de un `JMP`, no de un `CALL`, o el `call rel32` apunta a una función distinta de la que está en el frame hijo. |
+>
+> **Inspección rápida en WinDbg ante una pila sospechosa:**
+> ```text
+> 0:000> kn                                  ; Lista los números de frame, Child-SP y Call Site
+> 0:000> !fnent <Call_Site>                  ; Verifica la entrada RUNTIME_FUNCTION y el tamaño del marco en .xdata
+> 0:000> ub <Call_Site> L1                   ; Desensambla la instrucción inmediatamente ANTERIOR al retorno (debe ser CALL)
+> ```
+
 ## Práctica
 
 En tu VM, con un **programa propio** (podés compilar uno que llame a `IsDebuggerPresent` y cambie un mensaje):
@@ -140,8 +167,8 @@ En tu VM, con un **programa propio** (podés compilar uno que llame a `IsDebugge
 Podés: (1) clasificar una técnica en anti-debug/anti-VM/anti-disassembly/anti-dump; (2) detectar anti-debug por imports, strings y comportamiento; (3) explicar la detección por entorno del cap. 24; (4) relacionar un chequeo temprano con un TLS callback; (5) reconocer `CheckRemoteDebuggerPresent`, `ProcessDebugPort`, un chequeo de tiempo y un chequeo de `CPUID` por su firma en el listado; (6) registrar cada chequeo en una tabla con su confirmación.
 :::
 
-:::{nota} Lo que queda fuera
-Cómo neutralizar estos chequeos, los anti-debug de modo kernel y los de protectores comerciales, y las técnicas basadas en excepciones o en manipular hilos (se mencionan como familia, sin detalle). La lección es un mapa para **reconocer y documentar**; no es un catálogo completo.
+::: {nota} Lo que sigue en 2.28 (y lo que queda fuera)
+Esta lección se enfoca en el reconocimiento y la documentación defensiva. Cómo neutralizar estos chequeos en un entorno controlado de laboratorio (usando `ScyllaHide` y hooks de `Frida` sobre binarios propios o en VM descartable) se aborda en la lección **2.28 · Neutralizar anti-análisis en laboratorio**. Los anti-debug propietarios de protectores comerciales sobre software de terceros quedan fuera de alcance.
 :::
 
 ## Fuentes de esta lección

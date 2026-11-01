@@ -140,8 +140,8 @@ En tu VM, con el **mismo crackme** que analizaste en IDA (ver [Banco de práctic
 Podés: (1) importar y autoanalizar un binario en Ghidra; (2) llegar a la función de decisión por strings y referencias; (3) mejorar el decompilado renombrando y tipando; (4) comparar la lectura de IDA y Ghidra del mismo binario; (5) crear y aplicar una estructura con el Data Type Manager o *Auto Create Structure*; (6) correr un script propio desde el *Script Manager* y en modo headless. Con esto cerrás el bloque **2B · Windows intermedio**.
 :::
 
-:::{nota} Lo que queda fuera
-Escribir analizadores o extensiones de Ghidra, el lenguaje de especificación de procesadores (SLEIGH), el trabajo colaborativo con Ghidra Server y la depuración integrada. Son temas de uso avanzado de la herramienta, no de método.
+::: {nota} Dónde sigue esto (Lección 2.31)
+La automatización avanzada con `PyGhidra` / `DecompInterface`, la representación intermedia `P-Code` y el lenguaje de especificación de procesadores **SLEIGH** (para modelar y decompilar el bytecode de tu propia mini-VM) se desarrollan en la lección **2.31 · Extensiones de Ghidra y SLEIGH**. El trabajo colaborativo con Ghidra Server queda fuera del curso.
 :::
 
 ## Fuentes de esta lección

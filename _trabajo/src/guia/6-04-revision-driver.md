@@ -112,6 +112,45 @@ Conclusión: diseño acotado en el fragmento revisado; falta validar build/confi
 
 El código `0x80006000` sale del contrato **ilustrativo** de la 6.2; en un driver real se toma de su header, no se supone.
 
+> **Ampliación editorial basada en fuentes externas — Resolución de la tabla `WdfFunctions` (`WDFFUNCTIONS`) en drivers KMDF sin símbolos en IDA y Ghidra**
+>
+> Al analizar estáticamente un driver KMDF sin archivo `.pdb`, las llamadas a la API del framework (`WdfDriverCreate`, `WdfDeviceCreate`, `WdfIoQueueCreate`, `WdfRequestRetrieveInputBuffer`, etc.) **no aparecen en la tabla de importaciones (IAT)** (*Microsoft Learn: KMDF Driver Entry and Binding / `wdffuncenum.h` del WDK*) (**Hecho confirmado**):
+>
+> 1. **Mecanismo de enlace dinámico de KMDF:**
+>    El binario solo importa `WdfVersionBind` desde `WdfLdr.sys`. Durante el arranque, el stub del compilador llena una estructura `WDF_BIND_INFO` que contiene la versión del framework (p. ej. `1.15` o `1.33`) y un puntero a un puntero global en `.data`: `WdfFunctions` (de tipo `const WDFFUNCTIONS*`), junto con `WdfDriverGlobals` (`PWDF_DRIVER_GLOBALS`).
+>
+> 2. **Patrón en ensamblador x64:**
+>    Toda llamada a una función `Wdf*` se compila como una llamada indirecta indexada sobre esa tabla global, pasando siempre `WdfDriverGlobals` como primer argumento oculto en `RCX` (lo que desplaza un lugar todos los argumentos documentados de la función):
+>    ```nasm
+>    ; Llamada en código C: WdfIoQueueCreate(device, &q, WDF_NO_OBJECT_ATTRIBUTES, WDF_NO_HANDLE);
+>    mov     rax, cs:WdfFunctions_01015   ; Carga la base de la tabla de punteros KMDF
+>    mov     rcx, cs:WdfDriverGlobals     ; 1.er arg oculto (RCX): PWDF_DRIVER_GLOBALS
+>    mov     rdx, rbx                     ; 2.º arg (RDX): WDFDEVICE Device
+>    lea     r8, [rsp+40h]                ; 3.er arg (R8) : PWDF_IO_QUEUE_CONFIG Config (+0x28 = EvtIoDeviceControl)
+>    xor     r9d, r9d                     ; 4.º arg (R9) : WDF_NO_OBJECT_ATTRIBUTES
+>    mov     qword ptr [rsp+20h], 0       ; 5.º arg (stack): Queue (NULL)
+>    call    qword ptr [rax+4C0h]         ; Offset +0x4C0 (índice 152 * 8) = pfnWdfIoQueueCreate
+>    ```
+>
+> 3. **Tabla de offsets de funciones críticas en `WDFFUNCTIONS` (`wdffuncenum.h`, KMDF 1.15–1.33):**
+>
+> | Función KMDF (`WDFFUNCENUM`) | Índice decimal (`TableIndex`) | Offset en x64 (`Índice * 8`) | Offset en x86 (`Índice * 4`) | Qué recibe en `RDX` / `R8` (x64, tras `DriverGlobals` en `RCX`) |
+> | :--- | :--- | :--- | :--- | :--- |
+> | `WdfDeviceInitAssignName` | `29` | `+0x0E8` | `+0x074` | `RDX` = `DeviceInit`, `R8` = `PCUNICODE_STRING` (`\Device\...`) |
+> | `WdfDeviceInitAssignSDDLString` | `31` | `+0x0F8` | `+0x07C` | `RDX` = `DeviceInit`, `R8` = `PCUNICODE_STRING` (cadena SDDL) |
+> | `WdfDeviceCreate` | `45` | `+0x168` | `+0x0B4` | `RDX` = `&DeviceInit`, `R8` = `Attributes`, `R9` = `&Device` |
+> | `WdfDeviceCreateSymbolicLink` | `46` | `+0x170` | `+0x0B8` | `RDX` = `Device`, `R8` = `PCUNICODE_STRING` (`\DosDevices\...`) |
+> | `WdfDeviceCreateDeviceInterface` | `47` | `+0x178` | `+0x0BC` | `RDX` = `Device`, `R8` = `const GUID* InterfaceClassGUID` |
+> | `WdfDriverCreate` | `118` | `+0x3B0` | `+0x1D8` | `RDX` = `DriverObject`, `R8` = `RegistryPath`, `R9` = `Attributes`, `[rsp+20h]` = `WDF_DRIVER_CONFIG*` |
+> | `WdfIoQueueCreate` | `152` | `+0x4C0` | `+0x260` | `RDX` = `Device`, `R8` = `WDF_IO_QUEUE_CONFIG*` (`+0x28` = `EvtIoDeviceControl`) |
+> | `WdfRequestComplete` | `263` | `+0x838` | `+0x41C` | `RDX` = `Request`, `R8D` = `NTSTATUS` |
+> | `WdfRequestCompleteWithInformation` | `265` | `+0x848` | `+0x424` | `RDX` = `Request`, `R8D` = `NTSTATUS`, `R9` = `ULONG_PTR Information` |
+> | `WdfRequestRetrieveInputBuffer` | `275` | `+0x898` | `+0x44C` | `RDX` = `Request`, `R8` = `MinimumRequiredSize`, `R9` = `&Buffer` |
+> | `WdfRequestRetrieveOutputBuffer` | `276` | `+0x8A0` | `+0x450` | `RDX` = `Request`, `R8` = `MinimumRequiredSize`, `R9` = `&Buffer` |
+>
+> 4. **Tipado rápido en IDA 9.0+ y Ghidra:**
+>    Si asignás el tipo `WDFFUNCTIONS*` a la variable global `WdfFunctions` (o importás `wdf.h` / `wdffuncenum.h`), el decompilador convierte instantáneamente `(*(void (**)(...))(WdfFunctions + 0x4C0))(...)` en `WdfFunctions->pfnWdfIoQueueCreate(...)`.
+
 ## Práctica
 
 Revisá el source de tu driver o una muestra didáctica de Microsoft:

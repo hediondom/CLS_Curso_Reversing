@@ -156,8 +156,8 @@ En tu VM, sobre un **ejercicio propio o un crackme didáctico** (hay varios en e
 Podés: (1) nombrar tres señales de ofuscación en un binario; (2) explicar un salto al medio de una instrucción y un salto condicional que siempre se toma; (3) usar el *memory map* para ubicar el código real; (4) llegar al primer bloque de lógica siguiendo la ejecución; (5) reconocer una rutina de descifrado de cadenas y recuperar el texto de dos formas; (6) reconocer un despachador de flujo aplanado y reconstruir el orden de una función chica.
 :::
 
-:::{nota} Lo que queda fuera
-La ofuscación por **máquina virtual** (el código se traduce a un bytecode propio que interpreta un "procesador" embebido), las expresiones mixtas booleano-aritméticas y la desofuscación automática por ejecución simbólica. Se mencionan para reconocerlas por nombre; analizarlas exige herramientas y tiempo que exceden esta etapa, y en protectores comerciales entran en el límite del curso (no desempacar protectores comerciales).
+::: {nota} Lo que sigue en el Bloque 2E (y lo que queda fuera)
+La desofuscación simbólica y las expresiones mixtas booleano-aritméticas (MBA) se desarrollan con `angr` y `Z3` en la lección **2.25 · Ejecución simbólica y concólica**; la ofuscación por máquina virtual (dispatcher, VIP, handlers y mini-VM propia) se estudia en **2.26 · Ofuscación por máquina virtual**, y el reconocimiento de protectores multicapa en **2.27**. Lo que sí queda fuera por el límite ético del curso es desempaquetar o desvirtualizar protectores comerciales sobre software de terceros.
 :::
 
 ## Fuentes de esta lección
