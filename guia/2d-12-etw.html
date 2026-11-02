@@ -51,17 +51,17 @@
 <div class="tabla"><table>
 <thead><tr>
 <th>Bandera de Kernel (<code>EnableFlags</code>)</th>
-<th>Valor Hex</th>
+<th>Valor Hex (Constante)</th>
 <th>Telemetría Capturada</th>
 </tr></thead><tbody>
-<tr><td><code>EVENT_TRACE_FLAG_PROCESS</code></td><td><code>0x00000001</code></td><td>Creación y terminación de procesos (PID, PPID, SID, ImageFileName).</td></tr>
-<tr><td><code>EVENT_TRACE_FLAG_THREAD</code></td><td><code>0x00000002</code></td><td>Creación, destrucción y conmutación de contexto de hilos (<em>Context Switch</em>).</td></tr>
-<tr><td><code>EVENT_TRACE_FLAG_IMAGE_LOAD</code></td><td><code>0x00000004</code></td><td>Carga de módulos ejecutables (<code>.exe</code>, <code>.dll</code>, <code>.sys</code>) con dirección base y tamaño.</td></tr>
-<tr><td><code>EVENT_TRACE_FLAG_DISK_IO</code></td><td><code>0x00000100</code></td><td>Operaciones de lectura y escritura física en disco.</td></tr>
-<tr><td><code>EVENT_TRACE_FLAG_NETWORK_TCPIP</code></td><td><code>0x00010000</code></td><td>Conexiones de red TCP/UDP (send, receive, connect, disconnect).</td></tr>
-<tr><td><code>EVENT_TRACE_FLAG_REGISTRY</code></td><td><code>0x00020000</code></td><td>Creación, modificación y borrado de claves y valores del Registro.</td></tr>
+<tr><td><code>EVENT_TRACE_FLAG_PROCESS</code></td><td><code>0x00000001</code> (bit 0 = 1)</td><td>Creación y terminación de procesos (PID, PPID, SID, ImageFileName).</td></tr>
+<tr><td><code>EVENT_TRACE_FLAG_THREAD</code></td><td><code>0x00000002</code> (bit 1 = 2)</td><td>Creación, destrucción y conmutación de contexto de hilos (<em>Context Switch</em>).</td></tr>
+<tr><td><code>EVENT_TRACE_FLAG_IMAGE_LOAD</code></td><td><code>0x00000004</code> (bit 2 = 4)</td><td>Carga de módulos ejecutables (<code>.exe</code>, <code>.dll</code>, <code>.sys</code>) con dirección base y tamaño.</td></tr>
+<tr><td><code>EVENT_TRACE_FLAG_DISK_IO</code></td><td><code>0x00000100</code> (bit 8 = 256)</td><td>Operaciones de lectura y escritura física en disco.</td></tr>
+<tr><td><code>EVENT_TRACE_FLAG_NETWORK_TCPIP</code></td><td><code>0x00010000</code> (bit 16)</td><td>Conexiones de red TCP/UDP (send, receive, connect, disconnect).</td></tr>
+<tr><td><code>EVENT_TRACE_FLAG_REGISTRY</code></td><td><code>0x00020000</code> (bit 17)</td><td>Creación, modificación y borrado de claves y valores del Registro.</td></tr>
 </tbody></table></div>
-<p><em>(Nota técnica sobre EnableFlags: Valores hexadecimales canónicos definidos en <code>evntrace.h</code> del Windows SDK. Nótese que <code>EVENT_TRACE_FLAG_DISK_IO</code> corresponde estrictamente al bit 8 = <code>0x00000100</code> / 256 decimal; no debe confundirse con cero).</em></p>
+<p><em>(Nota técnica sobre EnableFlags: Valores hexadecimales canónicos definidos en <code>evntrace.h</code> del Windows SDK. Nótese que <code>EVENT_TRACE_FLAG_DISK_IO</code> corresponde estrictamente al bit 8 = <code>0x00000100</code> / 256 decimal; no debe confundirse con cero ni con valores truncados).</em></p>
 <h3 id="control-práctico-de-la-sesión-con-logman">Control Práctico de la Sesión con <code>logman</code></h3>
 <pre><code class="lenguaje-cmd">:: Iniciar la captura de kernel a un archivo ETL
 logman start "NT Kernel Logger" -p "Windows Kernel Trace" (process,thread,img,net) -ets -o kernel_trace.etl

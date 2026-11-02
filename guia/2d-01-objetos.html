@@ -49,23 +49,22 @@
     0x120  Key    HKCU\Software\BlocLab\Settings                (su propia config)
     0x134  Mutant \Sessions\1\BaseNamedObjects\BlocLab_SingleInstance</code></pre>
 <p>Lectura: proceso propio de integridad <strong>Medium</strong>, con <code>SeDebugPrivilege</code> <strong>presente pero apagado</strong> (no está usando debug de otros procesos ahora). Los handles muestran el documento que abriste, su <strong>propia</strong> clave de configuración y un <strong>mutex</strong> de instancia única. En un análisis real, el nombre del mutex o una ruta son <strong>pistas</strong> a corroborar, no evidencia por sí solos.</p>
-<aside class="callout aviso"><p class="callout-titulo">Los offsets de <code>nt!_EPROCESS</code> cambian entre builds: nunca los fijes</p><p>A diferencia de los primeros campos del PEB, la estructura _EPROCESS es opaca y el kernel <strong>reorganiza sus campos entre versiones de Windows</strong>. Un controlador que asuma offsets estáticos fijos fallará o provocará Bugchecks al actualizar el sistema operativo (por ejemplo, el desplazamiento de Protection a +0x8FA y de MitigationFlags a +0xA58 en Windows 11 24H2 frente a +0x87A y +0x9D8 en 23H2, o frente a compilaciones históricas de Windows 10 como 1507–1809 donde UniqueProcessId residía en +0x2E0 y Token en +0x358). En x64 (consistente con la Hoja 6 de referencia rápida):</p>
-<p>t!_EPROCESS) | Win10 1507–1809 | Win10 2004–22H2 (Build 19045) | Win11 21H2–23H2 (Build 22631) | Win11 24H2 (Build 26100) |</p>
+<aside class="callout aviso"><p class="callout-titulo">Los offsets de <code>nt!_EPROCESS</code> cambian entre builds: nunca los fijes</p><p>A diferencia de los primeros campos del PEB, la estructura <code>_EPROCESS</code> es opaca y el kernel <strong>reorganiza sus campos entre versiones de Windows</strong>. Un controlador que asuma offsets estáticos fijos fallará o provocará Bugchecks al actualizar el sistema operativo (por ejemplo, el desplazamiento de <code>Protection</code> a <code>+0x8FA</code> y de <code>MitigationFlags</code> a <code>+0xA58</code> en Windows 11 24H2 frente a <code>+0x87A</code> y <code>+0x9D8</code> en 23H2, o frente a compilaciones históricas de Windows 10 como 1507–1809 donde <code>UniqueProcessId</code> residía en <code>+0x2E0</code> y <code>Token</code> en <code>+0x358</code>). En x64 (consistente con la Hoja 6 de referencia rápida):</p>
 <div class="tabla"><table>
 <thead><tr>
-<th>---</th>
-<th>---</th>
-<th>---</th>
-<th>---</th>
-<th>---</th>
+<th>Campo (<code>nt!_EPROCESS</code>)</th>
+<th>Win10 1507–1809</th>
+<th>Win10 2004–22H2 (Build 19045)</th>
+<th>Win11 21H2–23H2 (Build 22631)</th>
+<th>Win11 24H2 (Build 26100)</th>
 </tr></thead><tbody>
-<tr><td>UniqueProcessId</td><td>+0x2E0</td><td>+0x440</td><td>+0x440</td><td>+0x440</td></tr>
-<tr><td>ActiveProcessLinks</td><td>+0x2E8</td><td>+0x448</td><td>+0x448</td><td>+0x448</td></tr>
-<tr><td>Token (_EX_FAST_REF)</td><td>+0x358</td><td>+0x4B8</td><td>+0x4B8</td><td>+0x4B8</td></tr>
-<tr><td>Protection (_PS_PROTECTION)</td><td>+0x6CA</td><td>+0x87A</td><td>+0x87A</td><td>+0x8FA</td></tr>
-<tr><td>MitigationFlags / Flags2</td><td>+0x828</td><td>+0x9D0</td><td>+0x9D8</td><td>+0xA58</td></tr>
+<tr><td><code>UniqueProcessId</code></td><td><code>+0x2E0</code></td><td><code>+0x440</code></td><td><code>+0x440</code></td><td><code>+0x440</code></td></tr>
+<tr><td><code>ActiveProcessLinks</code></td><td><code>+0x2E8</code></td><td><code>+0x448</code></td><td><code>+0x448</code></td><td><code>+0x448</code></td></tr>
+<tr><td><code>Token</code> (<code>_EX_FAST_REF</code>)</td><td><code>+0x358</code></td><td><code>+0x4B8</code></td><td><code>+0x4B8</code></td><td><code>+0x4B8</code></td></tr>
+<tr><td><code>Protection</code> (<code>_PS_PROTECTION</code>)</td><td><code>+0x6CA</code></td><td><code>+0x87A</code></td><td><code>+0x87A</code></td><td><code>+0x8FA</code></td></tr>
+<tr><td><code>MitigationFlags</code> / <code>Flags2</code></td><td><code>+0x828</code></td><td><code>+0x9D0</code></td><td><code>+0x9D8</code></td><td><code>+0xA58</code></td></tr>
 </tbody></table></div>
-<p>Nunca asumas un offset fijo: verificá el build o corré dt nt!_EPROCESS UniqueProcessId ActiveProcessLinks Token Protection MitigationFlags contra los símbolos (.pdb) de toskrnl.exe de <strong>esa</strong> máquina, o utilizá las macros dinámicas #FIELD_OFFSET.</p></aside>
+<p>Nunca asumas un offset fijo: verificá el build o corré <code>dt nt!_EPROCESS UniqueProcessId ActiveProcessLinks Token Protection MitigationFlags</code> contra los símbolos (<code>.pdb</code>) de <code>ntoskrnl.exe</code> de <strong>esa</strong> máquina, o utilizá las macros dinámicas <code>#FIELD_OFFSET</code>.</p></aside>
 <h2 id="práctica-segura">Práctica segura</h2>
 <p>En tu VM, con un <strong>programa propio</strong> (o Process Explorer sobre uno benigno):</p>
 <ol><li>Con <strong>Process Explorer</strong>, abrí un proceso propio y mirá su cuenta y sus <strong>handles</strong>. Para los grupos y privilegios de tu sesión, ejecutá <code>whoami /all</code>; anotá cuáles figuran habilitados y cuáles no.</li><li>Identificá handles a un archivo, una clave y un objeto con nombre (evento/mutex). Si el proceso no tiene uno de esos objetos, anotalo: no hace falta crearlo para completar la observación.</li><li>Compará el token del proceso propio con el de la sesión solo si ambos pertenecen a la misma cuenta y nivel de integridad; no eleves privilegios para la práctica.</li><li>Mirá la <strong>DACL</strong> de un objeto propio (p. ej. <code>icacls</code> sobre un archivo tuyo) y explicá quién tiene qué.</li></ol>

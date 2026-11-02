@@ -42,16 +42,16 @@ A diferencia de los proveedores de modo usuario, el kernel de Windows expone una
 - **GUID de Sesión:** `SystemTraceControlGuid = {9e814aad-3204-11d2-9a82-006008a86939}`.
 - La sesión no se suscribe a proveedores por GUID individual, sino a través del campo **`EnableFlags`** de la estructura `EVENT_TRACE_PROPERTIES`:
 
-| Bandera de Kernel (`EnableFlags`) | Valor Hex | Telemetría Capturada |
-| :--- | :---: | :--- |
-| `EVENT_TRACE_FLAG_PROCESS` | `0x00000001` | Creación y terminación de procesos (PID, PPID, SID, ImageFileName). |
-| `EVENT_TRACE_FLAG_THREAD` | `0x00000002` | Creación, destrucción y conmutación de contexto de hilos (*Context Switch*). |
-| `EVENT_TRACE_FLAG_IMAGE_LOAD` | `0x00000004` | Carga de módulos ejecutables (`.exe`, `.dll`, `.sys`) con dirección base y tamaño. |
-| `EVENT_TRACE_FLAG_DISK_IO` | `0x00000100` | Operaciones de lectura y escritura física en disco. |
-| `EVENT_TRACE_FLAG_NETWORK_TCPIP` | `0x00010000` | Conexiones de red TCP/UDP (send, receive, connect, disconnect). |
-| `EVENT_TRACE_FLAG_REGISTRY` | `0x00020000` | Creación, modificación y borrado de claves y valores del Registro. |
+| Bandera de Kernel (`EnableFlags`) | Valor Hex (Constante) | Telemetría Capturada |
+| :--- | :--- | :--- |
+| `EVENT_TRACE_FLAG_PROCESS` | `0x00000001` (bit 0 = 1) | Creación y terminación de procesos (PID, PPID, SID, ImageFileName). |
+| `EVENT_TRACE_FLAG_THREAD` | `0x00000002` (bit 1 = 2) | Creación, destrucción y conmutación de contexto de hilos (*Context Switch*). |
+| `EVENT_TRACE_FLAG_IMAGE_LOAD` | `0x00000004` (bit 2 = 4) | Carga de módulos ejecutables (`.exe`, `.dll`, `.sys`) con dirección base y tamaño. |
+| `EVENT_TRACE_FLAG_DISK_IO` | `0x00000100` (bit 8 = 256) | Operaciones de lectura y escritura física en disco. |
+| `EVENT_TRACE_FLAG_NETWORK_TCPIP` | `0x00010000` (bit 16) | Conexiones de red TCP/UDP (send, receive, connect, disconnect). |
+| `EVENT_TRACE_FLAG_REGISTRY` | `0x00020000` (bit 17) | Creación, modificación y borrado de claves y valores del Registro. |
 
-*(Nota técnica sobre EnableFlags: Valores hexadecimales canónicos definidos en `evntrace.h` del Windows SDK. Nótese que `EVENT_TRACE_FLAG_DISK_IO` corresponde estrictamente al bit 8 = `0x00000100` / 256 decimal; no debe confundirse con cero).*
+*(Nota técnica sobre EnableFlags: Valores hexadecimales canónicos definidos en `evntrace.h` del Windows SDK. Nótese que `EVENT_TRACE_FLAG_DISK_IO` corresponde estrictamente al bit 8 = `0x00000100` / 256 decimal; no debe confundirse con cero ni con valores truncados).*
 
 ### Control Práctico de la Sesión con `logman`
 ```cmd

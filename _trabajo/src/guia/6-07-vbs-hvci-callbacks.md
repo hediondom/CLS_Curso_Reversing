@@ -33,10 +33,10 @@ Desde Windows 10 versión 1709 y por defecto en Windows 11, el modelo de segurid
 +-------------------------------------------------------------------------------+
 ```
 
-### Transiciones de Privilegio: `VtlCall` y `VtlReturn`
+### Transiciones de Privilegio: `VtlCall` / `VtCall` y `VtlReturn`
 - **`VTL 0`:** Contiene el kernel clásico (`ntoskrnl.exe`), drivers de terceros y aplicaciones de usuario.
 - **`VTL 1`:** Contiene el **Secure Kernel** (`securekernel.exe`) y bibliotecas de integridad aisladas como `skci.dll`.
-- Las comunicaciones entre mundos no ocurren mediante interrupciones de software clásicas, sino a través de la instrucción de hipervisor `vmcall` (en Intel) o `vmmcall` (en AMD), encapsulada en la función `VtlCall`. Cuando VTL 1 concluye la operación, devuelve el control a VTL 0 mediante `VtlReturn`.
+- Las comunicaciones entre mundos no ocurren mediante interrupciones de software clásicas, sino a través de la instrucción de hipervisor `vmcall` (en Intel) o `vmmcall` (en AMD), encapsulada en la rutina `VtlCall` (también referenciada como `VtCall`). Cuando VTL 1 concluye la operación, devuelve el control a VTL 0 mediante `VtlReturn`.
 
 ### Integridad de Código por Hipervisor (HVCI) y $W \oplus X$
 Bajo **HVCI (Hypervisor-Protected Code Integrity)**, las decisiones sobre qué páginas de memoria pueden ejecutarse en modo kernel se delegan a VTL 1. El hipervisor configura las tablas de páginas de segundo nivel (**SLAT / EPT**) de modo que ninguna página en VTL 0 pueda ser simultáneamente escribible y ejecutable ($W \oplus X$). Si un driver intenta asignar memoria en el pool ejecutable (`NonPagedPoolExecute`) o desproteger el bit de escritura de una página de código en `CR0`, el hipervisor intercepta el fallo de página anidado (*EPT Violation*) e interrumpe inmediatamente la ejecución antes de que el código no firmado pueda ejecutarse.
@@ -47,11 +47,11 @@ En sistemas convencionales sin VBS, el proceso `lsass.exe` almacenaba hashes NTL
 Bajo **Credential Guard**:
 1. El kernel crea un proceso especial en **Modo de Usuario Aislado (IUM - Isolated User Mode)** que reside dentro de **VTL 1**: **`lsaiso.exe`** (*LSA Isolated*).
 2. El proceso `lsass.exe` en VTL 0 pasa a funcionar como un mero intermediario de RPC/ALPC: no contiene claves criptográficas ni hashes en claro.
-3. Cada vez que se requiere autenticar un usuario o firmar un ticket Kerberos, `lsass.exe` envía una solicitud a través de llamadas ALPC canalizadas mediante una transición `VtlCall` hacia `lsaiso.exe` en VTL 1.
+3. Cada vez que se requiere autenticar un usuario o firmar un ticket Kerberos, `lsass.exe` envía una solicitud a través de llamadas ALPC canalizadas mediante una transición `VtlCall` / `VtCall` hacia `lsaiso.exe` en VTL 1.
 4. El Secure Kernel en VTL 1 procesa la operación criptográfica usando claves protegidas por hardware (TPM) y devuelve únicamente el resultado de la autenticación a VTL 0.
 5. Las tablas de páginas de VTL 1 no están mapeadas en el espacio de direcciones de VTL 0: ni siquiera un driver en modo kernel ejecutándose con máximos privilegios en VTL 0 puede leer la memoria de `lsaiso.exe`.
 
-### Flujo de Validación de Imágenes: `NtCreateSection` $\to$ `VtlCall` $\to$ `skci.dll`
+### Flujo de Validación de Imágenes: `NtCreateSection` $\to$ `VtlCall` / `VtCall` $\to$ `skci.dll`
 Cuando se carga un binario ejecutable o controlador en el sistema:
 1. El llamador invoca `NtCreateSection` con la bandera `SEC_IMAGE`.
 2. El gestor de memoria (`nt!MiCreateSection`) analiza las cabeceras PE y transfiere la validación de firma a la biblioteca de integridad de código del kernel (`ci.dll!CiValidateImageHeader`).
@@ -96,8 +96,8 @@ $$ 2. Breakpoint en la biblioteca de integridad de código (VTL 0)
 bp ci!CiValidateImageHeader "du poi(@rcx+0x30); gc"
 bp ci!CiValidateImagePages
 
-$$ 3. Breakpoint en la llamada de transición de hipervisor (VtlCall hacia Secure Kernel)
-$$ (Nota técnica: En ci.dll, la rutina nativa que ensambla la transición VtlCall hacia VTL1 se denomina formalmente ci!IvtCallHypervisor)
+$$ 3. Breakpoint en la llamada de transición de hipervisor (VtlCall / VtCall hacia Secure Kernel)
+$$ (Nota técnica: En ci.dll, la rutina nativa exportada que ensambla la transición VtlCall/VtCall hacia VTL1 se denomina ci!IvtCallHypervisor, citada también como ci!VtCallHypervisor)
 bp ci!IvtCallHypervisor
 $$ Al alcanzar ci!IvtCallHypervisor, examinar los argumentos de la llamada:
 $$ RCX = Código de comando VTL1 (ej. 0x17 = SECURE_IMAGE_VALIDATE_PAGES)
