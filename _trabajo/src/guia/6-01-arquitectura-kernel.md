@@ -19,6 +19,21 @@ Construir el mapa mental de la ruta de una solicitud desde user mode al driver y
 - *Obligatorios para Etapa 6:* C básico, assembly, memoria/stack, sincronización elemental, WinDbg y [2D.1 objetos/tokens](2d-01-objetos.html), [2D.2 memoria/loader](2d-02-memoria-loader.html), [2D.11 excepciones/debugging](2d-11-excepciones.html).
 - *Recomendados:* [2C WinDbg/heap](02-windbg-heap.html) y fundamentos de kernel; no exige COM, Scheduler ni toda 2D.
 
+---
+
+## Puente Pedagógico: De Modo Usuario a Modo Kernel (Transición Etapa 5 $\to$ Etapa 6)
+
+Al culminar la Etapa 5, el analista domina la disección de malware, el análisis estático y dinámico de ejecutables y la auditoría de vulnerabilidades en **espacio de usuario (Ring 3)**. Al ingresar a la Etapa 6 y a la rama de controladores de dispositivo (**Modo Kernel / Ring 0**), las reglas del juego cambian drásticamente. Esta transición exige reconectar los modelos mentales aprendidos previamente:
+
+| Concepto en Modo Usuario (Etapa 5) | Equivalente en Modo Kernel (Etapa 6) | Impacto Arquitectural y Diferencia Crítica |
+| :--- | :--- | :--- |
+| **Fallo de Acceso / Crash (`0xC0000005`)** | **Bugcheck / BSOD (`0x50`, `0xD1`, `0x3B`)** | En user-mode, un crash termina únicamente el proceso afectado. En kernel-mode, cualquier desreferencia nula o corrupción de memoria detiene por completo el sistema operativo para evitar la corrupción de datos en disco. |
+| **Vulnerabilidad en Parser de Archivos (CWE-190/787)** | **Fallo de Validación en Handler de IOCTLs** | Un desbordamiento o cálculo de tamaño incorrecto en un buffer de `DeviceIoControl` permite a un usuario sin privilegios escribir en la memoria del kernel o ejecutar código arbitrario en Ring 0. |
+| **Depuración Local con x64dbg** | **Depuración Remota con WinDbg y KDNET** | No se puede pausar un driver desde la misma máquina porque detener el kernel congela la pantalla, el teclado y el scheduler. Es obligatorio depurar con dos máquinas enlazadas por red (VM objetivo + Host depurador). |
+| **Asignación de Memoria (`malloc` / `VirtualAlloc`)** | **Asignación en Pools (`ExAllocatePool2` Paged/NonPaged)** | En kernel no existe un heap gestionado automáticamente con protección de usuario: el desarrollador debe elegir explícitamente entre memoria paginable (*PagedPool*) o memoria física no paginable (*NonPagedPoolNx*), condicionada por el **IRQL**. |
+| **Mitigaciones de Proceso (DEP, ASLR, CFG)** | **Mitigaciones de Kernel (SMEP, SMAP, kCFG, HVCI/VBS)** | El procesador y el hipervisor impiden activamente que el kernel ejecute código en páginas de usuario (SMEP) o lea memoria de usuario sin intermediación (SMAP). |
+
+
 ## Mapa del kernel
 
 Las aplicaciones corren en **user mode** con privilegios limitados; el kernel y drivers operan en **kernel mode**, donde un fallo puede afectar al sistema entero. El **I/O Manager** traduce solicitudes en IRP y las dirige por una pila de drivers. El **IRQL** limita qué rutinas/operaciones son válidas en cada contexto; a IRQL elevado no se puede asumir que una operación bloqueante o memoria paginable sea segura.

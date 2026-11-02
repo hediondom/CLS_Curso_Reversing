@@ -195,9 +195,109 @@ Tabla entrada–control–validación–resultado; tabla de colas y rutas de fin
 Podés rastrear una operación desde la interfaz hasta su callback y demostrar permisos, validación de longitudes y tratamiento de errores; aplicar el patrón de revisión a `METHOD_NEITHER` y punteros embebidos; y leer las rutas de propiedad, finalización y cancelación de una solicitud.
 :::
 
-:::{nota} Lo que queda fuera
-Pruebas dinámicas o fuzzing contra drivers cargados, DMA, filtros y pilas de drivers, la sincronización de cancelación en detalle y el diseño de PnP/energía (solo como recuadro) no se desarrollan. La revisión no reemplaza las herramientas de análisis de Microsoft ni una auditoría completa.
-:::
+---
+
+## 6.4.b — Fuzzing de IOCTLs en Kernel
+
+La superficie de ataque primaria y más crítica de cualquier controlador de dispositivo en Windows reside en su interfaz de control de E/S: los códigos **`IOCTL`** despachados a través del manejador `IRP_MJ_DEVICE_CONTROL` (`EvtIoDeviceControl` en KMDF). Mientras que el fuzzing en espacio de usuario (Lección 2.24) prueba parsers de archivos, el **Kernel Fuzzing** somete al controlador a combinaciones anómalas de códigos de control, tamaños de buffer incongruentes y punteros no válidos para descubrir fallos de validación antes de que causen una vulnerabilidad en producción.
+
+### Arquitectura del Harness de Fuzzing en Modo Usuario
+A diferencia de un ejecutable clásico que lee de `stdin` o de un archivo, un fuzzer de kernel ejecuta un **harness en espacio de usuario** que interactúa directamente con el objeto de dispositivo del driver:
+1. **Apertura del Dispositivo:** Obtiene un handle con `CreateFileW(L"\\.\MiDriver", GENERIC_READ | GENERIC_WRITE, ...)` utilizando el enlace simbólico (*Symbolic Link*) expuesto por el driver.
+2. **Bucle de Mutación de IOCTLs:** Genera o permuta códigos `CTL_CODE` iterando a través de:
+   - *DeviceType:* Códigos estándar o reservados (`0x8000`..`0xFFFF`).
+   - *Function:* Rango de índices de función del driver (`0x800`..`0xFFF`).
+   - *Method:* `METHOD_BUFFERED` (`0`), `METHOD_IN_DIRECT` (`1`), `METHOD_OUT_DIRECT` (`2`), `METHOD_NEITHER` (`3`).
+3. **Manejo Estricto de Excepciones:** Como el envío de punteros inválidos hacia un driver con `METHOD_NEITHER` puede provocar un fallo en el propio llamador si no se captura, el harness encapsula `DeviceIoControl` dentro de un bloque `__try / __except`.
+
+### Esqueleto de Código C: Harness de Fuzzing de IOCTLs
+```c
+// Archivo: plantillas_codigo/ioctl_fuzzer_harness.c
+// Compilar con MSVC x64: cl /Zi /O2 ioctl_fuzzer_harness.c /Fe:IoctlFuzzer.exe
+
+#include <windows.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <time.h>
+
+#define MAX_PAYLOAD_SIZE 4096
+
+// Generador de payloads mutados con patrones límite
+void GenerarPayloadMutado(BYTE* buffer, DWORD size) {
+    static const DWORD patrones[] = { 0x00000000, 0xFFFFFFFF, 0x7FFFFFFF, 0x80000000, 0x41414141 };
+    for (DWORD i = 0; i < size; i++) {
+        buffer[i] = (BYTE)(rand() % 256);
+    }
+    // Sobrescribir los primeros 4 bytes con valores límite enteros
+    if (size >= 4) {
+        *(DWORD*)buffer = patrones[rand() % 5];
+    }
+}
+
+int main(int argc, char* argv[]) {
+    LPCWSTR deviceName = L"\\.\BlocLabDevice";
+    HANDLE hDevice = CreateFileW(deviceName, GENERIC_READ | GENERIC_WRITE, 0, NULL, OPEN_EXISTING, 0, NULL);
+    if (hDevice == INVALID_HANDLE_VALUE) {
+        printf("[-] Error abriendo dispositivo %ls (Error: %lu)\n", deviceName, GetLastError());
+        return 1;
+    }
+
+    printf("[+] Iniciando fuzzing de IOCTLs sobre %ls...\n", deviceName);
+    srand((unsigned int)time(NULL));
+
+    BYTE inBuffer[MAX_PAYLOAD_SIZE];
+    BYTE outBuffer[MAX_PAYLOAD_SIZE];
+    DWORD bytesReturned = 0;
+
+    // Rango típico de IOCTLs definidos por el desarrollador (0x800 a 0x8FF)
+    for (DWORD func = 0x800; func < 0x850; func++) {
+        // Probar los 4 métodos de transferencia I/O
+        for (DWORD method = 0; method < 4; method++) {
+            DWORD ioctl = CTL_CODE(FILE_DEVICE_UNKNOWN, func, method, FILE_ANY_ACCESS);
+
+            for (int iter = 0; iter < 100; iter++) {
+                DWORD inSize = rand() % MAX_PAYLOAD_SIZE;
+                DWORD outSize = rand() % MAX_PAYLOAD_SIZE;
+                GenerarPayloadMutado(inBuffer, inSize);
+
+                __try {
+                    // Envío del IOCTL fuzzeado al driver de kernel
+                    DeviceIoControl(
+                        hDevice,
+                        ioctl,
+                        inBuffer,
+                        inSize,
+                        outBuffer,
+                        outSize,
+                        &bytesReturned,
+                        NULL
+                    );
+                }
+                __except (EXCEPTION_EXECUTE_HANDLER) {
+                    // Capturar excepciones generadas en usermode si el driver usa METHOD_NEITHER
+                    printf("[!] Excepción en usermode con IOCTL 0x%08X (InSize: %lu)\n", ioctl, inSize);
+                }
+            }
+        }
+    }
+
+    CloseHandle(hDevice);
+    printf("[+] Campaña de fuzzing de IOCTLs finalizada.\n");
+    return 0;
+}
+```
+
+### Instrumentación Guiada y Captura de Crashes con KDNET
+Para que el fuzzing sea eficiente y no un mero bombardeo a ciegas:
+1. **Instrumentación (Intel PT / DynamoRIO):** Herramientas avanzadas como **WinAFL** (modo `-m` para targeting de módulos) o **kAFL / syzkaller** utilizan trazas de hardware de **Intel PT (Processor Trace)** para guiar la mutación hacia bloques básicos no explorados del driver en kernel.
+2. **Detección y Captura de Crashes vía KDNET:**
+   - La VM de pruebas se ejecuta con depuración de kernel activa mediante KDNET conectada a una máquina anfitriona con WinDbg.
+   - Cuando el fuzzer desencadena una corrupción de memoria en el driver, el sistema no se reinicia a ciegas; WinDbg captura de inmediato el **Bugcheck**:
+     * **`0x50` (`PAGE_FAULT_IN_NONPAGED_AREA`):** El driver desreferenció un puntero inválido proveniente de `inBuffer` sin validación previa.
+     * **`0xD1` (`DRIVER_IRQL_NOT_LESS_OR_EQUAL`):** El driver intentó acceder a memoria paginada mientras se ejecutaba a `DISPATCH_LEVEL`.
+     * **`0x7E` (`SYSTEM_THREAD_EXCEPTION_NOT_HANDLED`):** Excepción no capturada por un bloque `__try / __except` en el driver.
+   - En WinDbg, el comando `!analyze -v` desglosa el call stack exacto y señala la instrucción culpable en el desensamblado del `.sys`.
+
 
 ## Fuentes
 

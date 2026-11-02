@@ -537,10 +537,10 @@ cualquier estado --cierre--&gt; DESCONECTADO</code></pre>"""
         envolver_pagina_html(
             "Hojas de referencia rápida por nivel (Cheat Sheets)",
             "Tablas de referencia rápida para Principiante (registros, flags, Jcc, PE, ABI), Intermedio (PEB/LDR, cripto, anti-análisis, x64dbg/Frida) y Avanzado (C++ RTTI/SSO, IOCTL, IRQL, WinDbg).",
-            cn.PAGINA_CHEAT_SHEETS,
+            cn.PAGINA_CHEAT_SHEETS + "\n\n" + at2.HOJA4_HTML + "\n\n" + at2.HOJA5_HTML + "\n\n" + at2.HOJA6_HTML,
         )
     )
-    print("Creado: hojas-referencia-rapida.html")
+    print("Creado: hojas-referencia-rapida.html (con Hojas 1 a 6)")
 
     # 9. Guardar los 5 archivos .c / .cpp en plantillas_codigo/
     dir_plantillas = os.path.join(DST_GUIA, "plantillas_codigo")
@@ -1557,7 +1557,7 @@ VM con Windows x64 aislada, Visual Studio Developer Command Prompt (<code>cl.exe
     toc_t2.append('<div class="etapa" style="margin-top:12pt; color:#555;">Referencias cruzadas en Tomo I y Separata de Escritorio</div><ol>')
     toc_t2.append(f'<li><span>Tronco principal (Etapas 0 a 5)</span><span class="toc-pag">Tomo I · p. 1–{info_t1["paginas"]["hilo-plantillas"] - 1}</span></li>')
     toc_t2.append(f'<li><span>Hilo conductor multi-nivel y Kit de 15 plantillas y laboratorios</span><span class="toc-pag">Tomo I · {info_t1["etiquetas"]["hilo-plantillas"]}</span></li>')
-    toc_t2.append(f'<li><span>Hojas de referencia rápida (Cheat Sheets 1 a 5)</span><span class="toc-pag">Separata y Tomo I · {info_t1["etiquetas"]["hojas-referencia"]}</span></li>')
+    toc_t2.append(f'<li><span>Hojas de referencia rápida (Cheat Sheets 1 a 6)</span><span class="toc-pag">Separata y Tomo I · {info_t1["etiquetas"]["hojas-referencia"]}</span></li>')
     toc_t2.append(f'<li><span>Glosario y Preguntas frecuentes</span><span class="toc-pag">Tomo I · p. {info_t1["paginas"]["glosario"]}–{info_t1["paginas"]["fuentes"] - 1}</span></li>')
     toc_t2.append('</ol></div></section>')
     partes_t2.append("".join(toc_t2))
@@ -1644,6 +1644,7 @@ VM con Windows x64 aislada, Visual Studio Developer Command Prompt (<code>cl.exe
         sep_row("hoja-3", "6. Hoja de Referencia 3 · Nivel Avanzado (C++ RTTI/SSO, CTL_CODE, IRQL, WinDbg/TTD)"),
         sep_row("hoja-4", "7. Hoja de Referencia 4 · Evasión User-Mode, Inyección, Go/Rust y x64dbg (Rev. 5.4)"),
         sep_row("hoja-5", "8. Hoja de Referencia 5 · Criptografía Nativa (CryptoAPI/CNG) y Drivers .sys (Rev. 5.4)"),
+        sep_row("hoja-6", "9. Hoja de Referencia 6 – Offsets Críticos del Kernel (_EPROCESS, _KPROCESS, _TOKEN)"),
     ]
 
     partes_sep.append(f"""
@@ -1681,7 +1682,7 @@ VM con Windows x64 aislada, Visual Studio Developer Command Prompt (<code>cl.exe
 <tr><td><strong>Etapa 6 · Kernel y drivers KMDF/WDM en Windows</strong> (<code>6.1–6.6</code>)</td><td>Avanzado</td><td><strong>Tomo II</strong></td><td>{rango_en(info_t2, ancla("guia/etapa-6.html"), ancla("2d.html"))}</td><td>{rango_en(ctx, ancla("guia/etapa-6.html"), ancla("2d.html"))}</td></tr>
 <tr><td><strong>Rama 2D · Windows internals y Hyper-V</strong> (<code>2D.1–2D.13</code> + Hyper-V)</td><td>Interm. / Avanzado</td><td><strong>Tomo II</strong></td><td>{rango_en(info_t2, ancla("2d.html"), None)}</td><td>{rango_en(ctx, ancla("2d.html"), "hilo-plantillas")}</td></tr>
 <tr><td><strong>Hilo conductor multi-nivel y Kit de 15 plantillas y laboratorios</strong></td><td>Todos</td><td><strong>Tomo I</strong></td><td>{rango_en(info_t1, "hilo-plantillas", "hojas-referencia")}</td><td>{rango_en(ctx, "hilo-plantillas", "hojas-referencia")}</td></tr>
-<tr><td><strong>Hojas de referencia rápida (Cheat Sheets 1 a 5)</strong></td><td>Todos</td><td><strong>Separata y Tomo I</strong></td><td>{rango_en(info_t1, "hojas-referencia", "glosario")}</td><td>{rango_en(ctx, "hojas-referencia", "glosario")}</td></tr>
+<tr><td><strong>Hojas de referencia rápida (Cheat Sheets 1 a 6)</strong></td><td>Todos</td><td><strong>Separata y Tomo I</strong></td><td>{rango_en(info_t1, "hojas-referencia", "glosario")}</td><td>{rango_en(ctx, "hojas-referencia", "glosario")}</td></tr>
 <tr><td><strong>Glosario, Preguntas frecuentes y Fuentes/límites</strong></td><td>Todos</td><td><strong>Tomo I</strong></td><td>{rango_en(info_t1, "glosario", None)}</td><td>{rango_en(ctx, "glosario", None)}</td></tr>
 </tbody></table></div>
 </section>
@@ -1779,17 +1780,19 @@ VM con Windows x64 aislada, Visual Studio Developer Command Prompt (<code>cl.exe
     partes_sep.append(f'<section class="print-sec" id="hoja-3">{limpiar_enlaces(hoja3_raw, {})}</section>')
     partes_sep.append(f'<section class="print-sec hoja-compacta" id="hoja-4">{limpiar_enlaces(at2.HOJA4_HTML, {})}</section>')
     partes_sep.append(f'<section class="print-sec hoja-compacta" id="hoja-5">{limpiar_enlaces(at2.HOJA5_HTML, {})}</section>')
+    partes_sep.append(f'<section class="print-sec hoja-compacta" id="hoja-6">{limpiar_enlaces(at2.HOJA6_HTML, {})}</section>')
     partes_sep.append("</main></body></html>")
 
     arbol_sep = [
         ("1. Tres perfiles o rutas de estudio", "rutas-estudio", []),
-        ("2. Árbol de decisión de triage inicial y 10 señales", "arbol-triage", []),
+        ("2. Arbol de decision de triage inicial y 10 senales", "arbol-triage", []),
         ("3. Mapa del Hilo Conductor y Kit de 15 plantillas y laboratorios", "resumen-hilo", []),
-        ("4. Hoja 1 · Nivel Principiante (Registros, saltos, VA/RVA, ABIs)", "hoja-1", []),
-        ("5. Hoja 2 · Nivel Intermedio (PEB/LDR, cripto, x64dbg, Frida)", "hoja-2", []),
-        ("6. Hoja 3 · Nivel Avanzado (C++ RTTI/SSO, CTL_CODE, IRQL, WinDbg)", "hoja-3", []),
-        ("7. Hoja 4 · Evasión User-Mode, Inyección, Go/Rust y x64dbg (Rev. 5.4)", "hoja-4", []),
-        ("8. Hoja 5 · Criptografía Nativa (CryptoAPI/CNG) y Drivers .sys (Rev. 5.4)", "hoja-5", []),
+        ("4. Hoja 1 - Nivel Principiante (Registros, saltos, VA/RVA, ABIs)", "hoja-1", []),
+        ("5. Hoja 2 - Nivel Intermedio (PEB/LDR, cripto, x64dbg, Frida)", "hoja-2", []),
+        ("6. Hoja 3 - Nivel Avanzado (C++ RTTI/SSO, CTL_CODE, IRQL, WinDbg)", "hoja-3", []),
+        ("7. Hoja 4 - Evasion User-Mode, Inyeccion, Go/Rust y x64dbg (Rev. 5.4)", "hoja-4", []),
+        ("8. Hoja 5 - Criptografia Nativa (CryptoAPI/CNG) y Drivers .sys (Rev. 5.4)", "hoja-5", []),
+        ("9. Hoja 6 - Offsets Criticos del Kernel (_EPROCESS, _KPROCESS, _TOKEN) (Rev. 5.4)", "hoja-6", []),
     ]
 
     info_sep = compilar_volumen_pdf(

@@ -132,9 +132,79 @@ Diagrama de stack con altitudes, puntos pre/post, ficha de inventario, datos obs
 Podés explicar el recorrido de una operación, ubicar filtros por altitud y grupo, distinguir callback previo de resultado final, explicar el efecto de cada valor de retorno del pre y documentar un inventario con alcance y límites.
 :::
 
-:::{nota} Lo que queda fuera
-Escribir minifilters, contextos y su gestión, comunicación con user mode por puertos de filtro, filtros heredados en detalle y otros callbacks del kernel (procesos, registro, objetos) no se desarrollan.
-:::
+---
+
+## 6.5.b — Windows Filtering Platform (WFP): El "Minifilter" de la Red
+
+Así como el **Filter Manager** (`FltMgr.sys`) gobierna la intercepción de archivos en disco, el subsistema de red de Windows implementa **WFP (Windows Filtering Platform)** para mediar, inspeccionar, autorizar y modificar el tráfico de red en modo kernel. WFP es la base técnica de los firewalls de próxima generación, soluciones EDR, proxies locales y sistemas de prevención de intrusiones corporativos.
+
+### Arquitectura Interna de WFP vs. Minifilters de Filesystem
+A diferencia del modelo de altitudes de filesystem, WFP está integrado directamente en el stack TCP/IP (`tcpip.sys`) y en el driver del cliente de filtrado (`fwpkclnt.sys`). Opera mediante una jerarquía de capas (*Filtering Layers*), filtros, subcapas y módulos de llamada (*Callouts*):
+
+1. **Capas de Filtrado Clave (*Layers*):**
+   - **`FWPM_LAYER_ALE_AUTH_CONNECT_V4` / `_V6`:** *Application Layer Enforcement* para conexiones salientes. Intercepta la llamada de red en el momento exacto en que un proceso invoca `connect()`, **antes** de que el paquete TCP SYN salga al cable. Provee el PID del proceso emisor, el path completo del ejecutable y las tuplas IP/puerto de origen y destino.
+   - **`FWPM_LAYER_ALE_AUTH_RECV_ACCEPT_V4` / `_V6`:** Intercepta intentos de conexión entrante (`listen()` / `accept()`), permitiendo bloquear puertos a nivel de proceso.
+   - **`FWPM_LAYER_INBOUND_TRANSPORT_V4` / `FWPM_LAYER_OUTBOUND_TRANSPORT_V4`:** Intercepción a nivel de paquete de transporte (TCP/UDP) post-reasignación. Provee acceso al descriptor de memoria de red `NET_BUFFER_LIST` (`NBL`).
+   - **`FWPM_LAYER_DATAGRAM_DATA_V4` / `_V6`:** Inspección de payloads UDP crudos.
+
+2. **Callouts de Kernel (`FWPS_CALLOUT`):**
+   Un controlador de seguridad registra un Callout llamando a `FwpsCalloutRegister`. La estructura define tres punteros de función fundamentales:
+   - **`classifyFn`:** La función principal invocada por WFP cada vez que un paquete o conexión coincide con las reglas de filtrado.
+   - **`notifyFn`:** Notifica al driver cuando se añaden o eliminan reglas asociadas al Callout.
+   - **`flowDeleteFn`:** Notifica cuando un flujo de red contextual se termina, permitiendo liberar memoria de rastreo.
+
+### Anatomía de la Función de Clasificación (`classifyFn`)
+```c
+void ClassifyCallback(
+    const FWPS_INCOMING_VALUES0* inFixedValues,
+    const FWPS_INCOMING_METADATA_VALUES0* inMetaValues,
+    void* layerData,
+    const void* classifyContext,
+    const FWPS_FILTER0* filter,
+    UINT64 flowContext,
+    FWPS_CLASSIFY_OUT0* classifyOut
+) {
+    // 1. Obtener el PID del proceso desde los metadatos ALE
+    UINT64 processId = 0;
+    if (FWPS_IS_METADATA_FIELD_PRESENT(inMetaValues, FWPS_METADATA_FIELD_PROCESS_ID)) {
+        processId = inMetaValues->processId;
+    }
+
+    // 2. Extraer dirección IP y puerto de destino (en FWPM_LAYER_ALE_AUTH_CONNECT_V4)
+    UINT32 ipDest = inFixedValues->incomingValue[FWPS_FIELD_ALE_AUTH_CONNECT_V4_IP_REMOTE_ADDRESS].value.uint32;
+    UINT16 puertoDest = inFixedValues->incomingValue[FWPS_FIELD_ALE_AUTH_CONNECT_V4_IP_REMOTE_PORT].value.uint16;
+
+    // 3. Decisión defensiva de filtrado:
+    // FWP_ACTION_PERMIT  : Permite el tráfico sin restricciones.
+    // FWP_ACTION_BLOCK   : Descarta el paquete o rechaza la conexión TCP de inmediato.
+    // FWP_ACTION_CONTINUE: Pasa la decisión a las subcapas siguientes.
+    if (puertoDest == 4444) { // Detección de puerto sospechoso de reversa
+        classifyOut->actionType = FWP_ACTION_BLOCK;
+        classifyOut->flags |= FWPS_CLASSIFY_OUT_FLAG_ABSORB; // Absorbe el paquete para evitar RST
+        return;
+    }
+
+    classifyOut->actionType = FWP_ACTION_PERMIT;
+}
+```
+
+### Herramientas de Inspección Defensiva de WFP
+Un analista de malware o respuesta a incidentes debe auditar qué filtros y callouts están instalados en una máquina para verificar si una amenaza o software de seguridad está interceptando el tráfico de red:
+
+1. **Inspección Nativa con `netsh`:**
+   ```cmd
+   netsh wfp show state
+   ```
+   Este comando genera un archivo **`wfpstate.xml`** en el directorio actual. Al parsearlo, se listan todos los proveedores (`providers`), filtros activos (`filters`) con sus condiciones booleanas, y los GUIDs de los callouts enlazados a drivers de terceros.
+2. **Inspección con `wfptool` y WinDbg:**
+   - La herramienta de auditoría `wfptool.exe` permite listar filtros activos filtrando por PID del proceso o por capa (`ALE_AUTH_CONNECT_V4`).
+   - En WinDbg kernel mode:
+     ```text
+     !wfp layers
+     !wfp callouts
+     ```
+     Permite inspeccionar los punteros a `classifyFn` en la memoria del kernel para identificar qué driver (`.sys`) maneja cada capa de red.
+
 
 ## Fuentes
 

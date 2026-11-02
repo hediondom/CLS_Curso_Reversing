@@ -256,6 +256,45 @@ mov     rdx, r14                    ; RDX = WDFREQUEST
 mov     rcx, [rbx + 0x910]          ; Índice 290 = WdfRequestSetCompletionRoutine
 call    rcx                         ; Invocación indirecta</code></pre>
 <hr>
+<hr>
+<h2 id="6-7-b-detección-de-dkom-mediante-cross-view-vtl0-vs-vtl1-y-pspcidtable">6.7.b — Detección de DKOM mediante Cross-View (VTL0 vs. VTL1 y PspCidTable)</h2>
+<p>Los atacantes avanzados y herramientas de evasión basadas en <strong>BYOVD</strong> (<em>Bring Your Own Vulnerable Driver</em>) intentan ocultar procesos maliciosos manipulando directamente las estructuras de datos del kernel (<strong>DKOM - Direct Kernel Object Manipulation</strong>). La técnica clásica consiste en desvincular el proceso de la lista doblemente enlazada <code>nt!_EPROCESS-&gt;ActiveProcessLinks</code>:</p>
+<pre><code class="lenguaje-text">[Proceso Legítimo A] &lt;---&gt; [Proceso Oculto X] &lt;---&gt; [Proceso Legítimo B]
+                                   │
+             (Atacante reasigna Flink y Blink con BYOVD)
+                                   ▼
+[Proceso Legítimo A] &lt;-----------------------------&gt; [Proceso Legítimo B]</code></pre>
+<p>Al desvincularse, el proceso <code>X</code> desaparece completamente de las herramientas de administración convencionales (<code>tasklist.exe</code>, <code>Process Explorer</code>, APIs <code>CreateToolhelp32Snapshot</code> y <code>EnumProcesses</code>), ya que todas ellas recorren la lista <code>ActiveProcessLinks</code> en VTL 0. Sin embargo, el hilo del proceso sigue ejecutándose porque el planificador de la CPU (<em>scheduler</em>) despacha hilos a través de <code>_ETHREAD</code> y de la tabla de identificadores globales.</p>
+<h3 id="la-técnica-defensiva-de-inspección-cruzada-cross-view-detection">La Técnica Defensiva de Inspección Cruzada (<em>Cross-View Detection</em>)</h3>
+<p>La detección rigurosa de DKOM se basa en contrastar la vista estándar de VTL 0 contra fuentes inmutables o no enlazadas del sistema:</p>
+<ol><li><strong>Cruce contra <code>nt!PspCidTable</code>:</strong></li></ol>
+<p>En Windows, cada identificador de proceso (PID) y de hilo (TID) se registra obligatoriamente en una tabla de handles interna no exportada del kernel: <strong><code>nt!PspCidTable</code></strong> (de tipo <code>_HANDLE_TABLE</code>).</p>
+<ul><li><code>ActiveProcessLinks</code> es una lista meramente informativa para enumeración.</li><li><code>PspCidTable</code> es la estructura que el kernel consulta cada vez que despacha una llamada o valida un handle de proceso. Si un atacante desvincula un proceso de <code>PspCidTable</code>, el sistema operativo entra inmediatamente en Bugcheck por inconsistencia de scheduler.</li><li><strong>Regla Cross-View:</strong> Si un PID existe en <code>PspCidTable</code> pero no aparece al recorrer <code>ActiveProcessLinks</code>, <strong>el proceso ha sido ocultado mediante DKOM</strong>.</li></ul>
+<ol><li><strong>Cruce VTL0 vs. VTL1 (Secure Kernel):</strong></li></ol>
+<p>Bajo Virtualization-Based Security (VBS), el <strong>Secure Kernel</strong> (<code>securekernel.exe</code>) en VTL 1 mantiene su propio inventario de páginas físicas y contextos de ejecución respaldado por las tablas SLAT/EPT del hipervisor. Ningún driver en VTL 0 (incluso con privilegios de kernel absolutos) puede alterar la memoria de VTL 1. Los sensores defensivos de última generación consultan al hipervisor para comparar los contextos de ejecución activos contra la lista visible en VTL 0.</p>
+<ol><li><strong>Telemetría de Kernel <code>ETWti</code>:</strong></li></ol>
+<p>El proveedor <code>Microsoft-Windows-Threat-Intelligence</code> emite eventos inmutables de creación de procesos (<code>PROCESS_CREATE</code>) generados en la ruta nativa <code>nt!PspInsertProcess</code>. Aunque el atacante desvincule el proceso a posteriori en memoria, la traza de auditoría de ETWti ya registró la creación con su PID legítimo.</p>
+<h3 id="script-conceptual-de-windbg-para-detección-cross-view">Script Conceptual de WinDbg para Detección Cross-View</h3>
+<p>El siguiente script en WinDbg compara los procesos enumerados por la lista circular contra los registros de la tabla de identificadores <code>PspCidTable</code>:</p>
+<pre><code class="lenguaje-text">$$ =========================================================================
+$$ Detección Cross-View de Procesos Ocultos por DKOM en WinDbg
+$$ =========================================================================
+
+$$ 1. Recorrer la lista clásica ActiveProcessLinks (Vista VTL 0)
+!process 0 0
+
+$$ 2. Inspeccionar la tabla global de PIDs (PspCidTable)
+r $t0 = poi(nt!PspCidTable)
+.printf "[+] PspCidTable ubicada en %p\n", @$t0
+
+$$ 3. Volcar los objetos de proceso referenciados por sus handles en PspCidTable
+!handle 0 3 0 Process
+
+$$ 4. Algoritmo de detección heurística en WinDbg:
+$$ Para cada handle válido en PspCidTable, desreferenciar el puntero EPROCESS:
+$$ Si EPROCESS-&gt;ActiveProcessLinks.Flink == &amp;EPROCESS-&gt;ActiveProcessLinks
+$$ o si Flink-&gt;Blink != EPROCESS, se delata una desvinculación maliciosa (DKOM).
+!for_each_process "r @$t1 = @#Process; .if (poi(@$t1 + @@(#FIELD_OFFSET(nt!_EPROCESS, ActiveProcessLinks.Flink))) == (@$t1 + @@(#FIELD_OFFSET(nt!_EPROCESS, ActiveProcessLinks)))) { .printf \"[ALERTA DKOM] Proceso oculto detectado: PID %p (%s) en %p\n\", poi(@$t1 + @@(#FIELD_OFFSET(nt!_EPROCESS, UniqueProcessId))), poi(@$t1 + @@(#FIELD_OFFSET(nt!_EPROCESS, ImageFileName))), @$t1 }"</code></pre>
 <h2 id="5-laboratorio-verificado">5. Laboratorio Verificado</h2>
 <ol><li>Inspeccioná la plantilla <code>plantillas_codigo/minifilter_obcallback_min.c</code>. Observá cómo interactúan las estructuras de <code>FLT_REGISTRATION</code> y <code>OB_CALLBACK_REGISTRATION</code>.</li><li>En una sesión de depuración con WinDbg KDNET en tu VM de kernel, ejecutá el script de auditoría completa:</li></ol>
 <pre><code class="lenguaje-text">   $$&gt;&lt;plantillas_codigo\auditar_callbacks.wdbg</code></pre>

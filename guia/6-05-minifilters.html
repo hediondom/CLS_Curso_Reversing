@@ -103,7 +103,58 @@
 <details class="qa"><summary>¿Qué te dice la altitud de un filtro?</summary><div class="respuesta"><p>Su posición en la pila y, por el rango, el tipo de producto declarado; no prueba qué hace.</p></div></details>
 <details class="qa"><summary>¿Por qué no retirar un filtro desconocido durante análisis?</summary><div class="respuesta"><p>Puede pertenecer al sistema o producto crítico; documenta y consulta al administrador para preservar estabilidad/evidencia.</p></div></details>
 <aside class="callout nota"><p class="callout-titulo">Puerta optativa</p><p>Podés explicar el recorrido de una operación, ubicar filtros por altitud y grupo, distinguir callback previo de resultado final, explicar el efecto de cada valor de retorno del pre y documentar un inventario con alcance y límites.</p></aside>
-<aside class="callout nota"><p class="callout-titulo">Lo que queda fuera</p><p>Escribir minifilters, contextos y su gestión, comunicación con user mode por puertos de filtro, filtros heredados en detalle y otros callbacks del kernel (procesos, registro, objetos) no se desarrollan.</p></aside>
+<hr>
+<h2 id="6-5-b-windows-filtering-platform-wfp-el-minifilter-de-la-red">6.5.b — Windows Filtering Platform (WFP): El "Minifilter" de la Red</h2>
+<p>Así como el <strong>Filter Manager</strong> (<code>FltMgr.sys</code>) gobierna la intercepción de archivos en disco, el subsistema de red de Windows implementa <strong>WFP (Windows Filtering Platform)</strong> para mediar, inspeccionar, autorizar y modificar el tráfico de red en modo kernel. WFP es la base técnica de los firewalls de próxima generación, soluciones EDR, proxies locales y sistemas de prevención de intrusiones corporativos.</p>
+<h3 id="arquitectura-interna-de-wfp-vs-minifilters-de-filesystem">Arquitectura Interna de WFP vs. Minifilters de Filesystem</h3>
+<p>A diferencia del modelo de altitudes de filesystem, WFP está integrado directamente en el stack TCP/IP (<code>tcpip.sys</code>) y en el driver del cliente de filtrado (<code>fwpkclnt.sys</code>). Opera mediante una jerarquía de capas (<em>Filtering Layers</em>), filtros, subcapas y módulos de llamada (<em>Callouts</em>):</p>
+<ol><li>**Capas de Filtrado Clave (<em>Layers</em>):**</li></ol>
+<ul><li><strong><code>FWPM_LAYER_ALE_AUTH_CONNECT_V4</code> / <code>_V6</code>:</strong> <em>Application Layer Enforcement</em> para conexiones salientes. Intercepta la llamada de red en el momento exacto en que un proceso invoca <code>connect()</code>, <strong>antes</strong> de que el paquete TCP SYN salga al cable. Provee el PID del proceso emisor, el path completo del ejecutable y las tuplas IP/puerto de origen y destino.</li><li><strong><code>FWPM_LAYER_ALE_AUTH_RECV_ACCEPT_V4</code> / <code>_V6</code>:</strong> Intercepta intentos de conexión entrante (<code>listen()</code> / <code>accept()</code>), permitiendo bloquear puertos a nivel de proceso.</li><li><strong><code>FWPM_LAYER_INBOUND_TRANSPORT_V4</code> / <code>FWPM_LAYER_OUTBOUND_TRANSPORT_V4</code>:</strong> Intercepción a nivel de paquete de transporte (TCP/UDP) post-reasignación. Provee acceso al descriptor de memoria de red <code>NET_BUFFER_LIST</code> (<code>NBL</code>).</li><li><strong><code>FWPM_LAYER_DATAGRAM_DATA_V4</code> / <code>_V6</code>:</strong> Inspección de payloads UDP crudos.</li></ul>
+<ol><li><strong>Callouts de Kernel (<code>FWPS_CALLOUT</code>):</strong></li></ol>
+<p>Un controlador de seguridad registra un Callout llamando a <code>FwpsCalloutRegister</code>. La estructura define tres punteros de función fundamentales:</p>
+<ul><li><strong><code>classifyFn</code>:</strong> La función principal invocada por WFP cada vez que un paquete o conexión coincide con las reglas de filtrado.</li><li><strong><code>notifyFn</code>:</strong> Notifica al driver cuando se añaden o eliminan reglas asociadas al Callout.</li><li><strong><code>flowDeleteFn</code>:</strong> Notifica cuando un flujo de red contextual se termina, permitiendo liberar memoria de rastreo.</li></ul>
+<h3 id="anatomía-de-la-función-de-clasificación-classifyfn">Anatomía de la Función de Clasificación (<code>classifyFn</code>)</h3>
+<pre><code class="lenguaje-c">void ClassifyCallback(
+    const FWPS_INCOMING_VALUES0* inFixedValues,
+    const FWPS_INCOMING_METADATA_VALUES0* inMetaValues,
+    void* layerData,
+    const void* classifyContext,
+    const FWPS_FILTER0* filter,
+    UINT64 flowContext,
+    FWPS_CLASSIFY_OUT0* classifyOut
+) {
+    // 1. Obtener el PID del proceso desde los metadatos ALE
+    UINT64 processId = 0;
+    if (FWPS_IS_METADATA_FIELD_PRESENT(inMetaValues, FWPS_METADATA_FIELD_PROCESS_ID)) {
+        processId = inMetaValues-&gt;processId;
+    }
+
+    // 2. Extraer dirección IP y puerto de destino (en FWPM_LAYER_ALE_AUTH_CONNECT_V4)
+    UINT32 ipDest = inFixedValues-&gt;incomingValue[FWPS_FIELD_ALE_AUTH_CONNECT_V4_IP_REMOTE_ADDRESS].value.uint32;
+    UINT16 puertoDest = inFixedValues-&gt;incomingValue[FWPS_FIELD_ALE_AUTH_CONNECT_V4_IP_REMOTE_PORT].value.uint16;
+
+    // 3. Decisión defensiva de filtrado:
+    // FWP_ACTION_PERMIT  : Permite el tráfico sin restricciones.
+    // FWP_ACTION_BLOCK   : Descarta el paquete o rechaza la conexión TCP de inmediato.
+    // FWP_ACTION_CONTINUE: Pasa la decisión a las subcapas siguientes.
+    if (puertoDest == 4444) { // Detección de puerto sospechoso de reversa
+        classifyOut-&gt;actionType = FWP_ACTION_BLOCK;
+        classifyOut-&gt;flags |= FWPS_CLASSIFY_OUT_FLAG_ABSORB; // Absorbe el paquete para evitar RST
+        return;
+    }
+
+    classifyOut-&gt;actionType = FWP_ACTION_PERMIT;
+}</code></pre>
+<h3 id="herramientas-de-inspección-defensiva-de-wfp">Herramientas de Inspección Defensiva de WFP</h3>
+<p>Un analista de malware o respuesta a incidentes debe auditar qué filtros y callouts están instalados en una máquina para verificar si una amenaza o software de seguridad está interceptando el tráfico de red:</p>
+<ol><li><strong>Inspección Nativa con <code>netsh</code>:</strong></li></ol>
+<pre><code class="lenguaje-cmd">   netsh wfp show state</code></pre>
+<p>Este comando genera un archivo <strong><code>wfpstate.xml</code></strong> en el directorio actual. Al parsearlo, se listan todos los proveedores (<code>providers</code>), filtros activos (<code>filters</code>) con sus condiciones booleanas, y los GUIDs de los callouts enlazados a drivers de terceros.</p>
+<ol><li><strong>Inspección con <code>wfptool</code> y WinDbg:</strong></li></ol>
+<ul><li>La herramienta de auditoría <code>wfptool.exe</code> permite listar filtros activos filtrando por PID del proceso o por capa (<code>ALE_AUTH_CONNECT_V4</code>).</li><li>En WinDbg kernel mode:</li></ul>
+<pre><code class="lenguaje-text">     !wfp layers
+     !wfp callouts</code></pre>
+<p>Permite inspeccionar los punteros a <code>classifyFn</code> en la memoria del kernel para identificar qué driver (<code>.sys</code>) maneja cada capa de red.</p>
 <h2 id="fuentes">Fuentes</h2>
 <ul><li>Microsoft Learn: <a href="https://learn.microsoft.com/en-us/windows-hardware/drivers/ifs/about-file-system-filter-drivers" rel="noopener" target="_blank">About File System Filter Drivers</a>, <a href="https://learn.microsoft.com/en-us/windows-hardware/drivers/ifs/filter-manager-concepts" rel="noopener" target="_blank">Filter Manager concepts</a>, <a href="https://learn.microsoft.com/en-us/windows-hardware/drivers/ifs/writing-preoperation-callback-routines" rel="noopener" target="_blank">Writing Preoperation Callback Routines</a>, <a href="https://learn.microsoft.com/en-us/windows-hardware/drivers/ifs/writing-postoperation-callback-routines" rel="noopener" target="_blank">Writing Postoperation Callback Routines</a>.</li><li>Microsoft Learn, altitudes y herramientas: <a href="https://learn.microsoft.com/en-us/windows-hardware/drivers/ifs/load-order-groups-and-altitudes-for-minifilter-drivers" rel="noopener" target="_blank">Load Order Groups and Altitudes for Minifilter Drivers</a>, <a href="https://learn.microsoft.com/en-us/windows-hardware/drivers/ifs/allocated-altitudes" rel="noopener" target="_blank">Allocated filter altitudes</a>, <a href="https://learn.microsoft.com/en-us/windows-hardware/drivers/ifs/development-and-testing-tools" rel="noopener" target="_blank">Tools for Minifilter Development and Testing (Fltmc, !fltkd)</a>.</li></ul>
 <aside class="callout nota"><p class="callout-titulo">Etiquetas</p><p><strong>Núcleo conceptual:</strong> monitoreo de procesos como contexto. <strong>Conocimiento externo:</strong> Filter Manager/minifilters, altitudes, valores de retorno e IRQL de callbacks. <strong>Ejemplo ilustrativo:</strong> flujo de archivo y ficha de inventario ficticia. <strong>Laboratorio verificado:</strong> no.</p></aside>

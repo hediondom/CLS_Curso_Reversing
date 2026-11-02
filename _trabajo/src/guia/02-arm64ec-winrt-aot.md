@@ -154,3 +154,55 @@ Interceptor.attach(compileMethodPtr, {
 ```
 
 Este procedimiento garantiza la extracción del bytecode original de cualquier método administrado sin importar el grado de empaquetado del cargador.
+
+---
+
+## 2.35.b — Análisis de Binarios Híbridos ARM64EC en IDA / Ghidra
+
+La adopción de portátiles basados en ARM (Copilot+ PCs con Windows 11) consolidó la arquitectura **ARM64EC** (*Emulation Compatible*). Un analista de ingeniería inversa se encuentra frecuentemente con binarios de sistema o aplicaciones comerciales donde coexisten código x64 y ARM64 en el mismo espacio de direcciones. Comprender cómo operan los *thunks* de adaptación y cómo configurar los desensambladores es indispensable para auditar este software moderno.
+
+### Mecánica de Thunking y el Emulador JIT (`xtajit64.dll`)
+Cuando una función en código nativo ARM64 necesita invocar una función compilada en x64 (o viceversa), el sistema no realiza una costosa conmutación de arquitectura completa; en su lugar, atraviesa un **Thunk** generado por el compilador o provisto por el runtime de emulación:
+
+1. **Entry Thunk (x64 $\to$ ARM64EC):**
+   - Se ejecuta cuando una biblioteca x64 invoca una rutina compilada en ARM64EC.
+   - Toma los argumentos pasados en registros x64 (`RCX`, `RDX`, `R8`, `R9`) y los mueve a los registros nativos ARM64 (`X0`, `X1`, `X2`, `X3`), preservando la pila y ajustando la convención de llamadas.
+2. **Exit Thunk (ARM64EC $\to$ x64):**
+   - Se ejecuta cuando una función ARM64EC llama a una API de Windows o biblioteca que solo existe en formato x64 emulado.
+   - Invoca al emulador JIT en espacio de usuario **`xtajit64.dll`** (en `%SystemRoot%\System32\xtajit64.dll`).
+   - El thunk almacena el contexto de registros en una estructura de transición y transfiere el control a la rutina de traducción JIT de `xtajit64`.
+
+### Cabeceras PE y la Tabla `IMAGE_DYNAMIC_RELOCATION_ARM64EC`
+En el formato PE de un binario ARM64EC:
+- `FileHeader.Machine` se identifica como `IMAGE_FILE_MACHINE_ARM64` (`0xAA64`) o `IMAGE_FILE_MACHINE_ARM64EC` (`0xA641`).
+- En el directorio de configuración de carga (`IMAGE_LOAD_CONFIG_DIRECTORY64`), el campo **`DynamicValueRelocTable`** apunta a una sección especial de relocalizaciones dinámicas que contiene la tabla **`IMAGE_DYNAMIC_RELOCATION_ARM64EC`**.
+- Esta tabla contiene el mapa de **`FastForwardSequence`**: arreglos de punteros indirectos que permiten al cargador de Windows sustituir en caliente los punteros a funciones x64 por punteros directos a funciones ARM64EC nativas en tiempo de carga, eliminando el overhead de emulación.
+
+### Desensamblado de un Salto Híbrido (Thunk de Transición)
+En el desensamblado de IDA Pro o Ghidra, un salto de transición entre mundos x64 y ARM64 se reconoce por el uso de patrones de trampolín hacia el dispatcher de emulación:
+
+```asm
+; =========================================================================
+; Desensamblado ARM64EC: Thunk de Salida hacia x64 (Exit Thunk)
+; =========================================================================
+.text:0000000180012A00  ADRP    X16, #qword_180045000 ; Carga la dirección del puntero x64
+.text:0000000180012A04  LDR     X16, [X16, #0x120]    ; Desreferencia el target emulado
+.text:0000000180012A08  BR      X16                   ; Salta al intermediario de xtajit64.dll
+
+; =========================================================================
+; En el destino emulado (x64):
+; El emulador xtajit64 traduce las instrucciones x64 sobre la marcha
+; =========================================================================
+00007FF780034000  48 89 5C 24 08      mov     [rsp+8], rbx
+00007FF780034005  48 83 EC 20         sub     rsp, 20h
+```
+
+### Configuración de Triage en IDA Pro y Ghidra
+1. **En IDA Pro:**
+   - Al cargar el archivo PE, IDA detecta la presencia de metadatos CHPE (*Combined Hexagon/PE* o ARM64EC) en el Load Config.
+   - Si una función x64 aparece desensamblada como bytes inválidos en ARM64, se puede pulsar **`Alt+F7`** o presionar `Edit` $\to$ `Segments` $\to$ `Edit Segment` y cambiar el procesador predeterminado del segmento de código a `metapc` (x64) o `arm64`.
+   - Utilizar el plugin oficial de soporte ARM64EC de IDA (versiones 8.3+) para que IDA resuelva automáticamente los *Entry/Exit Thunks* mostrando anotaciones cruzadas (`__x64_thunk_to_arm64ec`).
+2. **En Ghidra:**
+   - Crear el proyecto seleccionando el procesador **`AARCH64:LE:64:v8A`**.
+   - Habilitar el analizador de cabeceras PE y marcar la opción de detección de metadatos `IMAGE_ARM64EC_METADATA`.
+   - Para bloques de código emulados x64 dentro de la misma imagen, marcar el rango de bytes en el *Listing*, hacer clic derecho $\to$ *Disassemble (x86:64)* para forzar el desensamblado dual en la misma base de datos.

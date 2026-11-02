@@ -184,6 +184,61 @@ Tenés que poder:
 Si podés explicar por qué el canary detecta el desborde y por qué no corrige el `strcpy`, la rama está aprobada. Si tu objetivo es "hacer que funcione el exploit", estás en el lugar equivocado.
 :::
 
+---
+
+## 5.2.b — Control-flow Enforcement Technology (CET) y Shadow Stack en Windows 11
+
+En los sistemas modernos Windows 11 sobre microprocesadores Intel (11.ª generación en adelante) y AMD (Zen 3 en adelante), Microsoft estandarizó **CET (Control-flow Enforcement Technology)**. Esta tecnología representa la transformación defensiva más profunda contra la explotación de memoria desde la introducción de DEP y ASLR, neutralizando de raíz las cadenas **ROP (Return-Oriented Programming)** y el secuestro del flujo de ejecución.
+
+### Principio de Funcionamiento del Shadow Stack por Hardware
+La técnica clásica de ROP consiste en sobreescribir la dirección de retorno en el stack de la aplicación (mediante un desbordamiento de buffer o Use-After-Free) para encadenar pequeños fragmentos de código terminados en `ret` (*gadgets*).
+
+CET introduce el **Shadow Stack** gestionado directamente por el microprocesador:
+1. **Doble Stack:** La CPU mantiene dos pilas independientes para cada hilo:
+   - El **Stack Normal de Datos** (en la memoria virtual convencional, accesible para lectura/escritura por variables locales).
+   - El **Shadow Stack de Control** (ubicado en una región de memoria especial marcada a nivel de tablas de páginas con el atributo de hardware `Shadow Stack`). Esta memoria es **completamente de solo lectura** para instrucciones de software estándar: cualquier intento de un atacante de escribir con `mov [rsp], rax` o `memcpy` provoca un fallo de página instantáneo.
+2. **Validación en Tiempo Real en `CALL` y `RET`:**
+   - Al ejecutarse una instrucción `call`, la CPU guarda la dirección de retorno en el stack de datos y, **simultáneamente**, realiza un push de la misma dirección en el Shadow Stack por hardware.
+   - Al ejecutarse la instrucción `ret`, el procesador lee la dirección de retorno de ambos stacks y las compara a nivel de microcódigo.
+   - **Detección de Intrusión:** Si las dos direcciones difieren (porque un desbordamiento o gadget alteró el stack de datos normal), la CPU dispara inmediatamente una excepción por protección de control de flujo: **`#CP` (*Control Protection Exception*)**. Windows intercepta `#CP` y aborta el proceso en el acto con el código de estado `STATUS_CONTROL_PROTECTION_EXCEPTION` (`0xC0000409`), impidiendo que el payload ROP tome el control.
+
+### Apariencia en el Desensamblador e Instrucción `endbr64`
+Además del Shadow Stack (que protege saltos hacia atrás / retornos), CET incorpora **IBT (Indirect Branch Tracking)** para proteger saltos hacia adelante indirectos (`call rax`, `jmp rbx`):
+- En binarios compilados con soporte CET (MSVC flag `/guard:cf` o compiladores compatibles con IBT), el inicio de cada función autorizada para llamadas indirectas comienza con la instrucción de anclaje:
+```asm
+; Instrucción de anclaje CET IBT: End Branch 64-bit (Opcode: F3 0F 1E FA)
+00007FF780001000  F3 0F 1E FA         endbr64
+00007FF780001004  48 83 EC 28         sub     rsp, 28h
+```
+- Si una llamada indirecta (`call rax`) transfiere el control a cualquier dirección de memoria que **no comience** con `endbr64`, el procesador genera una excepción `#CP`. En CPUs sin soporte CET, `endbr64` se comporta como un simple `NOP` de 4 bytes, manteniendo retrocompatibilidad absoluta.
+
+### Interacción con kCFG en Kernel
+En Windows 11, las mitigaciones de hardware y software operan de manera complementaria:
+- **kCFG (Kernel Control Flow Guard):** Verifica mediante bitmaps en memoria que los saltos indirectos hacia adelante (`call rax`) apunten a funciones válidas registradas por el compilador.
+- **CET Shadow Stack:** Protege los saltos hacia atrás (`ret`), garantizando que la dirección de retorno jamás sea adulterada.
+- La combinación de ambas mitigaciones anula la viabilidad de cadenas ROP/JOP tradicionales en ejecutables protegidos.
+
+### Verificación Programática y Auditoría en WinDbg
+1. **Comprobación en Código C:**
+   ```c
+   PROCESS_MITIGATION_USER_SHADOW_STACK_POLICY policy;
+   if (GetProcessMitigationPolicy(GetCurrentProcess(), ProcessUserShadowStackPolicy, &policy, sizeof(policy))) {
+       if (policy.EnableUserShadowStack) {
+           printf("[+] CET Shadow Stack ACTIVO por hardware en este proceso.\n");
+       }
+   }
+   ```
+2. **Auditoría en WinDbg:**
+   ```text
+   $$ Inspeccionar las mitigaciones activas en un proceso
+   !process <EPROCESS_addr> 7
+   dt nt!_EPROCESS <EPROCESS_addr> MitigationFlags2
+   $$ O mediante el comando de extensión de mitigaciones:
+   !mitigations
+   $$ Buscar el estado: UserShadowStack: Enabled (Strict)
+   ```
+
+
 ## Fuentes de esta lección
 
 - MITRE CWE: [Out-of-bounds Write (CWE-787)](https://cwe.mitre.org/data/definitions/787.html), [Integer Overflow or Wraparound (CWE-190)](https://cwe.mitre.org/data/definitions/190.html), [Use After Free (CWE-416)](https://cwe.mitre.org/data/definitions/416.html).

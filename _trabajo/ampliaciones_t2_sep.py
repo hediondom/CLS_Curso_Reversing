@@ -196,3 +196,44 @@ HOJA5_HTML = """
 <tr><td><strong><code>RPC_SERVER_INTERFACE</code></strong><br>(<code>RCX</code> en <code>RpcServerRegisterIf*</code>)</td><td style="white-space: nowrap;"><code>+0x04</code><br><code>+0x50</code></td><td><code>InterfaceId</code> (<code>RPC_SYNTAX_IDENTIFIER</code>: UUID de 16B + versión)<br><code>InterpreterInfo</code> &rarr; apunta a <code>MIDL_SERVER_INFO</code>, cuyo <strong><code>+0x08</code></strong> (<code>DispatchTable</code>) es el arreglo de punteros a las funciones C del servidor RPC.</td></tr>
 </tbody></table></div>
 """
+
+# HTML para Hoja 6 de la Separata (Offsets Críticos del Kernel)
+HOJA6_HTML = """
+<h2 id="hoja-6">Hoja 6 · Offsets Críticos del Kernel (_EPROCESS, _KPROCESS, _TOKEN) (Rev. 5.4)</h2>
+
+<h3>6.1 Tabla Comparativa de Offsets en x64: Windows 10 (22H2) vs. Windows 11 (23H2 / 24H2)</h3>
+<div class="tabla"><table>
+<thead><tr><th>Estructura</th><th>Campo</th><th>Tipo</th><th>Win10 (22H2 Build 19045)</th><th>Win11 (23H2 Build 22631)</th><th>Win11 (24H2 Build 26100)</th><th>Propósito Defensivo / Reversing</th></tr></thead>
+<tbody>
+<tr><td rowspan="6"><strong><code>nt!_EPROCESS</code></strong></td><td><code>UniqueProcessId</code></td><td><code>HANDLE</code></td><td><code>+0x440</code></td><td><code>+0x440</code></td><td><code>+0x440</code></td><td>Identificador numérico de proceso (PID). Estable entre versiones recientes.</td></tr>
+<tr><td><code>ActiveProcessLinks</code></td><td><code>LIST_ENTRY</code></td><td><code>+0x448</code></td><td><code>+0x448</code></td><td><code>+0x448</code></td><td>Lista circular del scheduler recorrida por <code>tasklist</code> / <code>EnumProcesses</code>. Blanco clásico de DKOM.</td></tr>
+<tr><td><code>Token</code></td><td><code>EX_FAST_REF</code></td><td><code>+0x4B8</code></td><td><code>+0x4B8</code></td><td><code>+0x4B8</code></td><td>Puntero al token de acceso primario. Aplicar máscara <code>&amp; ~0x0F</code> para despojar el conteo de referencias.</td></tr>
+<tr><td><code>ImageFileName</code></td><td><code>UCHAR[15]</code></td><td><code>+0x5A8</code></td><td><code>+0x5A8</code></td><td><code>+0x5A8</code></td><td>Nombre corto de imagen (ASCII de hasta 14 caracteres + nulo terminador).</td></tr>
+<tr><td><code>Protection</code></td><td><code>_PS_PROTECTION</code></td><td><code>+0x87A</code></td><td><code>+0x87A</code></td><td><strong><code>+0x8FA</code></strong></td><td>Byte de mitigación PPL (Protected Process Light: Signer y Type). <strong>Desplazado en 24H2</strong>.</td></tr>
+<tr><td><code>MitigationFlags</code> / <code>Flags2</code></td><td><code>ULONG</code></td><td><code>+0x9D0</code></td><td><strong><code>+0x9D8</code></strong></td><td><strong><code>+0xA58</code></strong></td><td>Máscara de mitigaciones: kCFG, ACG, CET Shadow Stack, Win32k Lockdown. <strong>Varía entre compilaciones</strong>.</td></tr>
+<tr><td rowspan="3"><strong><code>nt!_KPROCESS</code></strong></td><td><code>DirectoryTableBase</code></td><td><code>ULONG_PTR</code></td><td><code>+0x028</code></td><td><code>+0x028</code></td><td><code>+0x028</code></td><td>Dirección física base de la tabla de páginas de nivel 4 (PML4 / registro <code>CR3</code>).</td></tr>
+<tr><td><code>InstrumentationCallback</code></td><td><code>PVOID</code></td><td><code>+0x3D8</code></td><td><strong><code>+0x3E8</code></strong></td><td><strong><code>+0x3E8</code></strong></td><td>Puntero al sensor en usermode que intercepta retornos de syscalls (<code>NtSetInformationProcess 0x28</code>).</td></tr>
+<tr><td><code>UserDirectoryTableBase</code></td><td><code>ULONG_PTR</code></td><td><code>+0x278</code></td><td><code>+0x278</code></td><td><code>+0x278</code></td><td>Directorio de páginas para KVA Shadow (mitigación de hardware frente a Meltdown / CVE-2017-5754).</td></tr>
+<tr><td rowspan="4"><strong><code>nt!_TOKEN</code></strong></td><td><code>Privileges.Present</code></td><td><code>UINT64</code></td><td><code>+0x040</code></td><td><code>+0x040</code></td><td><code>+0x040</code></td><td>Máscara de 64 bits de privilegios concedidos a la cuenta (ej. bit 20 = <code>SeDebugPrivilege</code>).</td></tr>
+<tr><td><code>Privileges.Enabled</code></td><td><code>UINT64</code></td><td><code>+0x048</code></td><td><code>+0x048</code></td><td><code>+0x048</code></td><td>Máscara de 64 bits de privilegios habilitados actualmente en el proceso.</td></tr>
+<tr><td><code>Privileges.EnabledByDefault</code></td><td><code>UINT64</code></td><td><code>+0x050</code></td><td><code>+0x050</code></td><td><code>+0x050</code></td><td>Privilegios habilitados en el momento de creación del token.</td></tr>
+<tr><td><code>UserAndGroups</code></td><td><code>PSID_AND_ATTRIBUTES</code></td><td><code>+0x0A8</code></td><td><code>+0x0A8</code></td><td><code>+0x0A8</code></td><td>Puntero al arreglo de SIDs de seguridad (usuario, grupos administrativos y AppContainer SID).</td></tr>
+</tbody></table></div>
+
+<h3>6.2 Recetas de Inspección Forense en WinDbg</h3>
+<pre><code>$$ 1. Volcar campos críticos de un objeto de proceso en una sola línea
+dt nt!_EPROCESS &lt;addr&gt; UniqueProcessId ActiveProcessLinks Token Protection ImageFileName
+
+$$ 2. Inspeccionar la máscara de privilegios habilitados en el token de un proceso
+r $t0 = poi(&lt;EPROCESS_addr&gt; + @@(#FIELD_OFFSET(nt!_EPROCESS, Token))) &amp; ~0xf
+? poi(@$t0 + @@(#FIELD_OFFSET(nt!_TOKEN, Privileges.Enabled)))
+
+$$ 3. Auditar el sensor nativo InstrumentationCallback en el hilo/proceso
+dt nt!_KPROCESS &lt;EPROCESS_addr&gt; InstrumentationCallback</code></pre>
+
+<aside class="nota-ed">
+<p class="callout-titulo">Advertencia Crítica de Estabilidad — Prohibición de Hardcoding de Offsets</p>
+<p>Las estructuras internas del ejecutivo de Windows (<code>_EPROCESS</code>, <code>_KPROCESS</code>, <code>_TOKEN</code>) son <strong>opacas y no documentadas</strong>. Microsoft altera la disposición de sus campos entre actualizaciones menores, service packs y compilaciones mayores (como se observa en el salto de <code>Protection</code> y <code>MitigationFlags</code> en Windows 11 24H2). Un script o controlador que utilice offsets numéricos fijos (<em>hardcoded</em>) provocará un fallo de desreferencia o un Bugcheck inmediato (<code>0x3B</code> / <code>SYSTEM_SERVICE_EXCEPTION</code> o <code>0x50</code> / <code>PAGE_FAULT_IN_NONPAGED_AREA</code>). En entornos de producción y herramientas de auditoría se deben emplear siempre las macros dinámicas con símbolos <code>#FIELD_OFFSET</code>, APIs soportadas (<code>PsGetProcessId</code>, <code>PsReferencePrimaryToken</code>) o resolución heurística por firmas.</p>
+</aside>
+"""
+
