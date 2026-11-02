@@ -52,6 +52,48 @@
 <h3 id="flujo-de-validación-de-imágenes-ntcreatesection-to-vtlcall-to-skci-dll">Flujo de Validación de Imágenes: <code>NtCreateSection</code> $\to$ <code>VtlCall</code> $\to$ <code>skci.dll</code></h3>
 <p>Cuando se carga un binario ejecutable o controlador en el sistema:</p>
 <ol><li>El llamador invoca <code>NtCreateSection</code> con la bandera <code>SEC_IMAGE</code>.</li><li>El gestor de memoria (<code>nt!MiCreateSection</code>) analiza las cabeceras PE y transfiere la validación de firma a la biblioteca de integridad de código del kernel (<code>ci.dll!CiValidateImageHeader</code>).</li><li>Si la política de HVCI está activa, <code>ci.dll</code> no toma la decisión de ejecución de manera local en VTL 0: emite una transición de hipervisor <strong><code>VtlCall</code></strong> hacia <strong><code>skci.dll</code></strong> (<em>Secure Kernel Code Integrity</em>) en VTL 1.</li><li><code>skci.dll</code> valida los certificados digitales, la cadena de confianza y las reglas WDAC (<em>Windows Defender Application Control</em>), computando los hashes criptográficos de cada página física.</li><li>Si la validación es exitosa, el Secure Kernel programa las tablas de páginas SLAT/EPT del hipervisor marcando las páginas físicas correspondientes como ejecutables de solo lectura ($R \oplus X$). Si la validación fracasa, VTL 1 retorna un estado de error (<code>STATUS_IMAGE_CERT_REVOKED</code> o <code>STATUS_INVALID_IMAGE_HASH</code>) y <code>NtCreateSection</code> es abortada inmediatamente.</li></ol>
+<h4 id="código-c-gatillo-de-mapeo-con-validación-criptográfica-en-kernel">Código C: Gatillo de Mapeo con Validación Criptográfica en Kernel</h4>
+<pre><code class="lenguaje-c">// Invocación nativa para mapear una imagen PE sujeta a verificación de HVCI
+HANDLE hFile = NULL, hSection = NULL;
+OBJECT_ATTRIBUTES objAttr;
+IO_STATUS_BLOCK ioStatus;
+UNICODE_STRING uPath;
+
+RtlInitUnicodeString(&amp;uPath, L"\\??\\C:\\drivers\\vulnerable_or_untrusted.sys");
+InitializeObjectAttributes(&amp;objAttr, &amp;uPath, OBJ_CASE_INSENSITIVE, NULL, NULL);
+
+NtOpenFile(&amp;hFile, FILE_EXECUTE | SYNCHRONIZE, &amp;objAttr, &amp;ioStatus, 
+           FILE_SHARE_READ, FILE_NON_DIRECTORY_FILE | FILE_SYNCHRONOUS_IO_NONALERT);
+
+// Al invocar NtCreateSection con SEC_IMAGE (0x01000000), ntoskrnl transfiere el control a CI / VTL1
+NTSTATUS status = NtCreateSection(
+    &amp;hSection,
+    SECTION_ALL_ACCESS,
+    NULL,
+    NULL,
+    PAGE_EXECUTE,
+    SEC_IMAGE,   // 0x01000000: Gatillo de verificación de firma y validación SLAT/EPT
+    hFile
+);
+// Si HVCI rechaza la firma en VTL1, status retornará STATUS_INVALID_IMAGE_HASH (0xC0000428)</code></pre>
+<h4 id="receta-windbg-para-rastrear-el-pipeline-ntcreatesection-to-vtlcall">Receta WinDbg para Rastrear el Pipeline <code>NtCreateSection</code> $\to$ <code>VtlCall</code></h4>
+<pre><code class="lenguaje-text">$$ 1. Breakpoint en la entrada de creación de sección y análisis PE
+bp nt!NtCreateSection "r @rcx; gc"
+bp nt!MiCreateSection
+
+$$ 2. Breakpoint en la biblioteca de integridad de código (VTL 0)
+bp ci!CiValidateImageHeader "du poi(@rcx+0x30); gc"
+bp ci!CiValidateImagePages
+
+$$ 3. Breakpoint en la llamada de transición de hipervisor (VtlCall hacia Secure Kernel)
+bp ci!IvtCallHypervisor
+$$ Al alcanzar ci!IvtCallHypervisor, examinar los argumentos de la llamada:
+$$ RCX = Código de comando VTL1 (ej. 0x17 = SECURE_IMAGE_VALIDATE_PAGES)
+$$ RDX = Puntero al bloque de contexto con las PFNs físicas a verificar
+r rcx, rdx
+
+$$ 4. Breakpoint en el Secure Kernel (VTL 1) (si el depurador está conectado a VTL1)
+bp skci!SkciValidateImagePages</code></pre>
 <h3 id="kcfg-kernel-control-flow-guard-respaldado-por-vtl-1">kCFG (Kernel Control Flow Guard) Respaldado por VTL 1</h3>
 <p>En modo kernel, <strong>kCFG</strong> verifica cada llamada indirecta (<code>call rax</code>) comprobando si la dirección de destino está registrada en el bitmap de funciones válidas del kernel (<code>nt!guard_dispatch_icall</code>). Bajo VBS, el mapa de bits de CFG se almacena en memoria de solo lectura para VTL 0 y solo puede ser actualizado por el Secure Kernel en VTL 1.</p>
 <hr>
@@ -79,8 +121,90 @@ r $t0 = nt!PspCreateProcessNotifyRoutine
 !list -t nt!_CM_CALLBACK_CONTEXT_BLOCK.List -x "dps @$extret+0x28 L1" nt!CmCallbackListHead</code></pre>
 <h3 id="d-sensor-en-proceso-kprocess-instrumentationcallback">D. Sensor en Proceso: <code>KPROCESS-&gt;InstrumentationCallback</code></h3>
 <p>Para evitar el monitoreo invasivo mediante inline hooking en modo usuario, Windows expone un mecanismo nativo de instrumentación en el despachador de syscalls:</p>
-<ul><li>En la estructura <code>_KPROCESS</code> (<code>nt!_KPROCESS</code>), el campo <strong><code>InstrumentationCallback</code></strong> (offset <strong><code>+0x3D8</code></strong> en Windows 10 x64, <strong><code>+0x3E8</code></strong> en Windows 11 x64) almacena un puntero a una función en espacio de usuario.</li><li>Se configura desde user mode mediante <code>NtSetInformationProcess</code> pasando la clase no documentada <code>ProcessInstrumentationCallback</code> (<code>0x28</code>).</li><li><strong>Mecánica de intercepción:</strong> Cuando este puntero está activo, cada vez que una llamada al sistema (<code>syscall</code>) o interrupción retorna desde el kernel al modo usuario, la CPU no regresa inmediatamente a la instrucción siguiente (<code>RIP</code>), sino que desvía la ejecución a la dirección configurada en <code>InstrumentationCallback</code>. Sensores defensivos y EDRs lo utilizan para inspeccionar el estado de los registros y el stack post-syscall.</li><li><strong>Auditoría en WinDbg:</strong></li></ul>
-<pre><code class="lenguaje-text">dt nt!_KPROCESS &lt;Direccion_EPROCESS&gt; InstrumentationCallback</code></pre>
+<ul><li>En la estructura <code>_KPROCESS</code> (<code>nt!_KPROCESS</code>), el campo <strong><code>InstrumentationCallback</code></strong> (offset <strong><code>+0x3D8</code></strong> en Windows 10 x64, <strong><code>+0x3E8</code></strong> en Windows 11 x64) almacena un puntero a una función en espacio de usuario.</li><li>Se configura desde user mode mediante <code>NtSetInformationProcess</code> pasando la clase no documentada <code>ProcessInstrumentationCallback</code> (<code>0x28</code>).</li><li><strong>Mecánica de intercepción:</strong> Cuando este puntero está activo, cada vez que una llamada al sistema (<code>syscall</code>) o interrupción retorna desde el kernel al modo usuario, la CPU no regresa inmediatamente a la instrucción siguiente (<code>RIP</code>), sino que desvía la ejecución a la dirección configurada en <code>InstrumentationCallback</code>. Sensores defensivos y EDRs lo utilizan para inspeccionar el estado de los registros y el stack post-syscall.</li></ul>
+<h4 id="implementación-en-c-registro-de-instrumentationcallback">Implementación en C: Registro de <code>InstrumentationCallback</code></h4>
+<pre><code class="lenguaje-c">#include &lt;windows.h&gt;
+#include &lt;stdio.h&gt;
+
+#define ProcessInstrumentationCallback 0x28
+
+typedef struct _PROCESS_INSTRUMENTATION_CALLBACK_INFORMATION {
+    ULONG Version;      // 0 en x64
+    ULONG Reserved;     // 0
+    PVOID Callback;     // Puntero a la rutina en espacio de usuario
+} PROCESS_INSTRUMENTATION_CALLBACK_INFORMATION;
+
+typedef NTSTATUS (NTAPI *pfnNtSetInformationProcess)(
+    HANDLE ProcessHandle,
+    ULONG ProcessInformationClass,
+    PVOID ProcessInformation,
+    ULONG ProcessInformationLength
+);
+
+// Stub en ensamblador que recibe el control tras cada syscall
+extern void InstrumentationCallbackEntry(void);
+
+void InstalarInstrumentationCallback(void) {
+    pfnNtSetInformationProcess NtSetInformationProcess = 
+        (pfnNtSetInformationProcess)GetProcAddress(GetModuleHandleA("ntdll.dll"), "NtSetInformationProcess");
+    if (!NtSetInformationProcess) return;
+
+    PROCESS_INSTRUMENTATION_CALLBACK_INFORMATION info;
+    info.Version = 0;
+    info.Reserved = 0;
+    info.Callback = (PVOID)(ULONG_PTR)InstrumentationCallbackEntry;
+
+    NTSTATUS status = NtSetInformationProcess(
+        GetCurrentProcess(),
+        ProcessInstrumentationCallback,
+        &amp;info,
+        sizeof(info)
+    );
+    if (status == 0) {
+        printf("[+] InstrumentationCallback registrado correctamente.\n");
+    }
+}</code></pre>
+<h4 id="stub-en-ensamblador-x64-instrumentation-entry-asm">Stub en Ensamblador x64 (<code>instrumentation_entry.asm</code>)</h4>
+<p>Al regresar de la syscall, el kernel coloca la dirección de retorno original (<code>RIP</code> en modo usuario) en el registro <strong><code>R10</code></strong>, y las banderas en <strong><code>R11</code></strong>:</p>
+<pre><code class="lenguaje-asm">.code
+PUBLIC InstrumentationCallbackEntry
+EXTRN AuditarRetornoSyscall:PROC
+
+InstrumentationCallbackEntry PROC
+    ; Preservar el contexto volátil completo del hilo
+    pushfq
+    push    rax
+    push    rcx
+    push    rdx
+    push    r8
+    push    r9
+    push    r10
+    push    r11
+    
+    ; Invocar función C pasando R10 (RIP original de retorno) como 1er argumento (RCX)
+    sub     rsp, 20h
+    mov     rcx, r10
+    call    AuditarRetornoSyscall
+    add     rsp, 20h
+    
+    ; Restaurar contexto
+    pop     r11
+    pop     r10
+    pop     r9
+    pop     r8
+    pop     rdx
+    pop     rcx
+    pop     rax
+    popfq
+    
+    ; Saltar a la dirección de retorno original que el kernel dejó en R10
+    jmp     r10
+InstrumentationCallbackEntry ENDP
+END</code></pre>
+<h4 id="script-windbg-auditoría-de-instrumentationcallback-en-todos-los-procesos">Script WinDbg: Auditoría de <code>InstrumentationCallback</code> en Todos los Procesos</h4>
+<p>Un analista forense o investigador de evasión puede inspeccionar qué procesos del sistema tienen activo un sensor <code>InstrumentationCallback</code>:</p>
+<pre><code class="lenguaje-text">$$ Script WinDbg: Recorrer todos los procesos y detectar callbacks activos
+!for_each_process "r @$t0 = @#Process; .if (poi(@$t0+@@(#FIELD_OFFSET(nt!_KPROCESS, InstrumentationCallback))) != 0) { .printf \"PID %p (%s) -&gt; InstrumentationCallback: %p\n\", poi(@$t0+@@(#FIELD_OFFSET(nt!_EPROCESS, UniqueProcessId))), poi(@$t0+@@(#FIELD_OFFSET(nt!_EPROCESS, ImageFileName))), poi(@$t0+@@(#FIELD_OFFSET(nt!_KPROCESS, InstrumentationCallback))) }"</code></pre>
 <h3 id="e-proveedor-de-telemetría-de-kernel-etwti-microsoft-windows-threat-intelligence">E. Proveedor de Telemetría de Kernel <code>ETWti</code> (<em>Microsoft-Windows-Threat-Intelligence</em>)</h3>
 <p>El subsistema ETWti alimenta a los EDRs con telemetría de bajo nivel:</p>
 <ul><li>Su handle de registro global reside en <code>nt!EtwThreatIntProvRegHandle</code>.</li><li>Apunta a una estructura <code>_ETW_REG_ENTRY</code>. En el offset <strong><code>+0x10</code></strong> reside el puntero a <code>_ETW_GUID_ENTRY</code>.</li><li>Dentro de <code>_ETW_GUID_ENTRY</code>, el campo <code>ProviderEnableInfo</code> define si el proveedor está activo (<code>EnableMask != 0</code>) y a qué nivel de detalle registra eventos de kernel.</li></ul>

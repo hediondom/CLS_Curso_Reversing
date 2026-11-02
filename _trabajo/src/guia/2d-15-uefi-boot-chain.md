@@ -46,6 +46,44 @@ En un ejecutable UEFI desensamblado, toda interacción con memoria, consola y pr
 | **`+0x58`** | `RuntimeServices` | `EFI_RUNTIME_SERVICES*` | Puntero a la tabla de servicios en tiempo de ejecución (`gRT`), que persisten tras arrancar el SO (variables NVRAM). |
 | **`+0x60`** | `BootServices` | `EFI_BOOT_SERVICES*` | Puntero a la tabla de servicios de arranque (`gBS`), activa solo hasta que se invoca `ExitBootServices`. |
 
+### El porqué del Padding de 4 bytes (`+0x24`) y Desensamblado en x64
+En la especificación UEFI y en la ABI x64 de Microsoft, los punteros de 64 bits (`CHAR16*`, `EFI_HANDLE`, punteros a tablas de servicios) exigen **alineación natural obligatoria a 8 bytes** (`offset % 8 == 0`):
+1. `Hdr` mide 24 bytes (`0x18`), ocupando `+0x00` a `+0x18`.
+2. `FirmwareVendor` es un puntero (8 bytes), ocupando `+0x18` a `+0x20`.
+3. `FirmwareRevision` es un entero de 32 bits `UINT32` (4 bytes), ocupando `+0x20` a `+0x24`.
+4. El siguiente miembro declarado es `EFI_HANDLE ConsoleInHandle` (un puntero de 8 bytes). Si el compilador lo ubicara inmediatamente en `+0x24`, rompería la alineación de 8 bytes (ya que `0x24` no es múltiplo de 8).
+5. Por lo tanto, el compilador C inserta automáticamente **4 bytes de relleno inactivo** (`_Padding` en `+0x24` a `+0x28`).
+6. A partir de `ConsoleInHandle` en `+0x28`, se suceden 7 punteros de 64 bits consecutivos ($7 \times 8 = 56 = \text{0x38}$ bytes): `0x28 + 0x38 = 0x60`.
+7. Gracias a este padding riguroso, el puntero crítico **`BootServices`** se ubica indefectiblemente en el offset **`+0x60`**.
+
+#### Desensamblado en x64: Cómo el Firmware o Bootkit Recupera `BootServices`
+```asm
+; =========================================================================
+; Prólogo estándar de una aplicación EFI (bootmgfw.efi / winload.efi / malware UEFI)
+; Convención Microsoft x64: RCX = ImageHandle, RDX = SystemTable (EFI_SYSTEM_TABLE*)
+; =========================================================================
+EfiMain PROC
+    mov     qword ptr [rsp + 10h], rdx  ; Salvar SystemTable en shadow space
+    mov     qword ptr [rsp + 08h], rcx  ; Salvar ImageHandle
+    sub     rsp, 28h
+
+    ; Desreferenciar BootServices desde SystemTable (+0x60)
+    mov     rax, qword ptr [rdx + 60h]  ; RAX = SystemTable->BootServices (¡offset exacto +0x60!)
+    mov     qword ptr [gBS], rax        ; Almacenar en la variable global gBS
+
+    ; Demostración de invocación de protocolo vía BootServices:
+    ; LocateProtocol está en el offset +0x140 dentro de EFI_BOOT_SERVICES
+    mov     rax, qword ptr [gBS]
+    lea     r8, [pProtocol]             ; Argumento 3: Puntero de salida
+    xor     edx, edx                    ; Argumento 2: Registration = NULL
+    lea     rcx, [ProtocolGuid]         ; Argumento 1: Protocol GUID
+    call    qword ptr [rax + 140h]      ; Invocar gBS->LocateProtocol()
+
+    add     rsp, 28h
+    ret
+EfiMain ENDP
+```
+
 ---
 
 ## 2. La Cadena de Carga de Windows en Sistemas x64 / UEFI

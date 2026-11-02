@@ -59,6 +59,54 @@ Cuando se carga un binario ejecutable o controlador en el sistema:
 4. `skci.dll` valida los certificados digitales, la cadena de confianza y las reglas WDAC (*Windows Defender Application Control*), computando los hashes criptográficos de cada página física.
 5. Si la validación es exitosa, el Secure Kernel programa las tablas de páginas SLAT/EPT del hipervisor marcando las páginas físicas correspondientes como ejecutables de solo lectura ($R \oplus X$). Si la validación fracasa, VTL 1 retorna un estado de error (`STATUS_IMAGE_CERT_REVOKED` o `STATUS_INVALID_IMAGE_HASH`) y `NtCreateSection` es abortada inmediatamente.
 
+#### Código C: Gatillo de Mapeo con Validación Criptográfica en Kernel
+```c
+// Invocación nativa para mapear una imagen PE sujeta a verificación de HVCI
+HANDLE hFile = NULL, hSection = NULL;
+OBJECT_ATTRIBUTES objAttr;
+IO_STATUS_BLOCK ioStatus;
+UNICODE_STRING uPath;
+
+RtlInitUnicodeString(&uPath, L"\\??\\C:\\drivers\\vulnerable_or_untrusted.sys");
+InitializeObjectAttributes(&objAttr, &uPath, OBJ_CASE_INSENSITIVE, NULL, NULL);
+
+NtOpenFile(&hFile, FILE_EXECUTE | SYNCHRONIZE, &objAttr, &ioStatus, 
+           FILE_SHARE_READ, FILE_NON_DIRECTORY_FILE | FILE_SYNCHRONOUS_IO_NONALERT);
+
+// Al invocar NtCreateSection con SEC_IMAGE (0x01000000), ntoskrnl transfiere el control a CI / VTL1
+NTSTATUS status = NtCreateSection(
+    &hSection,
+    SECTION_ALL_ACCESS,
+    NULL,
+    NULL,
+    PAGE_EXECUTE,
+    SEC_IMAGE,   // 0x01000000: Gatillo de verificación de firma y validación SLAT/EPT
+    hFile
+);
+// Si HVCI rechaza la firma en VTL1, status retornará STATUS_INVALID_IMAGE_HASH (0xC0000428)
+```
+
+#### Receta WinDbg para Rastrear el Pipeline `NtCreateSection` $\to$ `VtlCall`
+```text
+$$ 1. Breakpoint en la entrada de creación de sección y análisis PE
+bp nt!NtCreateSection "r @rcx; gc"
+bp nt!MiCreateSection
+
+$$ 2. Breakpoint en la biblioteca de integridad de código (VTL 0)
+bp ci!CiValidateImageHeader "du poi(@rcx+0x30); gc"
+bp ci!CiValidateImagePages
+
+$$ 3. Breakpoint en la llamada de transición de hipervisor (VtlCall hacia Secure Kernel)
+bp ci!IvtCallHypervisor
+$$ Al alcanzar ci!IvtCallHypervisor, examinar los argumentos de la llamada:
+$$ RCX = Código de comando VTL1 (ej. 0x17 = SECURE_IMAGE_VALIDATE_PAGES)
+$$ RDX = Puntero al bloque de contexto con las PFNs físicas a verificar
+r rcx, rdx
+
+$$ 4. Breakpoint en el Secure Kernel (VTL 1) (si el depurador está conectado a VTL1)
+bp skci!SkciValidateImagePages
+```
+
 ### kCFG (Kernel Control Flow Guard) Respaldado por VTL 1
 En modo kernel, **kCFG** verifica cada llamada indirecta (`call rax`) comprobando si la dirección de destino está registrada en el bitmap de funciones válidas del kernel (`nt!guard_dispatch_icall`). Bajo VBS, el mapa de bits de CFG se almacena en memoria de solo lectura para VTL 0 y solo puede ser actualizado por el Secure Kernel en VTL 1.
 
@@ -106,9 +154,97 @@ Para evitar el monitoreo invasivo mediante inline hooking en modo usuario, Windo
 - En la estructura `_KPROCESS` (`nt!_KPROCESS`), el campo **`InstrumentationCallback`** (offset **`+0x3D8`** en Windows 10 x64, **`+0x3E8`** en Windows 11 x64) almacena un puntero a una función en espacio de usuario.
 - Se configura desde user mode mediante `NtSetInformationProcess` pasando la clase no documentada `ProcessInstrumentationCallback` (`0x28`).
 - **Mecánica de intercepción:** Cuando este puntero está activo, cada vez que una llamada al sistema (`syscall`) o interrupción retorna desde el kernel al modo usuario, la CPU no regresa inmediatamente a la instrucción siguiente (`RIP`), sino que desvía la ejecución a la dirección configurada en `InstrumentationCallback`. Sensores defensivos y EDRs lo utilizan para inspeccionar el estado de los registros y el stack post-syscall.
-- **Auditoría en WinDbg:**
+
+#### Implementación en C: Registro de `InstrumentationCallback`
+```c
+#include <windows.h>
+#include <stdio.h>
+
+#define ProcessInstrumentationCallback 0x28
+
+typedef struct _PROCESS_INSTRUMENTATION_CALLBACK_INFORMATION {
+    ULONG Version;      // 0 en x64
+    ULONG Reserved;     // 0
+    PVOID Callback;     // Puntero a la rutina en espacio de usuario
+} PROCESS_INSTRUMENTATION_CALLBACK_INFORMATION;
+
+typedef NTSTATUS (NTAPI *pfnNtSetInformationProcess)(
+    HANDLE ProcessHandle,
+    ULONG ProcessInformationClass,
+    PVOID ProcessInformation,
+    ULONG ProcessInformationLength
+);
+
+// Stub en ensamblador que recibe el control tras cada syscall
+extern void InstrumentationCallbackEntry(void);
+
+void InstalarInstrumentationCallback(void) {
+    pfnNtSetInformationProcess NtSetInformationProcess = 
+        (pfnNtSetInformationProcess)GetProcAddress(GetModuleHandleA("ntdll.dll"), "NtSetInformationProcess");
+    if (!NtSetInformationProcess) return;
+
+    PROCESS_INSTRUMENTATION_CALLBACK_INFORMATION info;
+    info.Version = 0;
+    info.Reserved = 0;
+    info.Callback = (PVOID)(ULONG_PTR)InstrumentationCallbackEntry;
+
+    NTSTATUS status = NtSetInformationProcess(
+        GetCurrentProcess(),
+        ProcessInstrumentationCallback,
+        &info,
+        sizeof(info)
+    );
+    if (status == 0) {
+        printf("[+] InstrumentationCallback registrado correctamente.\n");
+    }
+}
+```
+
+#### Stub en Ensamblador x64 (`instrumentation_entry.asm`)
+Al regresar de la syscall, el kernel coloca la dirección de retorno original (`RIP` en modo usuario) en el registro **`R10`**, y las banderas en **`R11`**:
+```asm
+.code
+PUBLIC InstrumentationCallbackEntry
+EXTRN AuditarRetornoSyscall:PROC
+
+InstrumentationCallbackEntry PROC
+    ; Preservar el contexto volátil completo del hilo
+    pushfq
+    push    rax
+    push    rcx
+    push    rdx
+    push    r8
+    push    r9
+    push    r10
+    push    r11
+    
+    ; Invocar función C pasando R10 (RIP original de retorno) como 1er argumento (RCX)
+    sub     rsp, 20h
+    mov     rcx, r10
+    call    AuditarRetornoSyscall
+    add     rsp, 20h
+    
+    ; Restaurar contexto
+    pop     r11
+    pop     r10
+    pop     r9
+    pop     r8
+    pop     rdx
+    pop     rcx
+    pop     rax
+    popfq
+    
+    ; Saltar a la dirección de retorno original que el kernel dejó en R10
+    jmp     r10
+InstrumentationCallbackEntry ENDP
+END
+```
+
+#### Script WinDbg: Auditoría de `InstrumentationCallback` en Todos los Procesos
+Un analista forense o investigador de evasión puede inspeccionar qué procesos del sistema tienen activo un sensor `InstrumentationCallback`:
 ```text
-dt nt!_KPROCESS <Direccion_EPROCESS> InstrumentationCallback
+$$ Script WinDbg: Recorrer todos los procesos y detectar callbacks activos
+!for_each_process "r @$t0 = @#Process; .if (poi(@$t0+@@(#FIELD_OFFSET(nt!_KPROCESS, InstrumentationCallback))) != 0) { .printf \"PID %p (%s) -> InstrumentationCallback: %p\n\", poi(@$t0+@@(#FIELD_OFFSET(nt!_EPROCESS, UniqueProcessId))), poi(@$t0+@@(#FIELD_OFFSET(nt!_EPROCESS, ImageFileName))), poi(@$t0+@@(#FIELD_OFFSET(nt!_KPROCESS, InstrumentationCallback))) }"
 ```
 
 ### E. Proveedor de Telemetría de Kernel `ETWti` (*Microsoft-Windows-Threat-Intelligence*)

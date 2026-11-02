@@ -57,6 +57,34 @@
 <tr><td><strong><code>+0x58</code></strong></td><td><code>RuntimeServices</code></td><td><code>EFI_RUNTIME_SERVICES*</code></td><td>Puntero a la tabla de servicios en tiempo de ejecución (<code>gRT</code>), que persisten tras arrancar el SO (variables NVRAM).</td></tr>
 <tr><td><strong><code>+0x60</code></strong></td><td><code>BootServices</code></td><td><code>EFI_BOOT_SERVICES*</code></td><td>Puntero a la tabla de servicios de arranque (<code>gBS</code>), activa solo hasta que se invoca <code>ExitBootServices</code>.</td></tr>
 </tbody></table></div>
+<h3 id="el-porqué-del-padding-de-4-bytes-0x24-y-desensamblado-en-x64">El porqué del Padding de 4 bytes (<code>+0x24</code>) y Desensamblado en x64</h3>
+<p>En la especificación UEFI y en la ABI x64 de Microsoft, los punteros de 64 bits (<code>CHAR16*</code>, <code>EFI_HANDLE</code>, punteros a tablas de servicios) exigen <strong>alineación natural obligatoria a 8 bytes</strong> (<code>offset % 8 == 0</code>):</p>
+<ol><li><code>Hdr</code> mide 24 bytes (<code>0x18</code>), ocupando <code>+0x00</code> a <code>+0x18</code>.</li><li><code>FirmwareVendor</code> es un puntero (8 bytes), ocupando <code>+0x18</code> a <code>+0x20</code>.</li><li><code>FirmwareRevision</code> es un entero de 32 bits <code>UINT32</code> (4 bytes), ocupando <code>+0x20</code> a <code>+0x24</code>.</li><li>El siguiente miembro declarado es <code>EFI_HANDLE ConsoleInHandle</code> (un puntero de 8 bytes). Si el compilador lo ubicara inmediatamente en <code>+0x24</code>, rompería la alineación de 8 bytes (ya que <code>0x24</code> no es múltiplo de 8).</li><li>Por lo tanto, el compilador C inserta automáticamente <strong>4 bytes de relleno inactivo</strong> (<code>_Padding</code> en <code>+0x24</code> a <code>+0x28</code>).</li><li>A partir de <code>ConsoleInHandle</code> en <code>+0x28</code>, se suceden 7 punteros de 64 bits consecutivos ($7 \times 8 = 56 = \text{0x38}$ bytes): <code>0x28 + 0x38 = 0x60</code>.</li><li>Gracias a este padding riguroso, el puntero crítico <strong><code>BootServices</code></strong> se ubica indefectiblemente en el offset <strong><code>+0x60</code></strong>.</li></ol>
+<h4 id="desensamblado-en-x64-cómo-el-firmware-o-bootkit-recupera-bootservices">Desensamblado en x64: Cómo el Firmware o Bootkit Recupera <code>BootServices</code></h4>
+<pre><code class="lenguaje-asm">; =========================================================================
+; Prólogo estándar de una aplicación EFI (bootmgfw.efi / winload.efi / malware UEFI)
+; Convención Microsoft x64: RCX = ImageHandle, RDX = SystemTable (EFI_SYSTEM_TABLE*)
+; =========================================================================
+EfiMain PROC
+    mov     qword ptr [rsp + 10h], rdx  ; Salvar SystemTable en shadow space
+    mov     qword ptr [rsp + 08h], rcx  ; Salvar ImageHandle
+    sub     rsp, 28h
+
+    ; Desreferenciar BootServices desde SystemTable (+0x60)
+    mov     rax, qword ptr [rdx + 60h]  ; RAX = SystemTable-&gt;BootServices (¡offset exacto +0x60!)
+    mov     qword ptr [gBS], rax        ; Almacenar en la variable global gBS
+
+    ; Demostración de invocación de protocolo vía BootServices:
+    ; LocateProtocol está en el offset +0x140 dentro de EFI_BOOT_SERVICES
+    mov     rax, qword ptr [gBS]
+    lea     r8, [pProtocol]             ; Argumento 3: Puntero de salida
+    xor     edx, edx                    ; Argumento 2: Registration = NULL
+    lea     rcx, [ProtocolGuid]         ; Argumento 1: Protocol GUID
+    call    qword ptr [rax + 140h]      ; Invocar gBS-&gt;LocateProtocol()
+
+    add     rsp, 28h
+    ret
+EfiMain ENDP</code></pre>
 <hr>
 <h2 id="2-la-cadena-de-carga-de-windows-en-sistemas-x64-uefi">2. La Cadena de Carga de Windows en Sistemas x64 / UEFI</h2>
 <p>El proceso de arranque moderno desde el encendido de la máquina hasta la primera instrucción del kernel sigue una secuencia estricta de componentes encadenados y firmados bajo <strong>Secure Boot</strong>:</p>
