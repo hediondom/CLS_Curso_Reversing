@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>2D.12 · ETW y telemetría defensiva</title>
-<meta name="description" content="Entender providers, controllers, consumers y sesiones ETW; tipos de proveedores, AutoLogger, filtros, eventos perdidos y canales del registro de eventos; registrar y revisar un evento de un programa propio.">
+<title>2D.12 · ETW y telemetría defensiva (NT Kernel Logger, Formato ETL y Manipulación)</title>
+<meta name="description" content="Providers, controllers, consumers y sesiones ETW; sesión NT Kernel Logger y flags de kernel; estructura y anatomía binaria de archivos ETL; técnicas de manipulación y cegado (ETW Patching y Blinding).">
 <link rel="stylesheet" href="../guia/estilo.css">
 </head>
 <body>
@@ -23,84 +23,89 @@
 </header>
 <main id="contenido">
 <nav class="migas" aria-label="Ubicación"><a href="../00_EMPEZAR_AQUI.html">Inicio</a><span aria-hidden="true">›</span><a href="../guia/index.html">Curso</a><span aria-hidden="true">›</span><span>Etapa 2 · 2D · Windows internals (optativa)</span></nav><h1 id="etw-y-telemetría-defensiva">ETW y telemetría defensiva</h1>
-<aside class="callout aviso"><p class="callout-titulo">Rama optativa 2D</p><p>El ejercicio registra solo eventos de un programa propio o un perfil de diagnóstico conocido. No inicia trazas de kernel amplias ni recopila datos personales. No se detienen, modifican ni crean sesiones del sistema o de productos de seguridad.</p></aside>
-<aside class="callout nota"><p class="callout-titulo">Propósito</p><p>Comprender cómo se genera, habilita y consume telemetría ETW, y usar una traza delimitada para ordenar eventos de una ejecución benigna. Al terminar deberías poder decir, frente a una traza o a la <strong>ausencia</strong> de un evento, qué estaba habilitado, qué pudo perderse y qué no se puede concluir.</p></aside>
+<aside class="callout nota"><p class="callout-titulo">Propósito</p><p>Comprender cómo se genera, habilita y consume telemetría ETW, dominar la sesión del sistema <strong>NT Kernel Logger</strong>, analizar la <strong>anatomía binaria del formato ETL</strong>, y auditar de forma reproducible las técnicas de evasión y <strong>manipulación de ETW (ETW Patching y Blinding)</strong> tanto en modo usuario como en modo kernel.</p></aside>
 <p><strong>Prerrequisitos</strong></p>
 <ul><li><em>Obligatorios:</em> procesos/hilos (<a href="01-procesos.html">1.3</a>); <a href="02-windbg-heap.html">WinDbg y TTD</a>.</li><li><em>Recomendados:</em> <a href="2d-10-ipc.html">2D.10 IPC</a>; conceptos de excepciones en <a href="2d-11-excepciones.html">2D.11</a>; registro de Windows (<a href="2d-03-registro.html">2D.3</a>).</li></ul>
-<h2 id="modelo-etw">Modelo ETW</h2>
-<p>ETW separa <strong>provider</strong> (emite eventos), <strong>controller</strong> (inicia sesión, habilita providers y define buffers/archivo) y <strong>consumer</strong> (procesa eventos en vivo o desde un ETL). Una aplicación puede cumplir más de un rol. Los eventos perdidos, buffers y privilegios de control son parte de la interpretación, no detalles secundarios.</p>
-<p>Los providers pueden ser clásicos/MOF, WPP, manifest-based o TraceLogging; el formato determina cómo decodificar payloads. Una traza ETL puede incluir nombres de procesos, rutas y otros datos sensibles: almacénala de forma local, mínima y temporal.</p>
-<p>ETW permite habilitar o deshabilitar providers <strong>en caliente</strong>, sin reiniciar el programa. Un provider registrado que nadie habilitó, en general, no emite eventos: por eso “el programa no generó nada” y “nadie estaba escuchando” se ven igual desde afuera.</p>
-<h2 id="tipos-de-providers-y-qué-implican-para-decodificar">Tipos de providers y qué implican para decodificar</h2>
+<hr>
+<h2 id="1-el-modelo-de-arquitectura-etw">1. El Modelo de Arquitectura ETW</h2>
+<p>ETW separa tres roles clave: <strong>provider</strong> (emite eventos), <strong>controller</strong> (inicia sesión, habilita providers y define buffers/archivo) y <strong>consumer</strong> (procesa eventos en vivo o desde un archivo ETL).</p>
+<p>ETW permite habilitar o deshabilitar providers <strong>en caliente</strong>, sin reiniciar el programa. Un provider registrado que nadie habilitó no emite eventos: por eso “el programa no generó nada” y “nadie estaba escuchando” se ven idénticos desde afuera.</p>
+<h3 id="tipos-de-providers-y-qué-implican-para-decodificar">Tipos de Providers y qué implican para decodificar</h3>
 <div class="tabla"><table>
 <thead><tr>
 <th>Tipo</th>
 <th>Cómo emite</th>
 <th>Dónde está la información para decodificar</th>
-<th>Sesiones que pueden habilitarlo a la vez</th>
+<th>Sesiones simultáneas</th>
 </tr></thead><tbody>
-<tr><td>MOF (clásico)</td><td><code>RegisterTraceGuids</code> / <code>TraceEvent</code></td><td>Clases MOF</td><td>Una</td></tr>
-<tr><td>WPP</td><td><code>RegisterTraceGuids</code> / <code>TraceEvent</code></td><td>Archivos TMF, normalmente dentro del PDB del binario</td><td>Una</td></tr>
-<tr><td>Manifest-based</td><td><code>EventRegister</code> / <code>EventWrite</code></td><td>Manifiesto registrado en el sistema</td><td>Hasta ocho</td></tr>
-<tr><td>TraceLogging</td><td><code>TraceLoggingRegister</code> / <code>TraceLoggingWrite</code></td><td>El propio evento (autodescriptivo)</td><td>Hasta ocho</td></tr>
+<tr><td><strong>MOF (clásico)</strong></td><td><code>RegisterTraceGuids</code> / <code>TraceEvent</code></td><td>Clases MOF en WMI</td><td>Una sola</td></tr>
+<tr><td><strong>WPP</strong></td><td><code>RegisterTraceGuids</code> / <code>TraceEvent</code></td><td>Archivos TMF (normalmente en el PDB del binario)</td><td>Una sola</td></tr>
+<tr><td><strong>Manifest-based</strong></td><td><code>EventRegister</code> / <code>EventWrite</code></td><td>Manifiesto XML registrado en el sistema</td><td>Hasta ocho</td></tr>
+<tr><td><strong>TraceLogging</strong></td><td><code>TraceLoggingRegister</code> / <code>TraceLoggingWrite</code></td><td>El propio evento binario (autodescriptivo)</td><td>Hasta ocho</td></tr>
 </tbody></table></div>
-<p>Consecuencia práctica: una traza de un provider WPP sin el PDB/TMF correcto muestra eventos que no se pueden interpretar; uno con manifiesto necesita que el manifiesto de <strong>esa</strong> versión esté disponible. Un payload no decodificado es un límite que se declara, no un dato a inventar.</p>
-<h2 id="sesiones-filtros-y-autologger">Sesiones, filtros y AutoLogger</h2>
-<p>Una <strong>sesión</strong> recibe eventos de los providers habilitados en ella y los entrega <strong>en tiempo real</strong> a un consumidor o los escribe en un archivo <strong>ETL</strong>. El controller define tamaño y cantidad de buffers y puede leer estadísticas de la sesión, incluidos <strong>eventos y buffers perdidos</strong>.</p>
-<p>Al habilitar un provider se filtra por <strong>nivel</strong> (severidad) y por <strong>keywords</strong> (categorías): con <code>MatchAnyKeyword</code>, el provider escribe un evento si alguna de sus keywords coincide; <code>MatchAllKeyword</code> restringe más. También se pueden pedir datos extendidos, como el SID del usuario o una pila de llamadas. Por eso dos trazas “del mismo provider” pueden contener cosas muy distintas.</p>
-<p>Las sesiones <strong>AutoLogger</strong> arrancan en el inicio del sistema, antes del inicio de sesión. Se configuran en <code>HKLM\SYSTEM\CurrentControlSet\Control\WMI\Autologger\&lt;sesión&gt;</code>, con una subclave por provider (su GUID) y valores como <code>Start</code>, <code>FileName</code>, <code>Enabled</code>, <code>EnableLevel</code> y <code>MatchAnyKeyword</code>; el valor <code>Status</code> guarda el código de error si la sesión no pudo arrancar. Para el análisis defensivo, esa clave es <strong>configuración persistente</strong>: se lee (2D.3) como cualquier otra, y una sesión que debería existir y no arrancó deja evidencia en <code>Status</code>.</p>
-<h2 id="etw-y-el-visor-de-eventos">ETW y el Visor de eventos</h2>
-<p>El registro de eventos de Windows usa el mismo modelo: un evento definido en un manifiesto puede escribirse en un <strong>canal</strong> (de tipo Admin, Operational, Analytic o Debug) y, a la vez, ser recogido por hasta siete sesiones ETW más. Algunos canales, como los de traza o análisis, requieren habilitación explícita; por ejemplo, el canal <em>Trace</em> de WMI-Activity no está activo por defecto. Que un evento no aparezca en el Visor puede deberse a que su canal no estaba habilitado.</p>
-<h2 id="por-qué-faltan-eventos">Por qué faltan eventos</h2>
-<p>Microsoft enumera causas de eventos perdidos que conviene tener presentes al leer una traza:</p>
-<ul><li>el evento completo supera 64 KB, o es más grande que el buffer de la sesión;</li><li>en tiempo real, el consumidor no lee a tiempo o no está presente;</li><li>al escribir a archivo, el disco no da abasto.</li></ul>
-<p>A eso se suman las causas de configuración: provider no habilitado, nivel o keywords que lo excluyen, sesión detenida o canal deshabilitado. Una <strong>ausencia</strong> de evento solo se interpreta después de descartar estas causas, y la detención inesperada de una sesión o la deshabilitación de un provider son, en sí mismas, hechos a documentar.</p>
-<h2 id="ejemplo-trabajado">Ejemplo trabajado</h2>
-<p><em>(Tabla ilustrativa; no corresponde a una captura real.)</em></p>
+<hr>
+<h2 id="2-la-sesión-de-kernel-nt-kernel-logger">2. La Sesión de Kernel: <code>NT Kernel Logger</code></h2>
+<p>A diferencia de los proveedores de modo usuario, el kernel de Windows expone una sesión de rastreo reservada de alto rendimiento denominada <strong><code>NT Kernel Logger</code></strong>.</p>
+<h3 id="identificador-global-y-banderas-de-activación">Identificador Global y Banderas de Activación</h3>
+<ul><li><strong>GUID de Sesión:</strong> <code>SystemTraceControlGuid = {9e814aad-3204-11d2-9a82-006008a86939}</code>.</li><li>La sesión no se suscribe a proveedores por GUID individual, sino a través del campo <strong><code>EnableFlags</code></strong> de la estructura <code>EVENT_TRACE_PROPERTIES</code>:</li></ul>
 <div class="tabla"><table>
 <thead><tr>
-<th>Tiempo</th>
-<th>Provider</th>
-<th>Evento</th>
-<th>PID</th>
-<th>Interpretación prudente</th>
+<th>Bandera de Kernel (<code>EnableFlags</code>)</th>
+<th>Valor Hex</th>
+<th>Telemetría Capturada</th>
 </tr></thead><tbody>
-<tr><td>t0</td><td>BlocLab</td><td>Start</td><td>4100</td><td>comienza el programa propio</td></tr>
-<tr><td>t1</td><td>BlocLab</td><td>ReadConfig</td><td>4100</td><td>lee su configuración local</td></tr>
-<tr><td>t2</td><td>BlocLab</td><td>Exit</td><td>4100</td><td>termina con estado informado</td></tr>
+<tr><td><code>EVENT_TRACE_FLAG_PROCESS</code></td><td><code>0x00000001</code></td><td>Creación y terminación de procesos (PID, PPID, SID, ImageFileName).</td></tr>
+<tr><td><code>EVENT_TRACE_FLAG_THREAD</code></td><td><code>0x00000002</code></td><td>Creación, destrucción y conmutación de contexto de hilos (<em>Context Switch</em>).</td></tr>
+<tr><td><code>EVENT_TRACE_FLAG_IMAGE_LOAD</code></td><td><code>0x00000004</code></td><td>Carga de módulos ejecutables (<code>.exe</code>, <code>.dll</code>, <code>.sys</code>) con dirección base y tamaño.</td></tr>
+<tr><td><code>EVENT_TRACE_FLAG_DISK_IO</code></td><td><code>0x00000100</code></td><td>Operaciones de lectura y escritura física en disco.</td></tr>
+<tr><td><code>EVENT_TRACE_FLAG_NETWORK_TCPIP</code></td><td><code>0x00010000</code></td><td>Conexiones de red TCP/UDP (send, receive, connect, disconnect).</td></tr>
+<tr><td><code>EVENT_TRACE_FLAG_REGISTRY</code></td><td><code>0x00020000</code></td><td>Creación, modificación y borrado de claves y valores del Registro.</td></tr>
 </tbody></table></div>
-<p>Un evento <code>ReadConfig</code> no demuestra qué contenido se leyó ni que haya habido acceso no autorizado; relacioná el provider, el manifiesto/metadata, PID y ventana temporal.</p>
-<p>Ficha de la sesión que produjo esa tabla (ilustrativa):</p>
-<div class="tabla"><table>
-<thead><tr>
-<th>Campo</th>
-<th>Valor</th>
-<th>Por qué importa</th>
-</tr></thead><tbody>
-<tr><td>Sesión</td><td><code>BlocLab-Lab</code>, a archivo ETL, iniciada y detenida a mano</td><td>Delimita tiempo y alcance</td></tr>
-<tr><td>Provider</td><td>BlocLab (TraceLogging)</td><td>Autodescriptivo: no necesita manifiesto para decodificar</td></tr>
-<tr><td>Nivel y keywords</td><td>Informativo; todas las keywords</td><td>Lo que <strong>no</strong> aparece no fue filtrado por keywords</td></tr>
-<tr><td>Eventos/buffers perdidos</td><td>0 / 0 según la herramienta de captura</td><td>Sin pérdidas declaradas en esta ventana</td></tr>
-<tr><td>Datos extendidos</td><td>Ninguno (sin SID ni pila)</td><td>La identidad sale del PID, no del evento</td></tr>
-<tr><td>Retención</td><td>ETL borrado tras exportar la tabla</td><td>Minimiza datos sensibles</td></tr>
-</tbody></table></div>
-<h2 id="práctica">Práctica</h2>
-<ol><li>Usá un provider documentado del programa propio o un perfil de WPR aprobado para la VM.</li><li>Antes de capturar, hacé un inventario <strong>de solo lectura</strong>: sesiones en ejecución (<code>logman query -ets</code>), providers registrados (<code>logman query providers</code>) y sesiones AutoLogger configuradas (leyendo la clave del registro). No detengas ni cambies ninguna.</li><li>Registra una ejecución corta y acotada; no uses sesión de kernel ni habilites providers ajenos que no necesitás. Anotá nivel y keywords.</li><li>Abrí el ETL en WPA/visor compatible, identifica provider, evento, timestamp, PID y pérdidas reportadas.</li><li>Detené la sesión desde la misma herramienta, comprueba que no siga activa y elimina el ETL después de guardar solo la evidencia anonimizada necesaria.</li></ol>
-<h2 id="entregable">Entregable</h2>
-<p>Cronología de 3–5 eventos, ficha de la sesión (configuración mínima, nivel, keywords, pérdidas, fuente de decodificación), inventario de solo lectura de sesiones/AutoLogger y constancia de detención/eliminación del trace.</p>
-<h2 id="repaso">Repaso</h2>
+<h3 id="control-práctico-de-la-sesión-con-logman">Control Práctico de la Sesión con <code>logman</code></h3>
+<pre><code class="lenguaje-cmd">:: Iniciar la captura de kernel a un archivo ETL
+logman start "NT Kernel Logger" -p "Windows Kernel Trace" (process,thread,img,net) -ets -o kernel_trace.etl
+
+:: Consultar estado y estadísticas de buffers y eventos perdidos
+logman query "NT Kernel Logger" -ets
+
+:: Detener la sesión
+logman stop "NT Kernel Logger" -ets</code></pre>
+<hr>
+<h2 id="3-anatomía-y-formato-binario-del-archivo-etl-etl">3. Anatomía y Formato Binario del Archivo ETL (<code>.etl</code>)</h2>
+<p>Un archivo ETL generado por ETW es una secuencia binaria estructurada de bloques de 64 KB organizados de la siguiente manera:</p>
+<h3 id="a-cabecera-de-buffer-wmi-buffer-header">A. Cabecera de Buffer (<code>WMI_BUFFER_HEADER</code>)</h3>
+<p>Cada bloque físico de 64 KB dentro del archivo <code>.etl</code> comienza con una cabecera de 32 a 48 bytes:</p>
+<ul><li><strong><code>BufferSize</code>:</strong> Tamaño del bloque (típicamente <code>0x10000</code> = 64 KB).</li><li><strong><code>SavedOffset</code>:</strong> Desplazamiento hasta el último byte de evento escrito en el buffer.</li><li><strong><code>CurrentOffset</code>:</strong> Posición del cursor de escritura.</li><li><strong><code>ReferenceTime</code>:</strong> Timestamp de inicio del bloque en unidades de temporizador de alta resolución (<code>RDTSC</code> o <code>KeQueryPerformanceCounter</code>).</li></ul>
+<h3 id="b-el-primer-registro-trace-logfile-header">B. El Primer Registro: <code>TRACE_LOGFILE_HEADER</code></h3>
+<p>El primer evento del archivo describe los metadatos globales de la captura:</p>
+<ul><li><strong><code>BufferSize</code> y <code>VersionDetail</code>:</strong> Versión del sistema operativo que generó la traza.</li><li><strong><code>StartTime</code> y <code>EndTime</code>:</strong> Tiempos de inicio y cierre en formato <code>FILETIME</code> de 64 bits.</li><li><strong><code>TimerResolution</code>:</strong> Resolución del temporizador del kernel (en unidades de 100 ns).</li><li><strong><code>NumberOfProcessors</code> y <code>CpuSpeedInMHz</code>:</strong> Hardware subyacente.</li><li><strong><code>PointerSize</code>:</strong> <code>4</code> para arquitecturas x86, <code>8</code> para x64.</li><li><strong><code>LogFileMode</code>:</strong> Configuración de almacenamiento (<code>EVENT_TRACE_FILE_MODE_SEQUENTIAL</code>, <code>CIRCULAR</code>, etc.).</li></ul>
+<h3 id="c-registros-de-eventos-event-record-event-header">C. Registros de Eventos (<code>EVENT_RECORD</code> / <code>EVENT_HEADER</code>)</h3>
+<p>Cada evento individual dentro de los buffers contiene una cabecera estandarizada de 80 bytes:</p>
+<ol><li><strong><code>Size</code> (<code>USHORT</code>):</strong> Longitud total del registro del evento en bytes.</li><li><strong><code>HeaderType</code> y <code>Flags</code>:</strong> Indican si el evento es de 32 o 64 bits y qué temporizador se usó.</li><li><strong><code>ProviderId</code> (<code>GUID</code>):</strong> Identificador de 16 bytes del proveedor emisor.</li><li><strong><code>EventDescriptor</code> (16 bytes):</strong></li></ol>
+<ul><li><code>Id</code> (Identificador del evento dentro del proveedor).</li><li><code>Version</code> (Revisión del esquema).</li><li><code>Channel</code> (Canal de destino: Admin, Operational, Analytic, Debug).</li><li><code>Level</code> (Severidad: Crítico, Error, Warning, Info).</li><li><code>Opcode</code> (Operación: Start, Stop, Info).</li><li><code>Task</code> y <code>Keyword</code> (Máscara de 64 bits para filtrado).</li></ul>
+<ol><li><strong><code>ProcessId</code> y <code>ThreadId</code>:</strong> PID y TID del hilo que emitió el evento.</li><li><strong><code>TimeStamp</code>:</strong> Marca temporal de 64 bits.</li><li><strong><code>UserData</code> / <code>UserDataLength</code>:</strong> Payload binario con los argumentos específicos del evento.</li></ol>
+<hr>
+<h2 id="4-técnicas-de-manipulación-y-cegado-de-etw-etw-tampering-blinding">4. Técnicas de Manipulación y Cegado de ETW (ETW Tampering / Blinding)</h2>
+<p>En ciberseguridad defensiva e ingeniería inversa de malware, el análisis de telemetría debe contemplar cómo los atacantes neutralizan la generación de eventos:</p>
+<h3 id="a-parcheo-en-modo-usuario-ntdll-etweventwrite">A. Parcheo en Modo Usuario (<code>ntdll!EtwEventWrite</code>)</h3>
+<p>Cuando un proceso en modo usuario desea impedir que componentes de seguridad reciban eventos (como telemetría de inyección de código o AMSI), recurre a <strong>ETW Patching</strong>:</p>
+<ol><li>El proceso localiza la función exportada <code>ntdll!EtwEventWrite</code>.</li><li>Modifica los permisos de la página de memoria usando <code>VirtualProtect</code> a <code>PAGE_EXECUTE_READWRITE</code>.</li><li>Sobrescribe el prólogo de la función con una instrucción de retorno anticipado:</li></ol>
+<ul><li>En x64: <code>xor eax, eax; ret</code> (<code>31 C0 C3</code>) o simplemente <code>ret</code> (<code>C3</code>).</li></ul>
+<ol><li>Al retornar <code>0</code> (<code>STATUS_SUCCESS</code>), la aplicación cree que el evento se registró con éxito, pero ningún byte de telemetría llega al despachador de ETW.</li></ol>
+<p><strong>Detección Defensiva:</strong> Un monitor de integridad lee la imagen limpia de <code>ntdll.dll</code> directamente desde el disco (<code>\SystemRoot\System32\ntdll.dll</code>) y compara los primeros 16 bytes de <code>EtwEventWrite</code> contra los bytes en memoria. Cualquier discordancia (<code>0xC3</code> o <code>0x31 0xC0</code> en el primer byte) delata un parcheo activo de ETW.</p>
+<h3 id="b-cegado-en-modo-kernel-etwti-blinding">B. Cegado en Modo Kernel (ETWti Blinding)</h3>
+<p>A nivel de kernel, los controladores de seguridad se alimentan del proveedor <strong><code>Microsoft-Windows-Threat-Intelligence</code></strong> (Lección 6.7). Para cegar este sensor:</p>
+<ul><li>Un atacante con primitiva de escritura en kernel (vector BYOVD) localiza el handle de registro apuntado por <code>nt!EtwThreatIntProvRegHandle</code>.</li><li>En la estructura <code>_ETW_GUID_ENTRY</code>, manipula el campo <code>ProviderEnableInfo</code>, estableciendo la máscara de habilitación a cero (<code>EnableMask = 0</code>).</li><li>Al quedar deshabilitado el proveedor a nivel de hipervisor/kernel, el sensor EDR deja de recibir eventos de inyección de hilos y acceso a memoria sin generar alertas visibles en user mode.</li></ul>
+<hr>
+<h2 id="5-repaso">5. Repaso</h2>
 <details class="qa"><summary>¿Qué rol cumple el controller?</summary><div class="respuesta"><p>Define y controla una sesión ETW, habilita providers y establece cómo registrar eventos.</p></div></details>
 <details class="qa"><summary>¿Qué diferencia provider y consumer?</summary><div class="respuesta"><p>El provider produce eventos; el consumer los lee e interpreta desde una sesión o archivo.</p></div></details>
-<details class="qa"><summary>¿Una traza sin eventos prueba que no ocurrió actividad?</summary><div class="respuesta"><p>No. El provider puede no estar habilitado, no emitir ese evento, perder datos o tener metadata no decodificada.</p></div></details>
-<details class="qa"><summary>¿Por qué una traza WPP puede ser ilegible?</summary><div class="respuesta"><p>Porque la información para decodificar está en archivos TMF, normalmente en el PDB del binario; sin ellos los eventos no se interpretan.</p></div></details>
-<details class="qa"><summary>¿Qué filtran el nivel y las keywords?</summary><div class="respuesta"><p>Qué eventos escribe el provider en esa sesión: el nivel por severidad y las keywords por categoría.</p></div></details>
-<details class="qa"><summary>¿Qué es una sesión AutoLogger y dónde se configura?</summary><div class="respuesta"><p>Una sesión que arranca en el inicio del sistema; se configura en <code>HKLM\SYSTEM\CurrentControlSet\Control\WMI\Autologger</code>, y <code>Status</code> guarda el error si no arrancó.</p></div></details>
-<details class="qa"><summary>Un evento esperado no aparece en el Visor de eventos. ¿Qué revisás antes de concluir?</summary><div class="respuesta"><p>Si su canal estaba habilitado, si el provider estaba habilitado con nivel y keywords adecuados y si hubo eventos perdidos.</p></div></details>
-<aside class="callout nota"><p class="callout-titulo">Puerta optativa</p><p>Podés explicar el ciclo provider–controller–consumer, los tipos de providers y su decodificación, el efecto de nivel y keywords, el papel de AutoLogger y de los canales, leer una traza pequeña y declarar pérdidas, huecos y sensibilidad de los datos.</p></aside>
-<aside class="callout nota"><p class="callout-titulo">Lo que queda fuera</p><p>Escribir providers o manifiestos, la sesión de kernel (NT Kernel Logger) y sus flags, el análisis de rendimiento con WPA, el formato binario ETL y las técnicas de manipulación de ETW no se desarrollan. Detener o reconfigurar sesiones del sistema queda fuera del alcance.</p></aside>
+<details class="qa"><summary>¿Una traza sin eventos prueba que no ocurrió actividad?</summary><div class="respuesta"><p>No. El provider puede no estar habilitado, no emitir ese evento, perder datos o haber sido parcheado (<code>EtwEventWrite</code>).</p></div></details>
+<details class="qa"><summary>¿Qué es la sesión NT Kernel Logger?</summary><div class="respuesta"><p>Es la sesión del sistema reservada para telemetría de bajo nivel del kernel (procesos, hilos, DLLs, disco, red), controlada por <code>SystemTraceControlGuid</code>.</p></div></details>
+<details class="qa"><summary>¿Cómo detectás en memoria un parcheo de ETW en user mode?</summary><div class="respuesta"><p>Comparando los primeros bytes de <code>ntdll!EtwEventWrite</code> en memoria contra los bytes del archivo original en disco; si empieza con <code>0xC3</code> o <code>0x31 0xC0</code>, fue alterado.</p></div></details>
+<hr>
 <h2 id="fuentes">Fuentes</h2>
-<ul><li>Microsoft Learn: <a href="https://learn.microsoft.com/en-us/windows/win32/etw/about-event-tracing" rel="noopener" target="_blank">About Event Tracing</a>, <a href="https://learn.microsoft.com/en-us/windows/win32/etw/controlling-event-tracing-sessions" rel="noopener" target="_blank">Controlling ETW sessions</a>, <a href="https://learn.microsoft.com/en-us/windows/win32/etw/consuming-events" rel="noopener" target="_blank">Consuming Events</a>, <a href="https://learn.microsoft.com/en-us/windows-hardware/test/wpt/windows-performance-recorder" rel="noopener" target="_blank">Windows Performance Recorder</a>.</li><li>Microsoft Learn, sesiones y canales: <a href="https://learn.microsoft.com/en-us/windows/win32/etw/event-tracing-sessions" rel="noopener" target="_blank">Event Tracing Sessions</a>, <a href="https://learn.microsoft.com/en-us/windows/win32/etw/configuring-and-starting-an-autologger-session" rel="noopener" target="_blank">Configuring and Starting an AutoLogger Session</a>, <a href="https://learn.microsoft.com/en-us/windows/win32/wes/defining-channels" rel="noopener" target="_blank">Defining Channels</a>, <a href="https://learn.microsoft.com/en-us/windows/win32/tracelogging/trace-logging-portal" rel="noopener" target="_blank">TraceLogging</a>, <a href="https://learn.microsoft.com/en-us/windows-server/administration/windows-commands/logman-query" rel="noopener" target="_blank">logman query</a>, <a href="https://learn.microsoft.com/en-us/windows/win32/wmisdk/tracing-wmi-activity" rel="noopener" target="_blank">Tracing WMI Activity</a>.</li><li><strong>Fundamentos previos:</strong> temporalidad/debugging en <a href="02-windbg-heap.html">2.19</a>.</li></ul>
-<aside class="callout nota"><p class="callout-titulo">Etiquetas</p><p><strong>Núcleo conceptual:</strong> debugging y evidencia como método. <strong>Conocimiento externo:</strong> ETW, tipos de providers, sesiones, AutoLogger, canales y causas de pérdida. <strong>Ejemplo ilustrativo:</strong> cronología y ficha de sesión BlocLab. <strong>Laboratorio verificado:</strong> no; requiere herramientas de captura disponibles en la VM.</p></aside>
+<ul><li>Microsoft Learn: <a href="https://learn.microsoft.com/en-us/windows/win32/etw/about-event-tracing" rel="noopener" target="_blank">About Event Tracing</a>, <a href="https://learn.microsoft.com/en-us/windows/win32/etw/nt-kernel-logger-trace-session" rel="noopener" target="_blank">Configuring NT Kernel Logger</a>, <a href="https://learn.microsoft.com/en-us/windows/win32/api/evntrace/ns-evntrace-event_trace_properties" rel="noopener" target="_blank">EVENT_TRACE_PROPERTIES structure</a>.</li><li>Microsoft Learn: <a href="https://learn.microsoft.com/en-us/windows/win32/etw/event-tracing-portal" rel="noopener" target="_blank">WMI_BUFFER_HEADER</a>, <a href="https://learn.microsoft.com/en-us/windows/win32/api/evntcons/ns-evntcons-event_record" rel="noopener" target="_blank">EVENT_RECORD structure</a>.</li><li>Repositorio y Laboratorio: Plantilla de auditoría en WinDbg en <code>plantillas_codigo/auditar_callbacks.wdbg</code>.</li></ul>
 
 <aside class="ampliacion-ext">
 <p class="callout-titulo">Ampliación editorial basada en fuentes externas — Extracción estática del Provider GUID (EventRegister) y detección de ETW Patching</p>

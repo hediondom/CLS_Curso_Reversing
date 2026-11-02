@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>2D.14 · El Subsistema Gráfico en Modo Kernel (win32k) y la Tabla de Servicios Sombra</title>
-<meta name="description" content="Arquitectura de win32kbase.sys y win32kfull.sys, despacho a través de KeServiceDescriptorTableShadow, callbacks de kernel a usuario (KeUserModeCallback) y mitigaciones Win32k Lockdown.">
+<meta name="description" content="Arquitectura de win32kbase.sys y win32kfull.sys, despacho a través de KeServiceDescriptorTableShadow, estructura KSERVICE_TABLE_DESCRIPTOR, callbacks de kernel a usuario (KeUserModeCallback) y mitigaciones Win32k Lockdown.">
 <link rel="stylesheet" href="../guia/estilo.css">
 </head>
 <body>
@@ -52,9 +52,25 @@
 <hr>
 <h2 id="2-despacho-por-la-tabla-sombra-keservicedescriptortableshadow">2. Despacho por la Tabla Sombra: <code>KeServiceDescriptorTableShadow</code></h2>
 <p>En la Lección 2.15 vimos cómo las llamadas al sistema nativas (<code>NtOpenProcess</code>, <code>NtAllocateVirtualMemory</code>) se despachan mediante la tabla global exportada <code>KeServiceDescriptorTable</code>. Sin embargo, los servicios gráficos utilizan una tabla extendida no exportada: <strong><code>KeServiceDescriptorTableShadow</code></strong>.</p>
-<h3 id="estructura-de-la-tabla-sombra">Estructura de la Tabla Sombra</h3>
-<p>La estructura contiene un arreglo de dos descriptores de servicio (<code>KSERVICE_TABLE_DESCRIPTOR</code>):</p>
-<ul><li><strong>Entrada 0 (Servicios Nativos del Kernel):</strong> Apunta a las funciones <code>ntoskrnl.exe</code> (<code>Nt*</code> clásicas con SSN <code>0x0000</code> a <code>0x0200+</code>).</li><li><strong>Entrada 1 (Servicios Gráficos Win32k):</strong> Apunta a las funciones despachadas por <code>win32kbase.sys</code> y <code>win32kfull.sys</code>.</li></ul>
+<h3 id="estructura-de-kservice-table-descriptor-y-navegación-en-windbg">Estructura de <code>KSERVICE_TABLE_DESCRIPTOR</code> y Navegación en WinDbg</h3>
+<p>La tabla sombra contiene un arreglo de dos descriptores de servicio (<code>KSERVICE_TABLE_DESCRIPTOR</code>), cada uno de 32 bytes (en x64):</p>
+<div class="tabla"><table>
+<thead><tr>
+<th>Offset (x64)</th>
+<th>Campo</th>
+<th>Tipo</th>
+<th>Significado y Función</th>
+</tr></thead><tbody>
+<tr><td><strong><code>+0x00</code></strong></td><td><code>Base</code></td><td><code>PULONG_PTR</code></td><td>Puntero a la tabla de direcciones relativas de las rutinas de servicio (Service Table Base).</td></tr>
+<tr><td><strong><code>+0x08</code></strong></td><td><code>Count</code></td><td><code>PULONG</code></td><td>Puntero al arreglo de contadores de invocaciones de cada syscall (Service Counter Table Base).</td></tr>
+<tr><td><strong><code>+0x10</code></strong></td><td><code>Limit</code></td><td><code>ULONG</code></td><td>Cantidad total de llamadas al sistema registradas en la tabla (ej. ~<code>0x1C0</code> para <code>ntoskrnl</code>, ~<code>0x500</code> para <code>win32k</code>).</td></tr>
+<tr><td><strong><code>+0x18</code></strong></td><td><code>Number</code></td><td><code>PUCHAR</code></td><td>Puntero al arreglo que contiene el número de bytes de argumentos pasados en el stack por cada llamada.</td></tr>
+</tbody></table></div>
+<ul><li><strong>Entrada 0 (<code>KeServiceDescriptorTableShadow[0]</code>, offset <code>+0x00</code>):</strong> Descriptor idéntico a <code>KeServiceDescriptorTable</code> para los servicios nativos del ejecutivo de <code>ntoskrnl.exe</code>.</li><li><strong>Entrada 1 (<code>KeServiceDescriptorTableShadow[1]</code>, offset <code>+0x20</code>):</strong> Descriptor reservado para el subsistema gráfico despachado por <code>win32kbase.sys</code> y <code>win32kfull.sys</code>.</li></ul>
+<pre><code class="lenguaje-text">$$ Inspeccionar los descriptores de KeServiceDescriptorTableShadow en WinDbg
+kd&gt; dq nt!KeServiceDescriptorTableShadow L8
+$$ El primer QWORD en +0x20 es el puntero Base de win32k:
+kd&gt; dps poi(nt!KeServiceDescriptorTableShadow + 0x20) L20</code></pre>
 <h3 id="conversión-de-números-de-servicio-ssn-gráfico">Conversión de Números de Servicio (SSN Gráfico)</h3>
 <p>Las syscalls de Win32k poseen un bit indicador activo (<code>0x1000</code>). Cuando una instrucción <code>syscall</code> se ejecuta con <code>EAX = 0x1000 + N</code>:</p>
 <ol><li>El despachador <code>nt!KiSystemCall64</code> comprueba si el número de servicio excede <code>0x0FFF</code>.</li><li>Si es así, verifica si el hilo actual ya ha sido promovido a <strong>GUI Thread</strong> (es decir, si el campo <code>KTHREAD-&gt;Win32Thread</code> en <code>GS:[0x188]</code> no es nulo).</li><li>Si el hilo es estándar, el kernel invoca <code>nt!PsConvertToGuiThread</code> para asignar el stack de kernel extendido requerido por win32k (un stack de 64 KB en lugar del stack estándar de 24 KB).</li><li>El kernel toma la entrada 1 de <code>KeServiceDescriptorTableShadow</code> y salta a la función correspondiente indexando el offset <code>N</code> en la tabla de despacho.</li></ol>
@@ -63,7 +79,7 @@
 <p>La razón principal por la cual Win32k ha sido la mayor fuente histórica de vulnerabilidades de kernel (Use-After-Free y elevación de privilegios) es su necesidad de interactuar con el espacio de usuario mientras procesa llamadas de kernel:</p>
 <h3 id="mecánica-de-inversión">Mecánica de Inversión</h3>
 <p>Cuando una función en modo kernel dentro de <code>win32kfull.sys</code> necesita notificar a una ventana (por ejemplo, para ejecutar un hook de ventana global o despachar un mensaje <code>WM_NCCREATE</code>), el kernel no puede ejecutar la función de ventana directamente en modo kernel.</p>
-<ol><li>El driver de kernel invoca <strong><code>nt!KeUserModeCallback</code></strong>.</li><li>Esta función guarda el estado actual del stack de kernel, prepara un frame de retorno hacia el modo usuario y salta a la rutina <code>ntdll!KiUserCallbackDispatcher</code> en el proceso.</li><li>El código de usuario procesa el mensaje (ejecutando callbacks como <code>__ClientLoadLibrary</code>).</li><li>Al concluir, el modo usuario invoca la syscall nativa <code>NtCallbackReturn</code> para devolver el control al driver de kernel en el punto exacto donde se suspendió.</li></ol>
+<ol><li>El driver de kernel invoca <strong><code>nt!KeUserModeCallback</code></strong>.</li><li>Esta función guarda el estado actual del stack de kernel, prepara un frame de retorno hacia el modo usuario y salta a la rutina <code>ntdll!KiUserCallbackDispatcher</code> en el proceso.</li><li>El código de usuario procesa el mensaje (ejecutando callbacks como <code>user32!__ClientLoadLibrary</code>).</li><li>Al concluir, el modo usuario invoca la syscall nativa <code>NtCallbackReturn</code> para devolver el control al driver de kernel en el punto exacto donde se suspendió.</li></ol>
 <h3 id="el-riesgo-de-seguridad-race-conditions-y-reentrancia">El Riesgo de Seguridad (Race Conditions y Reentrancia)</h3>
 <p>Durante el tiempo en que el control está en espacio de usuario a través de <code>KeUserModeCallback</code>, el proceso puede ejecutar código malicioso que destruya o libere la ventana o el objeto GDI (<code>DestroyWindow</code>) sobre el cual el kernel estaba operando. Cuando el control regresa a <code>win32kfull.sys</code>, si el driver asume que el objeto sigue existiendo en el puntero original sin revalidar su estado de bloqueo, se produce un fallo clásico de <strong>Use-After-Free (UAF)</strong> en espacio de kernel.</p>
 <hr>

@@ -97,7 +97,7 @@ El compilador MIDL genera secuencias de bytes compactas que codifican los parám
    - `0x12` (`FC_UP`): Puntero único (puede ser nulo).
    - `0x21` (`FC_C_CSTRING`): Cadena ASCII conformante terminada en nulo (`char*`).
    - `0x22` (`FC_C_WSTRING`): Cadena UTF-16 conformante terminada en nulo (`wchar_t*`).
-   - `0x1a` (`FC_BOGUS_STRUCT`): Estructura compleja con alineación manual y punteros anidados.
+   - `0x1A` (`FC_BOGUS_STRUCT`): Estructura compleja con alineación manual y punteros anidados.
 
 El laboratorio `plantillas_codigo/rpc_com_server_lab.c` y su definición `rpc_com_server_lab.idl` permiten compilar un servidor local sobre `ncalrpc` y verificar la disposición exacta de estas tablas en memoria.
 

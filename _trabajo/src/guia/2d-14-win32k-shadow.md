@@ -1,6 +1,6 @@
 ---
 title: "2D.14 · El Subsistema Gráfico en Modo Kernel (win32k) y la Tabla de Servicios Sombra"
-description: "Arquitectura de win32kbase.sys y win32kfull.sys, despacho a través de KeServiceDescriptorTableShadow, callbacks de kernel a usuario (KeUserModeCallback) y mitigaciones Win32k Lockdown."
+description: "Arquitectura de win32kbase.sys y win32kfull.sys, despacho a través de KeServiceDescriptorTableShadow, estructura KSERVICE_TABLE_DESCRIPTOR, callbacks de kernel a usuario (KeUserModeCallback) y mitigaciones Win32k Lockdown."
 etapa: "Etapa 2 · 2D · Windows internals (optativa)"
 ---
 
@@ -48,10 +48,25 @@ Históricamente, las funciones de `user32.dll` (como `CreateWindowExW`) invocaba
 
 En la Lección 2.15 vimos cómo las llamadas al sistema nativas (`NtOpenProcess`, `NtAllocateVirtualMemory`) se despachan mediante la tabla global exportada `KeServiceDescriptorTable`. Sin embargo, los servicios gráficos utilizan una tabla extendida no exportada: **`KeServiceDescriptorTableShadow`**.
 
-### Estructura de la Tabla Sombra
-La estructura contiene un arreglo de dos descriptores de servicio (`KSERVICE_TABLE_DESCRIPTOR`):
-- **Entrada 0 (Servicios Nativos del Kernel):** Apunta a las funciones `ntoskrnl.exe` (`Nt*` clásicas con SSN `0x0000` a `0x0200+`).
-- **Entrada 1 (Servicios Gráficos Win32k):** Apunta a las funciones despachadas por `win32kbase.sys` y `win32kfull.sys`.
+### Estructura de `KSERVICE_TABLE_DESCRIPTOR` y Navegación en WinDbg
+La tabla sombra contiene un arreglo de dos descriptores de servicio (`KSERVICE_TABLE_DESCRIPTOR`), cada uno de 32 bytes (en x64):
+
+| Offset (x64) | Campo | Tipo | Significado y Función |
+| :--- | :--- | :--- | :--- |
+| **`+0x00`** | `Base` | `PULONG_PTR` | Puntero a la tabla de direcciones relativas de las rutinas de servicio (Service Table Base). |
+| **`+0x08`** | `Count` | `PULONG` | Puntero al arreglo de contadores de invocaciones de cada syscall (Service Counter Table Base). |
+| **`+0x10`** | `Limit` | `ULONG` | Cantidad total de llamadas al sistema registradas en la tabla (ej. ~`0x1C0` para `ntoskrnl`, ~`0x500` para `win32k`). |
+| **`+0x18`** | `Number` | `PUCHAR` | Puntero al arreglo que contiene el número de bytes de argumentos pasados en el stack por cada llamada. |
+
+- **Entrada 0 (`KeServiceDescriptorTableShadow[0]`, offset `+0x00`):** Descriptor idéntico a `KeServiceDescriptorTable` para los servicios nativos del ejecutivo de `ntoskrnl.exe`.
+- **Entrada 1 (`KeServiceDescriptorTableShadow[1]`, offset `+0x20`):** Descriptor reservado para el subsistema gráfico despachado por `win32kbase.sys` y `win32kfull.sys`.
+
+```text
+$$ Inspeccionar los descriptores de KeServiceDescriptorTableShadow en WinDbg
+kd> dq nt!KeServiceDescriptorTableShadow L8
+$$ El primer QWORD en +0x20 es el puntero Base de win32k:
+kd> dps poi(nt!KeServiceDescriptorTableShadow + 0x20) L20
+```
 
 ### Conversión de Números de Servicio (SSN Gráfico)
 Las syscalls de Win32k poseen un bit indicador activo (`0x1000`). Cuando una instrucción `syscall` se ejecuta con `EAX = 0x1000 + N`:
@@ -70,7 +85,7 @@ La razón principal por la cual Win32k ha sido la mayor fuente histórica de vul
 Cuando una función en modo kernel dentro de `win32kfull.sys` necesita notificar a una ventana (por ejemplo, para ejecutar un hook de ventana global o despachar un mensaje `WM_NCCREATE`), el kernel no puede ejecutar la función de ventana directamente en modo kernel.
 1. El driver de kernel invoca **`nt!KeUserModeCallback`**.
 2. Esta función guarda el estado actual del stack de kernel, prepara un frame de retorno hacia el modo usuario y salta a la rutina `ntdll!KiUserCallbackDispatcher` en el proceso.
-3. El código de usuario procesa el mensaje (ejecutando callbacks como `__ClientLoadLibrary`).
+3. El código de usuario procesa el mensaje (ejecutando callbacks como `user32!__ClientLoadLibrary`).
 4. Al concluir, el modo usuario invoca la syscall nativa `NtCallbackReturn` para devolver el control al driver de kernel en el punto exacto donde se suspendió.
 
 ### El Riesgo de Seguridad (Race Conditions y Reentrancia)

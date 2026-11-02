@@ -1,13 +1,13 @@
 ---
-title: "6.7 · Seguridad Profunda en Kernel x64: VBS/HVCI (VTL1), Callbacks (ETWti) y Condiciones de Carrera en MDLs"
-description: "Arquitectura interna de VBS y Secure Kernel (VTL0/VTL1), kCFG, auditoría de vectores de telemetría de kernel en WinDbg y análisis de condiciones de carrera Double Fetch en MDLs."
+title: "6.7 · Seguridad Profunda en Kernel x64: VBS/HVCI (VTL1), Callbacks (ETWti, Registro, InstrumentationCallback) y Mecánicas BYOVD"
+description: "Arquitectura interna de VBS y Secure Kernel (VTL0/VTL1), Credential Guard y trustlets IUM, validación NtCreateSection->VtlCall, auditoría de telemetría de kernel en WinDbg, BYOVD con PiDDBCacheTable y condiciones de carrera Double Fetch en MDLs."
 etapa: "Etapa 6 · Kernel y drivers en Windows (rama optativa)"
 ---
 
-# Seguridad Profunda en Kernel x64: VBS/HVCI (VTL1), Callbacks (ETWti) y Condiciones de Carrera en MDLs
+# Seguridad Profunda en Kernel x64: VBS/HVCI (VTL1), Callbacks y Mecánicas BYOVD
 
 :::{nota} Propósito
-Esta lección profundiza la arquitectura de seguridad del Kernel en Windows 11 contemporáneo, eliminando la frontera de lo que antes se consideraba "fuera de alcance". Aquí se estudian los mecanismos internos que rigen la protección por hipervisor (**VBS / HVCI**), las estructuras exactas en memoria que sustentan los vectores de notificación y telemetría de kernel (**PspCreateProcessNotifyRoutine**, **ObRegisterCallbacks**, **ETWti**), y el análisis forense de fallos por **Double Fetch** y solicitudes asíncronas en controladores **KMDF**.
+Esta lección profundiza la arquitectura de seguridad del Kernel en Windows 11 contemporáneo, eliminando la frontera de lo que antes se consideraba "fuera de alcance". Aquí se estudian los mecanismos internos que rigen la protección por hipervisor (**VBS / HVCI**), el aislamiento de **Credential Guard con trustlets IUM**, el flujo exacto de validación de imágenes (`NtCreateSection` $\to$ `VtlCall`), las estructuras en memoria que sustentan los vectores de notificación y telemetría de kernel (**PspCreateProcessNotifyRoutine**, **ObRegisterCallbacks**, **ETWti**, **CmCallbackListHead**, **InstrumentationCallback**), el vector **BYOVD** con inspección de **PiDDBCacheTable**, y el análisis forense de fallos por **Double Fetch** en controladores **KMDF**.
 :::
 
 ---
@@ -41,14 +41,32 @@ Desde Windows 10 versión 1709 y por defecto en Windows 11, el modelo de segurid
 ### Integridad de Código por Hipervisor (HVCI) y $W \oplus X$
 Bajo **HVCI (Hypervisor-Protected Code Integrity)**, las decisiones sobre qué páginas de memoria pueden ejecutarse en modo kernel se delegan a VTL 1. El hipervisor configura las tablas de páginas de segundo nivel (**SLAT / EPT**) de modo que ninguna página en VTL 0 pueda ser simultáneamente escribible y ejecutable ($W \oplus X$). Si un driver intenta asignar memoria en el pool ejecutable (`NonPagedPoolExecute`) o desproteger el bit de escritura de una página de código en `CR0`, el hipervisor intercepta el fallo de página anidado (*EPT Violation*) e interrumpe inmediatamente la ejecución antes de que el código no firmado pueda ejecutarse.
 
+### Credential Guard, LSAISO y Trustlets en Modo de Usuario Aislado (IUM)
+En sistemas convencionales sin VBS, el proceso `lsass.exe` almacenaba hashes NTLM, credenciales en claro y tickets Kerberos directamente en su propio espacio de direcciones en modo usuario (VTL 0), haciéndolos vulnerables a lecturas de memoria con herramientas como Mimikatz si el atacante obtenía privilegios de `SeDebugPrivilege` o ejecutaba un driver en modo kernel.
+
+Bajo **Credential Guard**:
+1. El kernel crea un proceso especial en **Modo de Usuario Aislado (IUM - Isolated User Mode)** que reside dentro de **VTL 1**: **`lsaiso.exe`** (*LSA Isolated*).
+2. El proceso `lsass.exe` en VTL 0 pasa a funcionar como un mero intermediario de RPC/ALPC: no contiene claves criptográficas ni hashes en claro.
+3. Cada vez que se requiere autenticar un usuario o firmar un ticket Kerberos, `lsass.exe` envía una solicitud a través de llamadas ALPC canalizadas mediante una transición `VtlCall` hacia `lsaiso.exe` en VTL 1.
+4. El Secure Kernel en VTL 1 procesa la operación criptográfica usando claves protegidas por hardware (TPM) y devuelve únicamente el resultado de la autenticación a VTL 0.
+5. Las tablas de páginas de VTL 1 no están mapeadas en el espacio de direcciones de VTL 0: ni siquiera un driver en modo kernel ejecutándose con máximos privilegios en VTL 0 puede leer la memoria de `lsaiso.exe`.
+
+### Flujo de Validación de Imágenes: `NtCreateSection` $\to$ `VtlCall` $\to$ `skci.dll`
+Cuando se carga un binario ejecutable o controlador en el sistema:
+1. El llamador invoca `NtCreateSection` con la bandera `SEC_IMAGE`.
+2. El gestor de memoria (`nt!MiCreateSection`) analiza las cabeceras PE y transfiere la validación de firma a la biblioteca de integridad de código del kernel (`ci.dll!CiValidateImageHeader`).
+3. Si la política de HVCI está activa, `ci.dll` no toma la decisión de ejecución de manera local en VTL 0: emite una transición de hipervisor **`VtlCall`** hacia **`skci.dll`** (*Secure Kernel Code Integrity*) en VTL 1.
+4. `skci.dll` valida los certificados digitales, la cadena de confianza y las reglas WDAC (*Windows Defender Application Control*), computando los hashes criptográficos de cada página física.
+5. Si la validación es exitosa, el Secure Kernel programa las tablas de páginas SLAT/EPT del hipervisor marcando las páginas físicas correspondientes como ejecutables de solo lectura ($R \oplus X$). Si la validación fracasa, VTL 1 retorna un estado de error (`STATUS_IMAGE_CERT_REVOKED` o `STATUS_INVALID_IMAGE_HASH`) y `NtCreateSection` es abortada inmediatamente.
+
 ### kCFG (Kernel Control Flow Guard) Respaldado por VTL 1
 En modo kernel, **kCFG** verifica cada llamada indirecta (`call rax`) comprobando si la dirección de destino está registrada en el bitmap de funciones válidas del kernel (`nt!guard_dispatch_icall`). Bajo VBS, el mapa de bits de CFG se almacena en memoria de solo lectura para VTL 0 y solo puede ser actualizado por el Secure Kernel en VTL 1.
 
 ---
 
-## 2. Auditoría en Memoria de los Vectores de Telemetría de Kernel
+## 2. Auditoría en Memoria de los Vectores de Telemetría y Notificación de Kernel
 
-Tanto para la ingeniería inversa de sensores EDR como para la investigación pericial de drivers comprometidos, el analista debe ser capaz de localizar e inspeccionar en **WinDbg** los arreglos de callbacks no exportados en memoria viva.
+El reverser o analista defensivo debe dominar la inspección en **WinDbg** de los arreglos no exportados de notificación, registro y telemetría en memoria viva.
 
 ### A. Notificaciones de Creación de Procesos (`PspCreateProcessNotifyRoutine`)
 Windows mantiene una tabla interna de 64 punteros de tipo `EX_FAST_REF` que registran los callbacks suscritos con `PsSetCreateProcessNotifyRoutineEx`:
@@ -56,8 +74,8 @@ Windows mantiene una tabla interna de 64 punteros de tipo `EX_FAST_REF` que regi
 - Para obtener la dirección del bloque de datos se aplica una máscara de bits: `Puntero & ~0x0F`.
 - En el bloque resultante (`_EX_CALLBACK_ROUTINE_BLOCK`), el offset **`+0x08`** contiene el puntero a la función del driver.
 
-**Comando WinDbg para auditar todos los slots:**
 ```text
+$$ Script WinDbg para auditar todos los slots de PspCreateProcessNotifyRoutine
 r $t0 = nt!PspCreateProcessNotifyRoutine
 .for (r $t1 = 0; @$t1 < 0x40; r $t1 = @$t1 + 1) {
     r $t2 = poi(@$t0 + @$t1 * 8) & 0xfffffffffffffff0
@@ -73,49 +91,88 @@ Los drivers de seguridad registran rutinas `PreOperation` y `PostOperation` sobr
 - En Windows 10 y 11 x64, la cabeza de lista `CallbackListHead` se ubica en el offset **`+0xC8`** de la estructura `_OBJECT_TYPE` apuntada por `*PsProcessType`.
 - Cada elemento de la lista apunta a una estructura `OB_CALLBACK_CONTEXT_BLOCK` donde **`+0x28`** es el puntero `PreOperation` y **`+0x30`** es `PostOperation`.
 
-### C. Proveedor de Telemetría de Kernel `ETWti` (*Microsoft-Windows-Threat-Intelligence*)
-El subsistema ETWti es el canal que alimenta a los EDRs modernos con eventos de inyección de código, lectura de memoria y mapeo de hilos:
-- Su handle de registro global está en `nt!EtwThreatIntProvRegHandle`.
+### C. Callbacks de Registro: `nt!CmCallbackListHead` y `CmRegisterCallbackEx`
+Los drivers de auditoría e integridad registran filtros de transacciones sobre el Registro mediante `CmRegisterCallbackEx`:
+- Los callbacks activos se encadenan en la lista doblemente enlazada no exportada **`nt!CmCallbackListHead`**.
+- Cada nodo corresponde a una estructura `_CM_CALLBACK_CONTEXT_BLOCK` donde el offset **`+0x28`** almacena el puntero `Function` (la rutina del driver) y **`+0x30`** contiene el puntero `Context`.
+
+```text
+$$ Recorrer en WinDbg todos los callbacks de registro registrados
+!list -t nt!_CM_CALLBACK_CONTEXT_BLOCK.List -x "dps @$extret+0x28 L1" nt!CmCallbackListHead
+```
+
+### D. Sensor en Proceso: `KPROCESS->InstrumentationCallback`
+Para evitar el monitoreo invasivo mediante inline hooking en modo usuario, Windows expone un mecanismo nativo de instrumentación en el despachador de syscalls:
+- En la estructura `_KPROCESS` (`nt!_KPROCESS`), el campo **`InstrumentationCallback`** (offset **`+0x3D8`** en Windows 10 x64, **`+0x3E8`** en Windows 11 x64) almacena un puntero a una función en espacio de usuario.
+- Se configura desde user mode mediante `NtSetInformationProcess` pasando la clase no documentada `ProcessInstrumentationCallback` (`0x28`).
+- **Mecánica de intercepción:** Cuando este puntero está activo, cada vez que una llamada al sistema (`syscall`) o interrupción retorna desde el kernel al modo usuario, la CPU no regresa inmediatamente a la instrucción siguiente (`RIP`), sino que desvía la ejecución a la dirección configurada en `InstrumentationCallback`. Sensores defensivos y EDRs lo utilizan para inspeccionar el estado de los registros y el stack post-syscall.
+- **Auditoría en WinDbg:**
+```text
+dt nt!_KPROCESS <Direccion_EPROCESS> InstrumentationCallback
+```
+
+### E. Proveedor de Telemetría de Kernel `ETWti` (*Microsoft-Windows-Threat-Intelligence*)
+El subsistema ETWti alimenta a los EDRs con telemetría de bajo nivel:
+- Su handle de registro global reside en `nt!EtwThreatIntProvRegHandle`.
 - Apunta a una estructura `_ETW_REG_ENTRY`. En el offset **`+0x10`** reside el puntero a `_ETW_GUID_ENTRY`.
 - Dentro de `_ETW_GUID_ENTRY`, el campo `ProviderEnableInfo` define si el proveedor está activo (`EnableMask != 0`) y a qué nivel de detalle registra eventos de kernel.
-
-El script completo para auditar estos tres vectores de una sola vez se encuentra en `plantillas_codigo/auditar_callbacks.wdbg`.
 
 ---
 
 ## 3. Mecánicas BYOVD (Bring Your Own Vulnerable Driver) y Detección Defensiva
 
-Una de las tácticas más críticas en el análisis de amenazas de bajo nivel es el vector **BYOVD** (*Bring Your Own Vulnerable Driver*).
+El vector **BYOVD** (*Bring Your Own Vulnerable Driver*) es la técnica predilecta para eludir DSE (*Driver Signature Enforcement*) sin necesidad de vulnerar `ntoskrnl.exe`.
 
-### Por qué ocurre BYOVD
-En sistemas Windows modernos de 64 bits con Secure Boot activo, el kernel exige que todo driver esté firmado digitalmente (*Driver Signature Enforcement - DSE*). Para eludir esta restricción sin explotar una vulnerabilidad en `ntoskrnl.exe`, los adversarios cargan legítimamente un **driver antiguo o comercial firmado por un fabricante legítimo** (fabricantes de placas madre, utilidades de diagnóstico, software antivirus antiguo o herramientas de overclocking) que contiene una vulnerabilidad de diseño:
-- Primitivas de lectura y escritura física o virtual arbitraria (`MmMapIoSpace`, `ZwMapViewOfSection`).
-- Despacho de IOCTLs que exponen instrucciones privilegiadas como `wrmsr` o lectura/escritura en puertos de E/S (`__inbyte`, `__outbyte`).
-- Copia de memoria sin validación de buffers mediante `RtlCopyMemory`.
+### Mecánica de Abuso de Drivers Legítimos Firmados
+1. El atacante selecciona un driver legítimo antiguo firmado con un certificado comercial válido (utilidades de placa madre, herramientas de overclocking o versiones antiguas de antivirus).
+2. El driver se carga en el sistema mediante la API legítima `NtLoadDriver` o a través del Service Control Manager (`CreateServiceW` / `StartServiceW`). Dado que la firma digital es válida y no ha sido explícitamente bloqueada por la lista de revocación de Windows (WDAC Blocklist), DSE permite su carga.
+3. El proceso atacante abre un handle hacia el objeto dispositivo del driver y despacha códigos IOCTL vulnerables que exponen primitivas de lectura/escritura arbitraria de memoria física (`MmMapIoSpace`), manipulación de registros de control (desactivación del bit SMEP en `CR4`) o copia no validada de memoria (`RtlCopyMemory`).
+4. Con estas primitivas, el atacante modifica en memoria viva las estructuras del kernel (desactiva callbacks de EDR en `PspCreateProcessNotifyRoutine`, neutraliza `ETWti` o altera el token de seguridad en `_EPROCESS`).
 
-Una vez cargado el driver firmado con éxito bajo la política de DSE, el proceso en espacio de usuario envía IOCTLs hacia el driver vulnerable para alterar estructuras de seguridad del kernel (como el token del proceso en `EPROCESS->Token` para elevar privilegios a SYSTEM, desarmar los ganchos de EDR en `PspCreateProcessNotifyRoutine` o limpiar los registros de telemetría de `ETWti`).
+### Detección Defensiva: La Tabla de Caché `nt!PiDDBCacheTable`
+Para llevar un registro forense de todos los controladores cargados, el kernel NT mantiene una tabla hash en memoria protegida por el recurso `nt!PiDDBLock`: **`nt!PiDDBCacheTable`**.
 
-### Detección Defensiva: La Tabla de Caché de Drivers `nt!PiDDBCacheTable`
-Para mitigar la carga de drivers vulnerables conocidos, Microsoft implementa dos líneas de defensa:
-1. **Microsoft Vulnerable Driver Blocklist (WDAC):** Una lista denegada de hashes SHA-256 de archivos y certificados de firma revocados que el kernel comprueba al invocar `NtLoadDriver`.
-2. **Estructura Interna `nt!PiDDBCacheTable`:** El cargador de drivers de Windows mantiene una tabla hash interna en memoria protegida por el recurso `nt!PiDDBLock`. Cada vez que un driver `.sys` se carga en el sistema, Windows calcula un hash de su nombre y timestamp y lo inserta en `PiDDBCacheTable`.
-   - **Técnica de evasión conocida:** Protectores o utilidades de carga ilícita intentan localizar `nt!PiDDBCacheTable` y eliminar su entrada (`RtlDeleteElementGenericTableAvl`) para borrar la evidencia de carga.
-   - **Auditoría Defensiva en WinDbg:** Un analista de respuesta a incidentes (DFIR) o auditor de kernel puede examinar `PiDDBCacheTable` para verificar qué drivers fueron inicializados en el sistema, contrastando sus timestamps contra la lista oficial de drivers vulnerables conocidos:
-
+#### Estructura Interna de `_RTL_AVL_TABLE` (x64):
 ```text
-$$ Localizar la tabla de caché de drivers y su lock en WinDbg KDNET
+dt nt!_RTL_AVL_TABLE
+   +0x00 BalancedRoot          : _RTL_BALANCED_LINKS (Árbol balanceado AVL)
+   +0x20 OrderedPointer        : Ptr64 Void
+   +0x28 WhichOrderedElement   : Uint4
+   +0x30 NumberGenericTableElements : Uint4 (Cantidad total de drivers cacheados)
+   +0x38 DepthOfTree           : Uint4
+   +0x40 RestartKey            : Ptr64 _RTL_BALANCED_LINKS
+   +0x48 DeleteCount           : Uint4
+   +0x50 CompareRoutine        : Ptr64
+   +0x58 AllocateRoutine       : Ptr64
+   +0x60 FreeRoutine           : Ptr64
+   +0x68 TableContext          : Ptr64 Void
+```
+
+#### Estructura de Entrada `_PiDDBCacheEntry`:
+Cada entrada dentro del árbol AVL contiene los metadatos de un controlador:
+- **`+0x00` `List` (`_LIST_ENTRY`):** Enlace doble en la lista de entradas.
+- **`+0x10` `DriverName` (`_UNICODE_STRING`):** Nombre del archivo del driver (ej. `RTCore64.sys`, `gdrv.sys`).
+- **`+0x20` `TimeDateStamp` (`ULONG`):** Marca de tiempo de compilación del encabezado PE del driver.
+- **`+0x24` `LoadStatus` (`NTSTATUS`):** Estado de carga del controlador (`STATUS_SUCCESS = 0x00000000`).
+
+#### Técnicas de Evasión y Auditoría Forense:
+- **Técnica de evasión:** Herramientas de carga clandestina intentan localizar la tabla `nt!PiDDBCacheTable`, adquirir `nt!PiDDBLock` mediante `ExAcquireResourceExclusiveLite` y desvincular el nodo del driver vulnerable llamando a **`RtlDeleteElementGenericTableAvl`** para no dejar rastro en la memoria del kernel.
+- **Auditoría Forense en WinDbg:** Un analista de incidentes puede volcar la tabla para comprobar si un driver vulnerable fue cargado, incluso si el archivo ya fue eliminado del disco:
+```text
+$$ Localizar la tabla de caché de drivers y su lock en WinDbg
 x nt!PiDDBCacheTable
 x nt!PiDDBLock
 
-$$ Inspeccionar los primeros elementos de la tabla genérica AVL
+$$ Inspeccionar las entradas del árbol AVL
 dt nt!_RTL_AVL_TABLE poi(nt!PiDDBCacheTable)
+dt nt!_PiDDBCacheEntry poi(poi(nt!PiDDBCacheTable) + 0x20)
 ```
 
 ---
 
 ## 4. Condiciones de Carrera y Reversing de MDLs en Drivers KMDF
 
-En la Lección 6.4 se abordó la estructura de despacho de IOCTLs en KMDF. Sin embargo, en drivers reales el análisis de seguridad debe verificar el manejo de **MDLs (Memory Descriptor Lists)** y la sincronización asíncrona.
+En drivers reales el análisis de seguridad debe verificar el manejo de **MDLs (Memory Descriptor Lists)** y la sincronización asíncrona.
 
 ### El Peligro del *Double Fetch* en `METHOD_IN_DIRECT` / `METHOD_OUT_DIRECT`
 Cuando un driver utiliza E/S directa (`METHOD_IN_DIRECT` o `METHOD_OUT_DIRECT`):
@@ -139,10 +196,10 @@ call    rcx                         ; Invocación indirecta
 
 ---
 
-## 4. Laboratorio Verificado
+## 5. Laboratorio Verificado
 
 1. Inspeccioná la plantilla `plantillas_codigo/minifilter_obcallback_min.c`. Observá cómo interactúan las estructuras de `FLT_REGISTRATION` y `OB_CALLBACK_REGISTRATION`.
-2. En una sesión de depuración con WinDbg KDNET en tu VM de kernel, ejecutá:
+2. En una sesión de depuración con WinDbg KDNET en tu VM de kernel, ejecutá el script de auditoría completa:
    ```text
    $$><plantillas_codigo\auditar_callbacks.wdbg
    ```

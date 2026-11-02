@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>2.35 · Ecosistemas Modernos en Windows 11: ARM64EC, WinRT (IInspectable) y .NET Native AOT</title>
-<meta name="description" content="Reversing de binarios híbridos ARM64EC en Windows 11, interfaz IInspectable y cadenas HSTRING en WinRT, y reversing de .NET Native AOT con JIT Hooking en clrjit.dll.">
+<title>2.35 · Ecosistemas Modernos en Windows 11: ARM64EC, WinRT (IInspectable, AppContainer/LPAC) y .NET Native AOT</title>
+<meta name="description" content="Reversing de binarios híbridos ARM64EC en Windows 11, interfaz IInspectable y sandboxing AppContainer/LPAC en WinRT, y reversing de .NET Native AOT (secciones .managedcode y .hydrated, MethodTable y JIT Hooking en clrjit.dll).">
 <link rel="stylesheet" href="../guia/estilo.css">
 </head>
 <body>
@@ -94,9 +94,25 @@ dt nt!_TOKEN &lt;TokenAddress&gt; Capabilities</code></pre>
 <p>En modo usuario, la función <code>GetTokenInformation</code> con la clase <code>TokenCapabilities</code> devuelve el listado completo de SIDs para comprobar si un proceso confinado intenta eludir sus fronteras de red o almacenamiento.</p>
 <hr>
 <h2 id="3-reversing-de-net-native-aot-y-jit-hooking-por-método">3. Reversing de .NET Native AOT y JIT Hooking por Método</h2>
-<h3 id="net-native-aot">.NET Native AOT</h3>
-<p>En .NET 7, 8 y versiones superiores, las aplicaciones pueden compilarse con la opción <code>PublishAot=true</code> (utilizando el compilador <code>ilc.exe</code>). En estos binarios:</p>
-<ul><li><strong>No existe bytecode CIL (MSIL):</strong> El archivo PE contiene exclusivamente código máquina nativo x64 en la sección <code>.text</code>. Herramientas como <code>dnSpy</code> o <code>ILSpy</code> no reconocen el binario como ensamblado administrado.</li><li><strong>Estructura <code>__ReadyToRunHeader</code>:</strong> Presenta la firma <code>0x00525452</code> (<code>"RTR\0"</code>).</li><li><strong>Tablas de Tipos <code>MethodTable</code> (antes <code>EEType</code>):</strong> Los objetos en el heap contienen en el offset <code>-0x08</code> (en x64) un puntero a su <code>MethodTable</code>. La estructura no contiene nombres en texto claro, pero agrupa punteros a funciones nativas correspondientes a los métodos de la clase.</li></ul>
+<h3 id="net-native-aot-anatomía-binaria-y-secciones">.NET Native AOT: Anatomía Binaria y Secciones</h3>
+<p>En .NET 7, 8 y 9+, las aplicaciones pueden compilarse con la opción <code>PublishAot=true</code> (utilizando el compilador ahead-of-time <code>ilc.exe</code>). En estos binarios:</p>
+<ul><li><strong>No existe bytecode CIL (MSIL) ni metadatos ECMA-335 clásicos:</strong> El archivo PE carece de streams <code>#Strings</code>, <code>#Blob</code>, <code>#GUID</code> o <code>#~</code>. Decompiladores tradicionales como <code>dnSpy</code> o <code>ILSpy</code> fallan o muestran el archivo como un binario nativo x64 estándar.</li><li><strong>Sección <code>.managedcode</code>:</strong> Sección PE con permisos de ejecución y lectura (<code>IMAGE_SCN_MEM_EXECUTE | IMAGE_SCN_MEM_READ</code>) donde <code>ilc.exe</code> aloja todas las rutinas compiladas en código máquina x64 nativo tanto para la lógica de la aplicación como para la biblioteca base (BCL / CoreLib). Las funciones carecen de nombres exportados y se invocan indirectamente a través de celdas de despacho de interfaz (<em>Interface Dispatch Cells</em>).</li><li><strong>Sección <code>.hydrated</code> / <code>.rdata</code>:</strong> Sección de solo lectura donde el compilador ubica las estructuras estáticas del runtime y los datos iniciales precomputados. Al cargar el binario, el runtime de Native AOT no parsea metadatos; "hidrata" directamente las estructuras de tipos (<code>MethodTable</code>) desde esta sección hacia la memoria virtual.</li></ul>
+<h3 id="reconstrucción-del-árbol-de-tipos-methodtable-eetype-sin-metadatos-ecma-335">Reconstrucción del Árbol de Tipos (<code>MethodTable</code> / <code>EEType</code>) sin Metadatos ECMA-335</h3>
+<p>Cada objeto administrado en el heap contiene en el offset <strong><code>-0x08</code></strong> (en arquitecturas x64) un puntero a su descriptor de tipo: la estructura <strong><code>MethodTable</code></strong> (históricamente denominada <code>EEType</code>):</p>
+<div class="tabla"><table>
+<thead><tr>
+<th>Offset (x64)</th>
+<th>Campo en <code>MethodTable</code></th>
+<th>Tipo</th>
+<th>Significado para el Reverser</th>
+</tr></thead><tbody>
+<tr><td><strong><code>+0x00</code></strong></td><td><code>Flags</code></td><td><code>UInt16</code></td><td>Banderas que clasifican el tipo: clase, interfaz, struct de valor, array o genérico.</td></tr>
+<tr><td><strong><code>+0x02</code></strong></td><td><code>BaseSize</code></td><td><code>UInt16</code></td><td>Tamaño físico en bytes que ocupa una instancia del tipo en el heap administrado.</td></tr>
+<tr><td><strong><code>+0x08</code></strong></td><td><code>RelatedType</code></td><td><code>Ptr64 MethodTable</code></td><td><strong>Puntero a la clase base.</strong> Permite reconstruir programáticamente el árbol jerárquico de herencia.</td></tr>
+<tr><td><strong><code>+0x10</code></strong></td><td><code>NumVtableSlots</code></td><td><code>UInt16</code></td><td>Cantidad de funciones virtuales contenidas en la vtable.</td></tr>
+<tr><td><strong><code>+0x18</code></strong></td><td><code>VTable[0..N-1]</code></td><td>Arreglo de punteros</td><td>Punteros directos a las funciones en código máquina x64 dentro de la sección <code>.managedcode</code>.</td></tr>
+</tbody></table></div>
+<p>Siguiendo recursivamente el puntero <code>RelatedType</code> desde cualquier instancia, un script en Python para IDA Pro o Ghidra puede reconstruir el grafo completo de clases del ejecutable sin depender de símbolos PDB ni de metadatos administrados.</p>
 <h3 id="jit-unpacking-por-método-con-frida-dump-cil-jit-js">JIT Unpacking por Método con Frida (<code>dump_cil_jit.js</code>)</h3>
 <p>Cuando un protector .NET avanzado cifra el código CIL método por método (de modo que volcar <code>Assembly.Load(byte[])</code> devuelve métodos vacíos), el único punto de convergencia es el propio compilador JIT del runtime de .NET (<code>clrjit.dll</code>).</p>
 <p>Justo antes de que un método sea compilado a ensamblador x64, el JIT recibe una estructura <code>CORINFO_METHOD_INFO</code> donde el bytecode CIL original se encuentra descifrado en memoria viva. Interceptando <code>compileMethod</code> con el script <code>plantillas_codigo/dump_cil_jit.js</code>:</p>

@@ -1,6 +1,6 @@
 ---
-title: "2.35 · Ecosistemas Modernos en Windows 11: ARM64EC, WinRT (IInspectable) y .NET Native AOT"
-description: "Reversing de binarios híbridos ARM64EC en Windows 11, interfaz IInspectable y cadenas HSTRING en WinRT, y reversing de .NET Native AOT con JIT Hooking en clrjit.dll."
+title: "2.35 · Ecosistemas Modernos en Windows 11: ARM64EC, WinRT (IInspectable, AppContainer/LPAC) y .NET Native AOT"
+description: "Reversing de binarios híbridos ARM64EC en Windows 11, interfaz IInspectable y sandboxing AppContainer/LPAC en WinRT, y reversing de .NET Native AOT (secciones .managedcode y .hydrated, MethodTable y JIT Hooking en clrjit.dll)."
 etapa: "Etapa 2 · Reversing (Bloque 2E: Técnicas avanzadas e industriales)"
 ---
 
@@ -110,11 +110,24 @@ En modo usuario, la función `GetTokenInformation` con la clase `TokenCapabiliti
 
 ## 3. Reversing de .NET Native AOT y JIT Hooking por Método
 
-### .NET Native AOT
-En .NET 7, 8 y versiones superiores, las aplicaciones pueden compilarse con la opción `PublishAot=true` (utilizando el compilador `ilc.exe`). En estos binarios:
-- **No existe bytecode CIL (MSIL):** El archivo PE contiene exclusivamente código máquina nativo x64 en la sección `.text`. Herramientas como `dnSpy` o `ILSpy` no reconocen el binario como ensamblado administrado.
-- **Estructura `__ReadyToRunHeader`:** Presenta la firma `0x00525452` (`"RTR\0"`).
-- **Tablas de Tipos `MethodTable` (antes `EEType`):** Los objetos en el heap contienen en el offset `-0x08` (en x64) un puntero a su `MethodTable`. La estructura no contiene nombres en texto claro, pero agrupa punteros a funciones nativas correspondientes a los métodos de la clase.
+### .NET Native AOT: Anatomía Binaria y Secciones
+En .NET 7, 8 y 9+, las aplicaciones pueden compilarse con la opción `PublishAot=true` (utilizando el compilador ahead-of-time `ilc.exe`). En estos binarios:
+- **No existe bytecode CIL (MSIL) ni metadatos ECMA-335 clásicos:** El archivo PE carece de streams `#Strings`, `#Blob`, `#GUID` o `#~`. Decompiladores tradicionales como `dnSpy` o `ILSpy` fallan o muestran el archivo como un binario nativo x64 estándar.
+- **Sección `.managedcode`:** Sección PE con permisos de ejecución y lectura (`IMAGE_SCN_MEM_EXECUTE | IMAGE_SCN_MEM_READ`) donde `ilc.exe` aloja todas las rutinas compiladas en código máquina x64 nativo tanto para la lógica de la aplicación como para la biblioteca base (BCL / CoreLib). Las funciones carecen de nombres exportados y se invocan indirectamente a través de celdas de despacho de interfaz (*Interface Dispatch Cells*).
+- **Sección `.hydrated` / `.rdata`:** Sección de solo lectura donde el compilador ubica las estructuras estáticas del runtime y los datos iniciales precomputados. Al cargar el binario, el runtime de Native AOT no parsea metadatos; "hidrata" directamente las estructuras de tipos (`MethodTable`) desde esta sección hacia la memoria virtual.
+
+### Reconstrucción del Árbol de Tipos (`MethodTable` / `EEType`) sin Metadatos ECMA-335
+Cada objeto administrado en el heap contiene en el offset **`-0x08`** (en arquitecturas x64) un puntero a su descriptor de tipo: la estructura **`MethodTable`** (históricamente denominada `EEType`):
+
+| Offset (x64) | Campo en `MethodTable` | Tipo | Significado para el Reverser |
+| :--- | :--- | :--- | :--- |
+| **`+0x00`** | `Flags` | `UInt16` | Banderas que clasifican el tipo: clase, interfaz, struct de valor, array o genérico. |
+| **`+0x02`** | `BaseSize` | `UInt16` | Tamaño físico en bytes que ocupa una instancia del tipo en el heap administrado. |
+| **`+0x08`** | `RelatedType` | `Ptr64 MethodTable` | **Puntero a la clase base.** Permite reconstruir programáticamente el árbol jerárquico de herencia. |
+| **`+0x10`** | `NumVtableSlots` | `UInt16` | Cantidad de funciones virtuales contenidas en la vtable. |
+| **`+0x18`** | `VTable[0..N-1]` | Arreglo de punteros | Punteros directos a las funciones en código máquina x64 dentro de la sección `.managedcode`. |
+
+Siguiendo recursivamente el puntero `RelatedType` desde cualquier instancia, un script en Python para IDA Pro o Ghidra puede reconstruir el grafo completo de clases del ejecutable sin depender de símbolos PDB ni de metadatos administrados.
 
 ### JIT Unpacking por Método con Frida (`dump_cil_jit.js`)
 Cuando un protector .NET avanzado cifra el código CIL método por método (de modo que volcar `Assembly.Load(byte[])` devuelve métodos vacíos), el único punto de convergencia es el propio compilador JIT del runtime de .NET (`clrjit.dll`).

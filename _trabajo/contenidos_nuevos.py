@@ -215,7 +215,7 @@ fallo:
 
 <hr>
 
-<h2 id="parte-ii-kit-de-5-plantillas-de-código-mínimo-boilerplates-listos-para-compilar">Parte II · Kit de 7 plantillas de código mínimo (Boilerplates listos para compilar)</h2>
+<h2 id="parte-ii-kit-de-5-plantillas-de-código-mínimo-boilerplates-listos-para-compilar">Parte II · Kit Completo de 15 Plantillas y Laboratorios Prácticos (Troncal y Avanzado)</h2>
 <p>Todas las prácticas del curso están pensadas para ejecutarse sobre <strong>programas propios en tu VM aislada</strong> (Etapa 0). Para que no tengas que escribir desde cero cada escenario técnico, acá tenés siete esqueletos autocontenidos de ~35 líneas en C y C++ estándar (también guardados como archivos sueltos en la carpeta <code>plantillas_codigo/</code> del paquete HTML). Compilalos en la VM con <strong>Visual Studio Developer Command Prompt (<code>cl.exe</code>)</strong> o con <strong>MinGW-w64 (<code>gcc</code> / <code>g++</code>)</strong>.</p>
 
 <h3 id="plantilla-1-check-evolucion-c-práctica-para-1-5-2-4-2-8-2-10-2-11-2-15-2-17-y-4-1">Plantilla 1 · <code>check_evolucion.c</code> (Práctica para 1.5, 2.4, 2.8, 2.10, 2.11, 2.15, 2.17 y 4.1)</h3>
@@ -635,6 +635,94 @@ int wmain(int argc, wchar_t* argv[]) {
     }
     return 0;
 }
+
+
+<hr>
+
+<h2 id="parte-ii-b-laboratorios-avanzados-de-evasion-desofuscacion-ipc-y-kernel">Parte II.B · Laboratorios avanzados de evasión, desofuscación, IPC y kernel (Plantillas 8 a 15)</h2>
+<p>Para acompañar las lecciones especializadas del Bloque 2E, la Rama 2D y la Etapa 6, el curso incluye ocho esqueletos de nivel industrial en la carpeta <code>plantillas_codigo/</code>:</p>
+
+<h3 id="plantilla-8-evasion-peb-syscall-lab-c-practica-para-2-15-2-28-y-evasion-defensiva">Plantilla 8 · <code>evasion_peb_syscall_lab.c</code> (Práctica para 2.15, 2.28 y evasión defensiva)</h3>
+<p>Implementa resolución dinámica de exports en memoria mediante recorrido del PEB (<code>InMemoryOrderModuleList</code>), hashing de cadenas con <strong>ROR13</strong>, extracción de SSN e invocación por <strong>indirect syscalls</strong> (evitando trampas de API hooking), y detección/neutralización de hardware breakpoints mediante un manejador <strong>VEH</strong>:</p>
+<pre><code class="lenguaje-c">// Archivo: plantillas_codigo/evasion_peb_syscall_lab.c
+// Compilar con MSVC x64: cl /Zi /O2 evasion_peb_syscall_lab.c /Fe:evasion_peb_syscall_lab.exe
+#include &lt;windows.h&gt;
+#include &lt;stdio.h&gt;
+
+// Hash ROR13 para NtAllocateVirtualMemory: 0xF5BD37EE
+DWORD HashROR13A(const char* s) {
+    DWORD h = 0;
+    while (*s) { h = (h &gt;&gt; 13) | (h &lt;&lt; 19); h += (BYTE)*s++; }
+    return h;
+}
+
+LONG WINAPI VehHandler(PEXCEPTION_POINTERS pEx) {
+    if (pEx-&gt;ExceptionRecord-&gt;ExceptionCode == EXCEPTION_SINGLE_STEP) {
+        printf("[!] Hardware Breakpoint detectado en DR0=%p\n", (void*)pEx-&gt;ContextRecord-&gt;Dr0);
+        pEx-&gt;ContextRecord-&gt;Dr0 = pEx-&gt;ContextRecord-&gt;Dr1 = 0;
+        pEx-&gt;ContextRecord-&gt;Dr2 = pEx-&gt;ContextRecord-&gt;Dr3 = pEx-&gt;ContextRecord-&gt;Dr7 = 0;
+        return EXCEPTION_CONTINUE_EXECUTION;
+    }
+    return EXCEPTION_CONTINUE_SEARCH;
+}
+</code></pre>
+
+<h3 id="plantilla-9-rpc-com-server-lab-c-y-idl-practica-para-2d-8-y-2d-10">Plantilla 9 · <code>rpc_com_server_lab.c</code> + <code>rpc_com_server_lab.idl</code> (Práctica para 2D.8 y 2D.10)</h3>
+<p>Servidor RPC nativo sobre protocolo local <code>ncalrpc</code> con registro extendido (<code>RpcServerRegisterIf2</code>) y función de filtrado de seguridad (<code>SecurityCallback</code>) para analizar stubs NDR y tablas <code>MIDL_SERVER_INFO</code>:</p>
+<pre><code class="lenguaje-c">// Archivo: plantillas_codigo/rpc_com_server_lab.c
+// 1. Compilar IDL: midl /app_config rpc_com_server_lab.idl
+// 2. Compilar servidor: cl /Zi /O1 rpc_com_server_lab.c rpc_com_server_lab_s.c rpcrt4.lib /Fe:RpcServerLab.exe
+#include &lt;windows.h&gt;
+#include &lt;rpc.h&gt;
+#include &lt;stdio.h&gt;
+#include "rpc_com_server_lab.h"
+
+RPC_STATUS RPC_ENTRY SecurityCallback(RPC_IF_HANDLE hIf, void* ctx) {
+    return RPC_S_OK; // Validar token o SID de cliente antes de despachar
+}
+
+int main(void) {
+    RpcServerUseProtseqEpW((RPC_WSTR)L"ncalrpc", 20, (RPC_WSTR)L"ReversingLabRpc", NULL);
+    RpcServerRegisterIf2(IReversingLabRpc_v1_0_s_ifspec, NULL, NULL, RPC_IF_ALLOW_CALLBACKS_WITH_NO_AUTH, 20, 1024, SecurityCallback);
+    RpcServerListen(1, 20, FALSE);
+    return 0;
+}
+</code></pre>
+
+<h3 id="plantilla-10-gorust-targets-practica-para-2-32">Plantilla 10 · <code>gorust_targets/</code> (<code>target_go.go</code> y <code>target_rust.rs</code>) (Práctica para 2.32)</h3>
+<p>Binarios de validación con stripping para ejercitar el reversing de layouts de bajo nivel en lenguajes modernos:</p>
+<ul>
+<li><strong><code>target_go.go</code>:</strong> Interfaces Go (par de 16B: <code>itab*</code> + <code>data*</code>), <em>slices</em> de 24B (<code>ptr</code>, <code>len</code>, <code>cap</code>), canales y despacho en <code>chanrecv1</code>, y goroutines con <code>runtime.newproc</code>. Compilación: <code>go build -ldflags="-s -w" -o target_go.exe target_go.go</code>.</li>
+<li><strong><code>target_rust.rs</code>:</strong> Objetos de rasgo <code>dyn Trait</code> (vtables de 4 entradas: destructor, size, align, funciones), enumeraciones con optimización de nicho <code>Option&lt;&amp;T&gt;</code> (puntero nulo = None), y máquinas de estado generadas por <code>async/await</code> (despacho por campo de discriminante en <code>Future::poll</code>). Compilación: <code>cargo build --release</code>.</li>
+</ul>
+
+<h3 id="plantilla-11-minifilter-obcallback-min-c-practica-para-6-5-6-6-y-6-7">Plantilla 11 · <code>minifilter_obcallback_min.c</code> (Práctica para 6.5, 6.6 y 6.7)</h3>
+<p>Driver de kernel educativo que combina el registro de un <strong>Minifiltro de Filesystem</strong> (<code>FltRegisterFilter</code> con <code>FLT_REGISTRATION</code>) para interceptar <code>IRP_MJ_CREATE</code> y <code>IRP_MJ_WRITE</code>, con callbacks de seguridad <strong><code>ObRegisterCallbacks</code></strong> sobre <code>*PsProcessType</code> despojando el derecho <code>PROCESS_VM_WRITE</code>:</p>
+<pre><code class="lenguaje-c">// Archivo: plantillas_codigo/minifilter_obcallback_min.c
+// Compilar con WDK x64 Driver Environment:
+// cl /W4 /WX /Gz /kernel /I"%WDKContentRoot%\Include\wdf\kmdf\1.15" minifilter_obcallback_min.c fltMgr.lib
+#include &lt;fltKernel.h&gt;
+
+OB_PREOP_CALLBACK_STATUS PreOpenProcess(PVOID RegistrationContext, POB_PRE_OPERATION_INFORMATION Info) {
+    if (Info-&gt;ObjectType == *PsProcessType) {
+        // Despojar PROCESS_VM_WRITE y PROCESS_TERMINATE para blindar el proceso
+        Info-&gt;Parameters-&gt;CreateHandleInformation.DesiredAccess &amp;= ~(PROCESS_VM_WRITE | PROCESS_TERMINATE);
+    }
+    return OB_PREOP_SUCCESS;
+}
+</code></pre>
+
+<h3 id="plantilla-12-solve-vm-triton-py-y-solve-minivm-z3-py-practica-para-2-25-2-26-y-2-34">Plantilla 12 · <code>solve_vm_triton.py</code> y <code>solve_minivm_z3.py</code> (Práctica para 2.25, 2.26 y 2.34)</h3>
+<p>Pipeline dinámico de desvirtualización: <code>solve_vm_triton.py</code> instrumenta con <strong>Frida Stalker</strong> el bucle de despacho de la máquina virtual (<code>vm_mba_crackme.c</code>), propaga *taint* sobre la memoria con <strong>Triton</strong>, levanta el AST simbólico y delega la resolución a <strong>Z3</strong> (<code>solve_minivm_z3.py</code>) para colapsar expresiones de aritmética mixta (MBA).</p>
+
+<h3 id="plantilla-13-vm-mba-crackme-c-practica-para-2-26-y-2-34">Plantilla 13 · <code>vm_mba_crackme.c</code> (Práctica para 2.26 y 2.34)</h3>
+<p>Crackme con arquitectura de máquina virtual basada en registros e intérprete con *Indirect Threading*, que evalúa la clave mediante identidades MBA como <code>(x ^ y) + 2 * (x &amp; y) == x + y</code>. Compilar con <code>cl /Zi /O2 vm_mba_crackme.c /Fe:vm_mba_crackme.exe</code>.</p>
+
+<h3 id="plantilla-14-dump-cil-jit-js-practica-para-2-35-y-3-1">Plantilla 14 · <code>dump_cil_jit.js</code> (Práctica para 2.35 y 3.1)</h3>
+<p>Script de Frida que intercepta el compilador JIT de .NET (<code>clrjit.dll!CILJit::compileMethod</code>), volcando el bytecode CIL de cada método en claro en el momento exacto en que es descifrado en memoria viva antes de compilarse a x64.</p>
+
+<h3 id="plantilla-15-auditar-callbacks-wdbg-y-sleigh-minivm-practica-para-6-7-y-2-34">Plantilla 15 · <code>auditar_callbacks.wdbg</code> y <code>sleigh_minivm/</code> (Práctica para 6.7 y 2.34)</h3>
+<p>Herramientas de extensión: script de WinDbg para recorrer y reportar todos los callbacks de creación de procesos (<code>PspCreateProcessNotifyRoutine</code>), callbacks de objetos y telemetría <code>ETWti</code>; y módulo completo de SLEIGH para Ghidra (<code>minivm.ldefs</code>, <code>minivm.pspec</code>, <code>minivm.cspec</code>, <code>minivm.slaspec</code>) para decompilar bytecode virtualizado a C legible.</p>
 
 """
 

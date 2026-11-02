@@ -1,13 +1,13 @@
 ---
 title: "2D.15 · Reversing de Arranque Temprano, UEFI y Cadena de Carga (bootmgfw, winload, LOADER_PARAMETER_BLOCK)"
-description: "Formato PE32+ de aplicaciones EFI, cadena de inicialización de arranque (bootmgfw.efi, winload.efi, hvloader.efi), estructura LOADER_PARAMETER_BLOCK y análisis de bootkits en Ghidra/IDA."
+description: "Formato PE32+ de aplicaciones EFI, layout binario de EFI_SYSTEM_TABLE, cadena de inicialización de arranque (bootmgfw.efi, winload.efi, hvloader.efi), estructura LOADER_PARAMETER_BLOCK y análisis de bootkits en Ghidra/IDA."
 etapa: "Etapa 2 · 2D · Windows internals (optativa)"
 ---
 
 # Reversing de Arranque Temprano, UEFI y Cadena de Carga
 
 :::{nota} Propósito y Alcance
-El análisis del sistema operativo no comienza cuando el kernel ya está en ejecución. Para comprender las amenazas más persistentes (Bootkits UEFI, técnicas de desactivación temprana de DSE, y el despliegue del hipervisor VBS antes de `ntoskrnl.exe`), el analista de ingeniería inversa debe dominar el proceso de arranque temprano de Windows en plataformas de 64 bits con firmware **UEFI**. Esta lección disecciona la cadena de cargadores EFI, el formato de los módulos DXE y la estructura de transición fundamental: el bloque **`LOADER_PARAMETER_BLOCK`**.
+El análisis del sistema operativo no comienza cuando el kernel ya está en ejecución. Para comprender las amenazas más persistentes (Bootkits UEFI, técnicas de desactivación temprana de DSE, y el despliegue del hipervisor VBS antes de `ntoskrnl.exe`), el analista de ingeniería inversa debe dominar el proceso de arranque temprano de Windows en plataformas de 64 bits con firmware **UEFI**. Esta lección disecciona la cadena de cargadores EFI, el layout de estructuras del firmware, el formato de los módulos DXE y la estructura de transición fundamental: el bloque **`LOADER_PARAMETER_BLOCK`**.
 :::
 
 ---
@@ -27,7 +27,24 @@ Los archivos ejecutables del cargador de arranque de Windows (como `bootmgfw.efi
        IN EFI_SYSTEM_TABLE *SystemTable // RDX: Puntero a la tabla global de servicios UEFI
    );
    ```
-   A través de `SystemTable->BootServices` (`EFI_BOOT_SERVICES`), el binario puede asignar páginas de memoria física (`AllocatePages`), abrir archivos en la partición ESP (`EFI_SIMPLE_FILE_SYSTEM_PROTOCOL`) y registrar protocolos de bajo nivel.
+
+### Layout Binario de `EFI_SYSTEM_TABLE` en x64
+En un ejecutable UEFI desensamblado, toda interacción con memoria, consola y protocolos se realiza a través de la tabla `SystemTable` pasada en `RDX`. En arquitecturas de 64 bits, su disposición en memoria es fija:
+
+| Offset (x64) | Campo | Tipo | Propósito |
+| :--- | :--- | :--- | :--- |
+| **`+0x00`** | `Hdr` | `EFI_TABLE_HEADER` | Cabecera estándar de 24 bytes (Firma mágica `0x5453595320494249` = `"IBI SYST"`, revisión, tamaño y CRC32). |
+| **`+0x18`** | `FirmwareVendor` | `CHAR16*` | Puntero a cadena Unicode UTF-16 con el nombre del fabricante del BIOS/UEFI. |
+| **`+0x20`** | `FirmwareRevision` | `UINT32` | Versión interna del firmware. |
+| **`+0x24`** | `_Padding` | `UINT32` | Relleno de alineación a 8 bytes en arquitecturas de 64 bits. |
+| **`+0x28`** | `ConsoleInHandle` | `EFI_HANDLE` | Handle del dispositivo de entrada estándar (teclado). |
+| **`+0x30`** | `ConIn` | `EFI_SIMPLE_TEXT_INPUT_PROTOCOL*` | Puntero al protocolo de lectura de caracteres del teclado. |
+| **`+0x38`** | `ConsoleOutHandle` | `EFI_HANDLE` | Handle de la salida de texto (pantalla). |
+| **`+0x40`** | `ConOut` | `EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL*` | Puntero al protocolo de impresión de texto en pantalla. |
+| **`+0x48`** | `StandardErrorHandle`| `EFI_HANDLE` | Handle del dispositivo de error. |
+| **`+0x50`** | `StdErr` | `EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL*` | Puntero a la salida de errores en pantalla. |
+| **`+0x58`** | `RuntimeServices` | `EFI_RUNTIME_SERVICES*` | Puntero a la tabla de servicios en tiempo de ejecución (`gRT`), que persisten tras arrancar el SO (variables NVRAM). |
+| **`+0x60`** | `BootServices` | `EFI_BOOT_SERVICES*` | Puntero a la tabla de servicios de arranque (`gBS`), activa solo hasta que se invoca `ExitBootServices`. |
 
 ---
 
@@ -87,7 +104,7 @@ Los bootkits modernos (como BlackLotus o Bootkm) buscan infectar la cadena de ar
 ### Pasos de Reversing para un Binario `.efi`:
 1. **Carga en el Desensamblador:** Seleccionar el formato PE. En Ghidra o IDA Pro, utilizar los tipos de datos de UEFI (importando los headers de EDK2 o utilizando el plugin *EFISeek* / *Ghidra-EFI*).
 2. **Localización de `SystemTable`:**
-   En el prólogo de `EfiMain`, identificar la instrucción que salva el registro `RDX` en una variable global. Ese puntero es `gST` (`EFI_SYSTEM_TABLE`). En el offset `+0x60` de `gST` reside el puntero a `gBS` (`EFI_BOOT_SERVICES`).
+   En el prólogo de `EfiMain`, identificar la instrucción que salva el registro `RDX` en una variable global. Ese puntero es `gST` (`EFI_SYSTEM_TABLE`). En el offset **`+0x60`** de `gST` reside el puntero a `gBS` (`EFI_BOOT_SERVICES`).
 3. **Identificación de Protocolos Hijackeados:**
    Los bootkits suelen instalar ganchos sobre funciones críticas de `EFI_BOOT_SERVICES` antes de que se cargue `winload.efi`:
    - Ganchos sobre **`LocateProtocol`** o **`OpenProtocol`**: interceptan la carga de protocolos para devolver punteros a rutinas modificadas.
