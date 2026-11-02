@@ -3,5 +3,8 @@ __pycache__/
 _trabajo/chrome-prof/
 chrome-perfil/
 *.tmp
-CLS_*
 _trabajo/print/
+
+# Legacy and intermediate build files
+CLS_*_v5.*
+CLS_Tomo_*
