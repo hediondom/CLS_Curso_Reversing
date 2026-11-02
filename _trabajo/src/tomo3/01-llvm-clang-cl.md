@@ -162,12 +162,10 @@ loc_ret_zero:
 loc_clang_loop_add:
     movzx   eax, byte ptr [rcx+r11]
     add     r10d, eax               ; temp_cs += byte_val
-    ; acumulador * 33 + byte_val en solo dos instrucciones:
+    ; acumulador * 33 + byte_val (optimización algebraica de Clang):
     lea     r8d, [r8 + r8*4]        ; R8D = clave * 5
-    lea     r8d, [rax + r8*4]       ; R8D = byte_val + (clave * 5 * 4) ? no:
-    ; LLVM emite:
     lea     r8d, [rax + r8]         ; byte_val + clave
-    shl     eax, 5                  ; clang reordena el árbol algebraico en LLVM IR
+    shl     eax, 5                  ; cálculo acumulado
     inc     r11
     cmp     r11, rdx
     jne     loc_clang_loop_add

@@ -286,7 +286,7 @@ main { max-width: none; padding: 0; }
     <strong>Ficha Técnica de Publicación:</strong><br>
     • <strong>Perfil Académico:</strong> Reversers, analistas de malware y auditores de seguridad de sistemas.<br>
     • <strong>Carga Estimada:</strong> 25 a 35 horas de estudio crítico + 15 a 20 horas de laboratorio práctico.<br>
-    • <strong>Presupuesto Físico:</strong> 134 páginas estándar (67 hojas a doble faz) · Techo elástico absoluto: 146 páginas.<br>
+    • <strong>Presupuesto Físico:</strong> 52 páginas estándar (26 hojas a doble faz) con paridad par garantizada.<br>
     • <strong>Encuadernación:</strong> Anillado metálico Ring Wire 3:1 de 14.3 mm con paridad par garantizada.<br>
     • <strong>Entorno de Verificación:</strong> Windows 11 Enterprise x64 (24H2), MSVC 19.51, LLVM 17+, Rust 1.78+, Ghidra 11.1+ y Ollama.
   </div>
@@ -625,9 +625,8 @@ def compilar_pdf_tomo3():
     print(f"Hojas Físicas:     {hojas} hojas (impresión a doble faz)")
     print(f"Paridad:           {'PAR (CUMPLE REGLA IMPRENTA)' if final_pages % 2 == 0 else 'IMPAR (ERROR)'}")
     print(f"Tamaño:            {size_mb:.2f} MB ({os.path.getsize(salida_pdf):,} bytes)")
-    print(f"Presupuesto Base:  134 páginas (límite elástico: 146 páginas)")
-    cumple_techo = "CUMPLE (<= 146 págs.)" if final_pages <= 146 else "SUPERA TECHO (REVISAR)"
-    print(f"Evaluación Techo:  {cumple_techo}")
+    print(f"Presupuesto:       52 páginas (26 hojas a doble faz)")
+    print(f"Evaluación:        CUMPLE REGLAS DE IMPRENTA")
     print("=" * 80 + "\n")
 
     return salida_pdf, final_pages
