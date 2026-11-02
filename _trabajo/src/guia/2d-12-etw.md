@@ -51,6 +51,8 @@ A diferencia de los proveedores de modo usuario, el kernel de Windows expone una
 | `EVENT_TRACE_FLAG_NETWORK_TCPIP` | `0x00010000` | Conexiones de red TCP/UDP (send, receive, connect, disconnect). |
 | `EVENT_TRACE_FLAG_REGISTRY` | `0x00020000` | Creación, modificación y borrado de claves y valores del Registro. |
 
+*(Nota técnica sobre EnableFlags: Valores hexadecimales canónicos definidos en `evntrace.h` del Windows SDK. Nótese que `EVENT_TRACE_FLAG_DISK_IO` corresponde estrictamente al bit 8 = `0x00000100` / 256 decimal; no debe confundirse con cero).*
+
 ### Control Práctico de la Sesión con `logman`
 ```cmd
 :: Iniciar la captura de kernel a un archivo ETL

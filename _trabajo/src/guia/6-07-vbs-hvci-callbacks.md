@@ -97,6 +97,7 @@ bp ci!CiValidateImageHeader "du poi(@rcx+0x30); gc"
 bp ci!CiValidateImagePages
 
 $$ 3. Breakpoint en la llamada de transición de hipervisor (VtlCall hacia Secure Kernel)
+$$ (Nota técnica: En ci.dll, la rutina nativa que ensambla la transición VtlCall hacia VTL1 se denomina formalmente ci!IvtCallHypervisor)
 bp ci!IvtCallHypervisor
 $$ Al alcanzar ci!IvtCallHypervisor, examinar los argumentos de la llamada:
 $$ RCX = Código de comando VTL1 (ej. 0x17 = SECURE_IMAGE_VALIDATE_PAGES)

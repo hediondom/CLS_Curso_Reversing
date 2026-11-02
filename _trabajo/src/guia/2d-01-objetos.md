@@ -58,16 +58,19 @@ bloc_lab.exe (PID 4312)   Integrity: Medium       ← editor de texto propio de 
 Lectura: proceso propio de integridad **Medium**, con `SeDebugPrivilege` **presente pero apagado** (no está usando debug de otros procesos ahora). Los handles muestran el documento que abriste, su **propia** clave de configuración y un **mutex** de instancia única. En un análisis real, el nombre del mutex o una ruta son **pistas** a corroborar, no evidencia por sí solos.
 
 :::{aviso} Los offsets de `nt!_EPROCESS` cambian entre builds: nunca los fijes
-A diferencia de los primeros campos del PEB, la estructura `_EPROCESS` es opaca y el kernel **reorganiza sus campos entre versiones de Windows**. Un driver en IDA con `mov rax, [rcx+0x4B8]` (Token en Win10 2004–22H2) apunta a otra cosa en Win11 24H2 (Token se corrió a +0x248) o en Win7 (+0x208). En x64:
+A diferencia de los primeros campos del PEB, la estructura _EPROCESS es opaca y el kernel **reorganiza sus campos entre versiones de Windows**. Un controlador que asuma offsets estáticos fijos fallará o provocará Bugchecks al actualizar el sistema operativo (por ejemplo, el desplazamiento de Protection a +0x8FA y de MitigationFlags a +0xA58 en Windows 11 24H2 frente a +0x87A y +0x9D8 en 23H2, o frente a compilaciones históricas de Windows 10 como 1507–1809 donde UniqueProcessId residía en +0x2E0 y Token en +0x358). En x64 (consistente con la Hoja 6 de referencia rápida):
 
-| Campo (`nt!_EPROCESS`) | Win10 1507–1809 | Win10 2004–22H2 / Win11 21H2–23H2 | Win11 24H2+ |
-|---|---|---|---|
-| `UniqueProcessId` | +0x2E0 | +0x440 | +0x1D0 |
-| `ActiveProcessLinks` | +0x2E8 | +0x448 | +0x1D8 |
-| `Token` (`_EX_FAST_REF`) | +0x358 | +0x4B8 | +0x248 |
-| `Protection` (`_PS_PROTECTION`) | +0x6CA | +0x87A | +0x5FA |
+| Campo (
+t!_EPROCESS) | Win10 1507–1809 | Win10 2004–22H2 (Build 19045) | Win11 21H2–23H2 (Build 22631) | Win11 24H2 (Build 26100) |
+|---|---|---|---|---|
+| UniqueProcessId | +0x2E0 | +0x440 | +0x440 | +0x440 |
+| ActiveProcessLinks | +0x2E8 | +0x448 | +0x448 | +0x448 |
+| Token (_EX_FAST_REF) | +0x358 | +0x4B8 | +0x4B8 | +0x4B8 |
+| Protection (_PS_PROTECTION) | +0x6CA | +0x87A | +0x87A | +0x8FA |
+| MitigationFlags / Flags2 | +0x828 | +0x9D0 | +0x9D8 | +0xA58 |
 
-Nunca asumas un offset fijo: verificá el build o corré `dt nt!_EPROCESS UniqueProcessId ActiveProcessLinks Token Protection` contra los símbolos (`.pdb`) de `ntoskrnl.exe` de **esa** máquina.
+Nunca asumas un offset fijo: verificá el build o corré dt nt!_EPROCESS UniqueProcessId ActiveProcessLinks Token Protection MitigationFlags contra los símbolos (.pdb) de 
+toskrnl.exe de **esa** máquina, o utilizá las macros dinámicas #FIELD_OFFSET.
 :::
 
 ## Práctica segura

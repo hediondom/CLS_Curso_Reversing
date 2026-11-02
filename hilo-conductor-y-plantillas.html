@@ -610,7 +610,66 @@ OB_PREOP_CALLBACK_STATUS PreOpenProcess(PVOID RegistrationContext, POB_PRE_OPERA
 <p>Script de Frida que intercepta el compilador JIT de .NET (<code>clrjit.dll!CILJit::compileMethod</code>), volcando el bytecode CIL de cada método en claro en el momento exacto en que es descifrado en memoria viva antes de compilarse a x64.</p>
 
 <h3 id="plantilla-15-auditar-callbacks-wdbg-y-sleigh-minivm-practica-para-6-7-y-2-34">Plantilla 15 · <code>auditar_callbacks.wdbg</code> y <code>sleigh_minivm/</code> (Práctica para 6.7 y 2.34)</h3>
-<p>Herramientas de extensión: script de WinDbg para recorrer y reportar todos los callbacks de creación de procesos (<code>PspCreateProcessNotifyRoutine</code>), callbacks de objetos y telemetría <code>ETWti</code>; y módulo completo de SLEIGH para Ghidra (<code>minivm.ldefs</code>, <code>minivm.pspec</code>, <code>minivm.cspec</code>, <code>minivm.slaspec</code>) para decompilar bytecode virtualizado a C legible.</p>
+<p>Herramientas de extensión: script de WinDbg para recorrer y reportar todos los callbacks de creación de procesos (<code>PspCreateProcessNotifyRoutine</code>), callbacks de objetos y telemetría <code>ETWti</code>; y módulo completo de SLEIGH para Ghidra (<code>minivm.ldefs</code>, <code>minivm.pspec</code>, <code>minivm.cspec</code>, <code>minivm.slaspec</code>) para decompilar bytecode virtualizado a C legible:</p>
+<pre><code class="language-text">$$ auditar_callbacks.wdbg — Script de auditoría de callbacks y telemetría de Kernel en WinDbg KDNET (Lección 6.7)
+$$ Ejecución: $$>&lt;auditar_callbacks.wdbg
+
+.printf "
+========================================================================
+"
+.printf "[+] 1. AUDITORIA DE CALLS EN PspCreateProcessNotifyRoutine (x64)
+"
+.printf "========================================================================
+"
+
+$$ Cada slot es un puntero _EX_FAST_REF (8 bytes); en x64 se desreferencia con máscara &amp; ~0xF
+r $t0 = nt!PspCreateProcessNotifyRoutine
+.for (r $t1 = 0; @$t1 &lt; 0x40; r $t1 = @$t1 + 1) {
+    r $t2 = poi(@$t0 + @$t1 * 8) &amp; 0xfffffffffffffff0
+    .if (@$t2 != 0) {
+        r $t3 = poi(@$t2 + 8)
+        .printf "[PspCreateProcess Slot %02d] Bloque=%p -&gt; Callback=%p : ", @$t1, @$t2, @$t3
+        ln @$t3
+    }
+}
+
+.printf "
+========================================================================
+"
+.printf "[+] 2. AUDITORIA DE CALLBACKS DE OBJETOS (ObRegisterCallbacks sobre PsProcessType)
+"
+.printf "========================================================================
+"
+
+r $t4 = poi(nt!PsProcessType)
+.printf "[*] PsProcessType en: %p
+", @$t4
+$$ En Windows 10/11 x64, CallbackListHead reside en el offset +0xC8 de _OBJECT_TYPE
+!list -t nt!_LIST_ENTRY.Flink -x "r $t5 = @$extret; .printf "[ObCallback: %p] PreOp=%p PostOp=%p : ", @$t5, poi(@$t5+0x28), poi(@$t5+0x30); ln poi(@$t5+0x28)" (@$t4 + 0xc8)
+
+.printf "
+========================================================================
+"
+.printf "[+] 3. AUDITORIA DE TELEMETRIA ETWti (Microsoft-Windows-Threat-Intelligence)
+"
+.printf "========================================================================
+"
+
+r $t6 = poi(nt!EtwThreatIntProvRegHandle)
+.if (@$t6 == 0) {
+    .printf "[-] El proveedor ETWti no se encuentra registrado en este arranque.
+"
+} .else {
+    .printf "[+] Handle de registro ETWti: %p
+", @$t6
+    r $t7 = poi(@$t6 + 0x10)
+    .printf "[+] _ETW_GUID_ENTRY en: %p
+", @$t7
+    dt nt!_ETW_GUID_ENTRY @$t7 ProviderEnableInfo
+}
+.printf "
+[+] Fin de la auditoria de vectores de kernel.
+"</code></pre>
 <aside class="callout nota"><p class="callout-titulo">Volver</p><p><a href="guia/index.html">Mapa del curso</a> · <a href="00_EMPEZAR_AQUI.html">Inicio</a></p></aside>
 </main>
 <footer class="pie">
