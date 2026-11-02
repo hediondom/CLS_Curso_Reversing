@@ -99,5 +99,5 @@ Podés: (1) recuperar nombres de un Go «stripeado» con la pclntab; (2) leer un
 - [2.13 Huella de compilador](02-huella-compilador.html) (identificación) y [2.18 C++ profundo](02-cpp-profundo.html) (vtables y layouts).
 
 :::{nota} Capas de esta lección
-**Contenido observado en CLS:** la identificación de Go/Rust/Delphi incorporada a 2.13 en la revisión de esta edición. **Conocimiento externo (agregado por esta edición):** pclntab/itab, manglado v0, monomorfización, trait objects y layouts, con documentación primaria. **Recomendación editorial:** ejemplos y práctica ilustrativos, sobre binarios propios.
+**Núcleo conceptual:** la identificación de Go/Rust/Delphi incorporada a 2.13 en la revisión de esta edición. **Conocimiento externo (agregado por esta edición):** pclntab/itab, manglado v0, monomorfización, trait objects y layouts, con documentación primaria. **Recomendación editorial:** ejemplos y práctica ilustrativos, sobre binarios propios.
 :::

@@ -123,8 +123,8 @@ Podés: (1) listar módulos con `lm` y leer la CommandLine con `!peb`; (2) clasi
 - Microsoft Learn: [Running 32-bit Applications (WOW64)](https://learn.microsoft.com/en-us/windows/win32/winprog64/running-32-bit-applications), [WOW64 Implementation Details](https://learn.microsoft.com/en-us/windows/desktop/WinProg64/wow64-implementation-details).
 
 - **Conocimiento externo** (páginas concretas): [PEB (winternl)](https://learn.microsoft.com/en-us/windows/win32/api/winternl/ns-winternl-peb), [`lm` (list modules)](https://learn.microsoft.com/en-us/windows-hardware/drivers/debuggercmds/lm--list-loaded-modules-), [`!vadump`](https://learn.microsoft.com/en-us/windows-hardware/drivers/debuggercmds/-vadump) y el [formato PE (características de sección)](https://learn.microsoft.com/en-us/windows/win32/debug/pe-format). *Windows Internals* como referencia general. No se citan versiones ni valores reales.
-- **Tie con CLS:** el PEB (`BeingDebugged`) en [2.15](02-anti-analisis.html); PE, IAT y relocalizaciones en [1.4](01-pe.html) y [2.14](02-pe-fino.html); TLS/SEH en [2.11](02-tls.html).
+- **Fundamentos previos:** el PEB (`BeingDebugged`) en [2.15](02-anti-analisis.html); PE, IAT y relocalizaciones en [1.4](01-pe.html) y [2.14](02-pe-fino.html); TLS/SEH en [2.11](02-tls.html).
 
 :::{nota} Etiquetas
-**Observado en CLS:** PEB y PE/loader de 1.4, 2.11, 2.14, 2.15 (referencia). **Conocimiento externo:** VAD, listas del loader, image mapping/COW, redirección y transición WOW64. **Ejemplo ilustrativo:** las salidas de `lm`, `!peb` y `!vadump`. **Laboratorio verificado:** ninguno en esta edición; la práctica se hace sobre procesos propios en tu VM.
+**Núcleo conceptual:** PEB y PE/loader de 1.4, 2.11, 2.14, 2.15 (referencia). **Conocimiento externo:** VAD, listas del loader, image mapping/COW, redirección y transición WOW64. **Ejemplo ilustrativo:** las salidas de `lm`, `!peb` y `!vadump`. **Laboratorio verificado:** ninguno en esta edición; la práctica se hace sobre procesos propios en tu VM.
 :::

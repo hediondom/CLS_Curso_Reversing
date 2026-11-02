@@ -138,5 +138,5 @@ Diseñar o desplegar políticas de App Control, la arquitectura interna de VBS y
 - Microsoft Learn, estado y firma: [Enable memory integrity (incluye Win32_DeviceGuard)](https://learn.microsoft.com/en-us/windows/security/hardware-security/enable-virtualization-based-protection-of-code-integrity), [Driver Signing Policy](https://learn.microsoft.com/en-us/windows-hardware/drivers/install/kernel-mode-code-signing-policy--windows-vista-and-later-), [The TESTSIGNING boot configuration option](https://learn.microsoft.com/en-us/windows-hardware/drivers/install/the-testsigning-boot-configuration-option), [Secure Boot](https://learn.microsoft.com/en-us/windows-hardware/design/device-experiences/oem-secure-boot).
 
 :::{nota} Etiquetas
-**Observado en CLS:** mitigaciones de user mode como contexto. **Conocimiento externo:** política de firma, VBS/HVCI y lectura de su estado, blocklist, Secure Boot y App Control. **Ejemplo ilustrativo:** matrices ficticias. **Laboratorio verificado:** no; consulta en solo lectura.
+**Núcleo conceptual:** mitigaciones de user mode como contexto. **Conocimiento externo:** política de firma, VBS/HVCI y lectura de su estado, blocklist, Secure Boot y App Control. **Ejemplo ilustrativo:** matrices ficticias. **Laboratorio verificado:** no; consulta en solo lectura.
 :::

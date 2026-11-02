@@ -176,5 +176,5 @@ Si podés predecir los flags de una operación antes de ejecutarla, estás listo
 - {{src:CLS_resultados_intermedios/transcripciones/extraidos/Videos y material adicional Ingenieria Inversa/Videos_Video5_Video5.txt|Videos y material adicional, Video 5}} — registros de 32 bits y prefijo `E` en el curso de MASM32.
 
 :::{nota} Capas de esta lección
-**Contenido observado en CLS:** la definición de registro, el ejemplo `EAX = 0x008FFB18` y los ejemplos de flags de los capítulos 03 y 04. **Conocimiento externo:** la tabla de registros de 64 bits y la semántica exacta de `CF`/`OF`. **Recomendación editorial:** los ejercicios y la advertencia sobre el borrado de la parte alta en x64.
+**Núcleo conceptual:** la definición de registro, el ejemplo `EAX = 0x008FFB18` y los ejemplos de flags de los capítulos 03 y 04. **Conocimiento externo:** la tabla de registros de 64 bits y la semántica exacta de `CF`/`OF`. **Recomendación editorial:** los ejercicios y la advertencia sobre el borrado de la parte alta en x64.
 :::

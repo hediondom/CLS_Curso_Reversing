@@ -18,7 +18,7 @@ Por decisión de alcance, la guía cubre **únicamente binarios de Windows** (PE
 
 ## Una guía también se define por lo que no incluye
 
-El corpus de CLS tiene material de kernel, protectores comerciales, exploiting y malware. No todo se convierte en lección. Algunos temas quedan fuera por tres razones:
+El corpus de reversing tiene material de kernel, protectores comerciales, exploiting y malware. No todo se convierte en lección. Algunos temas quedan fuera por tres razones:
 
 1. **No hay material revisado.** Hay contenedores que no se abrieron; una mención no es contenido.
 2. **El riesgo no es proporcional al beneficio para un principiante.** Enseñar a manipular kernel o protectores sin bases sólidas produce accidentes, no aprendizaje.
@@ -35,7 +35,7 @@ Para abordar kernel con responsabilidad hacen falta, como mínimo:
 - Un laboratorio con snapshots y, preferentemente, hardware o VM descartable.
 - Un objetivo defensivo claro: analizar un driver, entender una mitigación, revisar una vulnerabilidad con permiso.
 
-En CLS no hay un curso de kernel leído. El mapa menciona material de exploiting y de drivers, pero no se verificó. Esta guía no lo convierte en una lección de principiante.
+En las guías tradicionales de reversing de user-mode no suele haber un módulo estructurado de kernel. El mapa menciona material de exploiting y de drivers, pero no se verificó. Esta guía no lo convierte en una lección de principiante.
 
 ## Protectores comerciales
 
@@ -67,7 +67,7 @@ Si tu objetivo es la seguridad ofensiva profesional, el camino incluye:
 | Vulnerabilidades | Concepto y mitigación en laboratorio propio; exploit **fuera de alcance** |
 | Kernel/drivers (Windows) | Rama [optativa Etapa 6](etapa-6.html): drivers propios/didácticos en VM descartable; no rootkits, BYOVD, explotación ni evasión de mitigaciones |
 | Protectores comerciales | **Fuera de alcance** por marco legal y ético |
-| Automatización | Rama con IDAPython/Ghidra; capítulos CLS **pendientes** |
+| Automatización | Rama con IDAPython/Ghidra; módulos avanzados **pendientes** |
 
 ## Práctica
 
@@ -110,5 +110,5 @@ Si llegaste hasta acá con las etapas 0 a 4 completas, tenés una base real de r
 - {{src:CLS_Guia/FUENTES_Y_LIMITES.md|FUENTES_Y_LIMITES.md}} — criterios de exclusión de esta edición.
 
 :::{nota} Capas de esta lección
-**Contenido observado en CLS:** la existencia de los recursos y su clasificación en el mapa. **Conocimiento externo:** requisitos de kernel y explotación responsable. **Recomendación editorial:** los límites y la tabla de estado.
+**Núcleo conceptual:** la existencia de los recursos y su clasificación en el mapa. **Conocimiento externo:** requisitos de kernel y explotación responsable. **Recomendación editorial:** los límites y la tabla de estado.
 :::

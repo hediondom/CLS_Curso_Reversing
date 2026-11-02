@@ -10,7 +10,7 @@
 <body>
 <a class="salto" href="#contenido">Saltar al contenido</a>
 <header class="cabecera">
-  <div class="marca"><a href="../00_EMPEZAR_AQUI.html">CLS · Curso de reversing</a> <span class="edicion">edición 5 · 27/10/2026</span></div>
+  <div class="marca"><a href="../00_EMPEZAR_AQUI.html">Curso de Reversing en Windows</a> <span class="edicion">edición 5 · 27/10/2026</span></div>
   <nav class="principal" aria-label="Navegación principal">
     <a href="../00_EMPEZAR_AQUI.html">Inicio</a>
     <a href="../guia/index.html">Curso</a>
@@ -26,9 +26,9 @@
 <aside class="callout nota"><p class="callout-titulo">Objetivo de la lección</p><p>Al terminar vas a poder explicar qué es el CLR, qué contiene un ensamblado .NET, en qué se diferencia el código administrado del nativo y por qué un decompilador puede reconstruir casi el código fuente, y reconocer los límites de Native AOT y C++/CLI mixto.</p></aside>
 <p><strong>Prerrequisitos:</strong> Etapa 2 completa. <strong>Duración sugerida:</strong> 3 horas. Estimación aproximada.</p>
 <h2 id="una-advertencia-sobre-las-fuentes">Una advertencia sobre las fuentes</h2>
-<p>En CLS <strong>no hay un curso de .NET leído</strong>. Lo que existe es:</p>
+<p>En los cursos clásicos de reversing nativo <strong>rara vez se abordaba el runtime de .NET</strong>. Lo que existe es:</p>
 <ul><li>El video 38 de «Videos y material adicional», que explica el código intermedio (MSIL) y por qué OllyDbg no alcanza para analizarlo (<a class="fuente" href="../../CLS_resultados_intermedios/transcripciones/extraidos/Videos%20y%20material%20adicional%20Ingenieria%20Inversa/Videos_Video38_Video38.txt">Videos y material adicional, Video 38</a>, 00:00:16).</li><li>El video 40, que usa .NET Reflector para decompilar un binario VB.NET y ver un formulario, un botón y una caja de texto (<a class="fuente" href="../../CLS_resultados_intermedios/transcripciones/extraidos/Videos%20y%20material%20adicional%20Ingenieria%20Inversa/Videos_Video40_Video40.txt">Videos y material adicional, Video 40</a>, 00:03:20).</li><li>Títulos de la colección <code>Teorias_Numeradas</code> que mencionan .NET/dnSpy, <strong>sin contenido leído</strong>: son contenedores <code>.zip</code> que no se abrieron.</li></ul>
-<p>Por eso esta etapa combina <strong>contenido observado</strong> (los dos videos) con <strong>conocimiento externo</strong> y <strong>recomendación editorial</strong>. No hay una ficha de un tutorial .NET de CLS porque no se encontró uno legible.</p>
+<p>Por eso esta etapa combina <strong>contenido observado</strong> (los dos videos) con <strong>conocimiento externo</strong> y <strong>recomendación editorial</strong>. No hay una ficha de un tutorial .NET de reversing porque no se encontró uno legible.</p>
 <h2 id="qué-es-net">Qué es .NET</h2>
 <p>.NET es una plataforma de ejecución. Un programa escrito en C#, VB.NET o F# no se compila directamente a código máquina: se compila a un lenguaje intermedio llamado <strong>IL</strong> (o <strong>MSIL</strong>, <em>Microsoft Intermediate Language</em>), y se guarda en un <strong>ensamblado</strong> (un <code>.exe</code> o <code>.dll</code>) junto con <strong>metadatos</strong>.</p>
 <p>Cuando ejecutás el programa, el <strong>CLR</strong> (<em>Common Language Runtime</em>) toma el IL, lo compila a código nativo con el <strong>JIT</strong> (<em>just-in-time compiler</em>) y lo ejecuta. El resultado es código máquina, pero generado en tiempo de ejecución.</p>
@@ -111,7 +111,7 @@ dotnet build</code></pre>
 <h2 id="fuentes-de-esta-lección">Fuentes de esta lección</h2>
 <ul><li>Microsoft Learn: <a href="https://learn.microsoft.com/en-us/dotnet/core/deploying/native-aot/" rel="noopener" target="_blank">Native AOT deployment</a>, <a href="https://learn.microsoft.com/en-us/cpp/dotnet/initialization-of-mixed-assemblies" rel="noopener" target="_blank">Initialization of mixed assemblies (C++/CLI)</a>.</li></ul>
 <ul><li><a class="fuente" href="../../CLS_resultados_intermedios/transcripciones/extraidos/Videos%20y%20material%20adicional%20Ingenieria%20Inversa/Videos_Video38_Video38.txt">Videos y material adicional, Video 38</a> — código intermedio, MSIL, VB/C# y límites de OllyDbg.</li><li><a class="fuente" href="../../CLS_resultados_intermedios/transcripciones/extraidos/Videos%20y%20material%20adicional%20Ingenieria%20Inversa/Videos_Video40_Video40.txt">Videos y material adicional, Video 40</a> — .NET Reflector sobre un binario VB.NET.</li><li><a class="fuente" href="../../CLS_resultados_intermedios/teorias_numeradas_por_etapa.csv">teorias_numeradas_por_etapa.csv</a> — títulos con .NET/dnSpy, <strong>pendientes de revisar</strong> (contenedores no abiertos).</li></ul>
-<aside class="callout nota"><p class="callout-titulo">Capas de esta lección</p><p><strong>Contenido observado en CLS:</strong> la explicación del video 38 y el uso de .NET Reflector en el video 40. <strong>Conocimiento externo:</strong> CLR, JIT, metadatos, herramientas actuales, Native AOT (carga dinámica, reflexión y trimming) y ensamblados mixtos C++/CLI. <strong>Recomendación editorial:</strong> el ejemplo con el SDK y la advertencia sobre dnSpy.</p></aside>
+<aside class="callout nota"><p class="callout-titulo">Capas de esta lección</p><p><strong>Núcleo conceptual:</strong> la explicación del video 38 y el uso de .NET Reflector en el video 40. <strong>Conocimiento externo:</strong> CLR, JIT, metadatos, herramientas actuales, Native AOT (carga dinámica, reflexión y trimming) y ensamblados mixtos C++/CLI. <strong>Recomendación editorial:</strong> el ejemplo con el SDK y la advertencia sobre dnSpy.</p></aside>
 
 <aside class="ampliacion-ext">
 <p class="callout-titulo">Ampliación editorial basada en fuentes externas — Cómo distinguir Single-File Bundle y ReadyToRun (R2R) frente a Native AOT en .NET 6/8/9+</p>

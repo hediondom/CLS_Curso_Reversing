@@ -194,5 +194,5 @@ Si tu informe puede repetirlo otra persona sin preguntarte nada, está listo. Si
 - {{src:CLS_resultados_intermedios/transcripciones/extraidos/Reversing desde cero (Ricardo y Solid)/Ricardo Narvaja y Solid - Reversing desde cero_15 Ejercicio 2 - Análisis estático_15 Ejercicio 2 - Análisis estático.txt|Reversing desde cero, cap. 15}} — valores y confirmación que alimentan el informe de ejemplo.
 
 :::{nota} Capas de esta lección
-**Contenido observado en CLS:** el método de los capítulos 11 y 15 y el uso de hashes del inventario. **Conocimiento externo:** estructura de informes técnicos y divulgación responsable. **Recomendación editorial:** la plantilla ampliada, la tabla de evidencia y el informe de ejemplo.
+**Núcleo conceptual:** el método de los capítulos 11 y 15 y el uso de hashes del inventario. **Conocimiento externo:** estructura de informes técnicos y divulgación responsable. **Recomendación editorial:** la plantilla ampliada, la tabla de evidencia y el informe de ejemplo.
 :::

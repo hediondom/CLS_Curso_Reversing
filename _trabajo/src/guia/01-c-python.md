@@ -1,6 +1,6 @@
 ---
 title: "Etapa 1 · C y Python mínimos para analizar"
-description: "El subconjunto de C y Python que necesitás para escribir programas de práctica y herramientas pequeñas, con una advertencia sobre el material de CLS."
+description: "El subconjunto de C y Python que necesitás para escribir programas de práctica y herramientas pequeñas, con una advertencia sobre el material de reversing."
 etapa: "Etapa 1 · Fundamentos"
 ---
 
@@ -12,7 +12,7 @@ Al terminar vas a poder leer y escribir programas chicos en C (variables, condic
 
 **Prerrequisitos:** Etapa 0 y las lecciones anteriores de la Etapa 1. **Duración sugerida:** 6 a 8 horas. Estimación aproximada.
 
-## Una advertencia honesta sobre el material de CLS
+## Una advertencia honesta sobre los materiales tradicionales
 
 La carpeta `Python ISO video tutes` parece un curso de Python, pero **no lo es**. Las 55 transcripciones son un curso de **lógica y fundamentos de programación** dictado por Daniel Bermúdez, basado en pseudocódigo y con ejemplos en Basic, Pascal y C. En las transcripciones no hay una sola línea de Python ejecutable: ni `import`, ni `print(...)`, ni `raw_input`. El propio autor anuncia una segunda parte con Python "puro" que **no está en la carpeta**. El material cita Python 2.5.1 como versión vigente en abril de 2007 y usa `print hola` como sentencia, sintaxis que Python 3 ya no acepta.
 
@@ -24,7 +24,7 @@ El material está listado en {{src:CLS_resultados_intermedios/transcripciones/ex
 
 ## Cómo aprender Python de verdad (recursos externos)
 
-Como el corpus CLS no enseña Python moderno, esta guía completa el camino con **cursos y tutoriales externos**. No son material del grupo; son **recomendación editorial**, gratuitos o con parte gratuita, y actuales. Verificá siempre el enlace antes de usarlo.
+Como el corpus tradicional no enseña Python moderno, esta guía completa el camino con **cursos y tutoriales externos**. No son material del grupo; son **recomendación editorial**, gratuitos o con parte gratuita, y actuales. Verificá siempre el enlace antes de usarlo.
 
 | Recurso | Qué es | Para quién |
 |---|---|---|
@@ -36,8 +36,8 @@ Como el corpus CLS no enseña Python moderno, esta guía completa el camino con 
 
 **La ruta mínima que necesitás para esta guía** (no hace falta dominar todo Python): tipos y variables → `str` vs `bytes` → listas y diccionarios → `if`/`for`/`while` → funciones y módulos (`import`) → leer y escribir archivos **binarios** → el módulo `struct` para desempaquetar enteros. Con eso ya podés escribir las herramientas que usa el resto del curso.
 
-:::{nota} El puente con el curso de lógica de CLS
-Lo que el "Python ISO" de CLS sí te deja —secuencia, decisión, ciclos, arreglos, funciones— es el prerrequisito mental. Si lo mirás, usalo para **la lógica**, y aprendé la **sintaxis de Python 3** con los recursos de arriba. Es la combinación que te lleva al siguiente tema: scripts que leen binarios.
+:::{nota} El puente con la lógica de programación
+Lo que los tutoriales tradicionales de lógica sí te dejan —secuencia, decisión, ciclos, arreglos, funciones— es el prerrequisito mental. Si lo mirás, usalo para **la lógica**, y aprendé la **sintaxis de Python 3** con los recursos de arriba. Es la combinación que te lleva al siguiente tema: scripts que leen binarios.
 :::
 
 ## El subconjunto de C que vas a leer en un debugger
@@ -167,7 +167,7 @@ else:
 Compará las dos versiones: en C el `scanf` recibe una dirección; en Python `input()` devuelve un string y `int()` lo convierte. En C la condición se escribe con `||` y `&&`; en Python, con `or` y `and`. La lógica es la misma.
 
 :::{nota} Python 2 vs Python 3
-Si encontrás material viejo con `print "hola"` o `raw_input`, es Python 2. Hoy se usa Python 3: `print("hola")`, `input()`, divisiones con `/` que devuelven float y `//` para entero. El curso de CLS es de esa época; no copies esa sintaxis.
+Si encontrás material viejo con `print "hola"` o `raw_input`, es Python 2. Hoy se usa Python 3: `print("hola")`, `input()`, divisiones con `/` que devuelven float y `//` para entero. El curso de reversing es de esa época; no copies esa sintaxis.
 :::
 
 ## Hacia dónde sigue este camino
@@ -204,7 +204,7 @@ Porque cada desplazamiento a la izquierda multiplica por 2. Dos desplazamientos 
 **4. ¿Python sirve para analizar un `.exe`?**
 Sí, como herramienta: leer bytes, parsear cabeceras, calcular hashes, automatizar. No es el lenguaje del binario que analizás, salvo que el programa esté hecho en Python y empaquetado con un generador de ejecutables.
 
-**5. ¿El curso de Python de CLS enseña Python?**
+**5. ¿Los tutoriales tradicionales de lógica enseñan Python moderno?**
 No. Enseña lógica de programación con pseudocódigo y ejemplos en Basic, Pascal y C. Es útil como base, pero no reemplaza un curso de Python.
 
 ## Antes de avanzar
@@ -214,7 +214,7 @@ Tenés que poder:
 - Leer un programa en C de 20 líneas y decir qué hace.
 - Escribir, compilar y ejecutar un programa propio en C.
 - Leer y escribir un archivo binario en Python y calcular su hash.
-- Explicar por qué el material de Python de CLS no es un curso de Python.
+- Explicar por qué los tutoriales tradicionales de lógica no son un curso de Python moderno.
 
 :::{nota} Puerta de salida de la Etapa 1
 Con esto terminás los fundamentos. Si podés escribir tus propios binarios, ya tenés con qué practicar todo lo que sigue sin depender de software ajeno.
@@ -229,5 +229,5 @@ Con esto terminás los fundamentos. Si podés escribir tus propios binarios, ya 
 - {{src:CLS_fuentes_externas/github/apuromafo_Crackslatinos/C Y REVERSING|C Y REVERSING (contenedor)}} — material de C del proyecto, **pendiente de revisar**: solo se verificó su existencia y sus dos archivos `.rar`.
 
 :::{nota} Capas de esta lección
-**Contenido observado en CLS:** la lógica del programa del capítulo 15 y el contenido real de las transcripciones de Python ISO. **Conocimiento externo:** sintaxis de C y Python 3, compilación, hash, `struct`, y los recursos de aprendizaje externos (Tutorial oficial, Automate the Boring Stuff, Real Python, etc.). **Recomendación editorial:** los programas de práctica, la corrección sobre el curso de Python de CLS y la ruta de Python hacia `pefile`/`capstone`.
+**Núcleo conceptual:** la lógica del programa del capítulo 15 y el contenido real de las transcripciones de Python ISO. **Conocimiento externo:** sintaxis de C y Python 3, compilación, hash, `struct`, y los recursos de aprendizaje externos (Tutorial oficial, Automate the Boring Stuff, Real Python, etc.). **Recomendación editorial:** los programas de práctica, la corrección sobre el curso de Python de reversing y la ruta de Python hacia `pefile`/`capstone`.
 :::

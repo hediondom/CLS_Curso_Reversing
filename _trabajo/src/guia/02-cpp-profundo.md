@@ -220,5 +220,5 @@ La reconstrucción completa de layouts con herencia virtual (vbtable, `vtordisp`
 - [Itanium C++ ABI](https://itanium-cxx-abi.github.io/cxx-abi/abi.html) (vtables, RTTI y mangling) y [Itanium C++ ABI: Exception Handling](https://itanium-cxx-abi.github.io/cxx-abi/abi-eh.html).
 
 :::{nota} Capas de esta lección
-**Contenido observado en CLS:** la vtable y las dos estructuras del capítulo 33 (binario de 32 bits). **Conocimiento externo:** RTTI (`vtable[-1]`, Complete Object Locator con RVA en x64, TypeDescriptor), SSO de `std::string`, layout de los contenedores STL de MSVC handlers de excepciones de C++, herencia múltiple/virtual en MSVC y contraste con el ABI Itanium. **Recomendación editorial:** el ejemplo ilustrativo fijado a MSVC x64 y la práctica con binario propio (sin laboratorio compilado con hashes en esta edición).
+**Núcleo conceptual:** la vtable y las dos estructuras del capítulo 33 (binario de 32 bits). **Conocimiento externo:** RTTI (`vtable[-1]`, Complete Object Locator con RVA en x64, TypeDescriptor), SSO de `std::string`, layout de los contenedores STL de MSVC handlers de excepciones de C++, herencia múltiple/virtual en MSVC y contraste con el ABI Itanium. **Recomendación editorial:** el ejemplo ilustrativo fijado a MSVC x64 y la práctica con binario propio (sin laboratorio compilado con hashes en esta edición).
 :::

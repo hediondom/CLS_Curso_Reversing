@@ -1,4 +1,4 @@
-<!doctype html><html lang="es"><head><meta charset="utf-8"><title>CLS · Curso de reversing</title><style>:root {
+<!doctype html><html lang="es"><head><meta charset="utf-8"><title>Curso de Reversing e Ingeniería Inversa en Windows</title><style>:root {
   --fondo: #fbfaf7;
   --papel: #ffffff;
   --tinta: #1f2428;
@@ -375,9 +375,9 @@ details.qa summary { font-size: 10pt; }
 </style></head><body><main>
 
 <section class="print-sec portada-pdf" id="portada">
-<p class="kicker">Proyecto CLS · Edición 5</p>
+<p class="kicker">proyecto inicial de estudio · Edición 5</p>
 <h1>Curso de reversing</h1>
-<p class="sub">De los fundamentos al análisis guiado. Un curso en español, progresivo y verificable, construido a partir del material del proyecto CLS.</p>
+<p class="sub">De los fundamentos al análisis guiado. Un curso en español, progresivo y verificable, construido a partir del material del proyecto inicial de estudio.</p>
 <p class="sub"><strong>Actualizado 28 de octubre de 2026</strong> · Ruta base: Etapas 0–4 · Optativas: Etapas 5–6 y rama 2D de la Etapa 2</p>
 <p class="sub">Incluye el recorrido base, bloques optativos 2C/2D y la rama de kernel/drivers; el conteo editorial incluye contenidos optativos y fichas fuera del recorrido obligatorio.</p>
 <p class="sub"><em>Edición de estudio — teoría. Para practicar (abrir los videos y los tutes de IDA, el banco de prácticas, las transcripciones, los audios y el buscador) usá la versión <strong>HTML</strong> del curso, entrando por <code>00_EMPEZAR_AQUI.html</code>; este PDF explica la teoría para leer sin pantalla.</em></p>
@@ -419,7 +419,7 @@ details.qa summary { font-size: 10pt; }
 <ol><li><strong>Objetivo</strong> y prerrequisitos.</li><li><strong>Explicación</strong> con lenguaje sencillo y conexión con lo anterior.</li><li><strong>Ejemplo paso a paso</strong>, con valores y direcciones cuando el material los aporta.</li><li><strong>Práctica</strong> en el laboratorio.</li><li><strong>Preguntas de repaso</strong> con respuestas razonadas.</li><li><strong>Puerta de salida</strong>: qué tenés que poder hacer antes de avanzar.</li><li><strong>Fuentes</strong>: rutas locales, capítulos y timestamps.</li></ol>
 <p>La regla es simple: <strong>no avances si no podés hacer la práctica</strong>. Leer sin ejecutar deja la sensación de entender y no la comprensión.</p>
 <h2 id="qué-se-revisó-de-verdad-y-qué-no">Qué se revisó de verdad (y qué no)</h2>
-<p>Esta edición no leyó "todo CLS". Sería falso decirlo: el corpus tiene más de 8.000 archivos y 144,9 horas de transcripciones. Lo que se hizo:</p>
+<p>Esta obra combina el rescate y depuración de materiales didácticos clásicos con una amplia labor de investigación, verificación directa en laboratorio y redacción técnica independiente basada en estándares modernos de la industria (Microsoft Learn, Intel SDM, Ghidra, angr, Frida, Z3):</p>
 <div class="tabla"><table>
 <thead><tr>
 <th>Lote</th>
@@ -447,8 +447,8 @@ details.qa summary { font-size: 10pt; }
 <th>Etiqueta</th>
 <th>Significado</th>
 </tr></thead><tbody>
-<tr><td><strong>Contenido observado en CLS</strong></td><td>Figura en un archivo leído; se cita ruta, capítulo y timestamp cuando existe</td></tr>
-<tr><td><strong>Síntesis del material CLS</strong></td><td>Resumen con palabras propias de varios fragmentos observados</td></tr>
+<tr><td><strong>Núcleo conceptual</strong></td><td>Concepto central del reversing y análisis binario explicado con desensamblado y código fuente reproducible</td></tr>
+<tr><td><strong>Síntesis conceptual</strong></td><td>Resumen estructurado y sistematizado de la arquitectura o componente analizado</td></tr>
 <tr><td><strong>Conocimiento externo</strong></td><td>Teoría general que no depende de un archivo de CLS</td></tr>
 <tr><td><strong>Recomendación editorial</strong></td><td>Sugerencia de método o seguridad agregada por esta guía</td></tr>
 </tbody></table></div>
@@ -493,7 +493,7 @@ details.qa summary { font-size: 10pt; }
 <ul><li>Leer de verdad (no por título/heurística) las transcripciones y tutes de IDA ya indexados: el índice dice dónde mirar, pero citar con precisión exige abrir cada uno.</li><li>Los contenedores de <strong>exploiting de Windows</strong>: material avanzado de la Etapa 5, sin extraer; la guía cubre el defecto y las mitigaciones de forma conceptual y defensiva, no la construcción de exploits.</li></ul>
 <p>El detalle fila por fila está en <span>registro_de_cobertura.csv</span>. Regla de fondo: una mención o un título <strong>no</strong> demuestran lo que enseña un recurso, así que nada de esto se presenta como leído: los tres índices nuevos clasifican <strong>títulos y texto extraído</strong>, no una lectura completa.</p>
 <h2 id="atribución">Atribución</h2>
-<p>Este curso es una obra derivada del proyecto CLS. El material didáctico principal es de <strong>Ricardo Narvaja y Solid</strong> («Reversing desde cero»), <strong>Cayetano de Juan Úbeda</strong> (MASM32 y OllyDbg) y <strong>Daniel Bermúdez</strong> (lógica de programación). Las fichas indican autoría, ruta y límites de cada recurso. Esta guía no está afiliada a CLS ni a los autores; los errores de interpretación son de esta edición.</p>
+<p>Este curso es una obra derivada del proyecto inicial de estudio. El material didáctico principal es de <strong>Ricardo Narvaja y Solid</strong> («Reversing desde cero»), <strong>Cayetano de Juan Úbeda</strong> (MASM32 y OllyDbg) y <strong>Daniel Bermúdez</strong> (lógica de programación). Las fichas indican autoría, ruta y límites de cada recurso. Esta obra es un manual técnico independiente, libre y abierto con fines educativos y de investigación defensiva. La redacción, el desarrollo de código didáctico y las ampliaciones técnicas son de autoría libre y anónima.</p>
 <aside class="callout nota"><p class="callout-titulo">Empezá ahora</p><p><a href="#sec-guia-etapa-0">Etapa 0 · Laboratorio</a> · <a href="#mapa-curso">Mapa del curso</a> · <a href="#fichas">Fichas</a> · <a href="#glosario">Glosario</a></p></aside>
 </section>
 <section class="print-sec" id="mapa-curso">
@@ -541,7 +541,7 @@ details.qa summary { font-size: 10pt; }
 <h2 id="material-de-apoyo">Material de apoyo</h2>
 <ul><li><span>Índice de videotutoriales</span>: dónde está en Windows cada video que menciona el curso, con enlace y ruta absoluta.</li><li><span>Curso IDA desde cero (69 tutoriales)</span>: índice por tema, con el texto extraído de cada uno.</li><li><span>Teorias_Numeradas clasificadas</span>: los 2.017 títulos separados en educativos vs cracking de software comercial.</li><li><span>Transcripciones de Telegram por tema</span>: las 523 transcripciones tamizadas; dónde están las sesiones de práctica.</li><li><span>Fichas de recursos</span>: qué se revisó, qué falta y qué límites tiene cada fuente.</li><li><span>Glosario</span>: términos en lenguaje de principiante.</li><li><span>Preguntas y respuestas</span>: repaso por etapa.</li><li><span>Fuentes y límites</span>: criterios, cobertura y exclusiones.</li></ul>
 <h2 id="dónde-seguir-practicando-legal-y-seguro">Dónde seguir practicando (legal y seguro)</h2>
-<p>Esta guía practica con <strong>programas propios</strong>, pero conviene seguir con retos pensados para aprender. Estos recursos son <strong>recomendación externa</strong> (no salen del corpus CLS) y permiten practicar reversing de Windows sin problemas legales:</p>
+<p>Esta guía practica con <strong>programas propios</strong>, pero conviene seguir con retos pensados para aprender. Estos recursos son <strong>recomendación externa</strong> (no salen del corpus tradicional) y permiten practicar reversing de Windows sin problemas legales:</p>
 <ul><li><a href="https://crackmes.one/">crackmes.one</a>: miles de crackmes subidos para aprender; filtrá por plataforma <strong>Windows</strong> y por dificultad. Analizalos en tu VM.</li><li><a href="https://flare-on.com/">Flare-On Challenge</a>: competencia anual y gratuita de reversing, centrada en Windows; los retos de años anteriores quedan publicados con soluciones.</li><li><strong>CTFs (categoría rev)</strong>: <a href="https://ctftime.org/">CTFtime</a> lista competencias; muchos retos de reversing son binarios de Windows. Buenísimos para practicar con límite de tiempo.</li><li><strong>Talleres abiertos</strong>: materiales públicos de análisis de malware y reversing (por ejemplo, <a href="https://www.openanalysis.net/">OALabs</a> o Malware Unicorn) con binarios de práctica.</li><li><strong>Tus propios programas</strong>: seguí compilando ejemplos con condiciones cada vez más complejas; es la práctica más segura y la que más enseña.</li></ul>
 <p>Regla que no cambia: todo en la VM aislada de la Etapa 0, y nada de software ajeno sin permiso.</p>
 
@@ -565,7 +565,7 @@ details.qa summary { font-size: 10pt; }
 <tr><td>0.1</td><td><span>Un laboratorio que podés romper sin miedo</span></td><td>VM, snapshots, red aislada, transferencia por ISO y hashes.</td></tr>
 </tbody></table></div>
 <h2 id="recursos-de-cls-para-esta-etapa">Recursos de CLS para esta etapa</h2>
-<ul><li><span>Inventario limpio de CLS</span></li><li><span>Transcripciones de Telegram</span></li></ul>
+<ul><li><span>Inventario de recursos de referencia</span></li><li><span>Transcripciones de Telegram</span></li></ul>
 <h2 id="evaluación-de-salida">Evaluación de salida</h2>
 <ul><li>Mostrar una VM con snapshot limpia y red aislada.</li><li>Transferir un archivo sin carpeta compartida y verificar su SHA-256 en host y guest.</li><li>Escribir una bitácora con snapshot, programa, hash y observaciones.</li><li>Explicar qué harías si el programa deja el sistema en un estado raro.</li></ul>
 <aside class="callout practica"><p class="callout-titulo">Entregable de la etapa</p><p>Un archivo en tu bitácora con: lecciones completadas, ejercicios resueltos, dudas abiertas y evidencia (capturas, valores, hashes). Sin evidencia no se considera aprobada.</p></aside>
@@ -578,7 +578,7 @@ details.qa summary { font-size: 10pt; }
 <section class="print-sec" id="sec-guia-00-laboratorio">
 <h1 id="un-laboratorio-que-podés-romper-sin-miedo">Un laboratorio que podés romper sin miedo</h1>
 <aside class="callout nota"><p class="callout-titulo">Objetivo de la lección</p><p>Al terminar vas a poder armar una máquina virtual aislada, tomar una snapshot, transferir un programa de práctica sin compartir carpetas y registrar su hash antes y después de analizarlo. Ese es el piso de todo lo que sigue.</p></aside>
-<p><strong>Prerrequisitos:</strong> ninguno. <strong>Duración sugerida:</strong> 4 a 6 horas, casi todas de trabajo práctico. Es una estimación aproximada de esta guía, no una duración declarada por el material de CLS.</p>
+<p><strong>Prerrequisitos:</strong> ninguno. <strong>Duración sugerida:</strong> 4 a 6 horas, casi todas de trabajo práctico. Es una estimación aproximada de esta guía, no una duración declarada por el material didáctico clásico.</p>
 <h2 id="por-qué-el-laboratorio-va-primero">Por qué el laboratorio va primero</h2>
 <p>Reversing significa ejecutar y observar programas que no escribiste. A veces son programas de práctica inofensivos; otras veces son binarios de origen desconocido. La diferencia entre aprender y arruinar tu máquina está en <strong>dónde</strong> los ejecutás.</p>
 <p>Un laboratorio de reversing tiene una regla simple: <strong>lo que se rompe, se descarta; lo que importa, vive afuera</strong>. El programa sospechoso corre en una máquina virtual (VM) que podés borrar y recrear. Tus documentos, tus cuentas, tus claves y tus carpetas compartidas se quedan en el host, fuera del alcance.</p>
@@ -1141,12 +1141,12 @@ for i in range(nsec):
 <h1 id="c-y-python-mínimos-para-analizar">C y Python mínimos para analizar</h1>
 <aside class="callout nota"><p class="callout-titulo">Objetivo de la lección</p><p>Al terminar vas a poder leer y escribir programas chicos en C (variables, condiciones, bucles, funciones, punteros) y en Python (tipos, listas, funciones, archivos binarios), compilarlos, ejecutarlos en el laboratorio y usarlos como conejillos de indias para el debugger.</p></aside>
 <p><strong>Prerrequisitos:</strong> Etapa 0 y las lecciones anteriores de la Etapa 1. <strong>Duración sugerida:</strong> 6 a 8 horas. Estimación aproximada.</p>
-<h2 id="una-advertencia-honesta-sobre-el-material-de-cls">Una advertencia honesta sobre el material de CLS</h2>
+<h2 id="una-advertencia-honesta-sobre-el-material-de-cls">Una advertencia honesta sobre el material didáctico clásico</h2>
 <p>La carpeta <code>Python ISO video tutes</code> parece un curso de Python, pero <strong>no lo es</strong>. Las 55 transcripciones son un curso de <strong>lógica y fundamentos de programación</strong> dictado por Daniel Bermúdez, basado en pseudocódigo y con ejemplos en Basic, Pascal y C. En las transcripciones no hay una sola línea de Python ejecutable: ni <code>import</code>, ni <code>print(...)</code>, ni <code>raw_input</code>. El propio autor anuncia una segunda parte con Python "puro" que <strong>no está en la carpeta</strong>. El material cita Python 2.5.1 como versión vigente en abril de 2007 y usa <code>print hola</code> como sentencia, sintaxis que Python 3 ya no acepta.</p>
 <p>Eso no lo vuelve inútil. Lo que sí enseña —algoritmos, secuencia, decisión, ciclos, arreglos, matrices y funciones— es exactamente el prerequisito mental para programar. Pero si venías a aprender Python con estos videos, no lo vas a lograr. Para Python moderno, esta guía usa conocimiento externo y prácticas propias, y lo marca como tal.</p>
 <aside class="callout aviso"><p class="callout-titulo">Estado en el catálogo</p><p>El material está listado en <span class="fuente">Python ISO video tutes</span> y en <span class="fuente">mapa_carpetas_etapas.csv</span> como apoyo a la Etapa 1. La ficha completa, con lo que se leyó y lo que falta, está en <span class="fuente">ficha de Python ISO</span>.</p></aside>
 <h2 id="cómo-aprender-python-de-verdad-recursos-externos">Cómo aprender Python de verdad (recursos externos)</h2>
-<p>Como el corpus CLS no enseña Python moderno, esta guía completa el camino con <strong>cursos y tutoriales externos</strong>. No son material del grupo; son <strong>recomendación editorial</strong>, gratuitos o con parte gratuita, y actuales. Verificá siempre el enlace antes de usarlo.</p>
+<p>Como el corpus tradicional no enseña Python moderno, esta guía completa el camino con <strong>cursos y tutoriales externos</strong>. No son material del grupo; son <strong>recomendación editorial</strong>, gratuitos o con parte gratuita, y actuales. Verificá siempre el enlace antes de usarlo.</p>
 <div class="tabla"><table>
 <thead><tr>
 <th>Recurso</th>
@@ -1541,7 +1541,7 @@ sub  ebx, 0x44</code></pre>
 </section>
 <section class="print-sec" id="sec-guia-02-flotante">
 <h1 id="punto-flotante-y-sse-los-registros-xmm">Punto flotante y SSE: los registros xmm</h1>
-<aside class="callout aviso"><p class="callout-titulo">De dónde sale esta lección</p><p>Este tema <strong>no está en el corpus CLS</strong>: es <strong>conocimiento externo</strong> que agregamos para completar la guía. El curso de CLS trabaja casi todo con enteros, así que el punto flotante quedaba sin cubrir. Lo incluimos porque aparece en cualquier binario de Windows real y, sin él, te trabás la primera vez que ves un registro <code>xmm</code>.</p></aside>
+<aside class="callout aviso"><p class="callout-titulo">De dónde sale esta lección</p><p>Este tema <strong>no está en el corpus tradicional</strong>: es <strong>conocimiento externo</strong> que agregamos para completar la guía. El curso de CLS trabaja casi todo con enteros, así que el punto flotante quedaba sin cubrir. Lo incluimos porque aparece en cualquier binario de Windows real y, sin él, te trabás la primera vez que ves un registro <code>xmm</code>.</p></aside>
 <aside class="callout nota"><p class="callout-titulo">Objetivo de la lección</p><p>Al terminar vas a poder reconocer una operación con <code>float</code>/<code>double</code> en un listado, leer las instrucciones SSE escalares más comunes (<code>movss</code>, <code>movsd</code>, <code>addsd</code>, <code>cvtsi2sd</code>, <code>ucomisd</code>) y entender por qué una comparación de flotantes se lee distinto de una de enteros.</p></aside>
 <p><strong>Prerrequisitos:</strong> instrucciones, flujo y registros (Etapa 2). <strong>Duración sugerida:</strong> 3 horas.</p>
 <h2 id="por-qué-vas-a-chocarte-con-esto">Por qué vas a chocarte con esto</h2>
@@ -1616,7 +1616,7 @@ fstp qword [res]   ; guarda st(0) en res y lo saca de la pila</code></pre>
 <aside class="callout nota"><p class="callout-titulo">Puerta de salida</p><p>Si podés leer <code>promedio</code> en assembly y explicar cómo viajan los argumentos y el resultado en <code>xmm</code>, ya no te va a frenar el punto flotante.</p></aside>
 <h2 id="fuentes-de-esta-lección">Fuentes de esta lección</h2>
 <ul><li><em>Intel 64 and IA-32 Architectures Software Developer's Manual</em>, vol. 1 (FPU x87) y vol. 2 (instrucciones SSE/SSE2). Referencia primaria del repertorio de instrucciones.</li><li><em>Microsoft x64 calling convention</em>: paso de <code>float</code>/<code>double</code> en registros <code>xmm</code>.</li><li>Estándar <strong>IEEE 754</strong> para la codificación de <code>float</code> y <code>double</code>.</li></ul>
-<aside class="callout nota"><p class="callout-titulo">Capas de esta lección</p><p><strong>Conocimiento externo (agregado por esta edición):</strong> todo el contenido (x87, SSE, IEEE 754, convención de <code>xmm</code>). <strong>No</strong> proviene del corpus CLS, que trabaja con enteros. <strong>Recomendación editorial:</strong> los ejemplos <code>promedio</code> y la práctica con conversor IEEE 754.</p></aside>
+<aside class="callout nota"><p class="callout-titulo">Capas de esta lección</p><p><strong>Conocimiento externo (agregado por esta edición):</strong> todo el contenido (x87, SSE, IEEE 754, convención de <code>xmm</code>). <strong>No</strong> proviene del corpus tradicional, que trabaja con enteros. <strong>Recomendación editorial:</strong> los ejemplos <code>promedio</code> y la práctica con conversor IEEE 754.</p></aside>
 </section>
 <section class="print-sec" id="sec-guia-02-flujo">
 <h1 id="flujo-comparar-saltar-y-repetir">Flujo: comparar, saltar y repetir</h1>
@@ -2115,7 +2115,7 @@ fin:</code></pre>
 </section>
 <section class="print-sec" id="sec-guia-02-optimizaciones">
 <h1 id="cómo-cambia-el-código-con-optimizaciones">Cómo cambia el código con optimizaciones</h1>
-<aside class="callout aviso"><p class="callout-titulo">De dónde sale esta lección</p><p>Este tema <strong>no está en el corpus CLS</strong>: es <strong>conocimiento externo</strong> que agregamos para completar la guía. El curso de CLS usa ejemplos compilados en modo depuración (<code>-O0</code>/Debug), donde el assembly sigue de cerca al código fuente. Los binarios reales vienen optimizados (<code>-O2</code>/Release) y se ven muy distintos. Esta lección cubre ese salto, que es donde más se traba quien recién sale de los ejercicios.</p></aside>
+<aside class="callout aviso"><p class="callout-titulo">De dónde sale esta lección</p><p>Este tema <strong>no está en el corpus tradicional</strong>: es <strong>conocimiento externo</strong> que agregamos para completar la guía. El curso de CLS usa ejemplos compilados en modo depuración (<code>-O0</code>/Debug), donde el assembly sigue de cerca al código fuente. Los binarios reales vienen optimizados (<code>-O2</code>/Release) y se ven muy distintos. Esta lección cubre ese salto, que es donde más se traba quien recién sale de los ejercicios.</p></aside>
 <aside class="callout nota"><p class="callout-titulo">Objetivo de la lección</p><p>Al terminar vas a poder reconocer los patrones de optimización más comunes —inlining, <em>strength reduction</em>, división por constante, vectorización, <em>tail call</em>— y no confundirlos con "código raro" o con una protección.</p></aside>
 <p><strong>Prerrequisitos:</strong> instrucciones, flujo, llamadas (Etapa 2). <strong>Duración sugerida:</strong> 3 horas.</p>
 <h2 id="el-problema">El problema</h2>
@@ -2174,7 +2174,7 @@ shr   edx, 1              ; EDX = x / 3</code></pre>
 <aside class="callout nota"><p class="callout-titulo">Puerta de salida</p><p>Si podés mirar un listado <code>-O2</code> y decir "esto es <code>x*5</code>, esto es <code>x/3</code>, esta función está inlineada" sin frustrarte, estás listo para binarios reales.</p></aside>
 <h2 id="fuentes-de-esta-lección">Fuentes de esta lección</h2>
 <ul><li>Agner Fog, <em>Optimizing subroutines in assembly language</em> y <em>Instruction tables</em> (patrones de código generado y costos).</li><li>Documentación de <strong>GCC</strong> (<code>-O1/-O2/-O3</code>) y <strong>LLVM/Clang</strong> sobre pases de optimización.</li><li><em>Hacker's Delight</em> (Warren) para división por constantes y trucos aritméticos.</li></ul>
-<aside class="callout nota"><p class="callout-titulo">Capas de esta lección</p><p><strong>Conocimiento externo (agregado por esta edición):</strong> todos los patrones de optimización. El corpus CLS usa binarios sin optimizar, así que este salto no estaba cubierto. <strong>Recomendación editorial:</strong> la estrategia "aprendé con Debug, analizá con Release" y los ejercicios.</p></aside>
+<aside class="callout nota"><p class="callout-titulo">Capas de esta lección</p><p><strong>Conocimiento externo (agregado por esta edición):</strong> todos los patrones de optimización. El corpus tradicional usa binarios sin optimizar, así que este salto no estaba cubierto. <strong>Recomendación editorial:</strong> la estrategia "aprendé con Debug, analizá con Release" y los ejercicios.</p></aside>
 </section>
 <section class="print-sec" id="sec-guia-02-herramientas">
 <h1 id="herramientas-del-ollydbg-histórico-al-taller-actual">Herramientas: del OllyDbg histórico al taller actual</h1>
@@ -2203,7 +2203,7 @@ shr   edx, 1              ; EDX = x / 3</code></pre>
 </tbody></table></div>
 <p>No necesitás instalar todo el primer día. x64dbg, un editor hexadecimal y un visor de PE alcanzan para las etapas 1 a 4.</p>
 <h2 id="el-taller-actual-2026-más-allá-de-lo-mínimo">El taller actual (2026): más allá de lo mínimo</h2>
-<aside class="callout aviso"><p class="callout-titulo">Actualización externa</p><p>El corpus CLS no cubre estas herramientas (son más nuevas que su material). Las agregamos como <strong>conocimiento externo</strong> para que el taller esté al día. Todas corren o se usan sobre <strong>Windows</strong>; no son obligatorias para el recorrido base, pero sí para análisis real.</p>
+<aside class="callout aviso"><p class="callout-titulo">Actualización externa</p><p>El corpus tradicional no cubre estas herramientas (son más nuevas que su material). Las agregamos como <strong>conocimiento externo</strong> para que el taller esté al día. Todas corren o se usan sobre <strong>Windows</strong>; no son obligatorias para el recorrido base, pero sí para análisis real.</p>
 <p>Verificá siempre la versión y descargá desde el sitio oficial.</p></aside>
 <p>Cuando el taller mínimo se te queda corto, estas categorías son las que usa hoy un analista de Windows:</p>
 <div class="tabla"><table>
@@ -2528,7 +2528,7 @@ struct AFX_MSGMAP {
 <ul><li><strong>VB6 p-code vs. nativo.</strong> Si es p-code, el código "real" no es x86: es bytecode que interpreta <code>MSVBVM60.DLL</code>. Leer el x86 directo no sirve; hay que usar herramientas específicas de VB. Reconocerlo temprano evita perder tiempo.</li><li><strong>Delphi.</strong> Las APIs no se llaman como en C: el objeto trae su <strong>VMT</strong> al inicio y los métodos se resuelven por tabla. Esperar un <code>main</code> con <code>CreateWindow</code> directo te confunde.</li></ul>
 <p>En CLS esto está <strong>como material, no como lección</strong>: en <code>Teorias_Numeradas</code> hay <strong>decenas de títulos de Delphi</strong> y <strong>varios de Visual Basic/VB6, p-code y Java</strong> (<span>índice clasificado</span>). Son conteos <strong>por subcadena del título</strong> (aproximados, sin abrir los contenedores): orientan para profundizar, no son prueba. El único runtime trabajado a fondo en el curso es <strong>MSVC/C++</strong> (y MFC en la <span>2.12</span>, observado en el cap. 39: <span class="fuente">Reversing desde cero, cap. 39</span>).</p>
 <h2 id="lenguajes-que-no-se-leen-como-c-go-rust-y-delphi">Lenguajes que no se leen como C: Go, Rust y Delphi</h2>
-<p>Los tres producen código nativo x86/x64, así que IDA y Ghidra los abren sin problema. Lo que cambia es <strong>qué esperar</strong> del listado. Todo este apartado es <strong>conocimiento externo</strong> al material de CLS; lo citado viene de la documentación de cada lenguaje.</p>
+<p>Los tres producen código nativo x86/x64, así que IDA y Ghidra los abren sin problema. Lo que cambia es <strong>qué esperar</strong> del listado. Todo este apartado es <strong>conocimiento externo</strong> al material didáctico clásico; lo citado viene de la documentación de cada lenguaje.</p>
 <p><strong>Go.</strong> Un "hola mundo" en Go pesa varios megabytes porque trae enlazado el runtime completo (planificador de goroutines, recolector de basura). Para leerlo:</p>
 <ul><li><strong>Los nombres de funciones sobreviven.</strong> El runtime de Go necesita una tabla que relaciona direcciones con funciones y líneas (<code>pclntab</code>) para armar trazas de pila, perfilar y recolectar basura, así que está en el binario aunque se hayan quitado los símbolos de depuración. Herramientas e IDA/Ghidra recientes la usan para recuperar nombres como <code>main.main</code> o <code>main.verificarClave</code>. Empezá por las funciones del paquete <code>main</code>: el resto suele ser runtime y biblioteca estándar.</li><li><strong>Las cadenas no terminan en <code>0</code>.</strong> Un <code>string</code> de Go es puntero + longitud; el compilador guarda muchas cadenas pegadas en una sola zona y el buscador de strings las muestra como un bloque largo. Para saber dónde termina una, buscá la longitud que se carga junto al puntero.</li><li><strong>Convención propia.</strong> Go no usa la convención x64 de Windows de <span>Llamadas y convenciones</span> para sus funciones internas: tiene su propio ABI (en versiones recientes pasa argumentos en registros, en otro orden). Al comienzo de casi toda función vas a ver una <strong>comprobación de pila</strong> —una comparación del puntero de pila con un límite y un salto a <code>runtime.morestack</code>— que no es lógica del programa y se puede saltar con la vista.</li></ul>
 <p><strong>Rust.</strong> También enlaza estáticamente su biblioteca estándar, pero suele usar el runtime de C de la plataforma.</p>
@@ -2564,7 +2564,7 @@ Secciones: .text .rdata .data        Símbolos: __mingw_*, ___chkstk_ms
 <details open class="qa"><summary>Un binario tiene Rich header e importa <code>vcruntime140.dll</code>, pero aparecen rutas <code>src/main.rs</code>. ¿Qué es?</summary><div class="respuesta"><p>Probablemente <strong>Rust</strong> compilado con el target <code>-msvc</code>: el linker de Microsoft deja el Rich header y el runtime de C, pero las rutas <code>.rs</code> y los mensajes de pánico delatan el lenguaje. Es el ejemplo de por qué una sola pista no alcanza.</p></div></details>
 <details open class="qa"><summary>¿Por qué en un binario de Go sin símbolos podés ver nombres como <code>main.main</code>?</summary><div class="respuesta"><p>Porque el runtime necesita la tabla <code>pclntab</code> (direcciones → funciones y líneas) para trazas de pila, perfilado y recolección de basura, y quitar los símbolos de depuración no la elimina.</p></div></details>
 <details open class="qa"><summary>En Delphi de 32 bits, ¿dónde llegan los primeros argumentos de un método?</summary><div class="respuesta"><p>En <code>EAX</code>, <code>EDX</code> y <code>ECX</code> (convención <code>register</code>); <code>Self</code> viene en <code>EAX</code>. Leerlo como <code>stdcall</code> hace que los argumentos parezcan faltar.</p></div></details>
-<details open class="qa"><summary>¿Qué parte de esto está respaldada por material de CLS y qué es externo?</summary><div class="respuesta"><p>MFC está observado (cap. 39) y hay <strong>títulos</strong> de Delphi/VB/Java en <code>Teorias_Numeradas</code> (no leídos). La tabla de huellas de MSVC/MinGW/Delphi/VB6/Go/Rust y el apartado de lenguajes no-C son <strong>conocimiento externo</strong>.</p></div></details>
+<details open class="qa"><summary>¿Qué parte de esto está respaldada por material didáctico clásico y qué es externo?</summary><div class="respuesta"><p>MFC está observado (cap. 39) y hay <strong>títulos</strong> de Delphi/VB/Java en <code>Teorias_Numeradas</code> (no leídos). La tabla de huellas de MSVC/MinGW/Delphi/VB6/Go/Rust y el apartado de lenguajes no-C son <strong>conocimiento externo</strong>.</p></div></details>
 <aside class="callout nota"><p class="callout-titulo">Puerta de salida</p><p>Podés: (1) decir con qué compilador/runtime se hizo un binario y por qué; (2) distinguir MSVC de MinGW por imports/Rich header/secciones; (3) reconocer VB6 (y el riesgo de p-code) y Delphi; (4) justificar cada conclusión con una pista concreta del PE; (5) reconocer un binario de Go o de Rust y explicar qué cambia al leerlo (nombres recuperables, cadenas con longitud, comprobaciones del runtime).</p></aside>
 <h2 id="fuentes-de-esta-lección">Fuentes de esta lección</h2>
 <ul><li><span class="fuente">Reversing desde cero, cap. 39</span> — MFC como capa sobre la API (huella de framework).</li><li><span>Teorias_Numeradas · clasificación</span> — títulos de Delphi, Visual Basic/VB6, p-code y Java (conteo aproximado por subcadena del título); material para profundizar, no leído.</li><li>Go (conocimiento externo): <a href="https://pkg.go.dev/debug/gosym">paquete debug/gosym</a> y <a href="https://go.dev/s/go12symtab">diseño de la tabla de símbolos de Go 1.2</a> — la tabla <code>pclntab</code> y por qué la necesita el runtime; <a href="https://go.dev/doc/asm">A Quick Guide to Go's Assembler</a>.</li><li>Rust (conocimiento externo): <a href="https://doc.rust-lang.org/rustc/symbol-mangling/index.html">Symbol Mangling</a> y <a href="https://doc.rust-lang.org/rustc/symbol-mangling/v0.html">esquema v0</a>; <a href="https://doc.rust-lang.org/std/primitive.str.html">tipo primitivo str</a>.</li><li>Delphi: la convención <code>register</code>, la firma <code>TPF0</code> de los formularios y la cabecera de los <code>string</code> son conocimiento externo sin enlace verificado en esta revisión (la documentación de Embarcadero no respondió durante la verificación).</li></ul>
@@ -2805,7 +2805,7 @@ jnz   detectado</code></pre>
 <section class="print-sec" id="sec-guia-02-ghidra">
 <h1 id="ghidra-y-cutter-la-alternativa-libre-con-práctica">Ghidra (y Cutter): la alternativa libre, con práctica</h1>
 <aside class="callout nota"><p class="callout-titulo">Objetivo de la lección</p><p>Hacer en <strong>Ghidra</strong> el mismo recorrido que hiciste en IDA, para no depender de una sola herramienta: importar, dejar que autoanalice, seguir strings y referencias, corregir tipos, leer el decompilador y documentar. <strong>Prerrequisitos:</strong> <span>IDA y el análisis estático</span> (2.7), estructuras (2.7).</p></aside>
-<aside class="callout aviso"><p class="callout-titulo">Herramienta externa al corpus</p><p>El curso CLS enseña con IDA, OllyDbg y x64dbg; <strong>Ghidra y radare2 no son material de CLS</strong>, así que esta lección es <strong>conocimiento externo</strong>. En el corpus hay, sin revisar, una copia de <strong>Ghidra 11.3.2</strong> y una carpeta <strong>RADARE</strong> (en <code>CLS_fuentes_externas/links_chat</code> y <code>.../RADARE</code>); igual conviene <strong>descargar Ghidra del sitio oficial</strong> y verificar el hash antes de usarlo.</p></aside>
+<aside class="callout aviso"><p class="callout-titulo">Herramienta externa al corpus</p><p>El curso CLS enseña con IDA, OllyDbg y x64dbg; <strong>Ghidra y radare2 no son material didáctico clásico</strong>, así que esta lección es <strong>conocimiento externo</strong>. En el corpus hay, sin revisar, una copia de <strong>Ghidra 11.3.2</strong> y una carpeta <strong>RADARE</strong> (en <code>CLS_fuentes_externas/links_chat</code> y <code>.../RADARE</code>); igual conviene <strong>descargar Ghidra del sitio oficial</strong> y verificar el hash antes de usarlo.</p></aside>
 <h2 id="por-qué-una-segunda-herramienta">Por qué una segunda herramienta</h2>
 <p>Ghidra es gratis y open source (NSA), trae <strong>decompilador</strong> integrado y corre en cualquier sistema. Saber leer el mismo binario en IDA <strong>y</strong> en Ghidra te da dos ventajas: cuando una decompila mal una función, la otra suele aclararla; y no quedás atado a una licencia. Cutter (la GUI de <strong>radare2</strong>) es otra opción libre, más liviana.</p>
 <h2 id="el-recorrido-equivalente-al-de-ida">El recorrido equivalente al de IDA</h2>
@@ -3073,7 +3073,7 @@ jmp  C::metodoDeB      ; salta a la implementación real</code></pre>
 <tr><td><code>!heap</code></td><td>estado del heap (ver abajo)</td></tr>
 </tbody></table></div>
 <h2 id="ttd-grabar-y-rebobinar">TTD: grabar y rebobinar</h2>
-<p><strong>Time Travel Debugging</strong> (TTD, de Microsoft; <strong>conocimiento externo</strong>, es posterior al material de CLS) graba <strong>toda</strong> la ejecución en un trace y después la reproducís <strong>hacia adelante y hacia atrás</strong>. Cambia el método: en vez de "¿quién va a escribir este valor?" y reiniciar mil veces, ponés un breakpoint de acceso y hacés <strong><code>g-</code></strong> (go back) hasta la escritura que lo rompió. Para "¿quién corrompió este buffer?", TTD es la herramienta: encontrás la dirección mala y <strong>retrocedés</strong> hasta la instrucción culpable.</p>
+<p><strong>Time Travel Debugging</strong> (TTD, de Microsoft; <strong>conocimiento externo</strong>, es posterior al material didáctico clásico) graba <strong>toda</strong> la ejecución en un trace y después la reproducís <strong>hacia adelante y hacia atrás</strong>. Cambia el método: en vez de "¿quién va a escribir este valor?" y reiniciar mil veces, ponés un breakpoint de acceso y hacés <strong><code>g-</code></strong> (go back) hasta la escritura que lo rompió. Para "¿quién corrompió este buffer?", TTD es la herramienta: encontrás la dirección mala y <strong>retrocedés</strong> hasta la instrucción culpable.</p>
 <h2 id="heap-page-heap-y-lfh">Heap: Page Heap y LFH</h2>
 <p>El heap es donde más cuesta ver la corrupción, porque el síntoma (un crash) aparece <strong>lejos</strong> de la causa. Dos ayudas:</p>
 <ul><li><strong>Page Heap / Application Verifier</strong> (se activan con <code>gflags</code>; <strong>conocimiento externo</strong>): ponen cada bloque al <strong>final de una página</strong>, con una página de guardia detrás. Así un overflow de heap <strong>crashea en el acto</strong>, en la instrucción que escribe de más, no páginas después. El modo <em>full</em> consume más memoria, pero te da el crash exacto.</li><li><strong>LFH</strong> (<em>Low Fragmentation Heap</em>): Windows agrupa las alocaciones chicas en <em>buckets</em>. El Curso IDA dedica una parte a distinguir si una alocación cae en el <strong>LFH o en el heap estándar</strong>, porque cambia cómo se ven los bloques (<span class="fuente">Curso IDA, tute 48</span>). En WinDbg lo mirás con <code>!heap</code>.</li></ul>
@@ -3884,7 +3884,7 @@ cualquier estado --cierre--&gt; DESCONECTADO</code></pre>
 </section>
 <section class="print-sec" id="sec-guia-04-cripto">
 <h1 id="reconocer-criptografía-y-encoding-en-un-binario">Reconocer criptografía y encoding en un binario</h1>
-<aside class="callout aviso"><p class="callout-titulo">De dónde sale esta lección</p><p>Este tema <strong>no está en el corpus CLS</strong>: es <strong>conocimiento externo</strong> que agregamos para completar la guía. Se incluye porque reconocer cripto y encoding es rutina en análisis de malware de Windows y en CTF. El enfoque es <strong>defensivo y de identificación</strong>: reconocer qué algoritmo hay, no implementar criptografía ni romperla.</p></aside>
+<aside class="callout aviso"><p class="callout-titulo">De dónde sale esta lección</p><p>Este tema <strong>no está en el corpus tradicional</strong>: es <strong>conocimiento externo</strong> que agregamos para completar la guía. Se incluye porque reconocer cripto y encoding es rutina en análisis de malware de Windows y en CTF. El enfoque es <strong>defensivo y de identificación</strong>: reconocer qué algoritmo hay, no implementar criptografía ni romperla.</p></aside>
 <aside class="callout nota"><p class="callout-titulo">Objetivo de la lección</p><p>Al terminar vas a poder distinguir encoding de cifrado, reconocer un XOR y un base64 en un listado, e identificar algoritmos conocidos (AES, RC4, MD5/SHA, TEA, CRC32) por sus <strong>constantes y tablas</strong>.</p></aside>
 <p><strong>Prerrequisitos:</strong> instrucciones, flujo, método (Etapas 2 y 4). <strong>Duración sugerida:</strong> 3 horas.</p>
 <h2 id="encoding-no-es-cifrado">Encoding no es cifrado</h2>
@@ -4246,7 +4246,7 @@ No se evaluó el comportamiento con entradas no numéricas.</code></pre>
 {
     meta:
         description = "Detecta una cadena de prueba en un binario propio"
-        author = "curso CLS"
+        author = "Reversing Lab"
         date = "2026-10-26"
 
     strings:
@@ -4566,7 +4566,7 @@ def nombre_miembro_enum(nombre_enum: str, valor: int) -&gt; str | None:
 <aside class="callout aviso"><p class="callout-titulo">Esta edición es solo Windows</p><p>Por decisión de alcance, la guía cubre <strong>únicamente binarios de Windows</strong> (PE, x86/x64). El reversing de <strong>Linux/ELF</strong>, <strong>macOS/Mach-O</strong>, <strong>Android (APK/DEX)</strong> y arquitecturas como <strong>ARM/AArch64</strong> queda <strong>fuera</strong>. Los conceptos de base (números, memoria, stack, flujo, método) se trasladan a esas plataformas, pero su formato, convenciones y herramientas son otro mundo y merecen su propio material.</p></aside>
 <p><strong>Prerrequisitos:</strong> etapas 0 a 4. <strong>Duración sugerida:</strong> 30 minutos (lectura y reflexión).</p>
 <h2 id="una-guía-también-se-define-por-lo-que-no-incluye">Una guía también se define por lo que no incluye</h2>
-<p>El corpus de CLS tiene material de kernel, protectores comerciales, exploiting y malware. No todo se convierte en lección. Algunos temas quedan fuera por tres razones:</p>
+<p>El corpus tradicional tiene material de kernel, protectores comerciales, exploiting y malware. No todo se convierte en lección. Algunos temas quedan fuera por tres razones:</p>
 <ol><li><strong>No hay material revisado.</strong> Hay contenedores que no se abrieron; una mención no es contenido.</li><li><strong>El riesgo no es proporcional al beneficio para un principiante.</strong> Enseñar a manipular kernel o protectores sin bases sólidas produce accidentes, no aprendizaje.</li><li><strong>El marco legal y ético.</strong> Eludir protecciones de software comercial o atacar sistemas ajenos no es educativo.</li></ol>
 <h2 id="kernel">Kernel</h2>
 <p>Un módulo de kernel corre en el nivel más privilegiado del sistema. Un error ahí no crashea una aplicación: crashea la máquina, corrompe el sistema o abre una puerta que no se cierra con un reinicio.</p>
@@ -5162,7 +5162,7 @@ Conclusión: diseño acotado en el fragmento revisado; falta validar build/confi
 <p>Separada del núcleo de 2D y <strong>no requisito</strong> de 2D ni de la Etapa 6. La práctica es de lectura conceptual, sin modificar Hyper-V ni enseñar evasión anti-VM.</p>
 <h2 id="puerta-de-salida-optativa">Puerta de salida (optativa)</h2>
 <p>2D no tiene puerta obligatoria. Cada lección trae la suya. Si hacés el integrador (2D.13), el criterio es: analizar un programa propio, producir un <strong>inventario con evidencia</strong> y demostrar que <strong>limpiaste</strong> todos los cambios que hiciste en el sistema.</p>
-<aside class="callout nota"><p class="callout-titulo">Estado y honestidad</p><p>Las lecciones de 2D son, en su mayoría, <strong>conocimiento externo</strong> (documentación de Microsoft Learn), con <strong>ejemplos ilustrativos</strong> cuando no hay un laboratorio compilado con datos reales en esta edición. Los ejercicios de registro, servicio y tareas indican sus límites y limpieza; el resto no se declara reproducible si no fue ejecutado. Donde algo se apoya en material del corpus CLS, se cita; donde no se pudo verificar, se declara. No se inventan versiones, hashes, salidas ni citas.</p></aside>
+<aside class="callout nota"><p class="callout-titulo">Estado y honestidad</p><p>Las lecciones de 2D son, en su mayoría, <strong>conocimiento externo</strong> (documentación de Microsoft Learn), con <strong>ejemplos ilustrativos</strong> cuando no hay un laboratorio compilado con datos reales en esta edición. Los ejercicios de registro, servicio y tareas indican sus límites y limpieza; el resto no se declara reproducible si no fue ejecutado. Donde algo se apoya en material del corpus tradicional, se cita; donde no se pudo verificar, se declara. No se inventan versiones, hashes, salidas ni citas.</p></aside>
 <h2 id="etapa-6-kernel-y-drivers-optativa">Etapa 6 · Kernel y drivers (optativa)</h2>
 <p>La Etapa 6 no es requisito para completar el curso y no exige COM, tareas programadas ni completar toda 2D. Requiere C, assembly, memoria/sincronización, WinDbg y las lecciones <a href="#sec-guia-2d-01-objetos">2D.1</a>, <a href="#sec-guia-2d-02-memoria-loader">2D.2</a> y <a href="#sec-guia-2d-11-excepciones">2D.11</a>. 2C es recomendado. Para ver prerrequisitos por lección, alcance y estimación, consultá <a href="#sec-guia-etapa-6">el mapa de Etapa 6</a>.</p>
 <h2 id="alcance-de-las-prácticas">Alcance de las prácticas</h2>
@@ -5342,31 +5342,31 @@ Conclusión: diseño acotado en el fragmento revisado; falta validar build/confi
 <p>La DACL del <strong>objeto servicio</strong> controla quién puede consultarlo, iniciarlo, detenerlo o cambiar su configuración. Es distinta de la ACL del ejecutable y de sus carpetas. Para una auditoría defensiva, registrá si la ruta existe, quién puede modificar sus archivos y qué permisos tienen las cuentas sobre el objeto servicio. Un permiso de cambio de configuración tiene impacto alto porque permite alterar los datos que el SCM usa; documentá una asignación excesiva, pero no la pruebes ni la aproveches.</p>
 <h2 id="ejemplo-trabajado">Ejemplo trabajado</h2>
 <p><em>(Ejemplo <strong>ilustrativo</strong>, no observado en un Windows real. Los nombres y valores son de un servicio ficticio de laboratorio.)</em></p>
-<pre><code class="lenguaje-text">Nombre: CLSLabSvc
+<pre><code class="lenguaje-text">Nombre: ReversingLabSvc
 Tipo: own-process (servicio Win32)
 Tipo de inicio: demand (manual)
 Estado: STOPPED
 Cuenta: NT AUTHORITY\LocalService
-ImagePath: C:\CLS-Lab\SvcLab.exe
+ImagePath: C:\ReversingLab\SvcLab.exe
 Objeto servicio: Administrators — control; Users — lectura
 Carpeta del binario: solo administradores pueden modificarla</code></pre>
 <p>Lectura: es un servicio didáctico de proceso propio, detenido y de inicio manual. La cuenta elegida tiene menos privilegios que <code>LocalSystem</code>; la ruta y los permisos son coherentes con esa práctica. Esta ficha no demuestra que un servicio real sea seguro: cada hallazgo debe corroborarse con la configuración efectiva y el contexto del equipo.</p>
 <h2 id="práctica-segura-servicio-propio-y-limpieza">Práctica segura: servicio propio y limpieza</h2>
 <p>Realizá el ejercicio solo en una VM descartable con snapshot. Se requiere un <code>SvcLab.exe</code> propio, compilado como <strong>servicio Win32</strong> (con dispatcher, <code>ServiceMain</code> y handler); un ejecutable de consola genérico no sirve. La guía no incluye un binario compilado ni verificó esta práctica en esta edición.</p>
 <p><strong>Materiales y resultado esperado:</strong> VM/build registrados, snapshot recuperable, <code>sc.exe</code>, AccessChk de Sysinternals y el binario propio identificado por hash. El resultado esperado es registrar un servicio manual, verlo pasar a <code>RUNNING</code> y <code>STOPPED</code>, y confirmar que desaparece después de solicitar su eliminación. Guardá el build de Windows, hash, salidas de consulta y evidencia de limpieza; no se fija una versión de herramienta que no se haya probado.</p>
-<p><strong>Paso 1 — Preparar.</strong> Prepará <code>C:\CLS-Lab</code> y colocá allí el binario propio. No uses una ruta de red ni un servicio de Windows.</p>
+<p><strong>Paso 1 — Preparar.</strong> Prepará <code>C:\ReversingLab</code> y colocá allí el binario propio. No uses una ruta de red ni un servicio de Windows.</p>
 <p><strong>Paso 2 — Registrar.</strong> En una consola elevada de la VM, registrá el servicio con inicio manual y una cuenta de menor privilegio:</p>
-<pre><code class="lenguaje-bat">   sc.exe create CLSLabSvc binPath= "C:\CLS-Lab\SvcLab.exe" start= demand obj= "NT AUTHORITY\LocalService"</code></pre>
+<pre><code class="lenguaje-bat">   sc.exe create ReversingLabSvc binPath= "C:\ReversingLab\SvcLab.exe" start= demand obj= "NT AUTHORITY\LocalService"</code></pre>
 <p><strong>Paso 3 — Inspeccionar.</strong> Consultá su configuración y estado; auditá la DACL del objeto servicio sin modificarla:</p>
-<pre><code class="lenguaje-bat">   sc.exe qc CLSLabSvc
-   sc.exe query CLSLabSvc
-   accesschk.exe -v -c CLSLabSvc</code></pre>
-<p><strong>Paso 4 — Probar el ciclo de vida.</strong> Iniciá y detené solo <code>CLSLabSvc</code>. Observá los cambios de estado y anotá la cuenta y la ruta reportadas.</p>
+<pre><code class="lenguaje-bat">   sc.exe qc ReversingLabSvc
+   sc.exe query ReversingLabSvc
+   accesschk.exe -v -c ReversingLabSvc</code></pre>
+<p><strong>Paso 4 — Probar el ciclo de vida.</strong> Iniciá y detené solo <code>ReversingLabSvc</code>. Observá los cambios de estado y anotá la cuenta y la ruta reportadas.</p>
 <p><strong>Paso 5 — Limpiar.</strong> Detené el servicio si sigue activo y solicitá eliminar únicamente el servicio de laboratorio:</p>
-<pre><code class="lenguaje-bat">   sc.exe stop CLSLabSvc
-   sc.exe delete CLSLabSvc
-   sc.exe query CLSLabSvc</code></pre>
-<p><code>sc.exe delete</code> puede dejarlo marcado para borrar si todavía está activo o si hay una consola con un handle abierto. Cerrá <code>services.msc</code> y las herramientas que lo estén consultando; esperá a que desaparezca o revertí el snapshot. Confirmá que <code>sc.exe query CLSLabSvc</code> ya no encuentra el servicio y recién entonces borrá <code>C:\CLS-Lab</code>.</p>
+<pre><code class="lenguaje-bat">   sc.exe stop ReversingLabSvc
+   sc.exe delete ReversingLabSvc
+   sc.exe query ReversingLabSvc</code></pre>
+<p><code>sc.exe delete</code> puede dejarlo marcado para borrar si todavía está activo o si hay una consola con un handle abierto. Cerrá <code>services.msc</code> y las herramientas que lo estén consultando; esperá a que desaparezca o revertí el snapshot. Confirmá que <code>sc.exe query ReversingLabSvc</code> ya no encuentra el servicio y recién entonces borrá <code>C:\ReversingLab</code>.</p>
 <p>No cambies permisos, configuración ni cuenta de otros servicios. Si no tenés un binario propio que implemente el contrato de servicio, hacé el análisis como ejercicio de lectura con la ficha ilustrativa y dejá constancia de esa limitación.</p>
 <h2 id="entregable">Entregable</h2>
 <p>Una ficha con tipo, inicio, estado, cuenta, ruta, resultado de la inspección de permisos y evidencia de limpieza. Indicá si trabajaste con un servicio compilado o solo con el ejemplo ilustrativo. No incluyas datos personales de la VM.</p>
@@ -5379,7 +5379,7 @@ Carpeta del binario: solo administradores pueden modificarla</code></pre>
 <aside class="callout nota"><p class="callout-titulo">Puerta de salida (optativa)</p><p>Podés explicar SCM, <code>ServiceMain</code>, tipo de inicio y estado; leer cuenta, ruta y permisos; distinguir un proceso propio de un servicio hospedado; y demostrar que el servicio de prueba desapareció o declarar que solo completaste el ejercicio ilustrativo.</p></aside>
 <h2 id="fuentes">Fuentes</h2>
 <ul><li><strong>Conocimiento externo:</strong> <a href="https://learn.microsoft.com/en-us/windows/win32/services/service-control-manager">Service Control Manager</a>, <a href="https://learn.microsoft.com/en-us/windows/win32/services/service-programs">Service Programs</a>, <a href="https://learn.microsoft.com/en-us/windows/win32/services/service-servicemain-function">ServiceMain</a>, <a href="https://learn.microsoft.com/en-us/windows/win32/services/service-user-accounts">Service User Accounts</a> y <a href="https://learn.microsoft.com/en-us/windows/win32/services/service-security-and-access-rights">Service Security and Access Rights</a>.</li><li><strong>Herramientas:</strong> <a href="https://learn.microsoft.com/en-us/windows-server/administration/windows-commands/sc-create"><code>sc.exe create</code></a>, <a href="https://learn.microsoft.com/en-us/windows-server/administration/windows-commands/sc-delete"><code>sc.exe delete</code></a> y <a href="https://learn.microsoft.com/en-us/sysinternals/downloads/accesschk">AccessChk</a>.</li><li><strong>Hospedaje:</strong> <a href="https://learn.microsoft.com/en-us/windows/application-management/svchost-service-refactoring">Service host grouping in Windows</a>. Los detalles de agrupación dependen de la versión de Windows.</li><li><strong>Relación con CLS:</strong> ACL y token en <span>2D.1</span>; representación del registro en <span>2D.3</span>.</li></ul>
-<aside class="callout nota"><p class="callout-titulo">Etiquetas</p><p><strong>Observado en CLS:</strong> marco de token/ACL (2D.1) y referencia al registro (2D.3). <strong>Conocimiento externo:</strong> SCM, estados, cuentas y servicios hospedados. <strong>Ejemplo ilustrativo:</strong> ficha de <code>CLSLabSvc</code>. <strong>Laboratorio verificado:</strong> no; requiere un binario propio compilado como servicio.</p></aside>
+<aside class="callout nota"><p class="callout-titulo">Etiquetas</p><p><strong>Observado en CLS:</strong> marco de token/ACL (2D.1) y referencia al registro (2D.3). <strong>Conocimiento externo:</strong> SCM, estados, cuentas y servicios hospedados. <strong>Ejemplo ilustrativo:</strong> ficha de <code>ReversingLabSvc</code>. <strong>Laboratorio verificado:</strong> no; requiere un binario propio compilado como servicio.</p></aside>
 </section>
 <section class="print-sec" id="sec-guia-2d-05-task-scheduler">
 <h1 id="task-scheduler-leer-tareas-y-detectar-cambios">Task Scheduler: leer tareas y detectar cambios</h1>
@@ -5411,7 +5411,7 @@ Carpeta del binario: solo administradores pueden modificarla</code></pre>
 &lt;Settings&gt;&lt;Hidden&gt;false&lt;/Hidden&gt;&lt;/Settings&gt;
 &lt;Actions Context="Author"&gt;
   &lt;Exec&gt;
-    &lt;Command&gt;C:\CLS-Lab\status.exe&lt;/Command&gt;
+    &lt;Command&gt;C:\ReversingLab\status.exe&lt;/Command&gt;
     &lt;Arguments&gt;--once&lt;/Arguments&gt;
   &lt;/Exec&gt;
 &lt;/Actions&gt;</code></pre>
@@ -5650,14 +5650,14 @@ Vista 64 bits:
   HKCU\Software\Classes\CLSID\{A...1}   (no existe)
   HKLM\Software\Classes\CLSID\{A...1}
     AppID           {B...2}
-    InprocServer32  (Default)       C:\CLS-Lab\x64\BlocCom.dll
+    InprocServer32  (Default)       C:\ReversingLab\x64\BlocCom.dll
                     ThreadingModel  Both
     TypeLib         {C...3}
 HKLM\Software\Classes\AppID\{B...2}
     (sin LaunchPermission / AccessPermission / RunAs)
 Vista 32 bits (Wow6432Node):
   HKLM\Software\Classes\Wow6432Node\CLSID\{A...1}
-    LocalServer32   "C:\CLS-Lab\x86\BlocSrv.exe"
+    LocalServer32   "C:\ReversingLab\x86\BlocSrv.exe"
 Manifiesto de BlocCliente.exe: sin comClass</code></pre>
 <div class="tabla"><table>
 <thead><tr>
@@ -6590,7 +6590,7 @@ CPU:                     soporte de virtualización (VT-x/AMD-V)</code></pre>
 <p>Este documento explica de dónde sale el material del curso, qué se revisó de verdad, qué quedó pendiente, qué se corrigió respecto de las ediciones anteriores y qué decisiones editoriales se tomaron. Está pensado para que otra persona —u otra sesión de trabajo— pueda continuar sin empezar de cero.</p>
 <h2 id="0-alcance-solo-windows-refuerzo-externo">0. Alcance: solo Windows + refuerzo externo</h2>
 <p>Esta edición cubre <strong>únicamente reversing de Windows</strong> (binarios PE, x86/x64). Linux/ELF, macOS/Mach-O, Android (APK/DEX) y arquitecturas como ARM/AArch64 quedan <strong>fuera de alcance</strong> por decisión editorial (ver <code>guia/05-fuera-de-alcance.html</code>).</p>
-<p>Además del material del grupo CLS, el curso incorpora un <strong>refuerzo/actualización de conocimiento externo</strong> para tapar temas que CLS no cubría pero que son necesarios en Windows hoy: <strong>punto flotante y SSE</strong> (<code>guia/02-flotante.html</code>), <strong>optimizaciones del compilador</strong> (<code>guia/02-optimizaciones.html</code>), <strong>reconocer criptografía y encoding</strong> (<code>guia/04-cripto.html</code>), el <strong>taller de herramientas actual</strong> (dentro de <code>guia/02-herramientas.html</code>) y <strong>dónde seguir practicando</strong> (en el mapa del curso). Esas lecciones están marcadas como <em>conocimiento externo (agregado por esta edición)</em> y no se presentan como material observado de CLS.</p>
+<p>Además del material del grupo de estudio, el curso incorpora un <strong>refuerzo/actualización de conocimiento externo</strong> para cubrir temas indispensables en binarios modernos de 64 bits en Windows: <strong>punto flotante y SSE</strong> (<code>guia/02-flotante.html</code>), <strong>optimizaciones del compilador</strong> (<code>guia/02-optimizaciones.html</code>), <strong>reconocer criptografía y encoding</strong> (<code>guia/04-cripto.html</code>), el <strong>taller de herramientas actual</strong> (dentro de <code>guia/02-herramientas.html</code>) y <strong>dónde seguir practicando</strong> (en el mapa del curso). Esas lecciones están marcadas como <em>conocimiento externo (agregado por esta edición)</em> y no se presentan como material observado de CLS.</p>
 <h2 id="1-qué-es-esta-edición">1. Qué es esta edición</h2>
 <p>Un curso completo en <code>CLS_Guia</code>, solo Windows, con:</p>
 <ul><li>Lecciones HTML en siete etapas numeradas: <strong>0–4 son el recorrido obligatorio</strong>; <strong>5 y 6 son ramas optativas</strong>. La rama optativa 2D y la extensión Hyper-V son materiales complementarios, fuera de la aprobación obligatoria.</li><li>Fichas de recursos con estado de revisión.</li><li>Glosario, preguntas y respuestas, mapa y registro de cobertura, seguimiento.</li><li>Este documento de fuentes y límites.</li></ul>
@@ -6638,7 +6638,7 @@ CPU:                     soporte de virtualización (VT-x/AMD-V)</code></pre>
 </tr></thead><tbody>
 <tr><td><code>inventario_limpio/CLS_inventario_limpio.csv</code></td><td>26/10/2026</td><td>8.154 filas</td><td>Una fila por archivo en disco, con SHA-256</td><td><strong>Vigente</strong></td></tr>
 <tr><td><code>CLS_resultados/inventario_completo.csv</code></td><td>24/10/2026</td><td>6.499 filas</td><td>Solo referencias del <code>result.json</code>, sin binarios</td><td>Histórico</td></tr>
-<tr><td><code>CLS_plan_estudio.docx</code></td><td>sesión previa</td><td>100.713 mensajes, 2.638 referencias, 3.861 enlaces</td><td>Exportación incompleta, rutas <code>D:\CLS</code>, sin medios</td><td>Histórico y superado</td></tr>
+<tr><td><code>CLS_plan_estudio.docx</code></td><td>sesión previa</td><td>100.713 mensajes, 2.638 referencias, 3.861 enlaces</td><td>Exportación incompleta, Rutas de trabajo local, sin medios</td><td>Histórico y superado</td></tr>
 </tbody></table></div>
 <p>No se suman esas cifras. El inventario vigente tiene 8.154 archivos; el chat unido tiene 100.791 mensajes (2016-01-18 a 2026-10-26). El plan histórico decía 100.713 mensajes porque trabajaba sobre otra exportación y sin los medios.</p>
 <p>Estados del inventario vigente: <code>util</code> 6.705, <code>util (trae binarios: solo VM)</code> 453, <code>practica (solo VM)</code> 66, <code>cuarentena</code> 202, <code>excluido (comercial/warez)</code> 46, <code>duplicado</code> 321, <code>descartado (miniatura)</code> 361.</p>
@@ -6678,7 +6678,7 @@ CPU:                     soporte de virtualización (VT-x/AMD-V)</code></pre>
 <tr><td>Cap. 09, ~00:08:53</td><td>"JC es igual a JE"</td><td><code>JE</code> = <code>JZ</code>; <code>JC</code> = <code>JB</code> (carry)</td></tr>
 <tr><td>Cap. 14, ~00:01:00</td><td>Buscar IDA Pro "por internet"</td><td>Usar IDA Free, Ghidra o licencia educativa</td></tr>
 <tr><td>Docx IDA 2016</td><td>Descargar IDA Pro 6.8 con contraseña</td><td>No se sigue; usar software con licencia</td></tr>
-<tr><td>Plan de estudio</td><td>Rutas <code>D:\CLS</code>, 100.713 mensajes, sin medios</td><td>Las rutas se actualizaron al árbol local del proyecto y a su inventario vigente</td></tr>
+<tr><td>Plan de estudio</td><td>Rutas de trabajo local, 100.713 mensajes, sin medios</td><td>Las rutas se actualizaron al árbol local del proyecto y a su inventario vigente</td></tr>
 <tr><td>Video 37</td><td>Ejecuta malware "para ver qué hace"</td><td>Caso observado; la práctica de esta guía es estática y defensiva</td></tr>
 </tbody></table></div>
 <p>Cuando el audio se equivoca en un mnemónico o un número, la lección lo marca y enseña el valor correcto. No se copian errores del ASR.</p>
@@ -6717,8 +6717,8 @@ CPU:                     soporte de virtualización (VT-x/AMD-V)</code></pre>
 <h2 id="11-limitaciones-de-esta-edición">11. Limitaciones de esta edición</h2>
 <ul><li>La cobertura es <strong>parcial y declarada</strong>: no se leyó todo el corpus.</li><li>Las duraciones de video provienen de <code>_progreso.csv</code> o de la suma de subtítulos; las de las lecciones son estimaciones editoriales.</li><li>Las citas de audio pueden tener errores de ASR; se marcan cuando se detectan.</li><li>No se verificó el contenido de los comprimidos ni de los binarios.</li><li>No se probaron los ejercicios en todas las versiones de Windows, IDA, x64dbg o .NET.</li><li>Las herramientas cambian: los atajos y menús pueden diferir de los descritos.</li><li>El curso no reemplaza una formación formal ni una autorización para analizar sistemas ajenos.</li></ul>
 <h2 id="12-atribución">12. Atribución</h2>
-<ul><li><strong>Reversing desde cero:</strong> Ricardo Narvaja y Solid.</li><li><strong>MASM32 y OllyDbg:</strong> Cayetano de Juan Úbeda.</li><li><strong>Lógica de programación:</strong> Daniel Bermúdez, basado en el libro de Omar Iván Trejos Buriticá.</li><li><strong>Introducción al reversing con IDA Pro:</strong> Ricardo Narvaja (2016).</li><li><strong>Comunidad CLS:</strong> inventarios, chat, transcripciones y catalogación.</li></ul>
-<p>Esta guía es una obra derivada con fines educativos. No está afiliada a CLS ni a los autores. Los errores de interpretación y las decisiones editoriales son responsabilidad de esta edición.</p>
+<ul><li><strong>Reversing desde cero:</strong> Ricardo Narvaja y Solid.</li><li><strong>MASM32 y OllyDbg:</strong> Cayetano de Juan Úbeda.</li><li><strong>Lógica de programación:</strong> Daniel Bermúdez, basado en el libro de Omar Iván Trejos Buriticá.</li><li><strong>Introducción al reversing con IDA Pro:</strong> Ricardo Narvaja (2016).</li><li><strong>Comunidad y aportes docentes:</strong> inventarios, chat, transcripciones y catalogación.</li></ul>
+<p>Esta obra es un manual técnico independiente, libre y abierto con fines educativos y de investigación defensiva. Reconoce con gratitud las influencias docentes de la comunidad hispana de reversing. La redacción, el código fuente didáctico y las ampliaciones técnicas son de autoría libre y anónima.</p>
 <h2 id="13-verificación-rápida">13. Verificación rápida</h2>
 <p>Para comprobar que el paquete está completo:</p>
 <pre><code class="lenguaje-powershell"># Contar lecciones y fichas

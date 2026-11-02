@@ -10,7 +10,7 @@
 <body>
 <a class="salto" href="#contenido">Saltar al contenido</a>
 <header class="cabecera">
-  <div class="marca"><a href="../00_EMPEZAR_AQUI.html">CLS · Curso de reversing</a> <span class="edicion">edición 5 · 27/10/2026</span></div>
+  <div class="marca"><a href="../00_EMPEZAR_AQUI.html">Curso de Reversing en Windows</a> <span class="edicion">edición 5 · 27/10/2026</span></div>
   <nav class="principal" aria-label="Navegación principal">
     <a href="../00_EMPEZAR_AQUI.html">Inicio</a>
     <a href="../guia/index.html">Curso</a>
@@ -24,7 +24,7 @@
 <main id="contenido">
 <nav class="migas" aria-label="Ubicación"><a href="../00_EMPEZAR_AQUI.html">Inicio</a><span aria-hidden="true">›</span><a href="../guia/index.html">Curso</a><span aria-hidden="true">›</span><span>Etapa 2 · Introducción al reversing</span></nav><h1 id="etapa-2-introducción-al-reversing">Etapa 2 · Introducción al reversing</h1>
 <aside class="callout nota"><p class="callout-titulo">Objetivo medible</p><p>Leer assembly x86/x64, seguir el flujo y usar debugger y desensamblador con criterio. Se divide en 2A (base, 2.1–2.9), 2B (Windows intermedio, 2.10–2.16: ofuscación, TLS, MFC, huella, PE fino, anti-análisis, Ghidra) y 2C (Windows avanzado, 2.17+: packers didácticos, C++ profundo, WinDbg/heap, patch diffing, scripting) y 2E (desofuscación y análisis dinámico avanzado, 2.25+: ejecución simbólica, ofuscación por VM, protectores multicapa, neutralizar anti-análisis, DBI con DynamoRIO/Pin y Frida Stalker, extensiones de Ghidra/SLEIGH, y ampliaciones de Go/Rust y VB6). Las rutas de malware dinámico, shellcode/C2 y fuzzing quedan como optativas, fuera de la puerta obligatoria.</p></aside>
-<p><strong>Prerrequisitos:</strong> Etapa 1. <strong>Duración estimada:</strong> 32 a 40 h (2A) + ~25 h (2B) + ~30–40 h (2C) + ~25–30 h (2E). Es una estimación de esta guía, derivada de la suma de las lecciones; no es una duración declarada por CLS.</p>
+<p><strong>Prerrequisitos:</strong> Etapa 1. <strong>Duración estimada:</strong> 32 a 40 h (2A) + ~25 h (2B) + ~30–40 h (2C) + ~25–30 h (2E). Es una estimación de esta guía, derivada de la suma de las lecciones; no es una duración rígida de laboratorio.</p>
 <h2 id="lecciones">Lecciones</h2>
 <div class="tabla"><table>
 <thead><tr>
@@ -66,7 +66,7 @@
 <tr><td>2.32</td><td><a href="02-go-rust.html">Go y Rust en profundidad (amplía 2.13)</a></td><td>pclntab/itab en Go; manglado v0, monomorfización y trait objects en Rust.</td></tr>
 <tr><td>2.33</td><td><a href="02-vb6-pcode.html">VB6 y p-code (amplía 2.13)</a></td><td>Nativo vs p-code, VBHeader y MSVBVM60; VB Decompiler/WKTVBDE (legado).</td></tr>
 </tbody></table></div>
-<h2 id="recursos-de-cls-para-esta-etapa">Recursos de CLS para esta etapa</h2>
+<h2 id="recursos-de-cls-para-esta-etapa">Recursos de reversing para esta etapa</h2>
 <ul><li><a href="../2d.html">Etapa 2 · Rama optativa 2D — Windows internals (después de 2C)</a></li><li><a href="../fichas/reversing-desde-cero.html">Reversing desde cero (tronco principal)</a></li><li><a href="../fichas/ida-desde-cero.html">Curso IDA desde cero (69 documentos)</a></li><li><a href="../fichas/ollydbg-cayetano.html">Curso de OllyDbg (Videos 23–40)</a></li><li><a href="../fichas/ida-pro-docx.html">Introducción al reversing con IDA Pro (docx)</a></li></ul>
 <h2 id="evaluación-de-salida">Evaluación de salida</h2>
 <ul><li><strong>2A</strong> · Explicar qué hace un bloque de 10 instrucciones y qué flags cambia.</li><li><strong>2A</strong> · Reconstruir un if/else y un bucle a partir del listado.</li><li><strong>2A</strong> · Poner los tres tipos de breakpoint y justificar cuál usar.</li><li><strong>2A</strong> · Sincronizar IDA y x64dbg por base o por file offset.</li><li><strong>2B</strong> · Reconocer tres señales de ofuscación y hallar el bloque real sin NOPear a ciegas.</li><li><strong>2B</strong> · Encontrar un TLS callback en el PE y demostrar que corre antes de <code>main</code>.</li><li><strong>2B</strong> · Llegar al handler de un control en un binario MFC por una API de texto y el call stack.</li><li><strong>2B</strong> · Identificar el compilador de un binario y navegar los directorios finos del PE (Rich header, Load Config, debug/PDB).</li><li><strong>2B</strong> · Clasificar una técnica anti-análisis y detectarla, y leer el mismo binario en IDA y en Ghidra.</li><li><strong>2C</strong> · Desempaquetar un UPX propio: llegar al OEP, dumpear, reconstruir la IAT y validar con <code>upx -d</code>.</li><li><strong>2C</strong> · Reconocer RTTI, <code>std::string</code> (SSO), un <code>std::vector</code> y un <code>try/catch</code> en un binario C++ propio.</li><li><strong>2C</strong> · Diagnosticar un bug de heap propio con WinDbg/Page Heap y leer, con un differ, qué cambió un parche.</li><li><strong>2C</strong> · Automatizar una tarea de análisis con un script de x64dbg y guardar la evidencia.</li><li><strong>2E</strong> · Resolver un crackme propio con un solver (angr/Z3), reconocer una VM de protección y sacar cobertura con DBI o Frida Stalker.</li></ul>

@@ -100,5 +100,5 @@ Podés: (1) explicar qué hace la DBI y en qué se diferencia de un debugger; (2
 - [2.17 Packers](02-packers.html) (OEP a mano) y [2.24 Fuzzing](02-opt-fuzzing.html) (la cobertura como señal).
 
 :::{nota} Capas de esta lección
-**Contenido observado en CLS:** el OEP/dump de 2.17 como problema que la DBI automatiza. **Conocimiento externo (agregado por esta edición):** Pin, DynamoRIO, `drcov`/Lighthouse y la regla W⊕X. **Recomendación editorial:** ejemplos y práctica ilustrativos, sobre binarios propios.
+**Núcleo conceptual:** el OEP/dump de 2.17 como problema que la DBI automatiza. **Conocimiento externo (agregado por esta edición):** Pin, DynamoRIO, `drcov`/Lighthouse y la regla W⊕X. **Recomendación editorial:** ejemplos y práctica ilustrativos, sobre binarios propios.
 :::

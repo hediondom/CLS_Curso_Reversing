@@ -12,7 +12,7 @@ Al terminar vas a poder escribir un script corto que recorra funciones, busque u
 
 **Prerrequisitos:** etapas 0 a 4, IDA o Ghidra, Python básico. **Duración sugerida:** 4 horas. Estimación aproximada.
 
-## Qué hay en CLS
+## Alcance técnico de la etapa
 
 El curso tiene cuatro capítulos de IDAPython, **leídos e integrados en esta edición**: 22b ("Empezando con IDAPython"), 25 ("Empezando con IDAPython" + guía del entorno), 27b ("Jugando con IDAPython") y 32 ("Un proyecto con IDAPython"). Más abajo, en «Lo que muestra el curso», están los ejemplos observados con su cita. Los ejemplos de esta sección inicial son editoriales (código propio) y los del curso los complementan con la API real.
 
@@ -301,5 +301,5 @@ Si el script te ahorra tiempo y el resultado es correcto, la rama está aprobada
 - {{src:CLS_resultados_intermedios/transcripciones/extraidos/Reversing desde cero (Ricardo y Solid)/Ricardo Narvaja y Solid - Reversing desde cero_15 Ejercicio 2 - Análisis estático_15 Ejercicio 2 - Análisis estático.txt|Reversing desde cero, cap. 15}} — constante `0x1E0` usada en el ejemplo de búsqueda editorial.
 
 :::{nota} Capas de esta lección
-**Contenido observado en CLS:** el entorno IPyIDA/Spyder, `here()`, el recorrido de funciones y del grafo, el parcheo scripteado, la búsqueda por regex y las enumeraciones (caps. 22b, 25, 27b, 32). **Conocimiento externo:** API de IDAPython moderna, Ghidra, `pefile` y `capstone`. **Recomendación editorial:** los tres primeros scripts de ejemplo, el flujo de trabajo y el encuadre de parchear solo programas propios.
+**Núcleo conceptual:** el entorno IPyIDA/Spyder, `here()`, el recorrido de funciones y del grafo, el parcheo scripteado, la búsqueda por regex y las enumeraciones (caps. 22b, 25, 27b, 32). **Conocimiento externo:** API de IDAPython moderna, Ghidra, `pefile` y `capstone`. **Recomendación editorial:** los tres primeros scripts de ejemplo, el flujo de trabajo y el encuadre de parchear solo programas propios.
 :::

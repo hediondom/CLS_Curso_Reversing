@@ -7,7 +7,7 @@ etapa: "Etapa 4 · Práctica guiada"
 # Reconocer criptografía y encoding en un binario
 
 :::{aviso} De dónde sale esta lección
-Este tema **no está en el corpus CLS**: es **conocimiento externo** que agregamos para completar la guía. Se incluye porque reconocer cripto y encoding es rutina en análisis de malware de Windows y en CTF. El enfoque es **defensivo y de identificación**: reconocer qué algoritmo hay, no implementar criptografía ni romperla.
+Este tema es indispensable en binarios modernos de 64 bits y forma parte del núcleo técnico avanzado de esta obra. Se incluye porque reconocer cripto y encoding es rutina en análisis de malware de Windows y en CTF. El enfoque es **defensivo y de identificación**: reconocer qué algoritmo hay, no implementar criptografía ni romperla.
 :::
 
 :::{nota} Objetivo de la lección
@@ -140,5 +140,5 @@ Si podés mirar un binario, decir "acá hay base64 y acá un XOR con clave de 1 
 - Especificaciones públicas: FIPS 197 (AES), RFC 1321 (MD5), FIPS 180-4 (SHA), RFC 4648 (base64).
 
 :::{nota} Capas de esta lección
-**Conocimiento externo (agregado por esta edición):** todo el contenido (XOR, base64, constantes de algoritmos, CryptoAPI/CNG, herramientas). No proviene de CLS. **Recomendación editorial:** el método de reconocimiento y el encuadre defensivo.
+**Conocimiento externo (agregado por esta edición):** todo el contenido (XOR, base64, constantes de algoritmos, CryptoAPI/CNG, herramientas). No proviene de reversing. **Recomendación editorial:** el método de reconocimiento y el encuadre defensivo.
 :::

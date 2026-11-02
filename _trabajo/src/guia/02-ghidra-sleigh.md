@@ -105,5 +105,5 @@ Podés: (1) escribir un script de Ghidra (Jython/PyGhidra) que descifre y anote;
 - [2.16 Ghidra/Cutter](02-ghidra.html) (recorrido a mano) y [2.26 VM](02-ofuscacion-vm.html) (el bytecode que se liftea).
 
 :::{nota} Capas de esta lección
-**Contenido observado en CLS:** el recorrido de Ghidra de 2.16 como base. **Conocimiento externo (agregado por esta edición):** la API de scripting, headless, P-Code y SLEIGH. **Recomendación editorial:** los ejemplos (incluida la línea SLEIGH, marcada como esquemática) y la práctica son ilustrativos.
+**Núcleo conceptual:** el recorrido de Ghidra de 2.16 como base. **Conocimiento externo (agregado por esta edición):** la API de scripting, headless, P-Code y SLEIGH. **Recomendación editorial:** los ejemplos (incluida la línea SLEIGH, marcada como esquemática) y la práctica son ilustrativos.
 :::

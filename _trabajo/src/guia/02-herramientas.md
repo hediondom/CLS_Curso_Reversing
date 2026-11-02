@@ -14,7 +14,7 @@ Al terminar vas a poder elegir la herramienta adecuada para identificar, desensa
 
 ## Por qué hablar de herramientas
 
-El conocimiento de reversing —registros, stack, saltos, PE— envejece poco. Las herramientas envejecen rápido. El curso de CLS mezcla material de 2007, 2016 y 2021, y usa OllyDbg en una parte y x64dbg en otra. Si no distinguís qué es concepto y qué es botón, vas a estudiar una interfaz muerta creyendo que estudias reversing.
+El conocimiento de reversing —registros, stack, saltos, PE— envejece poco. Las herramientas envejecen rápido. El curso de reversing mezcla material de 2007, 2016 y 2021, y usa OllyDbg en una parte y x64dbg en otra. Si no distinguís qué es concepto y qué es botón, vas a estudiar una interfaz muerta creyendo que estudias reversing.
 
 ## El taller mínimo
 
@@ -36,7 +36,7 @@ No necesitás instalar todo el primer día. x64dbg, un editor hexadecimal y un v
 ## El taller actual (2026): más allá de lo mínimo
 
 :::{aviso} Actualización externa
-El corpus CLS no cubre estas herramientas (son más nuevas que su material). Las agregamos como **conocimiento externo** para que el taller esté al día. Todas corren o se usan sobre **Windows**; no son obligatorias para el recorrido base, pero sí para análisis real.
+La literatura clásica no cubre estas herramientas (son más modernas). Las agregamos como estándar indispensable para que el taller esté al día. Todas corren o se usan sobre **Windows**; no son obligatorias para el recorrido base, pero sí para análisis real.
 
 Verificá siempre la versión y descargá desde el sitio oficial.
 :::
@@ -173,5 +173,5 @@ Si tu bitácora tiene el inventario del taller con versiones y hashes, estás li
 - [Curso IDA · tutes 11 y 13](../ida_tutes/11.html) — plugins de IDA y el bug de la versión 6.8 (atención a la versión).
 
 :::{nota} Capas de esta lección
-**Contenido observado en CLS:** el uso de OllyDbg en los videos 23–40, la VM Windows 7 y el recorrido de ExeInfoPE. **Conocimiento externo (agregado por esta edición):** el estado actual de las herramientas y todo el "taller actual 2026" (Frida, WinDbg/TTD, BinDiff/Diaphora, FLOSS, CAPA, angr/Unicorn, asistencia con IA). **Recomendación editorial:** el taller mínimo, la tabla de decisión y la cautela con la IA.
+**Núcleo conceptual:** el uso de OllyDbg en los videos 23–40, la VM Windows 7 y el recorrido de ExeInfoPE. **Conocimiento externo (agregado por esta edición):** el estado actual de las herramientas y todo el "taller actual 2026" (Frida, WinDbg/TTD, BinDiff/Diaphora, FLOSS, CAPA, angr/Unicorn, asistencia con IA). **Recomendación editorial:** el taller mínimo, la tabla de decisión y la cautela con la IA.
 :::

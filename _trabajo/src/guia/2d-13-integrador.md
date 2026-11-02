@@ -96,8 +96,8 @@ Entregás un análisis acotado, basado en evidencia, y demostración de limpieza
 ## Fuentes
 
 - Documentación primaria enlazada en [2D.1](2d-01-objetos.html), [2D.2](2d-02-memoria-loader.html), [2D.3](2d-03-registro.html), [2D.6](2d-06-com-interfaces.html), [2D.7](2d-07-com-activacion.html), [2D.9](2d-09-wmi.html), [2D.10](2d-10-ipc.html), [2D.11](2d-11-excepciones.html) y [2D.12](2d-12-etw.html).
-- **CLS:** método de análisis e informe en [Etapa 4](04-informe.html).
+- **Fundamentos previos:** método de análisis e informe en [Etapa 4](04-informe.html).
 
 :::{nota} Etiquetas
-**Observado en CLS:** método de análisis e informe. **Conocimiento externo:** integración Windows internals. **Ejemplo ilustrativo:** plantilla BlocLab. **Laboratorio verificado:** no; caso a construir con software propio.
+**Núcleo conceptual:** método de análisis e informe. **Conocimiento externo:** integración Windows internals. **Ejemplo ilustrativo:** plantilla BlocLab. **Laboratorio verificado:** no; caso a construir con software propio.
 :::

@@ -10,7 +10,7 @@
 <body>
 <a class="salto" href="#contenido">Saltar al contenido</a>
 <header class="cabecera">
-  <div class="marca"><a href="../00_EMPEZAR_AQUI.html">CLS · Curso de reversing</a> <span class="edicion">edición 5 · 27/10/2026</span></div>
+  <div class="marca"><a href="../00_EMPEZAR_AQUI.html">Curso de Reversing en Windows</a> <span class="edicion">edición 5 · 27/10/2026</span></div>
   <nav class="principal" aria-label="Navegación principal">
     <a href="../00_EMPEZAR_AQUI.html">Inicio</a>
     <a href="../guia/index.html">Curso</a>
@@ -36,7 +36,7 @@
 <h2 id="ejemplo-trabajado">Ejemplo trabajado</h2>
 <p><em>(Fragmento <strong>ficticio e incompleto</strong>, solo para aprender a leer campos; no es un XML para registrar.)</em></p>
 <pre><code class="lenguaje-xml">&lt;RegistrationInfo&gt;
-  &lt;Author&gt;CLS Lab&lt;/Author&gt;
+  &lt;Author&gt;Reversing Lab&lt;/Author&gt;
   &lt;Description&gt;Comprobación local de estado&lt;/Description&gt;
 &lt;/RegistrationInfo&gt;
 &lt;Triggers&gt;
@@ -51,7 +51,7 @@
 &lt;Settings&gt;&lt;Hidden&gt;false&lt;/Hidden&gt;&lt;/Settings&gt;
 &lt;Actions Context="Author"&gt;
   &lt;Exec&gt;
-    &lt;Command&gt;C:\CLS-Lab\status.exe&lt;/Command&gt;
+    &lt;Command&gt;C:\ReversingLab\status.exe&lt;/Command&gt;
     &lt;Arguments&gt;--once&lt;/Arguments&gt;
   &lt;/Exec&gt;
 &lt;/Actions&gt;</code></pre>
@@ -68,8 +68,8 @@
 <details class="qa"><summary>¿Qué hacés si encontrás una acción o ruta que no reconocés?</summary><div class="respuesta"><p>Registrás los datos, conservás la evidencia y contrastás con una fuente confiable o con el administrador; no ejecutás, deshabilitás ni borrás la tarea durante el análisis.</p></div></details>
 <aside class="callout nota"><p class="callout-titulo">Puerta de salida (optativa)</p><p>Podés explicar trigger, acción, principal y ajustes; leer esos campos en XML; describir el efecto limitado de <code>Hidden</code>; y fundamentar una anomalía sin convertirla en una acusación no corroborada.</p></aside>
 <h2 id="fuentes">Fuentes</h2>
-<ul><li><strong>Conocimiento externo:</strong> <a href="https://learn.microsoft.com/en-us/windows/win32/taskschd/about-the-task-scheduler" rel="noopener" target="_blank">About the Task Scheduler</a>, <a href="https://learn.microsoft.com/en-us/windows/win32/taskschd/tasks" rel="noopener" target="_blank">Tasks</a>, <a href="https://learn.microsoft.com/en-us/windows/win32/taskschd/security-contexts-for-running-tasks" rel="noopener" target="_blank">Security Contexts for Running Tasks</a>, <a href="https://learn.microsoft.com/en-us/windows/win32/taskschd/task-registration-information" rel="noopener" target="_blank">Task Registration Information</a> y <a href="https://learn.microsoft.com/en-us/windows/win32/taskschd/task-scheduler-schema" rel="noopener" target="_blank">Task Scheduler schema</a>.</li><li><strong>Propiedad de visibilidad:</strong> <a href="https://learn.microsoft.com/en-us/windows/win32/taskschd/tasksettings-hidden" rel="noopener" target="_blank">TaskSettings.Hidden</a>.</li><li><strong>Consulta:</strong> <a href="https://learn.microsoft.com/en-us/windows/win32/taskschd/schtasks" rel="noopener" target="_blank"><code>schtasks.exe</code></a>.</li><li><strong>Relación con CLS:</strong> permisos del registro en <a href="2d-03-registro.html">2D.3</a>, contexto de tokens en <a href="2d-01-objetos.html">2D.1</a> y servicios en <a href="2d-04-servicios.html">2D.4</a>.</li></ul>
-<aside class="callout nota"><p class="callout-titulo">Etiquetas</p><p><strong>Observado en CLS:</strong> marco de lectura de configuración y persistencia defensiva. <strong>Conocimiento externo:</strong> Task Scheduler, XML, contextos, triggers y acciones. <strong>Ejemplo ilustrativo:</strong> fragmento ficticio no registrable. <strong>Laboratorio verificado:</strong> no; la práctica propuesta es de inspección de solo lectura.</p></aside>
+<ul><li><strong>Conocimiento externo:</strong> <a href="https://learn.microsoft.com/en-us/windows/win32/taskschd/about-the-task-scheduler" rel="noopener" target="_blank">About the Task Scheduler</a>, <a href="https://learn.microsoft.com/en-us/windows/win32/taskschd/tasks" rel="noopener" target="_blank">Tasks</a>, <a href="https://learn.microsoft.com/en-us/windows/win32/taskschd/security-contexts-for-running-tasks" rel="noopener" target="_blank">Security Contexts for Running Tasks</a>, <a href="https://learn.microsoft.com/en-us/windows/win32/taskschd/task-registration-information" rel="noopener" target="_blank">Task Registration Information</a> y <a href="https://learn.microsoft.com/en-us/windows/win32/taskschd/task-scheduler-schema" rel="noopener" target="_blank">Task Scheduler schema</a>.</li><li><strong>Propiedad de visibilidad:</strong> <a href="https://learn.microsoft.com/en-us/windows/win32/taskschd/tasksettings-hidden" rel="noopener" target="_blank">TaskSettings.Hidden</a>.</li><li><strong>Consulta:</strong> <a href="https://learn.microsoft.com/en-us/windows/win32/taskschd/schtasks" rel="noopener" target="_blank"><code>schtasks.exe</code></a>.</li><li><strong>Fundamentos previos:</strong> permisos del registro en <a href="2d-03-registro.html">2D.3</a>, contexto de tokens en <a href="2d-01-objetos.html">2D.1</a> y servicios en <a href="2d-04-servicios.html">2D.4</a>.</li></ul>
+<aside class="callout nota"><p class="callout-titulo">Etiquetas</p><p><strong>Núcleo conceptual:</strong> marco de lectura de configuración y persistencia defensiva. <strong>Conocimiento externo:</strong> Task Scheduler, XML, contextos, triggers y acciones. <strong>Ejemplo ilustrativo:</strong> fragmento ficticio no registrable. <strong>Laboratorio verificado:</strong> no; la práctica propuesta es de inspección de solo lectura.</p></aside>
 </main>
 <footer class="pie">
   <p>Material educativo y defensivo. Las prácticas se limitan a programas propios, software abierto o crackmes diseñados para aprender. No se enseña a eludir licencias, DRM ni controles de acceso.</p>

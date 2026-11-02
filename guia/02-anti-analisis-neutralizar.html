@@ -10,7 +10,7 @@
 <body>
 <a class="salto" href="#contenido">Saltar al contenido</a>
 <header class="cabecera">
-  <div class="marca"><a href="../00_EMPEZAR_AQUI.html">CLS · Curso de reversing</a> <span class="edicion">edición 5 · 27/10/2026</span></div>
+  <div class="marca"><a href="../00_EMPEZAR_AQUI.html">Curso de Reversing en Windows</a> <span class="edicion">edición 5 · 27/10/2026</span></div>
   <nav class="principal" aria-label="Navegación principal">
     <a href="../00_EMPEZAR_AQUI.html">Inicio</a>
     <a href="../guia/index.html">Curso</a>
@@ -84,7 +84,7 @@ console.log('[*] PEB limpiado en ' + peb + '; hooks anti-debug activos.');</code
 <aside class="callout nota"><p class="callout-titulo">Puerta de salida</p><p>Podés: (1) explicar por qué neutralizar un chequeo puede disparar el payload y qué recaudos exige; (2) relacionar cada chequeo de 2.15 con su contramedida; (3) ocultar el debugger con ScyllaHide o un hook de Frida sobre un binario propio; (4) justificar por qué se hace solo en VM descartable.</p></aside>
 <h2 id="fuentes-de-esta-lección">Fuentes de esta lección</h2>
 <ul><li><a href="https://github.com/x64dbg/ScyllaHide" rel="noopener" target="_blank">github.com/x64dbg/ScyllaHide</a> — ocultación de debugger (PEB, APIs, NtGlobalFlag) (conocimiento externo).</li><li><a href="https://frida.re/docs/" rel="noopener" target="_blank">frida.re/docs</a> — <code>Interceptor.replace</code>/<code>attach</code> para falsear el resultado de una API.</li><li><a href="https://github.com/LordNoteworthy/al-khaser" rel="noopener" target="_blank">github.com/LordNoteworthy/al-khaser</a> — catálogo de chequeos anti-análisis para generar binarios propios de práctica.</li><li><a href="02-anti-analisis.html">2.15 Anti-análisis</a> (reconocer) y <a href="04-dinamico-seguro.html">4.4 Dinámico seguro</a> (la VM descartable).</li></ul>
-<aside class="callout nota"><p class="callout-titulo">Capas de esta lección</p><p><strong>Contenido observado en CLS:</strong> los chequeos y el encuadre de reconocimiento de 2.15; el dinámico seguro de la Etapa 4. <strong>Conocimiento externo (agregado por esta edición):</strong> las contramedidas concretas, ScyllaHide/TitanHide y los hooks de Frida. <strong>Recomendación editorial:</strong> ejemplos y práctica ilustrativos, sobre binarios propios y malware solo en VM descartable.</p></aside>
+<aside class="callout nota"><p class="callout-titulo">Capas de esta lección</p><p><strong>Núcleo conceptual:</strong> los chequeos y el encuadre de reconocimiento de 2.15; el dinámico seguro de la Etapa 4. <strong>Conocimiento externo (agregado por esta edición):</strong> las contramedidas concretas, ScyllaHide/TitanHide y los hooks de Frida. <strong>Recomendación editorial:</strong> ejemplos y práctica ilustrativos, sobre binarios propios y malware solo en VM descartable.</p></aside>
 </main>
 <footer class="pie">
   <p>Material educativo y defensivo. Las prácticas se limitan a programas propios, software abierto o crackmes diseñados para aprender. No se enseña a eludir licencias, DRM ni controles de acceso.</p>

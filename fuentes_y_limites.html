@@ -10,7 +10,7 @@
 <body>
 <a class="salto" href="#contenido">Saltar al contenido</a>
 <header class="cabecera">
-  <div class="marca"><a href="00_EMPEZAR_AQUI.html">CLS · Curso de reversing</a> <span class="edicion">edición 5 · 27/10/2026</span></div>
+  <div class="marca"><a href="00_EMPEZAR_AQUI.html">Curso de Reversing en Windows</a> <span class="edicion">edición 5 · 27/10/2026</span></div>
   <nav class="principal" aria-label="Navegación principal">
     <a href="00_EMPEZAR_AQUI.html">Inicio</a>
     <a href="guia/index.html">Curso</a>
@@ -27,7 +27,7 @@
 <p>Este documento explica de dónde sale el material del curso, qué se revisó de verdad, qué quedó pendiente, qué se corrigió respecto de las ediciones anteriores y qué decisiones editoriales se tomaron. Está pensado para que otra persona —u otra sesión de trabajo— pueda continuar sin empezar de cero.</p>
 <h2 id="0-alcance-solo-windows-refuerzo-externo">0. Alcance: solo Windows + refuerzo externo</h2>
 <p>Esta edición cubre <strong>únicamente reversing de Windows</strong> (binarios PE, x86/x64). Linux/ELF, macOS/Mach-O, Android (APK/DEX) y arquitecturas como ARM/AArch64 quedan <strong>fuera de alcance</strong> por decisión editorial (ver <code>guia/05-fuera-de-alcance.html</code>).</p>
-<p>Además del material del grupo CLS, el curso incorpora un <strong>refuerzo/actualización de conocimiento externo</strong> para tapar temas que CLS no cubría pero que son necesarios en Windows hoy: <strong>punto flotante y SSE</strong> (<code>guia/02-flotante.html</code>), <strong>optimizaciones del compilador</strong> (<code>guia/02-optimizaciones.html</code>), <strong>reconocer criptografía y encoding</strong> (<code>guia/04-cripto.html</code>), el <strong>taller de herramientas actual</strong> (dentro de <code>guia/02-herramientas.html</code>) y <strong>dónde seguir practicando</strong> (en el mapa del curso). Esas lecciones están marcadas como <em>conocimiento externo (agregado por esta edición)</em> y no se presentan como material observado de CLS.</p>
+<p>Además del material didáctico tradicional, el curso incorpora un <strong>refuerzo/actualización de conocimiento externo</strong> para cubrir temas indispensables en binarios modernos de 64 bits en Windows: <strong>punto flotante y SSE</strong> (<code>guia/02-flotante.html</code>), <strong>optimizaciones del compilador</strong> (<code>guia/02-optimizaciones.html</code>), <strong>reconocer criptografía y encoding</strong> (<code>guia/04-cripto.html</code>), el <strong>taller de herramientas actual</strong> (dentro de <code>guia/02-herramientas.html</code>) y <strong>dónde seguir practicando</strong> (en el mapa del curso). Esas lecciones están marcadas como <em>conocimiento externo (agregado por esta edición)</em> y no se presentan como material observado de reversing.</p>
 <h2 id="1-qué-es-esta-edición">1. Qué es esta edición</h2>
 <p>Un curso completo en <code>CLS_Guia</code>, solo Windows, con:</p>
 <ul><li>Lecciones HTML en siete etapas numeradas: <strong>0–4 son el recorrido obligatorio</strong>; <strong>5 y 6 son ramas optativas</strong>. La rama optativa 2D y la extensión Hyper-V son materiales complementarios, fuera de la aprobación obligatoria.</li><li>Fichas de recursos con estado de revisión.</li><li>Glosario, preguntas y respuestas, mapa y registro de cobertura, seguimiento.</li><li>Este documento de fuentes y límites.</li></ul>
@@ -75,7 +75,7 @@
 </tr></thead><tbody>
 <tr><td><code>inventario_limpio/CLS_inventario_limpio.csv</code></td><td>26/10/2026</td><td>8.154 filas</td><td>Una fila por archivo en disco, con SHA-256</td><td><strong>Vigente</strong></td></tr>
 <tr><td><code>CLS_resultados/inventario_completo.csv</code></td><td>24/10/2026</td><td>6.499 filas</td><td>Solo referencias del <code>result.json</code>, sin binarios</td><td>Histórico</td></tr>
-<tr><td><code>CLS_plan_estudio.docx</code></td><td>sesión previa</td><td>100.713 mensajes, 2.638 referencias, 3.861 enlaces</td><td>Exportación incompleta, rutas <code>D:\CLS</code>, sin medios</td><td>Histórico y superado</td></tr>
+<tr><td><code>CLS_plan_estudio.docx</code></td><td>sesión previa</td><td>100.713 mensajes, 2.638 referencias, 3.861 enlaces</td><td>Exportación incompleta, Rutas de trabajo local, sin medios</td><td>Histórico y superado</td></tr>
 </tbody></table></div>
 <p>No se suman esas cifras. El inventario vigente tiene 8.154 archivos; el chat unido tiene 100.791 mensajes (2016-01-18 a 2026-10-26). El plan histórico decía 100.713 mensajes porque trabajaba sobre otra exportación y sin los medios.</p>
 <p>Estados del inventario vigente: <code>util</code> 6.705, <code>util (trae binarios: solo VM)</code> 453, <code>practica (solo VM)</code> 66, <code>cuarentena</code> 202, <code>excluido (comercial/warez)</code> 46, <code>duplicado</code> 321, <code>descartado (miniatura)</code> 361.</p>
@@ -115,7 +115,7 @@
 <tr><td>Cap. 09, ~00:08:53</td><td>"JC es igual a JE"</td><td><code>JE</code> = <code>JZ</code>; <code>JC</code> = <code>JB</code> (carry)</td></tr>
 <tr><td>Cap. 14, ~00:01:00</td><td>Buscar IDA Pro "por internet"</td><td>Usar IDA Free, Ghidra o licencia educativa</td></tr>
 <tr><td>Docx IDA 2016</td><td>Descargar IDA Pro 6.8 con contraseña</td><td>No se sigue; usar software con licencia</td></tr>
-<tr><td>Plan de estudio</td><td>Rutas <code>D:\CLS</code>, 100.713 mensajes, sin medios</td><td>Las rutas se actualizaron al árbol local del proyecto y a su inventario vigente</td></tr>
+<tr><td>Plan de estudio</td><td>Rutas de trabajo local, 100.713 mensajes, sin medios</td><td>Las rutas se actualizaron al árbol local del proyecto y a su inventario vigente</td></tr>
 <tr><td>Video 37</td><td>Ejecuta malware "para ver qué hace"</td><td>Caso observado; la práctica de esta guía es estática y defensiva</td></tr>
 </tbody></table></div>
 <p>Cuando el audio se equivoca en un mnemónico o un número, la lección lo marca y enseña el valor correcto. No se copian errores del ASR.</p>
@@ -157,8 +157,8 @@
 <h2 id="11-limitaciones-de-esta-edición">11. Limitaciones de esta edición</h2>
 <ul><li>La cobertura es <strong>parcial y declarada</strong>: no se leyó todo el corpus.</li><li>Las duraciones de video provienen de <code>_progreso.csv</code> o de la suma de subtítulos; las de las lecciones son estimaciones editoriales.</li><li>Las citas de audio pueden tener errores de ASR; se marcan cuando se detectan.</li><li>No se verificó el contenido de los comprimidos ni de los binarios.</li><li>No se probaron los ejercicios en todas las versiones de Windows, IDA, x64dbg o .NET.</li><li>Las herramientas cambian: los atajos y menús pueden diferir de los descritos.</li><li>El curso no reemplaza una formación formal ni una autorización para analizar sistemas ajenos.</li></ul>
 <h2 id="12-atribución">12. Atribución</h2>
-<ul><li><strong>Reversing desde cero:</strong> Ricardo Narvaja y Solid.</li><li><strong>MASM32 y OllyDbg:</strong> Cayetano de Juan Úbeda.</li><li><strong>Lógica de programación:</strong> Daniel Bermúdez, basado en el libro de Omar Iván Trejos Buriticá.</li><li><strong>Introducción al reversing con IDA Pro:</strong> Ricardo Narvaja (2016).</li><li><strong>Comunidad CLS:</strong> inventarios, chat, transcripciones y catalogación.</li></ul>
-<p>Esta guía es una obra derivada con fines educativos. No está afiliada a CLS ni a los autores. Los errores de interpretación y las decisiones editoriales son responsabilidad de esta edición.</p>
+<ul><li><strong>Reversing desde cero:</strong> Ricardo Narvaja y Solid.</li><li><strong>MASM32 y OllyDbg:</strong> Cayetano de Juan Úbeda.</li><li><strong>Lógica de programación:</strong> Daniel Bermúdez, basado en el libro de Omar Iván Trejos Buriticá.</li><li><strong>Introducción al reversing con IDA Pro:</strong> Ricardo Narvaja (2016).</li><li><strong>Comunidad y aportes docentes:</strong> inventarios, chat, transcripciones y catalogación.</li></ul>
+<p>Esta obra es un manual técnico independiente, libre y abierto con fines educativos y de investigación defensiva. Reconoce con gratitud las influencias docentes de la comunidad hispana de reversing. La redacción, el código fuente didáctico y las ampliaciones técnicas son de autoría libre y anónima.</p>
 <h2 id="13-verificación-rápida">13. Verificación rápida</h2>
 <p>Para comprobar que el paquete está completo:</p>
 <pre><code class="lenguaje-powershell"># Contar lecciones y fichas

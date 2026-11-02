@@ -247,6 +247,6 @@ Si podés responder "¿quién escribe este buffer?" con un breakpoint de memoria
 - [Curso IDA · tutes 9, 10 y 12](../ida_tutes/10.html) — IDA como debugger (soporta varios) y práctica dinámica sobre crackmes propios (`HOLA_REVERSER`, `TEST_REVERSER`).
 
 :::{nota} Capas de esta lección
-**Contenido observado en CLS:** el recorrido de la interfaz del capítulo 01, los tres breakpoints del capítulo 07, el log `{EAX}` y las etiquetas del capítulo 11, y los chequeos de los capítulos 22 y 24. **Conocimiento externo:** el mecanismo `INT3`, los registros `DR` y las protecciones de página. **Recomendación editorial:** el límite sobre parcheo y la corrección sobre "cuatro por proceso".
+**Núcleo conceptual:** el recorrido de la interfaz del capítulo 01, los tres breakpoints del capítulo 07, el log `{EAX}` y las etiquetas del capítulo 11, y los chequeos de los capítulos 22 y 24. **Conocimiento externo:** el mecanismo `INT3`, los registros `DR` y las protecciones de página. **Recomendación editorial:** el límite sobre parcheo y la corrección sobre "cuatro por proceso".
 :::
 

@@ -113,5 +113,5 @@ Podés: (1) distinguir packer de protector; (2) identificar una familia por sus 
 - [2.15 Anti-análisis](02-anti-analisis.html) y [2.26 VM](02-ofuscacion-vm.html) — las capas de defensa que apila un protector.
 
 :::{nota} Capas de esta lección
-**Contenido observado en CLS:** el desempaquetado didáctico de UPX (2.17) y la exclusión declarada de protectores comerciales en [Fuentes y límites](../fuentes_y_limites.html). **Conocimiento externo (agregado por esta edición):** la taxonomía de familias, sus huellas y las herramientas de reconocimiento. **Recomendación editorial:** los ejemplos y la práctica son ilustrativos y sobre binarios propios.
+**Núcleo conceptual:** el desempaquetado didáctico de UPX (2.17) y la exclusión declarada de protectores comerciales en [Fuentes y límites](../fuentes_y_limites.html). **Conocimiento externo (agregado por esta edición):** la taxonomía de familias, sus huellas y las herramientas de reconocimiento. **Recomendación editorial:** los ejemplos y la práctica son ilustrativos y sobre binarios propios.
 :::

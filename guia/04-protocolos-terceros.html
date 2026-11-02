@@ -10,7 +10,7 @@
 <body>
 <a class="salto" href="#contenido">Saltar al contenido</a>
 <header class="cabecera">
-  <div class="marca"><a href="../00_EMPEZAR_AQUI.html">CLS · Curso de reversing</a> <span class="edicion">edición 5 · 27/10/2026</span></div>
+  <div class="marca"><a href="../00_EMPEZAR_AQUI.html">Curso de Reversing en Windows</a> <span class="edicion">edición 5 · 27/10/2026</span></div>
   <nav class="principal" aria-label="Navegación principal">
     <a href="../00_EMPEZAR_AQUI.html">Inicio</a>
     <a href="../guia/index.html">Curso</a>
@@ -93,7 +93,7 @@ end</code></pre></aside>
 <aside class="callout nota"><p class="callout-titulo">Puerta de salida</p><p>Podés: (1) aislar una conversación y describir su framing; (2) identificar la serialización (TLV/Protobuf/…); (3) correlacionar tráfico con el binario vía hooks en send/recv; (4) escribir un disector Lua que valide la estructura y documentar la máquina de estados —todo sobre sistemas propios o autorizados.</p></aside>
 <h2 id="fuentes-de-esta-lección">Fuentes de esta lección</h2>
 <ul><li><a href="https://www.wireshark.org/docs/wsdg_html_chunked/wsluarm.html" rel="noopener" target="_blank">Wireshark · Lua dissectors (WSDG)</a> — <code>Proto</code>, <code>ProtoField</code>, <code>DissectorTable</code> (conocimiento externo).</li><li><a href="https://github.com/mildsunrise/protobuf-inspector" rel="noopener" target="_blank">github.com/mildsunrise/protobuf-inspector</a> — reconstruir Protobuf sin <code>.proto</code>.</li><li><a href="https://frida.re/docs/" rel="noopener" target="_blank">frida.re/docs</a> — hooks en <code>send</code>/<code>recv</code>/<code>WSASend</code> para ver el mensaje en claro.</li><li><a href="04-formatos-protocolos.html">Reconstruir formatos y protocolos</a> — el formato de archivo del que parte esta ampliación.</li></ul>
-<aside class="callout nota"><p class="callout-titulo">Capas de esta lección</p><p><strong>Contenido observado en CLS:</strong> la reconstrucción de formatos/protocolos de la Etapa 4 como base. <strong>Conocimiento externo (agregado por esta edición):</strong> framing, serialización, correlación con hooks de red y disectores de Wireshark. <strong>Recomendación editorial:</strong> ejemplos y práctica ilustrativos, sobre sistemas propios o autorizados.</p></aside>
+<aside class="callout nota"><p class="callout-titulo">Capas de esta lección</p><p><strong>Núcleo conceptual:</strong> la reconstrucción de formatos/protocolos de la Etapa 4 como base. <strong>Conocimiento externo (agregado por esta edición):</strong> framing, serialización, correlación con hooks de red y disectores de Wireshark. <strong>Recomendación editorial:</strong> ejemplos y práctica ilustrativos, sobre sistemas propios o autorizados.</p></aside>
 </main>
 <footer class="pie">
   <p>Material educativo y defensivo. Las prácticas se limitan a programas propios, software abierto o crackmes diseñados para aprender. No se enseña a eludir licencias, DRM ni controles de acceso.</p>

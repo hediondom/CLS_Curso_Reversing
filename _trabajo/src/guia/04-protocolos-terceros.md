@@ -140,5 +140,5 @@ Podés: (1) aislar una conversación y describir su framing; (2) identificar la 
 - [Reconstruir formatos y protocolos](04-formatos-protocolos.html) — el formato de archivo del que parte esta ampliación.
 
 :::{nota} Capas de esta lección
-**Contenido observado en CLS:** la reconstrucción de formatos/protocolos de la Etapa 4 como base. **Conocimiento externo (agregado por esta edición):** framing, serialización, correlación con hooks de red y disectores de Wireshark. **Recomendación editorial:** ejemplos y práctica ilustrativos, sobre sistemas propios o autorizados.
+**Núcleo conceptual:** la reconstrucción de formatos/protocolos de la Etapa 4 como base. **Conocimiento externo (agregado por esta edición):** framing, serialización, correlación con hooks de red y disectores de Wireshark. **Recomendación editorial:** ejemplos y práctica ilustrativos, sobre sistemas propios o autorizados.
 :::

@@ -10,7 +10,7 @@
 <body>
 <a class="salto" href="#contenido">Saltar al contenido</a>
 <header class="cabecera">
-  <div class="marca"><a href="../00_EMPEZAR_AQUI.html">CLS · Curso de reversing</a> <span class="edicion">edición 5 · 27/10/2026</span></div>
+  <div class="marca"><a href="../00_EMPEZAR_AQUI.html">Curso de Reversing en Windows</a> <span class="edicion">edición 5 · 27/10/2026</span></div>
   <nav class="principal" aria-label="Navegación principal">
     <a href="../00_EMPEZAR_AQUI.html">Inicio</a>
     <a href="../guia/index.html">Curso</a>
@@ -26,7 +26,7 @@
 <aside class="callout nota"><p class="callout-titulo">Objetivo de la lección</p><p>Al terminar vas a poder elegir la herramienta adecuada para identificar, desensamblar, depurar o inspeccionar un binario, justificar por qué algunas del curso son históricas y registrar versiones y hashes de tu taller.</p></aside>
 <p><strong>Prerrequisitos:</strong> debugger e IDA. <strong>Duración sugerida:</strong> 2 horas. Estimación aproximada.</p>
 <h2 id="por-qué-hablar-de-herramientas">Por qué hablar de herramientas</h2>
-<p>El conocimiento de reversing —registros, stack, saltos, PE— envejece poco. Las herramientas envejecen rápido. El curso de CLS mezcla material de 2007, 2016 y 2021, y usa OllyDbg en una parte y x64dbg en otra. Si no distinguís qué es concepto y qué es botón, vas a estudiar una interfaz muerta creyendo que estudias reversing.</p>
+<p>El conocimiento de reversing —registros, stack, saltos, PE— envejece poco. Las herramientas envejecen rápido. El curso de reversing mezcla material de 2007, 2016 y 2021, y usa OllyDbg en una parte y x64dbg en otra. Si no distinguís qué es concepto y qué es botón, vas a estudiar una interfaz muerta creyendo que estudias reversing.</p>
 <h2 id="el-taller-mínimo">El taller mínimo</h2>
 <div class="tabla"><table>
 <thead><tr>
@@ -48,7 +48,7 @@
 </tbody></table></div>
 <p>No necesitás instalar todo el primer día. x64dbg, un editor hexadecimal y un visor de PE alcanzan para las etapas 1 a 4.</p>
 <h2 id="el-taller-actual-2026-más-allá-de-lo-mínimo">El taller actual (2026): más allá de lo mínimo</h2>
-<aside class="callout aviso"><p class="callout-titulo">Actualización externa</p><p>El corpus CLS no cubre estas herramientas (son más nuevas que su material). Las agregamos como <strong>conocimiento externo</strong> para que el taller esté al día. Todas corren o se usan sobre <strong>Windows</strong>; no son obligatorias para el recorrido base, pero sí para análisis real.</p>
+<aside class="callout aviso"><p class="callout-titulo">Actualización externa</p><p>La literatura clásica no cubre estas herramientas (son más modernas). Las agregamos como estándar indispensable para que el taller esté al día. Todas corren o se usan sobre <strong>Windows</strong>; no son obligatorias para el recorrido base, pero sí para análisis real.</p>
 <p>Verificá siempre la versión y descargá desde el sitio oficial.</p></aside>
 <p>Cuando el taller mínimo se te queda corto, estas categorías son las que usa hoy un analista de Windows:</p>
 <div class="tabla"><table>
@@ -123,7 +123,7 @@
 <aside class="callout nota"><p class="callout-titulo">Puerta de salida</p><p>Si tu bitácora tiene el inventario del taller con versiones y hashes, estás listo para .NET.</p></aside>
 <h2 id="fuentes-de-esta-lección">Fuentes de esta lección</h2>
 <ul><li><a class="fuente" href="../../CLS_resultados_intermedios/transcripciones/extraidos/Videos%20y%20material%20adicional%20Ingenieria%20Inversa/Videos_Video23_Video23.txt">Videos y material adicional, Video 23</a> — introducción al reversing y limitaciones del análisis.</li><li><a class="fuente" href="../../CLS_resultados_intermedios/transcripciones/extraidos/Videos%20y%20material%20adicional%20Ingenieria%20Inversa/Videos_Video24_Video24.txt">Videos y material adicional, Video 24</a> — OllyDbg y la VM Windows 7 de 32 bits.</li><li><a class="fuente" href="../../CLS_resultados_intermedios/transcripciones/extraidos/Videos%20y%20material%20adicional%20Ingenieria%20Inversa/Videos_Video33_Video33.txt">Videos y material adicional, Video 33</a> — PE, secciones e imports.</li><li><a class="fuente" href="../../CLS_resultados_intermedios/transcripciones/extraidos/Videos%20y%20material%20adicional%20Ingenieria%20Inversa/Videos_Video39_Video39.txt">Videos y material adicional, Video 39</a> — ExeInfoPE.</li><li><a class="fuente" href="../../CLS_resultados_intermedios/transcripciones/extraidos/Reversing%20desde%20cero%20%28Ricardo%20y%20Solid%29/Ricardo%20Narvaja%20y%20Solid%20-%20Reversing%20desde%20cero_14%20Conociendo%20IDA_14%20Conociendo%20IDA.txt">Reversing desde cero, cap. 14</a> — IDA y sus límites.</li><li><a href="../ida_tutes/11.html">Curso IDA · tutes 11 y 13</a> — plugins de IDA y el bug de la versión 6.8 (atención a la versión).</li></ul>
-<aside class="callout nota"><p class="callout-titulo">Capas de esta lección</p><p><strong>Contenido observado en CLS:</strong> el uso de OllyDbg en los videos 23–40, la VM Windows 7 y el recorrido de ExeInfoPE. <strong>Conocimiento externo (agregado por esta edición):</strong> el estado actual de las herramientas y todo el "taller actual 2026" (Frida, WinDbg/TTD, BinDiff/Diaphora, FLOSS, CAPA, angr/Unicorn, asistencia con IA). <strong>Recomendación editorial:</strong> el taller mínimo, la tabla de decisión y la cautela con la IA.</p></aside>
+<aside class="callout nota"><p class="callout-titulo">Capas de esta lección</p><p><strong>Núcleo conceptual:</strong> el uso de OllyDbg en los videos 23–40, la VM Windows 7 y el recorrido de ExeInfoPE. <strong>Conocimiento externo (agregado por esta edición):</strong> el estado actual de las herramientas y todo el "taller actual 2026" (Frida, WinDbg/TTD, BinDiff/Diaphora, FLOSS, CAPA, angr/Unicorn, asistencia con IA). <strong>Recomendación editorial:</strong> el taller mínimo, la tabla de decisión y la cautela con la IA.</p></aside>
 </main>
 <footer class="pie">
   <p>Material educativo y defensivo. Las prácticas se limitan a programas propios, software abierto o crackmes diseñados para aprender. No se enseña a eludir licencias, DRM ni controles de acceso.</p>

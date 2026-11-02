@@ -107,8 +107,8 @@ Podés: (1) explicar el modelo objeto/handle/access-mask; (2) leer un token (SID
 ## Fuentes
 
 - **Conocimiento externo** (Microsoft Learn; páginas concretas): [Handles and Objects](https://learn.microsoft.com/en-us/windows/win32/sysinfo/handles-and-objects), [Process Explorer](https://learn.microsoft.com/en-us/sysinternals/downloads/process-explorer), [Access Tokens](https://learn.microsoft.com/en-us/windows/win32/secauthz/access-tokens), [Privileges](https://learn.microsoft.com/en-us/windows/win32/secauthz/privileges), [Mandatory Integrity Control](https://learn.microsoft.com/en-us/windows/win32/secauthz/mandatory-integrity-control) y [Access Control Lists](https://learn.microsoft.com/en-us/windows/win32/secauthz/access-control-lists). No se citan versiones ni valores reales: el ejemplo es ilustrativo.
-- **Tie con CLS:** la lectura del **PEB** y el contexto de proceso aparecen en [2.15 Anti-análisis](02-anti-analisis.html); el robo de token en kernel se menciona (de forma ofensiva, fuera de alcance) en los tutes 49–69 del Curso IDA, que acá **no** se usan como guía.
+- **Fundamentos previos:** la lectura del **PEB** y el contexto de proceso aparecen en [2.15 Anti-análisis](02-anti-analisis.html); el robo de token en kernel se menciona (de forma ofensiva, fuera de alcance) en los tutes 49–69 del Curso IDA, que acá **no** se usan como guía.
 
 :::{nota} Etiquetas
-**Observado en CLS:** solo el PEB/contexto de 2.15 (referencia). **Conocimiento externo:** todo el modelo de seguridad. **Ejemplo ilustrativo:** la vista de token/handles. **Laboratorio verificado:** ninguno en esta edición (no hay binario compilado con datos reales); la práctica se hace sobre procesos propios en tu VM.
+**Núcleo conceptual:** solo el PEB/contexto de 2.15 (referencia). **Conocimiento externo:** todo el modelo de seguridad. **Ejemplo ilustrativo:** la vista de token/handles. **Laboratorio verificado:** ninguno en esta edición (no hay binario compilado con datos reales); la práctica se hace sobre procesos propios en tu VM.
 :::

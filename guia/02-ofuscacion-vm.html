@@ -10,7 +10,7 @@
 <body>
 <a class="salto" href="#contenido">Saltar al contenido</a>
 <header class="cabecera">
-  <div class="marca"><a href="../00_EMPEZAR_AQUI.html">CLS · Curso de reversing</a> <span class="edicion">edición 5 · 27/10/2026</span></div>
+  <div class="marca"><a href="../00_EMPEZAR_AQUI.html">Curso de Reversing en Windows</a> <span class="edicion">edición 5 · 27/10/2026</span></div>
   <nav class="principal" aria-label="Navegación principal">
     <a href="../00_EMPEZAR_AQUI.html">Inicio</a>
     <a href="../guia/index.html">Curso</a>
@@ -71,7 +71,7 @@ int vm(unsigned char *vip) {       // vip = puntero de instrucción virtual
 <aside class="callout nota"><p class="callout-titulo">Puerta de salida</p><p>Podés: (1) explicar qué significa virtualizar código y por qué desaparece el x86 original; (2) identificar dispatcher, tabla de handlers, VIP y bytecode en tu mini-VM; (3) listar las señales de virtualización en un listado; (4) describir el flujo de devirtualización a alto nivel (trazar → dar semántica → levantar → simplificar).</p></aside>
 <h2 id="fuentes-de-esta-lección">Fuentes de esta lección</h2>
 <ul><li><a href="https://www.usenix.org/legacy/events/woot09/tech/full_papers/rolles.pdf" rel="noopener" target="_blank">Rolles, «Unpacking Virtualization Obfuscators» (USENIX WOOT 2009)</a> — anatomía dispatcher/handlers y estrategia de devirtualización (conocimiento externo).</li><li><a href="https://tigress.wtf/" rel="noopener" target="_blank">tigress.wtf</a> — obfuscador académico (Collberg) que incluye virtualización; sirve para generar muestras propias de estudio.</li><li><a href="https://triton-library.github.io/" rel="noopener" target="_blank">Triton</a> y <a href="https://github.com/cea-sec/miasm" rel="noopener" target="_blank">Miasm</a> — <em>lifting</em> y simplificación de trazas.</li><li><a href="02-ofuscacion.html">2.10 Ofuscación nativa</a> y <a href="02-simbolico-desofuscacion.html">2.25 Simbólico</a> — el aplanamiento de flujo y el solver que se usan al simplificar.</li></ul>
-<aside class="callout nota"><p class="callout-titulo">Capas de esta lección</p><p><strong>Contenido observado en CLS:</strong> la ofuscación nativa de 2.10 como escalón previo. <strong>Conocimiento externo (agregado por esta edición):</strong> la arquitectura de las VM de protección y el flujo de devirtualización, basados en literatura pública. <strong>Recomendación editorial:</strong> la mini-VM, los ejemplos y la práctica son ilustrativos; no se analizó ningún protector comercial.</p></aside>
+<aside class="callout nota"><p class="callout-titulo">Capas de esta lección</p><p><strong>Núcleo conceptual:</strong> la ofuscación nativa de 2.10 como escalón previo. <strong>Conocimiento externo (agregado por esta edición):</strong> la arquitectura de las VM de protección y el flujo de devirtualización, basados en literatura pública. <strong>Recomendación editorial:</strong> la mini-VM, los ejemplos y la práctica son ilustrativos; no se analizó ningún protector comercial.</p></aside>
 </main>
 <footer class="pie">
   <p>Material educativo y defensivo. Las prácticas se limitan a programas propios, software abierto o crackmes diseñados para aprender. No se enseña a eludir licencias, DRM ni controles de acceso.</p>

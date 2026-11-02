@@ -107,5 +107,5 @@ Podés: (1) explicar la diferencia entre hook puntual y tracing; (2) seguir un h
 - [2.21 Scripting](02-scripting-debugger.html) (Frida básico) y [2.29 DBI](02-dbi-dynamorio-pin.html) (la comparación con Pin/DynamoRIO).
 
 :::{nota} Capas de esta lección
-**Contenido observado en CLS:** la automatización dinámica de 2.21 como base. **Conocimiento externo (agregado por esta edición):** Stalker, sus eventos y `transform`, y la cobertura con frida-drcov. **Recomendación editorial:** ejemplos y práctica ilustrativos, sobre binarios propios.
+**Núcleo conceptual:** la automatización dinámica de 2.21 como base. **Conocimiento externo (agregado por esta edición):** Stalker, sus eventos y `transform`, y la cobertura con frida-drcov. **Recomendación editorial:** ejemplos y práctica ilustrativos, sobre binarios propios.
 :::

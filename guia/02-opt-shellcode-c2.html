@@ -10,7 +10,7 @@
 <body>
 <a class="salto" href="#contenido">Saltar al contenido</a>
 <header class="cabecera">
-  <div class="marca"><a href="../00_EMPEZAR_AQUI.html">CLS · Curso de reversing</a> <span class="edicion">edición 5 · 27/10/2026</span></div>
+  <div class="marca"><a href="../00_EMPEZAR_AQUI.html">Curso de Reversing en Windows</a> <span class="edicion">edición 5 · 27/10/2026</span></div>
   <nav class="principal" aria-label="Navegación principal">
     <a href="../00_EMPEZAR_AQUI.html">Inicio</a>
     <a href="../guia/index.html">Curso</a>
@@ -59,7 +59,7 @@
 <aside class="callout nota"><p class="callout-titulo">Puerta de salida (optativa)</p><p>Podés: (1) explicar por qué la ausencia de PE/IAT no basta para demostrar que un blob es shellcode ni cómo resuelve funciones; (2) usar un emulador para observar y clasificar comportamiento; (3) describir un beacon de C2 en el laboratorio simulado; (4) entregar IOCs de red. Siempre en análisis, nunca en construcción.</p></aside>
 <h2 id="fuentes-de-esta-lección">Fuentes de esta lección</h2>
 <ul><li><a class="fuente" href="../../CLS_Guia/_trabajo/extraido_ida/40-INTRODUCCION%20AL%20REVERSING%20CON%20IDA%20PRO%20DESDE%20CERO.txt">Curso IDA, tute 40</a> — menciona shellcode en contexto de exploiting (y que técnicas viejas pueden no andar en Win10).</li><li><a href="02-opt-malware-dinamico.html">Malware dinámico defensivo</a> (2.22) — el laboratorio aislado y la red simulada donde se observa el C2.</li><li><a href="04-cripto.html">Reconocer criptografía y encoding</a> (4.2) — base64/XOR en el tráfico y los payloads.</li></ul>
-<aside class="callout nota"><p class="callout-titulo">Capas de esta lección</p><p><strong>Contenido observado en CLS:</strong> la mención de shellcode del tute 40. <strong>Conocimiento externo:</strong> la identificación de código sin envoltura PE, aclarando que la ausencia de IAT no demuestra por sí sola resolución dinámica, los emuladores (<code>scdbg</code>/libemu) y el modelo de C2 (beacon, protocolo, IOCs). <strong>Recomendación editorial:</strong> el enfoque estricto de reconocer-y-clasificar, el ejemplo ilustrativo de salida de emulador y el límite de no construir.</p></aside>
+<aside class="callout nota"><p class="callout-titulo">Capas de esta lección</p><p><strong>Núcleo conceptual:</strong> la mención de shellcode del tute 40. <strong>Conocimiento externo:</strong> la identificación de código sin envoltura PE, aclarando que la ausencia de IAT no demuestra por sí sola resolución dinámica, los emuladores (<code>scdbg</code>/libemu) y el modelo de C2 (beacon, protocolo, IOCs). <strong>Recomendación editorial:</strong> el enfoque estricto de reconocer-y-clasificar, el ejemplo ilustrativo de salida de emulador y el límite de no construir.</p></aside>
 </main>
 <footer class="pie">
   <p>Material educativo y defensivo. Las prácticas se limitan a programas propios, software abierto o crackmes diseñados para aprender. No se enseña a eludir licencias, DRM ni controles de acceso.</p>

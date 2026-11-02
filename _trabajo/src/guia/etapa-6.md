@@ -11,7 +11,7 @@ Comprender, construir y revisar un driver KMDF didáctico con una interfaz inocu
 :::
 
 **Prerrequisitos:** Etapa 0 (laboratorio aislado), C, assembly, memoria y sincronización, WinDbg y 2D.1 (objetos/tokens), 2D.2 (memoria/loader) y 2D.11 (excepciones/debugging). Etapa 2C es recomendada, no requisito; no hace falta completar toda 2D.  
-**Duración estimada:** 45–65 horas como estimación inicial; puede requerir más tiempo si C, WinDbg o WDK son nuevos.. Es una estimación de esta guía, derivada de la suma de las lecciones; no es una duración declarada por CLS.
+**Duración estimada:** 45–65 horas como estimación inicial; puede requerir más tiempo si C, WinDbg o WDK son nuevos.. Es una estimación de esta guía, derivada de la suma de las lecciones; no es una duración rígida de laboratorio.
 
 
 :::{aviso} Rama optativa; fuera de la aprobación obligatoria
@@ -29,7 +29,7 @@ La Etapa 6 profundiza en kernel/drivers y no cambia los requisitos de las Etapas
 | 6.5 | [Minifilters y callbacks](6-05-minifilters.html) | Pila de filesystem, callbacks pre/post y límites de observación. |
 | 6.6 | [Mitigaciones de Windows para drivers](6-06-mitigaciones.html) | firma, Secure Boot, HVCI/VBS, WDAC y vulnerable driver blocklist. |
 
-## Recursos de CLS para esta etapa
+## Recursos y lecturas de referencia
 
 - [2D · Windows internals (solo lecciones requeridas para esta rama)](../2d.html)
 - [Extensión Hyper-V (optativa, no requisito)](../2d-hyperv.html)

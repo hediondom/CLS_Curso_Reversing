@@ -11,7 +11,7 @@ Elegir una especialización dentro de Windows, con prerrequisitos y práctica pr
 :::
 
 **Prerrequisitos:** Etapas 0 a 4 completas.  
-**Duración estimada:** Variable: 5 a 10 horas por rama. Es una estimación de esta guía, derivada de la suma de las lecciones; no es una duración declarada por CLS.
+**Duración estimada:** Variable: 5 a 10 horas por rama. Es una estimación de esta guía, derivada de la suma de las lecciones; no es una duración rígida de laboratorio.
 
 ## Lecciones
 
@@ -22,7 +22,7 @@ Elegir una especialización dentro de Windows, con prerrequisitos y práctica pr
 | 5.3 | [Rama automatización: scripts](05-automatizacion.html) | IDAPython, Ghidra, pefile y capstone. |
 | 5.4 | [Kernel y otros territorios: qué queda fuera](05-fuera-de-alcance.html) | Límites explícitos, otras plataformas y prerequisites. |
 
-## Recursos de CLS para esta etapa
+## Recursos y lecturas de referencia
 
 - [2D · Windows internals (rama optativa)](../2d.html)
 - [Etapa 6 · Kernel y drivers (rama optativa, requiere base técnica específica)](etapa-6.html)

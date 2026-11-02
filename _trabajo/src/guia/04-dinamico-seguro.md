@@ -68,7 +68,7 @@ En la VM:
 
 No hace falta observar todo a la vez. Elegí dos o tres categorías según la pregunta.
 
-## El caso Shelter: lo que CLS muestra y lo que no se copia
+## El caso Shelter: análisis defensivo y aislamiento en laboratorio
 
 El video 37 analiza el malware Shelter dentro de una VM Windows 7 de 32 bits, con otra VM Kali Linux para simular el ataque. El propio autor distingue análisis estático y dinámico y dice que en su caso va a ejecutar la muestra ({{src:CLS_resultados_intermedios/transcripciones/extraidos/Videos y material adicional Ingenieria Inversa/Videos_Video37_Video37.txt|Videos y material adicional, Video 37}}, 00:24:01–00:24:21).
 
@@ -163,5 +163,5 @@ Si podés analizar, documentar y contener una práctica completa, terminaste el 
 - {{src:CLS_resultados_intermedios/inventario_limpio/LEEME.md|Inventario limpio, LEEME}} — estados `cuarentena` y criterio de no ejecución.
 
 :::{nota} Capas de esta lección
-**Contenido observado en CLS:** el laboratorio con dos VMs del video 37, la inyección del video 36 y los chequeos de los capítulos 22 y 24. **Conocimiento externo:** observación con Process Monitor/TCPView y planes de contención. **Recomendación editorial:** la matriz de decisión y el protocolo de incidentes.
+**Núcleo conceptual:** el laboratorio con dos VMs del video 37, la inyección del video 36 y los chequeos de los capítulos 22 y 24. **Conocimiento externo:** observación con Process Monitor/TCPView y planes de contención. **Recomendación editorial:** la matriz de decisión y el protocolo de incidentes.
 :::

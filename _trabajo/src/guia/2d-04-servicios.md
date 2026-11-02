@@ -52,12 +52,12 @@ La DACL del **objeto servicio** controla quién puede consultarlo, iniciarlo, de
 *(Ejemplo **ilustrativo**, no observado en un Windows real. Los nombres y valores son de un servicio ficticio de laboratorio.)*
 
 ```text
-Nombre: CLSLabSvc
+Nombre: ReversingLabSvc
 Tipo: own-process (servicio Win32)
 Tipo de inicio: demand (manual)
 Estado: STOPPED
 Cuenta: NT AUTHORITY\LocalService
-ImagePath: C:\CLS-Lab\SvcLab.exe
+ImagePath: C:\ReversingLab\SvcLab.exe
 Objeto servicio: Administrators — control; Users — lectura
 Carpeta del binario: solo administradores pueden modificarla
 ```
@@ -68,39 +68,39 @@ Lectura: es un servicio didáctico de proceso propio, detenido y de inicio manua
 
 Realizá el ejercicio solo en una VM descartable con snapshot. Realizá el ejercicio en una VM descartable con snapshot. Compilá el servicio didáctico desde el archivo `plantillas_codigo/svclab_min.c` (**Plantilla 7 del Kit de Código**), que implementa `StartServiceCtrlDispatcherW`, `ServiceMain` y `RegisterServiceCtrlHandlerExW` para Windows x86/x64:
 ```cmd
-cl /Zi /O1 /DUNICODE /D_UNICODE svclab_min.c advapi32.lib /Fe:C:\CLS-Lab\SvcLab.exe
+cl /Zi /O1 /DUNICODE /D_UNICODE svclab_min.c advapi32.lib /Fe:C:\ReversingLab\SvcLab.exe
 ```
-(O con MinGW: `gcc -O1 -g -municode svclab_min.c -ladvapi32 -o C:\CLS-Lab\SvcLab.exe`).
+(O con MinGW: `gcc -O1 -g -municode svclab_min.c -ladvapi32 -o C:\ReversingLab\SvcLab.exe`).
 
 **Materiales y resultado esperado:** VM/build registrados, snapshot recuperable, `sc.exe`, AccessChk de Sysinternals y el binario propio identificado por hash. El resultado esperado es registrar un servicio manual, verlo pasar a `RUNNING` y `STOPPED`, y confirmar que desaparece después de solicitar su eliminación. Guardá el build de Windows, hash, salidas de consulta y evidencia de limpieza; no se fija una versión de herramienta que no se haya probado.
 
-**Paso 1 — Preparar.** Prepará `C:\CLS-Lab` y colocá allí el binario propio. No uses una ruta de red ni un servicio de Windows.
+**Paso 1 — Preparar.** Prepará `C:\ReversingLab` y colocá allí el binario propio. No uses una ruta de red ni un servicio de Windows.
 
 **Paso 2 — Registrar.** En una consola elevada de la VM, registrá el servicio con inicio manual y una cuenta de menor privilegio:
 
    ```bat
-   sc.exe create CLSLabSvc binPath= "C:\CLS-Lab\SvcLab.exe" start= demand obj= "NT AUTHORITY\LocalService"
+   sc.exe create ReversingLabSvc binPath= "C:\ReversingLab\SvcLab.exe" start= demand obj= "NT AUTHORITY\LocalService"
    ```
 
 **Paso 3 — Inspeccionar.** Consultá su configuración y estado; auditá la DACL del objeto servicio sin modificarla:
 
    ```bat
-   sc.exe qc CLSLabSvc
-   sc.exe query CLSLabSvc
-   accesschk.exe -v -c CLSLabSvc
+   sc.exe qc ReversingLabSvc
+   sc.exe query ReversingLabSvc
+   accesschk.exe -v -c ReversingLabSvc
    ```
 
-**Paso 4 — Probar el ciclo de vida.** Iniciá y detené solo `CLSLabSvc`. Observá los cambios de estado y anotá la cuenta y la ruta reportadas.
+**Paso 4 — Probar el ciclo de vida.** Iniciá y detené solo `ReversingLabSvc`. Observá los cambios de estado y anotá la cuenta y la ruta reportadas.
 
 **Paso 5 — Limpiar.** Detené el servicio si sigue activo y solicitá eliminar únicamente el servicio de laboratorio:
 
    ```bat
-   sc.exe stop CLSLabSvc
-   sc.exe delete CLSLabSvc
-   sc.exe query CLSLabSvc
+   sc.exe stop ReversingLabSvc
+   sc.exe delete ReversingLabSvc
+   sc.exe query ReversingLabSvc
    ```
 
-   `sc.exe delete` puede dejarlo marcado para borrar si todavía está activo o si hay una consola con un handle abierto. Cerrá `services.msc` y las herramientas que lo estén consultando; esperá a que desaparezca o revertí el snapshot. Confirmá que `sc.exe query CLSLabSvc` ya no encuentra el servicio y recién entonces borrá `C:\CLS-Lab`.
+   `sc.exe delete` puede dejarlo marcado para borrar si todavía está activo o si hay una consola con un handle abierto. Cerrá `services.msc` y las herramientas que lo estén consultando; esperá a que desaparezca o revertí el snapshot. Confirmá que `sc.exe query ReversingLabSvc` ya no encuentra el servicio y recién entonces borrá `C:\ReversingLab`.
 
 No cambies permisos, configuración ni cuenta de otros servicios. Si no tenés un binario propio que implemente el contrato de servicio, hacé el análisis como ejercicio de lectura con la ficha ilustrativa y dejá constancia de esa limitación.
 
@@ -134,8 +134,8 @@ Podés explicar SCM, `ServiceMain`, tipo de inicio y estado; leer cuenta, ruta y
 - **Conocimiento externo:** [Service Control Manager](https://learn.microsoft.com/en-us/windows/win32/services/service-control-manager), [Service Programs](https://learn.microsoft.com/en-us/windows/win32/services/service-programs), [ServiceMain](https://learn.microsoft.com/en-us/windows/win32/services/service-servicemain-function), [Service User Accounts](https://learn.microsoft.com/en-us/windows/win32/services/service-user-accounts) y [Service Security and Access Rights](https://learn.microsoft.com/en-us/windows/win32/services/service-security-and-access-rights).
 - **Herramientas:** [`sc.exe create`](https://learn.microsoft.com/en-us/windows-server/administration/windows-commands/sc-create), [`sc.exe delete`](https://learn.microsoft.com/en-us/windows-server/administration/windows-commands/sc-delete) y [AccessChk](https://learn.microsoft.com/en-us/sysinternals/downloads/accesschk).
 - **Hospedaje:** [Service host grouping in Windows](https://learn.microsoft.com/en-us/windows/application-management/svchost-service-refactoring). Los detalles de agrupación dependen de la versión de Windows.
-- **Relación con CLS:** ACL y token en [2D.1](2d-01-objetos.html); representación del registro en [2D.3](2d-03-registro.html).
+- **Fundamentos previos:** ACL y token en [2D.1](2d-01-objetos.html); representación del registro en [2D.3](2d-03-registro.html).
 
 :::{nota} Etiquetas
-**Observado en CLS:** marco de token/ACL (2D.1) y referencia al registro (2D.3). **Conocimiento externo:** SCM, estados, cuentas y servicios hospedados. **Ejemplo ilustrativo:** ficha de `CLSLabSvc`. **Laboratorio verificado:** no; requiere un binario propio compilado como servicio.
+**Núcleo conceptual:** marco de token/ACL (2D.1) y referencia al registro (2D.3). **Conocimiento externo:** SCM, estados, cuentas y servicios hospedados. **Ejemplo ilustrativo:** ficha de `ReversingLabSvc`. **Laboratorio verificado:** no; requiere un binario propio compilado como servicio.
 :::

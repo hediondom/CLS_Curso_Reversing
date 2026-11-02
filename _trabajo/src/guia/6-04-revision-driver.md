@@ -207,5 +207,5 @@ Pruebas dinámicas o fuzzing contra drivers cargados, DMA, filtros y pilas de dr
 - Microsoft Learn, PnP y energía: [Supporting PnP and Power Management in Function Drivers](https://learn.microsoft.com/en-us/windows-hardware/drivers/wdf/supporting-pnp-and-power-management-in-function-drivers), [Power Management for I/O Queues](https://learn.microsoft.com/en-us/windows-hardware/drivers/wdf/power-management-for-i-o-queues).
 
 :::{nota} Etiquetas
-**Observado en CLS:** superficie/mitigaciones de user mode. **Conocimiento externo:** seguridad de drivers, métodos de buffer, sondeo de memoria de usuario, propiedad y cancelación de solicitudes WDF, PnP/energía (recuadro). **Ejemplo ilustrativo:** checklist, fragmento `METHOD_NEITHER` y flujo de cancelación hipotéticos. **Laboratorio verificado:** no; revisión de código fuente.
+**Núcleo conceptual:** superficie/mitigaciones de user mode. **Conocimiento externo:** seguridad de drivers, métodos de buffer, sondeo de memoria de usuario, propiedad y cancelación de solicitudes WDF, PnP/energía (recuadro). **Ejemplo ilustrativo:** checklist, fragmento `METHOD_NEITHER` y flujo de cancelación hipotéticos. **Laboratorio verificado:** no; revisión de código fuente.
 :::

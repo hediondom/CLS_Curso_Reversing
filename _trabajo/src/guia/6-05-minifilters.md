@@ -142,5 +142,5 @@ Escribir minifilters, contextos y su gestión, comunicación con user mode por p
 - Microsoft Learn, altitudes y herramientas: [Load Order Groups and Altitudes for Minifilter Drivers](https://learn.microsoft.com/en-us/windows-hardware/drivers/ifs/load-order-groups-and-altitudes-for-minifilter-drivers), [Allocated filter altitudes](https://learn.microsoft.com/en-us/windows-hardware/drivers/ifs/allocated-altitudes), [Tools for Minifilter Development and Testing (Fltmc, !fltkd)](https://learn.microsoft.com/en-us/windows-hardware/drivers/ifs/development-and-testing-tools).
 
 :::{nota} Etiquetas
-**Observado en CLS:** monitoreo de procesos como contexto. **Conocimiento externo:** Filter Manager/minifilters, altitudes, valores de retorno e IRQL de callbacks. **Ejemplo ilustrativo:** flujo de archivo y ficha de inventario ficticia. **Laboratorio verificado:** no.
+**Núcleo conceptual:** monitoreo de procesos como contexto. **Conocimiento externo:** Filter Manager/minifilters, altitudes, valores de retorno e IRQL de callbacks. **Ejemplo ilustrativo:** flujo de archivo y ficha de inventario ficticia. **Laboratorio verificado:** no.
 :::

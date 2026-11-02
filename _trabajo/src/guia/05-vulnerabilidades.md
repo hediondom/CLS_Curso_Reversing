@@ -16,7 +16,7 @@ Al terminar vas a poder explicar cómo un desborde de buffer puede pisar el retu
 
 Esta rama **no enseña a explotar sistemas ajenos**. Enseña a entender una clase de defecto, reconocerlo en código propio y explicar por qué las mitigaciones funcionan. Las prácticas se hacen con programas que escribís vos, en una VM local, sin red y sin datos reales.
 
-En CLS hay carpetas de exploiting (`EXPLOITING`, `EXPLOITING Y REVERSING USANDO HERRAMIENTAS FREE`, `CURSO DE ARM EXPLOIT`) y material de "EXPLOIT" en `mega_OTROS`. Son **contenedores no revisados**; el mapa los ubica en la Etapa 5. Esta lección no los usa como fuente y no reproduce sus técnicas.
+En recopilaciones y foros de seguridad circulan diversas carpetas de exploiting antiguo y tutoriales sobre binarios vulnerables. Esta lección no depende de material externo de terceros: aborda el defecto de memoria, la mitigación defensiva y su reconocimiento analítico desde principios fundamentales de arquitectura de computadoras.
 
 ## El defecto: escribir más de lo que entra
 
@@ -198,6 +198,6 @@ Si podés explicar por qué el canary detecta el desborde y por qué no corrige 
 - [Curso IDA · tutes 29–48](../ida_tutes/29.html) — las mitigaciones en ejemplos (VLC/CVE-2008-4654, DEP, canary/SEH, heap) con WinDbg/IDA/Mona; recetas de Windows 7 / 32 bits, **históricas**: en Windows moderno cambian CFG, CET y SEHOP.
 
 :::{nota} Capas de esta lección
-**Contenido observado en CLS:** la cookie del capítulo 15, el SEH de los capítulos 16b y 36, y ASLR del 26b. **Conocimiento externo:** desbordes, overflow de enteros, acceso fuera de límites, use-after-free, double free, format string, carreras, mitigaciones, ROP y divulgación. **Recomendación editorial:** el ejemplo `vuln.c` y el límite explícito sobre exploits.
+**Núcleo conceptual:** la cookie del capítulo 15, el SEH de los capítulos 16b y 36, y ASLR del 26b. **Conocimiento externo:** desbordes, overflow de enteros, acceso fuera de límites, use-after-free, double free, format string, carreras, mitigaciones, ROP y divulgación. **Recomendación editorial:** el ejemplo `vuln.c` y el límite explícito sobre exploits.
 :::
 

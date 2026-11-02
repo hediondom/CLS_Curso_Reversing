@@ -21,7 +21,7 @@ Esto es **reconocimiento defensivo**: clasificar y detectar estas técnicas para
 | **Anti-disassembly** | Confundir al desensamblador estático | Instrucciones solapadas, saltos al medio, `jmp` a registro, basura entre bloques (lo viste en [2.10](02-ofuscacion.html)) |
 | **Anti-dump** | Dificultar volcar el proceso de memoria | Borrar la cabecera PE en memoria, `SizeOfImage` alterado, secciones sin permisos esperados |
 
-## Qué muestra CLS
+## Enfoque tradicional
 
 El capítulo 22 introduce anti-debug "desde lo más básico": qué es (técnicas para **detectar** un debugger y reaccionar), el comando **`hide`** de x64dbg para ocultarse, y cómo un programa detecta **breakpoints por software y por hardware** ({{src:CLS_resultados_intermedios/transcripciones/extraidos/Reversing desde cero (Ricardo y Solid)/Ricardo Narvaja y Solid - Reversing desde cero_22 Antidebug 1_22 Antidebug 1.txt|Reversing desde cero, cap. 22}}).
 
@@ -179,5 +179,5 @@ Esta lección se enfoca en el reconocimiento y la documentación defensiva. Cóm
 - Microsoft Learn (conocimiento externo): [IsDebuggerPresent](https://learn.microsoft.com/en-us/windows/win32/api/debugapi/nf-debugapi-isdebuggerpresent), [CheckRemoteDebuggerPresent](https://learn.microsoft.com/en-us/windows/win32/api/debugapi/nf-debugapi-checkremotedebuggerpresent), [NtQueryInformationProcess](https://learn.microsoft.com/en-us/windows/win32/api/winternl/nf-winternl-ntqueryinformationprocess) (clase `ProcessDebugPort`, función interna sin biblioteca de importación) y [Hypervisor Feature Discovery](https://learn.microsoft.com/en-us/virtualization/hyper-v-on-windows/tlfs/feature-discovery) (bit de hipervisor presente y hoja `0x40000000`).
 
 :::{nota} Capas de esta lección
-**Contenido observado en CLS:** el `hide` y la detección de breakpoints del capítulo 22 y la detección por entorno del 24. **Conocimiento externo:** la taxonomía de las cuatro familias y las señales concretas (PEB, NtGlobalFlag, `ProcessDebugPort`, chequeos de tiempo, `CPUID`, anti-VM, anti-dump). **Ejemplo ilustrativo:** los listados del PEB y de `ProcessDebugPort`, y las filas de la tabla de documentación. **Recomendación editorial:** el enfoque de reconocer y no evadir, la tabla de documentación y la práctica con binario propio.
+**Núcleo conceptual:** el `hide` y la detección de breakpoints del capítulo 22 y la detección por entorno del 24. **Conocimiento externo:** la taxonomía de las cuatro familias y las señales concretas (PEB, NtGlobalFlag, `ProcessDebugPort`, chequeos de tiempo, `CPUID`, anti-VM, anti-dump). **Ejemplo ilustrativo:** los listados del PEB y de `ProcessDebugPort`, y las filas de la tabla de documentación. **Recomendación editorial:** el enfoque de reconocer y no evadir, la tabla de documentación y la práctica con binario propio.
 :::

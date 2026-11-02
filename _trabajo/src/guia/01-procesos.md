@@ -178,5 +178,5 @@ Si podés crear tu propio programa de dos hilos y encontrarlo en el debugger, es
 - {{src:CLS_resultados_intermedios/transcripciones/extraidos/Reversing desde cero (Ricardo y Solid)/Ricardo Narvaja y Solid - Reversing desde cero_16b Apéndice teórico 2 - Excepciones 1_16b Apéndice teórico 2 - Excepciones 1.txt|Reversing desde cero, cap. 16b}} y {{src:CLS_resultados_intermedios/transcripciones/extraidos/Reversing desde cero (Ricardo y Solid)/Ricardo Narvaja y Solid - Reversing desde cero_36 Excepciones en 64 bits_36 Excepciones en 64 bits.txt|cap. 36}} — estado de excepciones por hilo.
 
 :::{nota} Capas de esta lección
-**Contenido observado en CLS:** el ejemplo de `CreateThread` con `MyCounter`, la lista de hilos y la lectura del mapa del capítulo 05. **Conocimiento externo:** definición de proceso, handles como tabla interna, permisos de página. **Recomendación editorial:** el programa de práctica y la tabla de ejercicios.
+**Núcleo conceptual:** el ejemplo de `CreateThread` con `MyCounter`, la lista de hilos y la lectura del mapa del capítulo 05. **Conocimiento externo:** definición de proceso, handles como tabla interna, permisos de página. **Recomendación editorial:** el programa de práctica y la tabla de ejercicios.
 :::

@@ -245,5 +245,5 @@ Si podés mirar un bloque con dos saltos y decir qué camino toma con un valor c
 - {{src:CLS_resultados_intermedios/transcripciones/extraidos/Videos y material adicional Ingenieria Inversa/Videos_Video30_Video30.txt|Videos y material adicional, Video 30}} — bucles y pila.
 
 :::{nota} Capas de esta lección
-**Contenido observado en CLS:** la tabla de saltos del capítulo 09, el ejemplo `0xFFFFFFFF` contra `2`, el `LOOP` del capítulo 12 y el `if` del capítulo 15. **Conocimiento externo:** la tabla completa de `Jcc` y el patrón de tabla de saltos. **Recomendación editorial:** los ejercicios y el ejemplo integrador.
+**Núcleo conceptual:** la tabla de saltos del capítulo 09, el ejemplo `0xFFFFFFFF` contra `2`, el `LOOP` del capítulo 12 y el `if` del capítulo 15. **Conocimiento externo:** la tabla completa de `Jcc` y el patrón de tabla de saltos. **Recomendación editorial:** los ejercicios y el ejemplo integrador.
 :::

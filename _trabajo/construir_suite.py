@@ -312,7 +312,7 @@ def envolver_pagina_html(titulo, descripcion, cuerpo_main):
 <body>
 <a class="salto" href="#contenido">Saltar al contenido</a>
 <header class="cabecera">
-  <div class="marca"><a href="00_EMPEZAR_AQUI.html">CLS · Curso de reversing</a> <span class="edicion">edición 5 · rev. 5.4</span></div>
+  <div class="marca"><a href="00_EMPEZAR_AQUI.html">Curso de Reversing en Windows</a> <span class="edicion">edición 5 · rev. 5.4</span></div>
   <nav class="principal" aria-label="Navegación principal">
     <a href="00_EMPEZAR_AQUI.html">Inicio</a>
     <a href="guia/index.html">Curso</a>
@@ -963,18 +963,18 @@ details.qa { padding: 4pt 6pt; margin: 4pt 0; }
 details.qa summary { font-size: 10pt; }
 """
 
-    partes = [f'<!doctype html><html lang="es"><head><meta charset="utf-8"><title>CLS · Curso de reversing</title><style>{css}\n{css_print}</style></head><body><main>']
+    partes = [f'<!doctype html><html lang="es"><head><meta charset="utf-8"><title>Curso de Reversing en Windows</title><style>{css}\n{css_print}</style></head><body><main>']
 
     partes.append("""
 <section class="print-sec portada-pdf" id="portada">
-<p class="kicker">Proyecto CLS · Edición 5 · Revisión 5.4 (Ampliada)</p>
+<p class="kicker">Ingeniería Inversa en Windows · Edición Libre y Abierta · Revisión 5.4 (Ampliada)</p>
 <h1>Curso de reversing</h1>
-<p class="sub">De los fundamentos al análisis guiado. Un curso en español, progresivo y verificable, construido a partir del material del proyecto CLS.</p>
+<p class="sub">De los fundamentos al análisis guiado. Un curso en español, progresivo y verificable, un manual estructurado a partir de estándares abiertos y documentación técnica primaria.</p>
 <p class="sub"><strong>Actualizado 29 de octubre de 2026</strong> · Ruta base: Etapas 0–4 · Optativas: Etapas 5–6 y rama 2D de la Etapa 2</p>
 <p class="sub">Incluye 3 perfiles o rutas de estudio (Principiante, Intermedio y Avanzado), Árbol de decisión de triage inicial, Hilo conductor multi-nivel (<code>check.c</code> &rarr; <code>BlocLab</code>), Kit de 7 plantillas C/C++ listas para compilar y 3 Hojas de referencia rápida (<em>Cheat Sheets</em>).</p>
 <p class="sub"><em>Edición de estudio — teoría y referencia práctica. Para abrir los videos, los tutes ilustrados de IDA, el banco de prácticas, las transcripciones, los audios y el buscador usá la versión <strong>HTML</strong> del curso, entrando por <code>00_EMPEZAR_AQUI.html</code>.</em></p>
 <div class="aviso"><strong>Material educativo y defensivo.</strong> Las prácticas usan programas propios, software abierto o crackmes diseñados para aprender. No se enseña a eludir licencias, DRM ni controles de acceso. No se ejecutaron binarios del corpus ni se extrajeron comprimidos.</div>
-<p class="sub">Esta edición es una cobertura parcial y declarada del corpus. Lo que falta está en <em>Fuentes y límites</em>, al final del documento.</p>
+<p class="sub">Edición comunitaria, libre y abierta. Metodología, referencias y límites técnicos documentados en <em>Fuentes y límites</em>, al final del documento.</p>
 </section>
 """)
 
@@ -1367,10 +1367,10 @@ def generar_tomos_y_separata(ctx):
         t1_anchors.append(aid)
         return f'<div class="etapa"><a href="#{aid}">{title}</a>{t1_ref(aid)}</div>'
 
-    partes_t1 = [f'<!doctype html><html lang="es"><head><meta charset="utf-8"><title>CLS · Curso de reversing — Tomo I</title><style>{css}\n{css_print}</style></head><body><main>']
+    partes_t1 = [f'<!doctype html><html lang="es"><head><meta charset="utf-8"><title>Curso de Reversing en Windows — Tomo I</title><style>{css}\n{css_print}</style></head><body><main>']
     partes_t1.append("""
 <section class="print-sec portada-pdf" id="portada">
-<p class="kicker">Proyecto CLS · Edición 5 · Revisión 5.4 (Ampliada) · TOMO I DE II</p>
+<p class="kicker">Ingeniería Inversa en Windows · Edición Libre y Abierta · Revisión 5.4 (Ampliada) · TOMO I DE II</p>
 <h1>Curso de reversing<br><span style="font-size: 20pt; font-weight: 600; color: #0b5f6b;">Tomo I · Tronco Principal (Etapas 0 a 5) y Material de Apoyo</span></h1>
 <p class="sub">De los fundamentos al análisis guiado en user-mode: arquitectura x86/x64, formato PE y DLLs (ciclo de vida y sideloading), IDA, Ghidra, x64dbg (flujo táctico y extracción masiva de strings), reversing de Go y Rust, evasión en user-mode (API hooking, direct/indirect syscalls y call stack spoofing), inyección de procesos en memoria, criptografía híbrida y APIs nativas (CryptoAPI/CNG), .NET, C++ profundo, WinDbg/TTD, malware y vulnerabilidades.</p>
 <p class="sub"><strong>Contenido de este volumen (Tomo I):</strong> Apertura y 3 Rutas de Estudio · Etapas 0, 1, 2 (2A, 2B, 2C, bloque avanzado 2E con 2.25–2.33, y optativas 2.22–2.24), 3, 4 (incluida 4.6 Protocolos de terceros) y 5 · Hilo conductor multi-nivel y Kit de 7 plantillas C/C++ · 3 Hojas de referencia rápida (<em>Cheat Sheets</em>, con la Hoja 3.4 de desofuscación y DBI) · Glosario · Preguntas y respuestas · Fuentes y límites.</p>
@@ -1517,10 +1517,10 @@ VM con Windows x64 aislada, Visual Studio Developer Command Prompt (<code>cl.exe
         t2_anchors.append(aid)
         return f'<div class="etapa"><a href="#{aid}">{title}</a>{t2_ref(aid)}</div>'
 
-    partes_t2 = [f'<!doctype html><html lang="es"><head><meta charset="utf-8"><title>CLS · Curso de reversing — Tomo II</title><style>{css}\n{css_print}</style></head><body><main>']
+    partes_t2 = [f'<!doctype html><html lang="es"><head><meta charset="utf-8"><title>Curso de Reversing en Windows — Tomo II</title><style>{css}\n{css_print}</style></head><body><main>']
     partes_t2.append("""
 <section class="print-sec portada-pdf" id="portada">
-<p class="kicker">Proyecto CLS · Edición 5 · Revisión 5.4 (Ampliada) · TOMO II DE II</p>
+<p class="kicker">Ingeniería Inversa en Windows · Edición Libre y Abierta · Revisión 5.4 (Ampliada) · TOMO II DE II</p>
 <h1>Curso de reversing<br><span style="font-size: 20pt; font-weight: 600; color: #0b5f6b;">Tomo II · Ramas Especializadas: Kernel, Drivers y Windows Internals</span></h1>
 <p class="sub">Profundización avanzada en el sistema operativo Windows: arquitectura del kernel NT, drivers WDM/KMDF, IOCTLs, depuración kernel con WinDbg (KDNET), minifiltros, mitigaciones HVCI/VBS, objetos del ejecutivo, procesos/hilos, Registro, servicios, Task Scheduler, COM/DCOM, RPC, WMI, IPC, SEH/VEH/WER, ETW y Hyper-V.</p>
 <p class="sub"><strong>Contenido de este volumen (Tomo II):</strong> <strong>Etapa 6 completa (6.1 a 6.6)</strong> · <strong>Rama 2D completa (2D.1 a 2D.13 + Anexo Hyper-V)</strong>.</p>
@@ -1621,7 +1621,7 @@ VM con Windows x64 aislada, Visual Studio Developer Command Prompt (<code>cl.exe
             p_fin = info_vol.get("total_contenido", info_vol["total"])
         return f"p. {p_ini}–{p_fin}" if p_ini != p_fin else f"p. {p_ini}"
 
-    partes_sep = [f'<!doctype html><html lang="es"><head><meta charset="utf-8"><title>CLS · Separata de Escritorio</title><style>{css}\n{css_print}</style></head><body><main>']
+    partes_sep = [f'<!doctype html><html lang="es"><head><meta charset="utf-8"><title>Separata de Escritorio · Referencia Rápida</title><style>{css}\n{css_print}</style></head><body><main>']
 
     # Página 1 de la Separata: Portada compacta + Índice de la Separata + Mapa Cruzado de los Tomos
     toc_sep_items = [
@@ -1637,7 +1637,7 @@ VM con Windows x64 aislada, Visual Studio Developer Command Prompt (<code>cl.exe
 
     partes_sep.append(f"""
 <section class="print-sec" id="portada-separata">
-<p style="color: #0b5f6b; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; font-size: 8.5pt; margin: 0;">Proyecto CLS · Edición 5 · Revisión 5.4 · Cuadernillo de Consulta Rápida</p>
+<p style="color: #0b5f6b; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; font-size: 8.5pt; margin: 0;">Ingeniería Inversa en Windows · Edición Libre y Abierta · Revisión 5.4 · Cuadernillo de Consulta Rápida</p>
 <h1 style="font-size: 22pt; margin: 2pt 0 6pt;">Separata de Escritorio y Referencia Rápida</h1>
 <p style="margin: 0 0 8pt; font-size: 9.8pt; color: #333;">Cuadernillo diseñado para permanecer abierto junto al teclado (abrochado a caballete o anillado fino) mientras trabajás con IDA, Ghidra, x64dbg, ILSpy o WinDbg y leés el <strong>Tomo I</strong> o el <strong>Tomo II</strong>.</p>
 
@@ -1756,7 +1756,7 @@ VM con Windows x64 aislada, Visual Studio Developer Command Prompt (<code>cl.exe
 <tr>
 <td><strong>7. <code>svclab_min.c</code></strong><br><em>(Intermedio · Servicios Win32 y SCM)</em></td>
 <td><code>cl /Zi /O1 /DUNICODE /D_UNICODE svclab_min.c advapi32.lib /Fe:SvcLab.exe</code><br>Prueba consola: <code>SvcLab.exe --console</code></td>
-<td>Auditar el contrato SCM en IDA: <code>StartServiceCtrlDispatcherW</code>, <code>ServiceMain</code> y <code>RegisterServiceCtrlHandlerExW</code>. Instalar en VM con <code>sc.exe create CLSLabSvc</code> y verificar transiciones de estado y privilegios (2D.4).</td>
+<td>Auditar el contrato SCM en IDA: <code>StartServiceCtrlDispatcherW</code>, <code>ServiceMain</code> y <code>RegisterServiceCtrlHandlerExW</code>. Instalar en VM con <code>sc.exe create ReversingLabSvc</code> y verificar transiciones de estado y privilegios (2D.4).</td>
 </tr>
 </tbody></table></div>
 </section>

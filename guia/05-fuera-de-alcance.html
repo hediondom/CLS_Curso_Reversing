@@ -10,7 +10,7 @@
 <body>
 <a class="salto" href="#contenido">Saltar al contenido</a>
 <header class="cabecera">
-  <div class="marca"><a href="../00_EMPEZAR_AQUI.html">CLS · Curso de reversing</a> <span class="edicion">edición 5 · 27/10/2026</span></div>
+  <div class="marca"><a href="../00_EMPEZAR_AQUI.html">Curso de Reversing en Windows</a> <span class="edicion">edición 5 · 27/10/2026</span></div>
   <nav class="principal" aria-label="Navegación principal">
     <a href="../00_EMPEZAR_AQUI.html">Inicio</a>
     <a href="../guia/index.html">Curso</a>
@@ -27,13 +27,13 @@
 <aside class="callout aviso"><p class="callout-titulo">Esta edición es solo Windows</p><p>Por decisión de alcance, la guía cubre <strong>únicamente binarios de Windows</strong> (PE, x86/x64). El reversing de <strong>Linux/ELF</strong>, <strong>macOS/Mach-O</strong>, <strong>Android (APK/DEX)</strong> y arquitecturas como <strong>ARM/AArch64</strong> queda <strong>fuera</strong>. Los conceptos de base (números, memoria, stack, flujo, método) se trasladan a esas plataformas, pero su formato, convenciones y herramientas son otro mundo y merecen su propio material.</p></aside>
 <p><strong>Prerrequisitos:</strong> etapas 0 a 4. <strong>Duración sugerida:</strong> 30 minutos (lectura y reflexión).</p>
 <h2 id="una-guía-también-se-define-por-lo-que-no-incluye">Una guía también se define por lo que no incluye</h2>
-<p>El corpus de CLS tiene material de kernel, protectores comerciales, exploiting y malware. No todo se convierte en lección. Algunos temas quedan fuera por tres razones:</p>
+<p>El corpus de reversing tiene material de kernel, protectores comerciales, exploiting y malware. No todo se convierte en lección. Algunos temas quedan fuera por tres razones:</p>
 <ol><li><strong>No hay material revisado.</strong> Hay contenedores que no se abrieron; una mención no es contenido.</li><li><strong>El riesgo no es proporcional al beneficio para un principiante.</strong> Enseñar a manipular kernel o protectores sin bases sólidas produce accidentes, no aprendizaje.</li><li><strong>El marco legal y ético.</strong> Eludir protecciones de software comercial o atacar sistemas ajenos no es educativo.</li></ol>
 <h2 id="kernel">Kernel</h2>
 <p>Un módulo de kernel corre en el nivel más privilegiado del sistema. Un error ahí no crashea una aplicación: crashea la máquina, corrompe el sistema o abre una puerta que no se cierra con un reinicio.</p>
 <p>Para abordar kernel con responsabilidad hacen falta, como mínimo:</p>
 <ul><li>C y ensamblador con soltura.</li><li>Entender la memoria virtual, la paginación y las estructuras del sistema operativo.</li><li>Un laboratorio con snapshots y, preferentemente, hardware o VM descartable.</li><li>Un objetivo defensivo claro: analizar un driver, entender una mitigación, revisar una vulnerabilidad con permiso.</li></ul>
-<p>En CLS no hay un curso de kernel leído. El mapa menciona material de exploiting y de drivers, pero no se verificó. Esta guía no lo convierte en una lección de principiante.</p>
+<p>En las guías tradicionales de reversing de user-mode no suele haber un módulo estructurado de kernel. El mapa menciona material de exploiting y de drivers, pero no se verificó. Esta guía no lo convierte en una lección de principiante.</p>
 <h2 id="protectores-comerciales">Protectores comerciales</h2>
 <p>El desempaquetado de protectores como Themida, WinLicense o ACProtect aparece en el corpus (por ejemplo, el RAR de Themida + WinLicense y los capítulos de ACProtect). Es material avanzado y, en muchos casos, orientado a modificar software comercial.</p>
 <p>Esta guía explica <strong>qué es</strong> un empacador, cómo se reconoce y por qué el código queda plano en memoria en algún momento. No enseña a desempaquetar protectores comerciales, no distribuye recetas y no propone esas tareas. El capítulo 35 (inline patching sobre ACProtect) se cita solo como evidencia de que la técnica existe; no se reproduce.</p>
@@ -55,7 +55,7 @@
 <tr><td>Vulnerabilidades</td><td>Concepto y mitigación en laboratorio propio; exploit <strong>fuera de alcance</strong></td></tr>
 <tr><td>Kernel/drivers (Windows)</td><td>Rama <a href="etapa-6.html">optativa Etapa 6</a>: drivers propios/didácticos en VM descartable; no rootkits, BYOVD, explotación ni evasión de mitigaciones</td></tr>
 <tr><td>Protectores comerciales</td><td><strong>Fuera de alcance</strong> por marco legal y ético</td></tr>
-<tr><td>Automatización</td><td>Rama con IDAPython/Ghidra; capítulos CLS <strong>pendientes</strong></td></tr>
+<tr><td>Automatización</td><td>Rama con IDAPython/Ghidra; módulos avanzados <strong>pendientes</strong></td></tr>
 </tbody></table></div>
 <h2 id="práctica">Práctica</h2>
 <ol><li>Elegí un tema de la tabla que te interese y escribí qué prerequisites te faltan.</li><li>Buscá en el corpus un recurso de ese tema y anotá si está leído o pendiente.</li><li>Escribí una regla personal: "no voy a analizar X hasta poder Y".</li><li>Revisá tu bitácora: ¿hay alguna práctica que hayas hecho sin permiso o sin aislamiento? Corregila.</li></ol>
@@ -70,7 +70,7 @@
 <aside class="callout nota"><p class="callout-titulo">Cierre del recorrido</p><p>Si llegaste hasta acá con las etapas 0 a 4 completas, tenés una base real de reversing. Las ramas son opcionales: elegí una, completá su práctica y documentala. No acumules temas: acumulá evidencia.</p></aside>
 <h2 id="fuentes-de-esta-lección">Fuentes de esta lección</h2>
 <ul><li><a class="fuente" href="../../CLS_resultados_intermedios/mapa_carpetas_etapas.csv">mapa_carpetas_etapas.csv</a> — asignación de temas y notas sobre kernel/exploiting.</li><li><a class="fuente" href="../../telegram/Themida%20%2B%20WinLicense%202.x%20%28Unpacking%29.rar">Themida + WinLicense 2.x (Unpacking).rar</a> — recurso <strong>excluido</strong> del recorrido base.</li><li><a class="fuente" href="../../CLS_resultados_intermedios/transcripciones/extraidos/Reversing%20desde%20cero%20%28Ricardo%20y%20Solid%29/Ricardo%20Narvaja%20y%20Solid%20-%20Reversing%20desde%20cero_35%20C%C3%B3mo%20parchear%20un%20programa%20empacado%20-%20In%20Line%20Patching_35%20C%C3%B3mo%20parchear%20un%20programa%20empacado%20-%20In%20Lin.txt">Reversing desde cero, cap. 35</a> — evidencia de la técnica de inline patching; <strong>no se reproduce</strong>.</li><li><a class="fuente" href="../../CLS_Guia/FUENTES_Y_LIMITES.md">FUENTES_Y_LIMITES.md</a> — criterios de exclusión de esta edición.</li></ul>
-<aside class="callout nota"><p class="callout-titulo">Capas de esta lección</p><p><strong>Contenido observado en CLS:</strong> la existencia de los recursos y su clasificación en el mapa. <strong>Conocimiento externo:</strong> requisitos de kernel y explotación responsable. <strong>Recomendación editorial:</strong> los límites y la tabla de estado.</p></aside>
+<aside class="callout nota"><p class="callout-titulo">Capas de esta lección</p><p><strong>Núcleo conceptual:</strong> la existencia de los recursos y su clasificación en el mapa. <strong>Conocimiento externo:</strong> requisitos de kernel y explotación responsable. <strong>Recomendación editorial:</strong> los límites y la tabla de estado.</p></aside>
 </main>
 <footer class="pie">
   <p>Material educativo y defensivo. Las prácticas se limitan a programas propios, software abierto o crackmes diseñados para aprender. No se enseña a eludir licencias, DRM ni controles de acceso.</p>

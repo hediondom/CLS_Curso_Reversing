@@ -4,11 +4,11 @@
 // Compilar (MinGW): gcc -O1 -g -municode svclab_min.c -ladvapi32 -o SvcLab.exe
 // Probar en consola antes de registrar: SvcLab.exe --console
 // Registrar en VM (cmd elevado):
-//   sc.exe create CLSLabSvc binPath= "C:\CLS-Lab\SvcLab.exe" start= demand obj= "NT AUTHORITY\LocalService"
-//   sc.exe start CLSLabSvc
-//   sc.exe query CLSLabSvc
-//   sc.exe stop CLSLabSvc
-//   sc.exe delete CLSLabSvc
+//   sc.exe create ReversingLabSvc binPath= "C:\ReversingLab\SvcLab.exe" start= demand obj= "NT AUTHORITY\LocalService"
+//   sc.exe start ReversingLabSvc
+//   sc.exe query ReversingLabSvc
+//   sc.exe stop ReversingLabSvc
+//   sc.exe delete ReversingLabSvc
 
 #include <windows.h>
 #include <stdio.h>
@@ -17,7 +17,7 @@
 #pragma comment(lib, "advapi32.lib")
 #endif
 
-#define SVC_NAME L"CLSLabSvc"
+#define SVC_NAME L"ReversingLabSvc"
 
 static SERVICE_STATUS        g_Status = {0};
 static SERVICE_STATUS_HANDLE g_hStatus = NULL;
@@ -87,7 +87,7 @@ int wmain(int argc, wchar_t* argv[]) {
         if (err == ERROR_FAILED_SERVICE_CONTROLLER_CONNECT) {
             wprintf(L"Error 1063 (ERROR_FAILED_SERVICE_CONTROLLER_CONNECT): este binario es un servicio Win32.
 "
-                    L"Inicialo con 'sc.exe start CLSLabSvc' o probalo con 'SvcLab.exe --console'.
+                    L"Inicialo con 'sc.exe start ReversingLabSvc' o probalo con 'SvcLab.exe --console'.
 ");
         }
         return (int)err;

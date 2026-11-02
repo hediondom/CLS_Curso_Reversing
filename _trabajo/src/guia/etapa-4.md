@@ -11,7 +11,7 @@ Analizar programas propios con método, reconstruir un formato o protocolo desde
 :::
 
 **Prerrequisitos:** Etapas 0 a 3.  
-**Duración estimada:** 19 a 25 horas. Es una estimación de esta guía, derivada de la suma de las lecciones; no es una duración declarada por CLS.
+**Duración estimada:** 19 a 25 horas. Es una estimación de esta guía, derivada de la suma de las lecciones; no es una duración rígida de laboratorio.
 
 ## Lecciones
 
@@ -24,7 +24,7 @@ Analizar programas propios con método, reconstruir un formato o protocolo desde
 | 4.5 | [Reconstruir formatos y protocolos propios](04-formatos-protocolos.html) | Campos, longitudes, framing, estados y transformaciones desde muestras controladas. |
 | 4.6 | [Protocolos de terceros: reconstruir un protocolo propietario](04-protocolos-terceros.html) | Framing, serialización (TLV/Protobuf), hooks en send/recv y disector de Wireshark; solo sistemas propios o autorizados. |
 
-## Recursos de CLS para esta etapa
+## Recursos y lecturas de referencia
 
 - [Reversing desde cero (ejercicios 1 y 2)](../fichas/reversing-desde-cero.html)
 - [Inventario y estados de cuarentena](../fichas/inventario-limpio.html)

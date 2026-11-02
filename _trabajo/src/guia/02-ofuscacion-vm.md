@@ -118,5 +118,5 @@ Podés: (1) explicar qué significa virtualizar código y por qué desaparece el
 - [2.10 Ofuscación nativa](02-ofuscacion.html) y [2.25 Simbólico](02-simbolico-desofuscacion.html) — el aplanamiento de flujo y el solver que se usan al simplificar.
 
 :::{nota} Capas de esta lección
-**Contenido observado en CLS:** la ofuscación nativa de 2.10 como escalón previo. **Conocimiento externo (agregado por esta edición):** la arquitectura de las VM de protección y el flujo de devirtualización, basados en literatura pública. **Recomendación editorial:** la mini-VM, los ejemplos y la práctica son ilustrativos; no se analizó ningún protector comercial.
+**Núcleo conceptual:** la ofuscación nativa de 2.10 como escalón previo. **Conocimiento externo (agregado por esta edición):** la arquitectura de las VM de protección y el flujo de devirtualización, basados en literatura pública. **Recomendación editorial:** la mini-VM, los ejemplos y la práctica son ilustrativos; no se analizó ningún protector comercial.
 :::

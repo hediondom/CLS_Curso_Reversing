@@ -104,14 +104,14 @@ Vista 64 bits:
   HKCU\Software\Classes\CLSID\{A...1}   (no existe)
   HKLM\Software\Classes\CLSID\{A...1}
     AppID           {B...2}
-    InprocServer32  (Default)       C:\CLS-Lab\x64\BlocCom.dll
+    InprocServer32  (Default)       C:\ReversingLab\x64\BlocCom.dll
                     ThreadingModel  Both
     TypeLib         {C...3}
 HKLM\Software\Classes\AppID\{B...2}
     (sin LaunchPermission / AccessPermission / RunAs)
 Vista 32 bits (Wow6432Node):
   HKLM\Software\Classes\Wow6432Node\CLSID\{A...1}
-    LocalServer32   "C:\CLS-Lab\x86\BlocSrv.exe"
+    LocalServer32   "C:\ReversingLab\x86\BlocSrv.exe"
 Manifiesto de BlocCliente.exe: sin comClass
 ```
 
@@ -172,8 +172,8 @@ Monikers, ROT, servidores de servicio en detalle, catálogo COM+ y la creación 
 - Microsoft Learn, activación: [CoCreateInstance](https://learn.microsoft.com/en-us/windows/win32/api/combaseapi/nf-combaseapi-cocreateinstance), [CoGetClassObject](https://learn.microsoft.com/en-us/windows/win32/api/combaseapi/nf-combaseapi-cogetclassobject), [IClassFactory](https://learn.microsoft.com/en-us/windows/win32/api/unknwn/nn-unknwn-iclassfactory), [DllGetClassObject](https://learn.microsoft.com/en-us/windows/win32/api/combaseapi/nf-combaseapi-dllgetclassobject), [COM Clients and Servers](https://learn.microsoft.com/en-us/windows/win32/com/com-clients-and-servers).
 - Microsoft Learn, registro: [COM Registry Keys](https://learn.microsoft.com/en-us/windows/win32/com/com-registry-keys), [InprocServer32](https://learn.microsoft.com/en-us/windows/win32/com/inprocserver32), [LocalServer32](https://learn.microsoft.com/en-us/windows/win32/com/localserver32), [AppID Key](https://learn.microsoft.com/en-us/windows/win32/com/appid-key), [Interface Key](https://learn.microsoft.com/en-us/windows/win32/com/interface-key), [Merged View of HKEY_CLASSES_ROOT](https://learn.microsoft.com/en-us/windows/win32/sysinfo/merged-view-of-hkey-classes-root), [Registry Keys Affected by WOW64](https://learn.microsoft.com/en-us/windows/win32/winprog64/shared-registry-keys).
 - Microsoft Learn, metadatos y sin registro: [Generating a type library with MIDL](https://learn.microsoft.com/en-us/windows/win32/midl/generating-a-type-library-with-midl-2), [Creating Registration-Free COM Objects](https://learn.microsoft.com/en-us/windows/win32/sbscs/creating-registration-free-com-objects), [Assembly Manifests](https://learn.microsoft.com/en-us/windows/win32/sbscs/assembly-manifests), [Activation Contexts](https://learn.microsoft.com/en-us/windows/win32/sbscs/activation-contexts).
-- **CLS:** Registro/WOW64 en [2D.3](2d-03-registro.html); COM base en [2D.6](2d-06-com-interfaces.html).
+- **Fundamentos previos:** Registro/WOW64 en [2D.3](2d-03-registro.html); COM base en [2D.6](2d-06-com-interfaces.html).
 
 :::{nota} Etiquetas
-**Observado en CLS:** registro y permisos tratados en 2D.3. **Conocimiento externo:** activación, `ThreadingModel`, vistas de registro, metadatos y COM sin registro. **Ejemplo ilustrativo:** claves, rutas y conclusiones del componente ficticio. **Laboratorio verificado:** no.
+**Núcleo conceptual:** registro y permisos tratados en 2D.3. **Conocimiento externo:** activación, `ThreadingModel`, vistas de registro, metadatos y COM sin registro. **Ejemplo ilustrativo:** claves, rutas y conclusiones del componente ficticio. **Laboratorio verificado:** no.
 :::

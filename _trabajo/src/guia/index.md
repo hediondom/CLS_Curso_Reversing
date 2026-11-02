@@ -82,7 +82,7 @@ Prerrequisitos: Etapa 0 (laboratorio aislado), C, assembly, memoria y sincroniza
 
 ## Dónde seguir practicando (legal y seguro)
 
-Esta guía practica con **programas propios**, pero conviene seguir con retos pensados para aprender. Estos recursos son **recomendación externa** (no salen del corpus CLS) y permiten practicar reversing de Windows sin problemas legales:
+Esta guía practica con **programas propios**, pero conviene seguir con retos pensados para aprender. Estos recursos son **recomendación externa** (no salen del corpus tradicional) y permiten practicar reversing de Windows sin problemas legales:
 
 - [crackmes.one](https://crackmes.one/): miles de crackmes subidos para aprender; filtrá por plataforma **Windows** y por dificultad. Analizalos en tu VM.
 - [Flare-On Challenge](https://flare-on.com/): competencia anual y gratuita de reversing, centrada en Windows; los retos de años anteriores quedan publicados con soluciones.

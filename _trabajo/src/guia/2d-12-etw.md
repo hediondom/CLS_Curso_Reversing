@@ -130,8 +130,8 @@ Escribir providers o manifiestos, la sesión de kernel (NT Kernel Logger) y sus 
 
 - Microsoft Learn: [About Event Tracing](https://learn.microsoft.com/en-us/windows/win32/etw/about-event-tracing), [Controlling ETW sessions](https://learn.microsoft.com/en-us/windows/win32/etw/controlling-event-tracing-sessions), [Consuming Events](https://learn.microsoft.com/en-us/windows/win32/etw/consuming-events), [Windows Performance Recorder](https://learn.microsoft.com/en-us/windows-hardware/test/wpt/windows-performance-recorder).
 - Microsoft Learn, sesiones y canales: [Event Tracing Sessions](https://learn.microsoft.com/en-us/windows/win32/etw/event-tracing-sessions), [Configuring and Starting an AutoLogger Session](https://learn.microsoft.com/en-us/windows/win32/etw/configuring-and-starting-an-autologger-session), [Defining Channels](https://learn.microsoft.com/en-us/windows/win32/wes/defining-channels), [TraceLogging](https://learn.microsoft.com/en-us/windows/win32/tracelogging/trace-logging-portal), [logman query](https://learn.microsoft.com/en-us/windows-server/administration/windows-commands/logman-query), [Tracing WMI Activity](https://learn.microsoft.com/en-us/windows/win32/wmisdk/tracing-wmi-activity).
-- **CLS:** temporalidad/debugging en [2.19](02-windbg-heap.html).
+- **Fundamentos previos:** temporalidad/debugging en [2.19](02-windbg-heap.html).
 
 :::{nota} Etiquetas
-**Observado en CLS:** debugging y evidencia como método. **Conocimiento externo:** ETW, tipos de providers, sesiones, AutoLogger, canales y causas de pérdida. **Ejemplo ilustrativo:** cronología y ficha de sesión BlocLab. **Laboratorio verificado:** no; requiere herramientas de captura disponibles en la VM.
+**Núcleo conceptual:** debugging y evidencia como método. **Conocimiento externo:** ETW, tipos de providers, sesiones, AutoLogger, canales y causas de pérdida. **Ejemplo ilustrativo:** cronología y ficha de sesión BlocLab. **Laboratorio verificado:** no; requiere herramientas de captura disponibles en la VM.
 :::

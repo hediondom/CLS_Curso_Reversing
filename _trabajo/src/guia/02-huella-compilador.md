@@ -35,11 +35,11 @@ Regla práctica: **mirá primero los imports** (qué DLLs de runtime trae) y las
 - **VB6 p-code vs. nativo.** Si es p-code, el código "real" no es x86: es bytecode que interpreta `MSVBVM60.DLL`. Leer el x86 directo no sirve; hay que usar herramientas específicas de VB. Reconocerlo temprano evita perder tiempo.
 - **Delphi.** Las APIs no se llaman como en C: el objeto trae su **VMT** al inicio y los métodos se resuelven por tabla. Esperar un `main` con `CreateWindow` directo te confunde.
 
-En CLS esto está **como material, no como lección**: en `Teorias_Numeradas` hay **decenas de títulos de Delphi** y **varios de Visual Basic/VB6, p-code y Java** ([índice clasificado](../teorias.html)). Son conteos **por subcadena del título** (aproximados, sin abrir los contenedores): orientan para profundizar, no son prueba. El único runtime trabajado a fondo en el curso es **MSVC/C++** (y MFC en la [2.12](02-mfc.html), observado en el cap. 39: {{src:CLS_resultados_intermedios/transcripciones/extraidos/Reversing desde cero (Ricardo y Solid)/Ricardo Narvaja y Solid - Reversing desde cero_39 TIPS 2 MFC_TIPS 2 MFC.txt|Reversing desde cero, cap. 39}}).
+En recopilaciones dispersas esto suele figurar como material suelto, no como lección estructurada: en `Teorias_Numeradas` hay **decenas de títulos de Delphi** y **varios de Visual Basic/VB6, p-code y Java** ([índice clasificado](../teorias.html)). Son conteos **por subcadena del título** (aproximados, sin abrir los contenedores): orientan para profundizar, no son prueba. El único runtime trabajado a fondo en el curso es **MSVC/C++** (y MFC en la [2.12](02-mfc.html), observado en el cap. 39: {{src:CLS_resultados_intermedios/transcripciones/extraidos/Reversing desde cero (Ricardo y Solid)/Ricardo Narvaja y Solid - Reversing desde cero_39 TIPS 2 MFC_TIPS 2 MFC.txt|Reversing desde cero, cap. 39}}).
 
 ## Lenguajes que no se leen como C: Go, Rust y Delphi
 
-Los tres producen código nativo x86/x64, así que IDA y Ghidra los abren sin problema. Lo que cambia es **qué esperar** del listado. Todo este apartado es **conocimiento externo** al material de CLS; lo citado viene de la documentación de cada lenguaje.
+Los tres producen código nativo x86/x64, así que IDA y Ghidra los abren sin problema. Lo que cambia es **qué esperar** del listado. Todo este apartado es **conocimiento externo** al material de reversing; lo citado viene de la documentación de cada lenguaje.
 
 **Go.** Un "hola mundo" en Go pesa varios megabytes porque trae enlazado el runtime completo (planificador de goroutines, recolector de basura). Para leerlo:
 
@@ -161,7 +161,7 @@ Esta lección enseña a identificar el compilador en el triage inicial. Para rec
 ?? En Delphi de 32 bits, ¿dónde llegan los primeros argumentos de un método?
 !! En `EAX`, `EDX` y `ECX` (convención `register`); `Self` viene en `EAX`. Leerlo como `stdcall` hace que los argumentos parezcan faltar.
 
-?? ¿Qué parte de esto está respaldada por material de CLS y qué es externo?
+?? ¿Qué parte de esto corresponde a patrones clásicos y qué a compiladores modernos?
 !! MFC está observado (cap. 39) y hay **títulos** de Delphi/VB/Java en `Teorias_Numeradas` (no leídos). La tabla de huellas de MSVC/MinGW/Delphi/VB6/Go/Rust y el apartado de lenguajes no-C son **conocimiento externo**.
 
 :::{nota} Puerta de salida
@@ -177,5 +177,5 @@ Podés: (1) decir con qué compilador/runtime se hizo un binario y por qué; (2)
 - Delphi: la convención `register`, la firma `TPF0` de los formularios y la cabecera de los `string` son conocimiento externo sin enlace verificado en esta revisión (la documentación de Embarcadero no respondió durante la verificación).
 
 :::{nota} Capas de esta lección
-**Contenido observado en CLS:** la huella de MFC del capítulo 39 y los conteos por título de `Teorias_Numeradas`. **Conocimiento externo:** la tabla de huellas (Rich header, `MSVBVM60.DLL`, VMT de Delphi, `.eh_frame` de MinGW, Go y Rust), el caso p-code y las particularidades de lectura de Go, Rust y Delphi. **Recomendación editorial:** mirar imports y strings primero y la práctica comparativa MSVC/MinGW.
+**Núcleo conceptual:** la huella de MFC del capítulo 39 y los conteos por título de `Teorias_Numeradas`. **Conocimiento externo:** la tabla de huellas (Rich header, `MSVBVM60.DLL`, VMT de Delphi, `.eh_frame` de MinGW, Go y Rust), el caso p-code y las particularidades de lectura de Go, Rust y Delphi. **Recomendación editorial:** mirar imports y strings primero y la práctica comparativa MSVC/MinGW.
 :::

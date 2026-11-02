@@ -106,5 +106,5 @@ Podés: (1) clasificar un VB6 como nativo o p-code; (2) ubicar la VBHeader y rec
 - [2.13 Huella de compilador](02-huella-compilador.html) y [2.26 VM](02-ofuscacion-vm.html) (el paralelo intérprete/bytecode).
 
 :::{nota} Capas de esta lección
-**Contenido observado en CLS:** VB6 como una de las huellas de compilador de 2.13 y el contexto legado del material (VB en Teorias_Numeradas). **Conocimiento externo (agregado por esta edición):** VBHeader, nativo vs p-code, las llamadas del runtime y las herramientas. **Recomendación editorial:** ejemplos y práctica ilustrativos, sobre binarios propios/didácticos.
+**Núcleo conceptual:** VB6 como una de las huellas de compilador de 2.13 y el contexto legado del material (VB en Teorias_Numeradas). **Conocimiento externo (agregado por esta edición):** VBHeader, nativo vs p-code, las llamadas del runtime y las herramientas. **Recomendación editorial:** ejemplos y práctica ilustrativos, sobre binarios propios/didácticos.
 :::

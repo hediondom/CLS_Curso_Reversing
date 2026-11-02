@@ -195,6 +195,6 @@ Si podés explicar quién limpia el stack mirando el `ret` o el `add esp`, está
 - [Curso IDA · tutes 23 y 24](../ida_tutes/23.html) — funciones basadas en EBP (`IDA1.exe`/`IDA2.exe`), el quirk de DevC++ al llamar APIs y el método strings→`main`→xrefs→renombrar.
 
 :::{nota} Capas de esta lección
-**Contenido observado en CLS:** el ejemplo del `call` en `0x00401013`, `ret 0x10`, la convención x64 del capítulo 18 y la vtable del capítulo 37. **Conocimiento externo:** tabla de convenciones `cdecl`/`stdcall`/`fastcall`/`thiscall`. **Recomendación editorial:** el ejemplo `suma` y los ejercicios.
+**Núcleo conceptual:** el ejemplo del `call` en `0x00401013`, `ret 0x10`, la convención x64 del capítulo 18 y la vtable del capítulo 37. **Conocimiento externo:** tabla de convenciones `cdecl`/`stdcall`/`fastcall`/`thiscall`. **Recomendación editorial:** el ejemplo `suma` y los ejercicios.
 :::
 

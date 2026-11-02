@@ -10,7 +10,7 @@
 
 La guía actual **no es un índice**: tiene 25 lecciones, ejemplos, prácticas y preguntas. Cubre bien el **núcleo de reversing de Windows x86/x64**: laboratorio, números, memoria, PE, assembly, debugger, IDA, .NET básico, método, criptografía, informe y análisis dinámico seguro.
 
-Pero **no está completa**, ni respecto de todo el corpus CLS ni respecto de una currícula general de reversing. Faltan tres grupos de temas:
+Pero **no está completa**, ni respecto de todo el corpus tradicional ni respecto de una currícula general de reversing. Faltan tres grupos de temas:
 
 1. **Huecos dentro del alcance Windows** que ya tienen material local y no se enseñan: packers/desempaquetado didáctico, anti-debug/anti-VM/anti-disassembly, WinDbg/TTD y heap, C++/VB6/Delphi/Java, patch diffing/CVE, scripting de x64dbg y malware dinámico defensivo.
 2. **Ramas avanzadas que existen en CLS pero quedaron fuera**: kernel/drivers, exploiting, Android, Linux/ELF, macOS/Mach-O y ARM.

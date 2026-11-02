@@ -11,7 +11,7 @@ Entender el runtime .NET, leer IL y comparar fuente, IL y decompilación en un p
 :::
 
 **Prerrequisitos:** Etapa 2.  
-**Duración estimada:** 7 a 10 horas. Es una estimación de esta guía, derivada de la suma de las lecciones; no es una duración declarada por CLS.
+**Duración estimada:** 7 a 10 horas. Es una estimación de esta guía, derivada de la suma de las lecciones; no es una duración rígida de laboratorio.
 
 ## Lecciones
 
@@ -20,7 +20,7 @@ Entender el runtime .NET, leer IL y comparar fuente, IL y decompilación en un p
 | 3.1 | [.NET: runtime, ensamblados y metadatos](03-dotnet-runtime.html) | CLR, IL, JIT, ensamblado y decompiladores. |
 | 3.2 | [Leer IL y comparar fuente, IL y decompilación](03-dotnet-il.html) | Pila de evaluación, opcodes y reconstrucción. |
 
-## Recursos de CLS para esta etapa
+## Recursos y lecturas de referencia
 
 - [Reversing desde cero (contexto de análisis)](../fichas/reversing-desde-cero.html)
 - [Teorias_Numeradas (títulos .NET, pendiente)](../fichas/teorias-numeradas.html)

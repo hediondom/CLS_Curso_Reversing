@@ -11,7 +11,7 @@ Leer assembly x86/x64, seguir el flujo y usar debugger y desensamblador con crit
 :::
 
 **Prerrequisitos:** Etapa 1.  
-**Duración estimada:** 32 a 40 h (2A) + ~25 h (2B) + ~30–40 h (2C) + ~25–30 h (2E). Es una estimación de esta guía, derivada de la suma de las lecciones; no es una duración declarada por CLS.
+**Duración estimada:** 32 a 40 h (2A) + ~25 h (2B) + ~30–40 h (2C) + ~25–30 h (2E). Es una estimación de esta guía, derivada de la suma de las lecciones; no es una duración rígida de laboratorio.
 
 ## Lecciones
 
@@ -51,7 +51,7 @@ Leer assembly x86/x64, seguir el flujo y usar debugger y desensamblador con crit
 | 2.32 | [Go y Rust en profundidad (amplía 2.13)](02-go-rust.html) | pclntab/itab en Go; manglado v0, monomorfización y trait objects en Rust. |
 | 2.33 | [VB6 y p-code (amplía 2.13)](02-vb6-pcode.html) | Nativo vs p-code, VBHeader y MSVBVM60; VB Decompiler/WKTVBDE (legado). |
 
-## Recursos de CLS para esta etapa
+## Recursos y lecturas de referencia
 
 - [Etapa 2 · Rama optativa 2D — Windows internals (después de 2C)](../2d.html)
 - [Reversing desde cero (tronco principal)](../fichas/reversing-desde-cero.html)

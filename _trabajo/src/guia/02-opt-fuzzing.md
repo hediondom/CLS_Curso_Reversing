@@ -128,5 +128,5 @@ Podés: (1) fuzzear un parser/crackme propio y guardar los crashes; (2) reproduc
 - [WinDbg, TTD y heap](02-windbg-heap.html) (2.19) — Page Heap para reproducir y diagnosticar los crashes de memoria del fuzzing.
 
 :::{nota} Capas de esta lección
-**Contenido observado en CLS:** la mención de angr/Triton/Miasm en el taller actual (2.9). **Conocimiento externo:** fuzzing (AFL++/libFuzzer/WinAFL), ejecución simbólica (angr) y la explosión de caminos. **Recomendación editorial:** el enfoque sobre binarios propios, el ejemplo ilustrativo y la práctica de triage reproducible.
+**Núcleo conceptual:** la mención de angr/Triton/Miasm en el taller actual (2.9). **Conocimiento externo:** fuzzing (AFL++/libFuzzer/WinAFL), ejecución simbólica (angr) y la explosión de caminos. **Recomendación editorial:** el enfoque sobre binarios propios, el ejemplo ilustrativo y la práctica de triage reproducible.
 :::

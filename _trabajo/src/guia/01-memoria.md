@@ -238,6 +238,6 @@ Si podés explicar el stack sin mirar el dibujo, estás listo para verlo en vivo
 - {{src:CLS_resultados_intermedios/transcripciones/extraidos/Reversing desde cero (Ricardo y Solid)/Ricardo Narvaja y Solid - Reversing desde cero_33 C++ Clases_33 C++ Clases.txt|Reversing desde cero, cap. 33}} — objetos C++: `new`/`malloc`, constructor, `this` en ECX y puntero a la vtable en el offset 0 (transcripción .txt, sin marcas).
 
 :::{nota} Capas de esta lección
-**Contenido observado en CLS:** el ejemplo del capítulo 18 (argumentos, return address `0x011912EA`, `sub esp, 0x28`, shadow space), la cookie del capítulo 15, el padding del 20b y el objeto con vtable del 33. **Conocimiento externo:** layout general del espacio de direcciones, heap y strings en C. **Recomendación editorial:** los diagramas y ejercicios.
+**Núcleo conceptual:** el ejemplo del capítulo 18 (argumentos, return address `0x011912EA`, `sub esp, 0x28`, shadow space), la cookie del capítulo 15, el padding del 20b y el objeto con vtable del 33. **Conocimiento externo:** layout general del espacio de direcciones, heap y strings en C. **Recomendación editorial:** los diagramas y ejercicios.
 :::
 

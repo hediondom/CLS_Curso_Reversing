@@ -14,13 +14,13 @@ Al terminar vas a poder explicar qué es el CLR, qué contiene un ensamblado .NE
 
 ## Una advertencia sobre las fuentes
 
-En CLS **no hay un curso de .NET leído**. Lo que existe es:
+En los cursos clásicos de reversing nativo **rara vez se abordaba el runtime de .NET**. Lo que existe es:
 
 - El video 38 de «Videos y material adicional», que explica el código intermedio (MSIL) y por qué OllyDbg no alcanza para analizarlo ({{src:CLS_resultados_intermedios/transcripciones/extraidos/Videos y material adicional Ingenieria Inversa/Videos_Video38_Video38.txt|Videos y material adicional, Video 38}}, 00:00:16).
 - El video 40, que usa .NET Reflector para decompilar un binario VB.NET y ver un formulario, un botón y una caja de texto ({{src:CLS_resultados_intermedios/transcripciones/extraidos/Videos y material adicional Ingenieria Inversa/Videos_Video40_Video40.txt|Videos y material adicional, Video 40}}, 00:03:20).
 - Títulos de la colección `Teorias_Numeradas` que mencionan .NET/dnSpy, **sin contenido leído**: son contenedores `.zip` que no se abrieron.
 
-Por eso esta etapa combina **contenido observado** (los dos videos) con **conocimiento externo** y **recomendación editorial**. No hay una ficha de un tutorial .NET de CLS porque no se encontró uno legible.
+Por eso esta etapa combina **contenido observado** (los dos videos) con **conocimiento externo** y **recomendación editorial**. No hay una ficha de un tutorial .NET de reversing porque no se encontró uno legible.
 
 ## Qué es .NET
 
@@ -166,5 +166,5 @@ Si podés compilar tu propio programa y encontrarlo en ILSpy con nombres y todo,
 - {{src:CLS_resultados_intermedios/teorias_numeradas_por_etapa.csv|teorias_numeradas_por_etapa.csv}} — títulos con .NET/dnSpy, **pendientes de revisar** (contenedores no abiertos).
 
 :::{nota} Capas de esta lección
-**Contenido observado en CLS:** la explicación del video 38 y el uso de .NET Reflector en el video 40. **Conocimiento externo:** CLR, JIT, metadatos, herramientas actuales, Native AOT (carga dinámica, reflexión y trimming) y ensamblados mixtos C++/CLI. **Recomendación editorial:** el ejemplo con el SDK y la advertencia sobre dnSpy.
+**Núcleo conceptual:** la explicación del video 38 y el uso de .NET Reflector en el video 40. **Conocimiento externo:** CLR, JIT, metadatos, herramientas actuales, Native AOT (carga dinámica, reflexión y trimming) y ensamblados mixtos C++/CLI. **Recomendación editorial:** el ejemplo con el SDK y la advertencia sobre dnSpy.
 :::

@@ -11,7 +11,7 @@ Armar un entorno aislado, tomar snapshots, verificar hashes y registrar cada pr�
 :::
 
 **Prerrequisitos:** Ninguno.  
-**Duración estimada:** 4 a 6 horas. Es una estimación de esta guía, derivada de la suma de las lecciones; no es una duración declarada por CLS.
+**Duración estimada:** 4 a 6 horas. Es una estimación de esta guía, derivada de la suma de las lecciones; no es una duración rígida de laboratorio.
 
 ## Lecciones
 
@@ -19,9 +19,9 @@ Armar un entorno aislado, tomar snapshots, verificar hashes y registrar cada pr�
 |---|---|---|
 | 0.1 | [Un laboratorio que podés romper sin miedo](00-laboratorio.html) | VM, snapshots, red aislada, transferencia por ISO y hashes. |
 
-## Recursos de CLS para esta etapa
+## Recursos y lecturas de referencia
 
-- [Inventario limpio de CLS](../fichas/inventario-limpio.html)
+- [Inventario de recursos de reversing](../fichas/inventario-limpio.html)
 - [Transcripciones de Telegram](../fichas/transcripciones-telegram.html)
 
 ## Evaluación de salida

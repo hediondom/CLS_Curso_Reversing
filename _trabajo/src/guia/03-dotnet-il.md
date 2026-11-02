@@ -242,5 +242,5 @@ Si podés compilar tu propio método, leer su IL y explicar qué hace el decompi
 - {{src:CLS_resultados_intermedios/teorias_numeradas_por_etapa.csv|teorias_numeradas_por_etapa.csv}} — títulos .NET/dnSpy **pendientes de revisar**.
 
 :::{nota} Capas de esta lección
-**Contenido observado en CLS:** el video 38 (MSIL) y el video 40 (decompilación VB.NET). **Conocimiento externo:** conjunto de instrucciones IL, pila de evaluación y comportamiento de los decompiladores. **Recomendación editorial:** el método `Check`, la tabla línea por línea y los ejercicios.
+**Núcleo conceptual:** el video 38 (MSIL) y el video 40 (decompilación VB.NET). **Conocimiento externo:** conjunto de instrucciones IL, pila de evaluación y comportamiento de los decompiladores. **Recomendación editorial:** el método `Check`, la tabla línea por línea y los ejercicios.
 :::

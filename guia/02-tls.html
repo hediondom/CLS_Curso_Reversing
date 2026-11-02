@@ -10,7 +10,7 @@
 <body>
 <a class="salto" href="#contenido">Saltar al contenido</a>
 <header class="cabecera">
-  <div class="marca"><a href="../00_EMPEZAR_AQUI.html">CLS · Curso de reversing</a> <span class="edicion">edición 5 · 27/10/2026</span></div>
+  <div class="marca"><a href="../00_EMPEZAR_AQUI.html">Curso de Reversing en Windows</a> <span class="edicion">edición 5 · 27/10/2026</span></div>
   <nav class="principal" aria-label="Navegación principal">
     <a href="../00_EMPEZAR_AQUI.html">Inicio</a>
     <a href="../guia/index.html">Curso</a>
@@ -96,7 +96,7 @@ En 0x00403020 (arreglo de punteros, terminado en NULL):
 <aside class="callout nota"><p class="callout-titulo">Puerta de salida</p><p>Podés: (1) distinguir TLS por API de <code>__declspec(thread)</code>; (2) ubicar el directorio TLS y <code>AddressOfCallBacks</code> en un PE; (3) hacer que x64dbg pare en el primer callback; (4) demostrar con tu propio binario que el callback corre antes de <code>main</code>.</p></aside>
 <h2 id="fuentes-de-esta-lección">Fuentes de esta lección</h2>
 <ul><li><a class="fuente" href="../../CLS_resultados_intermedios/transcripciones/extraidos/Reversing%20desde%20cero%20%28Ricardo%20y%20Solid%29/Ricardo%20Narvaja%20y%20Solid%20-%20Reversing%20desde%20cero_38%20Ap%C3%A9ndice%20te%C3%B3rico%20TLS_Ap%C3%A9ndice%20te%C3%B3rico%20TLS.txt">Reversing desde cero, cap. 38</a> — <code>EjemploTLS</code>: TLS por API (<code>TlsAlloc</code>/<code>TlsGetValue</code>/<code>TlsSetValue</code>) y por <code>__declspec(thread)</code>.</li></ul>
-<aside class="callout nota"><p class="callout-titulo">Capas de esta lección</p><p><strong>Contenido observado en CLS:</strong> las dos formas de TLS del <code>EjemploTLS</code> del capítulo 38. <strong>Conocimiento externo:</strong> la estructura <code>IMAGE_TLS_DIRECTORY</code>, <code>AddressOfCallBacks</code>, el orden de ejecución antes del entry point y el breakpoint de TLS en x64dbg. <strong>Recomendación editorial:</strong> el método de búsqueda y la práctica con binario propio.</p></aside>
+<aside class="callout nota"><p class="callout-titulo">Capas de esta lección</p><p><strong>Núcleo conceptual:</strong> las dos formas de TLS del <code>EjemploTLS</code> del capítulo 38. <strong>Conocimiento externo:</strong> la estructura <code>IMAGE_TLS_DIRECTORY</code>, <code>AddressOfCallBacks</code>, el orden de ejecución antes del entry point y el breakpoint de TLS en x64dbg. <strong>Recomendación editorial:</strong> el método de búsqueda y la práctica con binario propio.</p></aside>
 </main>
 <footer class="pie">
   <p>Material educativo y defensivo. Las prácticas se limitan a programas propios, software abierto o crackmes diseñados para aprender. No se enseña a eludir licencias, DRM ni controles de acceso.</p>

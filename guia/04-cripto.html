@@ -10,7 +10,7 @@
 <body>
 <a class="salto" href="#contenido">Saltar al contenido</a>
 <header class="cabecera">
-  <div class="marca"><a href="../00_EMPEZAR_AQUI.html">CLS · Curso de reversing</a> <span class="edicion">edición 5 · 27/10/2026</span></div>
+  <div class="marca"><a href="../00_EMPEZAR_AQUI.html">Curso de Reversing en Windows</a> <span class="edicion">edición 5 · 27/10/2026</span></div>
   <nav class="principal" aria-label="Navegación principal">
     <a href="../00_EMPEZAR_AQUI.html">Inicio</a>
     <a href="../guia/index.html">Curso</a>
@@ -23,7 +23,7 @@
 </header>
 <main id="contenido">
 <nav class="migas" aria-label="Ubicación"><a href="../00_EMPEZAR_AQUI.html">Inicio</a><span aria-hidden="true">›</span><a href="../guia/index.html">Curso</a><span aria-hidden="true">›</span><span>Etapa 4 · Práctica guiada</span></nav><h1 id="reconocer-criptografía-y-encoding-en-un-binario">Reconocer criptografía y encoding en un binario</h1>
-<aside class="callout aviso"><p class="callout-titulo">De dónde sale esta lección</p><p>Este tema <strong>no está en el corpus CLS</strong>: es <strong>conocimiento externo</strong> que agregamos para completar la guía. Se incluye porque reconocer cripto y encoding es rutina en análisis de malware de Windows y en CTF. El enfoque es <strong>defensivo y de identificación</strong>: reconocer qué algoritmo hay, no implementar criptografía ni romperla.</p></aside>
+<aside class="callout aviso"><p class="callout-titulo">De dónde sale esta lección</p><p>Este tema es indispensable en binarios modernos de 64 bits y forma parte del núcleo técnico avanzado de esta obra. Se incluye porque reconocer cripto y encoding es rutina en análisis de malware de Windows y en CTF. El enfoque es <strong>defensivo y de identificación</strong>: reconocer qué algoritmo hay, no implementar criptografía ni romperla.</p></aside>
 <aside class="callout nota"><p class="callout-titulo">Objetivo de la lección</p><p>Al terminar vas a poder distinguir encoding de cifrado, reconocer un XOR y un base64 en un listado, e identificar algoritmos conocidos (AES, RC4, MD5/SHA, TEA, CRC32) por sus <strong>constantes y tablas</strong>.</p></aside>
 <p><strong>Prerrequisitos:</strong> instrucciones, flujo, método (Etapas 2 y 4). <strong>Duración sugerida:</strong> 3 horas.</p>
 <h2 id="encoding-no-es-cifrado">Encoding no es cifrado</h2>
@@ -81,7 +81,7 @@
 <aside class="callout nota"><p class="callout-titulo">Puerta de salida</p><p>Si podés mirar un binario, decir "acá hay base64 y acá un XOR con clave de 1 byte, y esta tabla es la S-box de AES" y documentarlo, cumpliste el objetivo.</p></aside>
 <h2 id="fuentes-de-esta-lección">Fuentes de esta lección</h2>
 <ul><li><em>Practical Malware Analysis</em> (Sikorski &amp; Honig), capítulo de criptografía: XOR, base64 y reconocimiento de algoritmos.</li><li>Proyectos <strong>FindCrypt</strong>, <strong>signsrch</strong> y <strong>CAPA</strong> (Mandiant) como referencia de firmas.</li><li>Especificaciones públicas: FIPS 197 (AES), RFC 1321 (MD5), FIPS 180-4 (SHA), RFC 4648 (base64).</li></ul>
-<aside class="callout nota"><p class="callout-titulo">Capas de esta lección</p><p><strong>Conocimiento externo (agregado por esta edición):</strong> todo el contenido (XOR, base64, constantes de algoritmos, CryptoAPI/CNG, herramientas). No proviene de CLS. <strong>Recomendación editorial:</strong> el método de reconocimiento y el encuadre defensivo.</p></aside>
+<aside class="callout nota"><p class="callout-titulo">Capas de esta lección</p><p><strong>Conocimiento externo (agregado por esta edición):</strong> todo el contenido (XOR, base64, constantes de algoritmos, CryptoAPI/CNG, herramientas). No proviene de reversing. <strong>Recomendación editorial:</strong> el método de reconocimiento y el encuadre defensivo.</p></aside>
 
 <aside class="ampliacion-ext">
 <p class="callout-titulo">Ampliación editorial basada en fuentes externas — Criptografía asimétrica (RSA/ECC) y tabla de intercepción en APIs nativas de Windows (CryptoAPI y CNG)</p>

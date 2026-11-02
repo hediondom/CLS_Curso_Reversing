@@ -137,5 +137,5 @@ Para cada referencia se indica: identificador `[Ref-N]`, título, autor u organi
 
 ## 5.2 Referencia Interna del Corpus Auditado
 
-- **[Ref-Interna]** **Proyecto CLS (`CLS_Guia`).** *`CLS_Curso_Reversing.pdf` (Edición 5, 28/10/2026, 403 páginas) y fuentes locales en `_trabajo/src/`, `FUENTES_Y_LIMITES.md`, `mapa_de_cobertura.csv` y `registro_de_cobertura.csv`*.  
+- **[Ref-Interna]** **proyecto inicial de estudio (`CLS_Guia`).** *`CLS_Curso_Reversing.pdf` (Edición 5, 28/10/2026, 403 páginas) y fuentes locales en `_trabajo/src/`, `FUENTES_Y_LIMITES.md`, `mapa_de_cobertura.csv` y `registro_de_cobertura.csv`*.  
   - **Ubicación local:** `d:\CLS_proyecto\CLS_Guia\CLS_Curso_Reversing.pdf`

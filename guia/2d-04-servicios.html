@@ -10,7 +10,7 @@
 <body>
 <a class="salto" href="#contenido">Saltar al contenido</a>
 <header class="cabecera">
-  <div class="marca"><a href="../00_EMPEZAR_AQUI.html">CLS · Curso de reversing</a> <span class="edicion">edición 5 · 27/10/2026</span></div>
+  <div class="marca"><a href="../00_EMPEZAR_AQUI.html">Curso de Reversing en Windows</a> <span class="edicion">edición 5 · 27/10/2026</span></div>
   <nav class="principal" aria-label="Navegación principal">
     <a href="../00_EMPEZAR_AQUI.html">Inicio</a>
     <a href="../guia/index.html">Curso</a>
@@ -42,31 +42,31 @@
 <p>La DACL del <strong>objeto servicio</strong> controla quién puede consultarlo, iniciarlo, detenerlo o cambiar su configuración. Es distinta de la ACL del ejecutable y de sus carpetas. Para una auditoría defensiva, registrá si la ruta existe, quién puede modificar sus archivos y qué permisos tienen las cuentas sobre el objeto servicio. Un permiso de cambio de configuración tiene impacto alto porque permite alterar los datos que el SCM usa; documentá una asignación excesiva, pero no la pruebes ni la aproveches.</p>
 <h2 id="ejemplo-trabajado">Ejemplo trabajado</h2>
 <p><em>(Ejemplo <strong>ilustrativo</strong>, no observado en un Windows real. Los nombres y valores son de un servicio ficticio de laboratorio.)</em></p>
-<pre><code class="lenguaje-text">Nombre: CLSLabSvc
+<pre><code class="lenguaje-text">Nombre: ReversingLabSvc
 Tipo: own-process (servicio Win32)
 Tipo de inicio: demand (manual)
 Estado: STOPPED
 Cuenta: NT AUTHORITY\LocalService
-ImagePath: C:\CLS-Lab\SvcLab.exe
+ImagePath: C:\ReversingLab\SvcLab.exe
 Objeto servicio: Administrators — control; Users — lectura
 Carpeta del binario: solo administradores pueden modificarla</code></pre>
 <p>Lectura: es un servicio didáctico de proceso propio, detenido y de inicio manual. La cuenta elegida tiene menos privilegios que <code>LocalSystem</code>; la ruta y los permisos son coherentes con esa práctica. Esta ficha no demuestra que un servicio real sea seguro: cada hallazgo debe corroborarse con la configuración efectiva y el contexto del equipo.</p>
 <h2 id="práctica-segura-servicio-propio-y-limpieza">Práctica segura: servicio propio y limpieza</h2>
-<p>Realizá el ejercicio solo en una VM descartable con snapshot. Realizá el ejercicio en una VM descartable con snapshot. Compilá el servicio didáctico desde el archivo <code>plantillas_codigo/svclab_min.c</code> (<strong>Plantilla 7 del Kit de Código</strong>), que implementa <code>StartServiceCtrlDispatcherW</code>, <code>ServiceMain</code> y <code>RegisterServiceCtrlHandlerExW</code> para Windows x86/x64:<br><pre><code class="lenguaje-cmd">cl /Zi /O1 /DUNICODE /D_UNICODE svclab_min.c advapi32.lib /Fe:C:\CLS-Lab\SvcLab.exe</code></pre>(O con MinGW: <code>gcc -O1 -g -municode svclab_min.c -ladvapi32 -o C:\CLS-Lab\SvcLab.exe</code>).</p>
+<p>Realizá el ejercicio solo en una VM descartable con snapshot. Realizá el ejercicio en una VM descartable con snapshot. Compilá el servicio didáctico desde el archivo <code>plantillas_codigo/svclab_min.c</code> (<strong>Plantilla 7 del Kit de Código</strong>), que implementa <code>StartServiceCtrlDispatcherW</code>, <code>ServiceMain</code> y <code>RegisterServiceCtrlHandlerExW</code> para Windows x86/x64:<br><pre><code class="lenguaje-cmd">cl /Zi /O1 /DUNICODE /D_UNICODE svclab_min.c advapi32.lib /Fe:C:\ReversingLab\SvcLab.exe</code></pre>(O con MinGW: <code>gcc -O1 -g -municode svclab_min.c -ladvapi32 -o C:\ReversingLab\SvcLab.exe</code>).</p>
 <p><strong>Materiales y resultado esperado:</strong> VM/build registrados, snapshot recuperable, <code>sc.exe</code>, AccessChk de Sysinternals y el binario propio identificado por hash. El resultado esperado es registrar un servicio manual, verlo pasar a <code>RUNNING</code> y <code>STOPPED</code>, y confirmar que desaparece después de solicitar su eliminación. Guardá el build de Windows, hash, salidas de consulta y evidencia de limpieza; no se fija una versión de herramienta que no se haya probado.</p>
-<p><strong>Paso 1 — Preparar.</strong> Prepará <code>C:\CLS-Lab</code> y colocá allí el binario propio. No uses una ruta de red ni un servicio de Windows.</p>
+<p><strong>Paso 1 — Preparar.</strong> Prepará <code>C:\ReversingLab</code> y colocá allí el binario propio. No uses una ruta de red ni un servicio de Windows.</p>
 <p><strong>Paso 2 — Registrar.</strong> En una consola elevada de la VM, registrá el servicio con inicio manual y una cuenta de menor privilegio:</p>
-<pre><code class="lenguaje-bat">   sc.exe create CLSLabSvc binPath= "C:\CLS-Lab\SvcLab.exe" start= demand obj= "NT AUTHORITY\LocalService"</code></pre>
+<pre><code class="lenguaje-bat">   sc.exe create ReversingLabSvc binPath= "C:\ReversingLab\SvcLab.exe" start= demand obj= "NT AUTHORITY\LocalService"</code></pre>
 <p><strong>Paso 3 — Inspeccionar.</strong> Consultá su configuración y estado; auditá la DACL del objeto servicio sin modificarla:</p>
-<pre><code class="lenguaje-bat">   sc.exe qc CLSLabSvc
-   sc.exe query CLSLabSvc
-   accesschk.exe -v -c CLSLabSvc</code></pre>
-<p><strong>Paso 4 — Probar el ciclo de vida.</strong> Iniciá y detené solo <code>CLSLabSvc</code>. Observá los cambios de estado y anotá la cuenta y la ruta reportadas.</p>
+<pre><code class="lenguaje-bat">   sc.exe qc ReversingLabSvc
+   sc.exe query ReversingLabSvc
+   accesschk.exe -v -c ReversingLabSvc</code></pre>
+<p><strong>Paso 4 — Probar el ciclo de vida.</strong> Iniciá y detené solo <code>ReversingLabSvc</code>. Observá los cambios de estado y anotá la cuenta y la ruta reportadas.</p>
 <p><strong>Paso 5 — Limpiar.</strong> Detené el servicio si sigue activo y solicitá eliminar únicamente el servicio de laboratorio:</p>
-<pre><code class="lenguaje-bat">   sc.exe stop CLSLabSvc
-   sc.exe delete CLSLabSvc
-   sc.exe query CLSLabSvc</code></pre>
-<p><code>sc.exe delete</code> puede dejarlo marcado para borrar si todavía está activo o si hay una consola con un handle abierto. Cerrá <code>services.msc</code> y las herramientas que lo estén consultando; esperá a que desaparezca o revertí el snapshot. Confirmá que <code>sc.exe query CLSLabSvc</code> ya no encuentra el servicio y recién entonces borrá <code>C:\CLS-Lab</code>.</p>
+<pre><code class="lenguaje-bat">   sc.exe stop ReversingLabSvc
+   sc.exe delete ReversingLabSvc
+   sc.exe query ReversingLabSvc</code></pre>
+<p><code>sc.exe delete</code> puede dejarlo marcado para borrar si todavía está activo o si hay una consola con un handle abierto. Cerrá <code>services.msc</code> y las herramientas que lo estén consultando; esperá a que desaparezca o revertí el snapshot. Confirmá que <code>sc.exe query ReversingLabSvc</code> ya no encuentra el servicio y recién entonces borrá <code>C:\ReversingLab</code>.</p>
 <p>No cambies permisos, configuración ni cuenta de otros servicios. Si no tenés un binario propio que implemente el contrato de servicio, hacé el análisis como ejercicio de lectura con la ficha ilustrativa y dejá constancia de esa limitación.</p>
 <h2 id="entregable">Entregable</h2>
 <p>Una ficha con tipo, inicio, estado, cuenta, ruta, resultado de la inspección de permisos y evidencia de limpieza. Indicá si trabajaste con un servicio compilado o solo con el ejemplo ilustrativo. No incluyas datos personales de la VM.</p>
@@ -78,8 +78,8 @@ Carpeta del binario: solo administradores pueden modificarla</code></pre>
 <details class="qa"><summary>¿Qué significa que <code>sc.exe delete</code> no lo haya quitado inmediatamente?</summary><div class="respuesta"><p>Puede estar marcado para eliminación porque sigue activo o porque otro programa conserva un handle. Cerrá las consolas que lo consultan, esperá y verificá su ausencia antes de borrar los archivos.</p></div></details>
 <aside class="callout nota"><p class="callout-titulo">Puerta de salida (optativa)</p><p>Podés explicar SCM, <code>ServiceMain</code>, tipo de inicio y estado; leer cuenta, ruta y permisos; distinguir un proceso propio de un servicio hospedado; y demostrar que el servicio de prueba desapareció o declarar que solo completaste el ejercicio ilustrativo.</p></aside>
 <h2 id="fuentes">Fuentes</h2>
-<ul><li><strong>Conocimiento externo:</strong> <a href="https://learn.microsoft.com/en-us/windows/win32/services/service-control-manager" rel="noopener" target="_blank">Service Control Manager</a>, <a href="https://learn.microsoft.com/en-us/windows/win32/services/service-programs" rel="noopener" target="_blank">Service Programs</a>, <a href="https://learn.microsoft.com/en-us/windows/win32/services/service-servicemain-function" rel="noopener" target="_blank">ServiceMain</a>, <a href="https://learn.microsoft.com/en-us/windows/win32/services/service-user-accounts" rel="noopener" target="_blank">Service User Accounts</a> y <a href="https://learn.microsoft.com/en-us/windows/win32/services/service-security-and-access-rights" rel="noopener" target="_blank">Service Security and Access Rights</a>.</li><li><strong>Herramientas:</strong> <a href="https://learn.microsoft.com/en-us/windows-server/administration/windows-commands/sc-create" rel="noopener" target="_blank"><code>sc.exe create</code></a>, <a href="https://learn.microsoft.com/en-us/windows-server/administration/windows-commands/sc-delete" rel="noopener" target="_blank"><code>sc.exe delete</code></a> y <a href="https://learn.microsoft.com/en-us/sysinternals/downloads/accesschk" rel="noopener" target="_blank">AccessChk</a>.</li><li><strong>Hospedaje:</strong> <a href="https://learn.microsoft.com/en-us/windows/application-management/svchost-service-refactoring" rel="noopener" target="_blank">Service host grouping in Windows</a>. Los detalles de agrupación dependen de la versión de Windows.</li><li><strong>Relación con CLS:</strong> ACL y token en <a href="2d-01-objetos.html">2D.1</a>; representación del registro en <a href="2d-03-registro.html">2D.3</a>.</li></ul>
-<aside class="callout nota"><p class="callout-titulo">Etiquetas</p><p><strong>Observado en CLS:</strong> marco de token/ACL (2D.1) y referencia al registro (2D.3). <strong>Conocimiento externo:</strong> SCM, estados, cuentas y servicios hospedados. <strong>Ejemplo ilustrativo:</strong> ficha de <code>CLSLabSvc</code>. <strong>Laboratorio verificado:</strong> no; requiere un binario propio compilado como servicio.</p></aside>
+<ul><li><strong>Conocimiento externo:</strong> <a href="https://learn.microsoft.com/en-us/windows/win32/services/service-control-manager" rel="noopener" target="_blank">Service Control Manager</a>, <a href="https://learn.microsoft.com/en-us/windows/win32/services/service-programs" rel="noopener" target="_blank">Service Programs</a>, <a href="https://learn.microsoft.com/en-us/windows/win32/services/service-servicemain-function" rel="noopener" target="_blank">ServiceMain</a>, <a href="https://learn.microsoft.com/en-us/windows/win32/services/service-user-accounts" rel="noopener" target="_blank">Service User Accounts</a> y <a href="https://learn.microsoft.com/en-us/windows/win32/services/service-security-and-access-rights" rel="noopener" target="_blank">Service Security and Access Rights</a>.</li><li><strong>Herramientas:</strong> <a href="https://learn.microsoft.com/en-us/windows-server/administration/windows-commands/sc-create" rel="noopener" target="_blank"><code>sc.exe create</code></a>, <a href="https://learn.microsoft.com/en-us/windows-server/administration/windows-commands/sc-delete" rel="noopener" target="_blank"><code>sc.exe delete</code></a> y <a href="https://learn.microsoft.com/en-us/sysinternals/downloads/accesschk" rel="noopener" target="_blank">AccessChk</a>.</li><li><strong>Hospedaje:</strong> <a href="https://learn.microsoft.com/en-us/windows/application-management/svchost-service-refactoring" rel="noopener" target="_blank">Service host grouping in Windows</a>. Los detalles de agrupación dependen de la versión de Windows.</li><li><strong>Fundamentos previos:</strong> ACL y token en <a href="2d-01-objetos.html">2D.1</a>; representación del registro en <a href="2d-03-registro.html">2D.3</a>.</li></ul>
+<aside class="callout nota"><p class="callout-titulo">Etiquetas</p><p><strong>Núcleo conceptual:</strong> marco de token/ACL (2D.1) y referencia al registro (2D.3). <strong>Conocimiento externo:</strong> SCM, estados, cuentas y servicios hospedados. <strong>Ejemplo ilustrativo:</strong> ficha de <code>ReversingLabSvc</code>. <strong>Laboratorio verificado:</strong> no; requiere un binario propio compilado como servicio.</p></aside>
 </main>
 <footer class="pie">
   <p>Material educativo y defensivo. Las prácticas se limitan a programas propios, software abierto o crackmes diseñados para aprender. No se enseña a eludir licencias, DRM ni controles de acceso.</p>

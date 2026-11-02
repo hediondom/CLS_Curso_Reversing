@@ -41,7 +41,7 @@ La revisión es **de solo lectura**. Podés usar el Programador de tareas para a
 
 ```xml
 <RegistrationInfo>
-  <Author>CLS Lab</Author>
+  <Author>Reversing Lab</Author>
   <Description>Comprobación local de estado</Description>
 </RegistrationInfo>
 <Triggers>
@@ -56,7 +56,7 @@ La revisión es **de solo lectura**. Podés usar el Programador de tareas para a
 <Settings><Hidden>false</Hidden></Settings>
 <Actions Context="Author">
   <Exec>
-    <Command>C:\CLS-Lab\status.exe</Command>
+    <Command>C:\ReversingLab\status.exe</Command>
     <Arguments>--once</Arguments>
   </Exec>
 </Actions>
@@ -102,8 +102,8 @@ Podés explicar trigger, acción, principal y ajustes; leer esos campos en XML; 
 - **Conocimiento externo:** [About the Task Scheduler](https://learn.microsoft.com/en-us/windows/win32/taskschd/about-the-task-scheduler), [Tasks](https://learn.microsoft.com/en-us/windows/win32/taskschd/tasks), [Security Contexts for Running Tasks](https://learn.microsoft.com/en-us/windows/win32/taskschd/security-contexts-for-running-tasks), [Task Registration Information](https://learn.microsoft.com/en-us/windows/win32/taskschd/task-registration-information) y [Task Scheduler schema](https://learn.microsoft.com/en-us/windows/win32/taskschd/task-scheduler-schema).
 - **Propiedad de visibilidad:** [TaskSettings.Hidden](https://learn.microsoft.com/en-us/windows/win32/taskschd/tasksettings-hidden).
 - **Consulta:** [`schtasks.exe`](https://learn.microsoft.com/en-us/windows/win32/taskschd/schtasks).
-- **Relación con CLS:** permisos del registro en [2D.3](2d-03-registro.html), contexto de tokens en [2D.1](2d-01-objetos.html) y servicios en [2D.4](2d-04-servicios.html).
+- **Fundamentos previos:** permisos del registro en [2D.3](2d-03-registro.html), contexto de tokens en [2D.1](2d-01-objetos.html) y servicios en [2D.4](2d-04-servicios.html).
 
 :::{nota} Etiquetas
-**Observado en CLS:** marco de lectura de configuración y persistencia defensiva. **Conocimiento externo:** Task Scheduler, XML, contextos, triggers y acciones. **Ejemplo ilustrativo:** fragmento ficticio no registrable. **Laboratorio verificado:** no; la práctica propuesta es de inspección de solo lectura.
+**Núcleo conceptual:** marco de lectura de configuración y persistencia defensiva. **Conocimiento externo:** Task Scheduler, XML, contextos, triggers y acciones. **Ejemplo ilustrativo:** fragmento ficticio no registrable. **Laboratorio verificado:** no; la práctica propuesta es de inspección de solo lectura.
 :::

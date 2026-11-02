@@ -137,5 +137,5 @@ Podés: (1) explicar qué es un estado simbólico y un *path constraint*; (2) re
 - [2.24 Fuzzing y simbólico](02-opt-fuzzing.html) — la introducción sobre la que se apoya esta lección.
 
 :::{nota} Capas de esta lección
-**Contenido observado en CLS:** la ofuscación y el aplanamiento de flujo de los capítulos 26/30 (vistos en 2.10), como el problema que motiva el solver. **Conocimiento externo (agregado por esta edición):** ejecución simbólica/concólica, angr/Triton/Miasm/Z3, explosión de caminos y MBA. **Recomendación editorial:** los ejemplos y la práctica son ilustrativos; no hay laboratorio compilado con hashes en esta edición.
+**Núcleo conceptual:** la ofuscación y el aplanamiento de flujo de los capítulos 26/30 (vistos en 2.10), como el problema que motiva el solver. **Conocimiento externo (agregado por esta edición):** ejecución simbólica/concólica, angr/Triton/Miasm/Z3, explosión de caminos y MBA. **Recomendación editorial:** los ejemplos y la práctica son ilustrativos; no hay laboratorio compilado con hashes en esta edición.
 :::

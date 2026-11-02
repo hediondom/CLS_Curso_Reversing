@@ -10,7 +10,7 @@
 <body>
 <a class="salto" href="#contenido">Saltar al contenido</a>
 <header class="cabecera">
-  <div class="marca"><a href="../00_EMPEZAR_AQUI.html">CLS · Curso de reversing</a> <span class="edicion">edición 5 · 27/10/2026</span></div>
+  <div class="marca"><a href="../00_EMPEZAR_AQUI.html">Curso de Reversing en Windows</a> <span class="edicion">edición 5 · 27/10/2026</span></div>
   <nav class="principal" aria-label="Navegación principal">
     <a href="../00_EMPEZAR_AQUI.html">Inicio</a>
     <a href="../guia/index.html">Curso</a>
@@ -23,7 +23,7 @@
 </header>
 <main id="contenido">
 <nav class="migas" aria-label="Ubicación"><a href="../00_EMPEZAR_AQUI.html">Inicio</a><span aria-hidden="true">›</span><a href="../guia/index.html">Curso</a><span aria-hidden="true">›</span><span>Etapa 2 · Introducción al reversing</span></nav><h1 id="punto-flotante-y-sse-los-registros-xmm">Punto flotante y SSE: los registros xmm</h1>
-<aside class="callout aviso"><p class="callout-titulo">De dónde sale esta lección</p><p>Este tema <strong>no está en el corpus CLS</strong>: es <strong>conocimiento externo</strong> que agregamos para completar la guía. El curso de CLS trabaja casi todo con enteros, así que el punto flotante quedaba sin cubrir. Lo incluimos porque aparece en cualquier binario de Windows real y, sin él, te trabás la primera vez que ves un registro <code>xmm</code>.</p></aside>
+<aside class="callout aviso"><p class="callout-titulo">De dónde sale esta lección</p><p>Este tema es indispensable en binarios modernos de 64 bits y forma parte del núcleo técnico avanzado de esta obra. El curso de reversing trabaja casi todo con enteros, así que el punto flotante quedaba sin cubrir. Lo incluimos porque aparece en cualquier binario de Windows real y, sin él, te trabás la primera vez que ves un registro <code>xmm</code>.</p></aside>
 <aside class="callout nota"><p class="callout-titulo">Objetivo de la lección</p><p>Al terminar vas a poder reconocer una operación con <code>float</code>/<code>double</code> en un listado, leer las instrucciones SSE escalares más comunes (<code>movss</code>, <code>movsd</code>, <code>addsd</code>, <code>cvtsi2sd</code>, <code>ucomisd</code>) y entender por qué una comparación de flotantes se lee distinto de una de enteros.</p></aside>
 <p><strong>Prerrequisitos:</strong> instrucciones, flujo y registros (Etapa 2). <strong>Duración sugerida:</strong> 3 horas.</p>
 <h2 id="por-qué-vas-a-chocarte-con-esto">Por qué vas a chocarte con esto</h2>
@@ -99,7 +99,7 @@ fstp qword [res]   ; guarda st(0) en res y lo saca de la pila</code></pre>
 <aside class="callout nota"><p class="callout-titulo">Puerta de salida</p><p>Si podés leer <code>promedio</code> en assembly y explicar cómo viajan los argumentos y el resultado en <code>xmm</code>, ya no te va a frenar el punto flotante.</p></aside>
 <h2 id="fuentes-de-esta-lección">Fuentes de esta lección</h2>
 <ul><li><em>Intel 64 and IA-32 Architectures Software Developer's Manual</em>, vol. 1 (FPU x87) y vol. 2 (instrucciones SSE/SSE2). Referencia primaria del repertorio de instrucciones.</li><li><em>Microsoft x64 calling convention</em>: paso de <code>float</code>/<code>double</code> en registros <code>xmm</code>.</li><li>Estándar <strong>IEEE 754</strong> para la codificación de <code>float</code> y <code>double</code>.</li></ul>
-<aside class="callout nota"><p class="callout-titulo">Capas de esta lección</p><p><strong>Conocimiento externo (agregado por esta edición):</strong> todo el contenido (x87, SSE, IEEE 754, convención de <code>xmm</code>). <strong>No</strong> proviene del corpus CLS, que trabaja con enteros. <strong>Recomendación editorial:</strong> los ejemplos <code>promedio</code> y la práctica con conversor IEEE 754.</p></aside>
+<aside class="callout nota"><p class="callout-titulo">Capas de esta lección</p><p><strong>Conocimiento externo (agregado por esta edición):</strong> todo el contenido (x87, SSE, IEEE 754, convención de <code>xmm</code>). <strong>No</strong> proviene del corpus tradicional, que trabaja con enteros. <strong>Recomendación editorial:</strong> los ejemplos <code>promedio</code> y la práctica con conversor IEEE 754.</p></aside>
 </main>
 <footer class="pie">
   <p>Material educativo y defensivo. Las prácticas se limitan a programas propios, software abierto o crackmes diseñados para aprender. No se enseña a eludir licencias, DRM ni controles de acceso.</p>

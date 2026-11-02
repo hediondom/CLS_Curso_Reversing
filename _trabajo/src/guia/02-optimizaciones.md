@@ -7,7 +7,7 @@ etapa: "Etapa 2 · Introducción al reversing"
 # Cómo cambia el código con optimizaciones
 
 :::{aviso} De dónde sale esta lección
-Este tema **no está en el corpus CLS**: es **conocimiento externo** que agregamos para completar la guía. El curso de CLS usa ejemplos compilados en modo depuración (`-O0`/Debug), donde el assembly sigue de cerca al código fuente. Los binarios reales vienen optimizados (`-O2`/Release) y se ven muy distintos. Esta lección cubre ese salto, que es donde más se traba quien recién sale de los ejercicios.
+Este tema es indispensable en binarios modernos de 64 bits y forma parte del núcleo técnico avanzado de esta obra. El curso de reversing usa ejemplos compilados en modo depuración (`-O0`/Debug), donde el assembly sigue de cerca al código fuente. Los binarios reales vienen optimizados (`-O2`/Release) y se ven muy distintos. Esta lección cubre ese salto, que es donde más se traba quien recién sale de los ejercicios.
 :::
 
 :::{nota} Objetivo de la lección
@@ -126,5 +126,5 @@ Si podés mirar un listado `-O2` y decir "esto es `x*5`, esto es `x/3`, esta fun
 - *Hacker's Delight* (Warren) para división por constantes y trucos aritméticos.
 
 :::{nota} Capas de esta lección
-**Conocimiento externo (agregado por esta edición):** todos los patrones de optimización. El corpus CLS usa binarios sin optimizar, así que este salto no estaba cubierto. **Recomendación editorial:** la estrategia "aprendé con Debug, analizá con Release" y los ejercicios.
+**Conocimiento externo (agregado por esta edición):** todos los patrones de optimización. El corpus tradicional usa binarios sin optimizar, así que este salto no estaba cubierto. **Recomendación editorial:** la estrategia "aprendé con Debug, analizá con Release" y los ejercicios.
 :::

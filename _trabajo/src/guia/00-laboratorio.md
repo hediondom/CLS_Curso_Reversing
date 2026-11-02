@@ -10,7 +10,7 @@ etapa: "Etapa 0 · Laboratorio y método"
 Al terminar vas a poder armar una máquina virtual aislada, tomar una snapshot, transferir un programa de práctica sin compartir carpetas y registrar su hash antes y después de analizarlo. Ese es el piso de todo lo que sigue.
 :::
 
-**Prerrequisitos:** ninguno. **Duración sugerida:** 4 a 6 horas, casi todas de trabajo práctico. Es una estimación aproximada de esta guía, no una duración declarada por el material de CLS.
+**Prerrequisitos:** ninguno. **Duración sugerida:** 4 a 6 horas, casi todas de trabajo práctico. Es una estimación aproximada de esta guía, no ununa duración rígida de laboratorio.
 
 ## Por qué el laboratorio va primero
 
@@ -18,7 +18,7 @@ Reversing significa ejecutar y observar programas que no escribiste. A veces son
 
 Un laboratorio de reversing tiene una regla simple: **lo que se rompe, se descarta; lo que importa, vive afuera**. El programa sospechoso corre en una máquina virtual (VM) que podés borrar y recrear. Tus documentos, tus cuentas, tus claves y tus carpetas compartidas se quedan en el host, fuera del alcance.
 
-El curso de CLS usa esta idea desde el principio. En el capítulo 01, Solid abre un ejecutable de práctica en x64dbg y explica que el debugger sirve para ver el comportamiento de un programa **mientras está corriendo en memoria** ({{src:CLS_resultados_intermedios/transcripciones/extraidos/Reversing desde cero (Ricardo y Solid)/Ricardo Narvaja y Solid - Reversing desde cero_01 x64dbg primeros pasos_01 x64dbg primeros pasos.txt|Reversing desde cero, cap. 01}}, 00:00:26). Para observar hay que ejecutar. Por eso el entorno importa.
+Los cursos clásicos de reversing usan esta idea desde el principio. Al comenzar, se suele abrir un ejecutable de práctica en x64dbg y explica que el debugger sirve para ver el comportamiento de un programa **mientras está corriendo en memoria** ({{src:CLS_resultados_intermedios/transcripciones/extraidos/Reversing desde cero (Ricardo y Solid)/Ricardo Narvaja y Solid - Reversing desde cero_01 x64dbg primeros pasos_01 x64dbg primeros pasos.txt|Reversing desde cero, cap. 01}}, 00:00:26). Para observar hay que ejecutar. Por eso el entorno importa.
 
 :::{aviso} Lo que este curso no hace
 No vas a ejecutar adjuntos del chat, cracks, keygens, instaladores desconocidos ni muestras en cuarentena. Tampoco vas a analizar malware dinámicamente en tu máquina personal. Las prácticas usan **programas propios**, software abierto o crackmes diseñados para aprender, y siempre dentro de la VM.
@@ -42,7 +42,7 @@ Crear la VM, activar "carpeta compartida" para pasar el programa, ejecutarlo y d
 
 ## Reglas de diseño del laboratorio
 
-Estas reglas son **recomendación editorial** de la guía, basadas en prácticas estándar de análisis seguro. No salen de un archivo de CLS; se apoyan en el principio de aislamiento que el propio material usa cuando analiza binarios.
+Estas reglas son **recomendación editorial** de la guía, basadas en prácticas estándar de análisis seguro. No salen de un archivo de reversing; se apoyan en el principio de aislamiento que el propio material usa cuando analiza binarios.
 
 1. **Una VM por objetivo.** Si analizás dos programas distintos, usá dos snapshots o dos VMs. Así sabés qué cambió cada uno.
 2. **Snapshot limpia antes de empezar.** La snapshot se toma con el sistema actualizado, sin la muestra y sin conexión a tu red personal. Ese es tu "punto cero".
@@ -116,9 +116,9 @@ SHA256          A1B2C3D4E5F60718293A4B5C6D7E8F90123456789ABCDEF0123456789ABCDEF0
 
 **Por qué:** restaurar no es opcional. Un programa puede dejar archivos, claves de registro o servicios corriendo. La snapshot te devuelve al punto conocido.
 
-## Qué muestra CLS y qué corregimos
+## Enfoque tradicional y qué corregimos
 
-En CLS hay un ejemplo real de laboratorio con dos VMs: el video 37 de «Videos y material adicional» analiza el malware Shelter dentro de una VM con Windows 7 de 32 bits, y usa otra VM con Kali Linux para simular el ataque ({{src:CLS_resultados_intermedios/transcripciones/extraidos/Videos y material adicional Ingenieria Inversa/Videos_Video37_Video37.txt|Video 37, introducción}}, 00:00:00–00:00:40).
+En la literatura tradicional suele haber ejemplos de laboratorio con dos VMs: el video 37 de «Videos y material adicional» analiza el malware Shelter dentro de una VM con Windows 7 de 32 bits, y usa otra VM con Kali Linux para simular el ataque ({{src:CLS_resultados_intermedios/transcripciones/extraidos/Videos y material adicional Ingenieria Inversa/Videos_Video37_Video37.txt|Video 37, introducción}}, 00:00:00–00:00:40).
 
 Ese video **sí ejecuta el malware** y monta un reverse shell dentro de las VMs. La separación en máquinas virtuales es correcta como idea, pero el curso no convierte eso en una práctica recomendada: para esta guía, Shelter es un **caso de estudio observado**, no una tarea. Si querés analizar malware, la rama defensiva de la Etapa 5 te muestra cómo hacer triage estático y por qué no se empieza ejecutando.
 
@@ -177,6 +177,6 @@ Si no podés mostrar tu `bitacora.md` con los dos hashes y la snapshot, no pases
 - {{src:CLS_Guia/FUENTES_Y_LIMITES.md|Fuentes y límites de esta edición}} — criterios de alcance y seguridad.
 
 :::{nota} Sobre las capas de esta lección
-**Contenido observado en CLS:** el uso de VMs en el video 37 y el criterio de no ejecución del inventario. **Conocimiento externo:** funcionamiento de hipervisores, snapshots y hashes. **Recomendación editorial:** las siete reglas de diseño y el procedimiento paso a paso.
+**Núcleo conceptual:** el uso de VMs en el video 37 y el criterio de no ejecución del inventario. **Conocimiento externo:** funcionamiento de hipervisores, snapshots y hashes. **Recomendación editorial:** las siete reglas de diseño y el procedimiento paso a paso.
 :::
 

@@ -92,8 +92,8 @@ Podés: (1) explicar hives y las vistas `HKCU`/`HKLM`/`HKCR`; (2) relacionar per
 ## Fuentes
 
 - **Conocimiento externo** (Microsoft Learn): [Registry Hives](https://learn.microsoft.com/en-us/windows/win32/sysinfo/registry-hives), [Structure of the Registry](https://learn.microsoft.com/en-us/windows/win32/sysinfo/structure-of-the-registry), [Registry Key Security and Access Rights](https://learn.microsoft.com/en-us/windows/win32/sysinfo/registry-key-security-and-access-rights), [Registry Redirector (WOW64)](https://learn.microsoft.com/en-us/windows/win32/winprog64/registry-redirector) y [Registry Keys Affected by WOW64](https://learn.microsoft.com/en-us/windows/win32/winprog64/shared-registry-keys).
-- **Tie con CLS:** objetos asegurables y DACL en [2D.1](2d-01-objetos.html); la persistencia por `Run` también aparece como IOC en la rama de malware.
+- **Fundamentos previos:** objetos asegurables y DACL en [2D.1](2d-01-objetos.html); la persistencia por `Run` también aparece como IOC en la rama de malware.
 
 :::{nota} Etiquetas
-**Observado en CLS:** solo el marco de ACL (2D.1) y la noción de persistencia. **Conocimiento externo:** estructura del registro, permisos y WOW64. **Ejemplo ilustrativo:** el diff de Regshot. **Laboratorio verificado:** ninguno en esta edición; la práctica se hace sobre un programa propio en tu VM, con limpieza.
+**Núcleo conceptual:** solo el marco de ACL (2D.1) y la noción de persistencia. **Conocimiento externo:** estructura del registro, permisos y WOW64. **Ejemplo ilustrativo:** el diff de Regshot. **Laboratorio verificado:** ninguno en esta edición; la práctica se hace sobre un programa propio en tu VM, con limpieza.
 :::

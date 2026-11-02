@@ -111,5 +111,5 @@ Podés: (1) explicar por qué neutralizar un chequeo puede disparar el payload y
 - [2.15 Anti-análisis](02-anti-analisis.html) (reconocer) y [4.4 Dinámico seguro](04-dinamico-seguro.html) (la VM descartable).
 
 :::{nota} Capas de esta lección
-**Contenido observado en CLS:** los chequeos y el encuadre de reconocimiento de 2.15; el dinámico seguro de la Etapa 4. **Conocimiento externo (agregado por esta edición):** las contramedidas concretas, ScyllaHide/TitanHide y los hooks de Frida. **Recomendación editorial:** ejemplos y práctica ilustrativos, sobre binarios propios y malware solo en VM descartable.
+**Núcleo conceptual:** los chequeos y el encuadre de reconocimiento de 2.15; el dinámico seguro de la Etapa 4. **Conocimiento externo (agregado por esta edición):** las contramedidas concretas, ScyllaHide/TitanHide y los hooks de Frida. **Recomendación editorial:** ejemplos y práctica ilustrativos, sobre binarios propios y malware solo en VM descartable.
 :::

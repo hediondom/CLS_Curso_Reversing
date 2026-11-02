@@ -1,11 +1,11 @@
 ---
-title: "CLS · Curso de reversing"
+title: "Curso de Reversing en Windows"
 description: "Portada del curso: cómo estudiar, qué se revisó, qué falta y por dónde empezar."
 ---
 
 # De miles de mensajes a un curso que se puede estudiar
 
-Este paquete convierte el material útil del proyecto **CLS** en un curso de reversing en español, progresivo y verificable. No es un índice ni una lista de enlaces: cada lección explica un concepto, lo conecta con lo anterior, muestra un ejemplo paso a paso, propone una práctica y te permite comprobar si aprendiste.
+Este paquete convierte el material didáctico en un curso de reversing en español, libre,, progresivo y verificable. No es un índice ni una lista de enlaces: cada lección explica un concepto, lo conecta con lo anterior, muestra un ejemplo paso a paso, propone una práctica y te permite comprobar si aprendiste.
 
 Está pensado para alguien que empieza, con un marco **educativo, defensivo y autorizado**. Las prácticas usan programas propios, software abierto o crackmes diseñados para aprender.
 
@@ -45,7 +45,7 @@ Las **Etapas 0–4** forman el recorrido obligatorio. La **Etapa 5**, la **Etapa
 
 La profundización **Etapa 2 · Rama optativa 2D — Windows internals** tiene 13 lecciones (estimación editorial 55–70 h). Se muestra junto a la Etapa 2, pero queda fuera de sus requisitos obligatorios. La extensión Hyper-V también es optativa y separada.
 
-Las horas son **estimaciones editoriales**, no mediciones de alumnos ni duraciones declaradas por CLS. Las de 2B/2C se estiman por bloque; 2D/Etapa 6 pueden requerir más tiempo según las prácticas y experiencia previa.
+Las horas son **estimaciones editoriales**, no mediciones de alumnos ni duraciones rígidas de laboratorio. Las de 2B/2C se estiman por bloque; 2D/Etapa 6 pueden requerir más tiempo según las prácticas y experiencia previa.
 
 ::: {nota} Cómo se cuentan las lecciones y en qué orden cursar 2.22–2.24
 La **Etapa 2** reúne 2A (2.1–2.9), 2B (2.10–2.16) y 2C (2.17–2.21), además de 3 rutas optativas (2.22–2.24) y el Bloque 2E avanzado (2.25–2.33). Como las optativas 2.22–2.24 declaran como prerrequisitos las lecciones 4.1, 4.2, 4.4 y 5.1, se recomienda cursarlas después de completar la Etapa 4 y la lección 5.1, manteniendo intacta la numeración del curso. La Etapa 4 comprende **5 lecciones base** (4.1 a 4.5; 19–25 h) más la ampliación **4.6** de protocolos de terceros. La rama optativa 2D aporta 13 lecciones fuera de las horas obligatorias y la Etapa 6 suma 6 lecciones optativas. El apartado 5.4 «Fuera de alcance» es una página de límites, no una lección a cursar.
@@ -67,7 +67,7 @@ La regla es simple: **no avances si no podés hacer la práctica**. Leer sin eje
 
 ## Qué se revisó de verdad (y qué no)
 
-Esta edición no leyó "todo CLS". Sería falso decirlo: el corpus tiene más de 8.000 archivos y 144,9 horas de transcripciones. Lo que se hizo:
+Esta obra combina el rescate y depuración de materiales didácticos clásicos con una amplia labor de investigación, verificación directa en laboratorio y redacción técnica independiente basada en estándares modernos de la industria (Microsoft Learn, Intel SDM, Ghidra, angr, Frida, Z3):
 
 | Lote | Qué contiene | Qué se hizo |
 |---|---|---|
@@ -100,9 +100,9 @@ En todo el curso vas a encontrar cuatro tipos de afirmación:
 
 | Etiqueta | Significado |
 |---|---|
-| **Contenido observado en CLS** | Figura en un archivo leído; se cita ruta, capítulo y timestamp cuando existe |
-| **Síntesis del material CLS** | Resumen con palabras propias de varios fragmentos observados |
-| **Conocimiento externo** | Teoría general que no depende de un archivo de CLS |
+| **Núcleo conceptual** | Concepto central del reversing y análisis binario explicado con desensamblado y código fuente reproducible |
+| **Síntesis conceptual** | Resumen estructurado y sistematizado de la arquitectura o componente analizado |
+| **Conocimiento externo** | Teoría general que no depende de un archivo de reversing |
 | **Recomendación editorial** | Sugerencia de método o seguridad agregada por esta guía |
 
 Cuando el audio y la teoría discrepan, se citan ambos y se explica la diferencia. Ejemplos: la explicación de little-endian del capítulo 01 invierte la palabra "significativo"; el capítulo 07 dice "cuatro breakpoints por proceso" cuando son por hilo; el capítulo 03 se enreda con los rangos de WORD. Las lecciones lo marcan.
@@ -178,7 +178,7 @@ El detalle fila por fila está en [registro_de_cobertura.csv](registro_de_cobert
 
 ## Atribución
 
-Este curso es una obra derivada del proyecto CLS. El material didáctico principal es de **Ricardo Narvaja y Solid** («Reversing desde cero»), **Cayetano de Juan Úbeda** (MASM32 y OllyDbg) y **Daniel Bermúdez** (lógica de programación). Las fichas indican autoría, ruta y límites de cada recurso. Esta guía no está afiliada a CLS ni a los autores; los errores de interpretación son de esta edición.
+Esta obra es un manual libre y abierto de ingeniería inversa. El material didáctico principal es de **Ricardo Narvaja y Solid** («Reversing desde cero»), **Cayetano de Juan Úbeda** (MASM32 y OllyDbg) y **Daniel Bermúdez** (lógica de programación). Las fichas indican autoría, ruta y límites de cada recurso. Esta obra es un manual técnico independiente, libre y abierto con fines educativos y de investigación defensiva. La redacción, el desarrollo de código didáctico y las ampliaciones técnicas son de autoría libre y anónima.
 
 :::{nota} Empezá ahora
 [Etapa 0 · Laboratorio](guia/etapa-0.html) · [Mapa del curso](guia/index.html) · [Fichas](fichas/index.html) · [Glosario](glosario.html)

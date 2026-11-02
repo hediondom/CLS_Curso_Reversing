@@ -242,5 +242,5 @@ Si podés resolver el bloque del ejemplo sin ejecutarlo y después verificarlo e
 - [Curso IDA · tutes 4–6](../ida_tutes/4.html) — las mismas instrucciones en IDA: editar con *Assemble*, el byte sobrante como `db` y el relleno `NOP`; `LEA` para direcciones; regla de `ADD` (no se permiten dos operandos en memoria a la vez).
 
 :::{nota} Capas de esta lección
-**Contenido observado en CLS:** los valores de los ejemplos (`0x11`, `0x0F`, `0x44`, `0x8384`, `"core"`) y la secuencia de instrucciones de los capítulos 02 a 12. **Conocimiento externo:** la tabla de operaciones y la semántica precisa de cada flag. **Recomendación editorial:** el bloque integrador y los ejercicios.
+**Núcleo conceptual:** los valores de los ejemplos (`0x11`, `0x0F`, `0x44`, `0x8384`, `"core"`) y la secuencia de instrucciones de los capítulos 02 a 12. **Conocimiento externo:** la tabla de operaciones y la semántica precisa de cada flag. **Recomendación editorial:** el bloque integrador y los ejercicios.
 :::

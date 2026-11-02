@@ -10,7 +10,7 @@
 <body>
 <a class="salto" href="#contenido">Saltar al contenido</a>
 <header class="cabecera">
-  <div class="marca"><a href="../00_EMPEZAR_AQUI.html">CLS · Curso de reversing</a> <span class="edicion">edición 5 · 27/10/2026</span></div>
+  <div class="marca"><a href="../00_EMPEZAR_AQUI.html">Curso de Reversing en Windows</a> <span class="edicion">edición 5 · 27/10/2026</span></div>
   <nav class="principal" aria-label="Navegación principal">
     <a href="../00_EMPEZAR_AQUI.html">Inicio</a>
     <a href="../guia/index.html">Curso</a>
@@ -63,7 +63,7 @@ jnz   mal                    ; != 0 → clave incorrecta</code></pre>
 <aside class="callout nota"><p class="callout-titulo">Puerta de salida</p><p>Podés: (1) reconocer un binario MFC por imports y símbolos; (2) explicar qué es el message map; (3) llegar al handler de un botón por breakpoint en una API de texto y el call stack; (4) señalar la comparación que decide el resultado.</p></aside>
 <h2 id="fuentes-de-esta-lección">Fuentes de esta lección</h2>
 <ul><li><a class="fuente" href="../../CLS_resultados_intermedios/transcripciones/extraidos/Reversing%20desde%20cero%20%28Ricardo%20y%20Solid%29/Ricardo%20Narvaja%20y%20Solid%20-%20Reversing%20desde%20cero_39%20TIPS%202%20MFC_TIPS%202%20MFC.txt">Reversing desde cero, cap. 39</a> — el ejercicio MFC «de CITO»: por qué el <code>WinProc</code> no está a la vista y qué cambia respecto de usar la API directa.</li><li><a class="fuente" href="../../CLS_resultados_intermedios/transcripciones/extraidos/Reversing%20desde%20cero%20%28Ricardo%20y%20Solid%29/Ricardo%20Narvaja%20y%20Solid%20-%20Reversing%20desde%20cero_28%20Mensajes%20de%20Windows_28%20Mensajes%20de%20Windows.txt">Reversing desde cero, cap. 28</a> — base: <code>RegisterClassA</code>, <code>WinProc</code>, <code>WM_COMMAND</code> y breakpoint sobre el mensaje.</li></ul>
-<aside class="callout nota"><p class="callout-titulo">Capas de esta lección</p><p><strong>Contenido observado en CLS:</strong> el contraste API-directa vs. MFC del capítulo 39 y el método de mensajes del 28. <strong>Conocimiento externo:</strong> los nombres del message map (<code>BEGIN_MESSAGE_MAP</code>, <code>ON_BN_CLICKED</code>, <code>OnBnClickedButton1</code>), las DLLs <code>mfc###u.dll</code> y <code>AfxWinInit</code>. <strong>Recomendación editorial:</strong> los dos caminos para llegar al handler y la práctica con binario propio.</p></aside>
+<aside class="callout nota"><p class="callout-titulo">Capas de esta lección</p><p><strong>Núcleo conceptual:</strong> el contraste API-directa vs. MFC del capítulo 39 y el método de mensajes del 28. <strong>Conocimiento externo:</strong> los nombres del message map (<code>BEGIN_MESSAGE_MAP</code>, <code>ON_BN_CLICKED</code>, <code>OnBnClickedButton1</code>), las DLLs <code>mfc###u.dll</code> y <code>AfxWinInit</code>. <strong>Recomendación editorial:</strong> los dos caminos para llegar al handler y la práctica con binario propio.</p></aside>
 
 <aside class="ampliacion-ext">
 <p class="callout-titulo">Ampliación editorial basada en fuentes externas — Definición en C y offsets de AFX_MSGMAP y AFX_MSGMAP_ENTRY para análisis estático</p>

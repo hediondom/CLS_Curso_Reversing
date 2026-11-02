@@ -47,7 +47,7 @@ En un esquema **TLV** (type, length, value), cada elemento indica tipo, longitud
 
 ## Ejemplo trabajado: formato sintético CLSF
 
-*(Ejemplo **ilustrativo**, generado para la lección; no proviene de un archivo CLS.)* Supongamos un programa propio que escribe estos bytes:
+*(Ejemplo **ilustrativo** y sintético, generado para la práctica de esta lección.)* Supongamos un programa propio que escribe estos bytes:
 
 ~~~text
 Offset  Bytes                                      Lectura provisional

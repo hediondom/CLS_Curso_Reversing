@@ -22,7 +22,7 @@ Ofuscar es hacer que el programa **siga funcionando igual** pero sea difícil de
 - **Código muerto y opaco**: `test ebp, ebp` seguido de `jnz` cuando `ebp` nunca es cero — un salto que *siempre* se toma, disfrazado de condicional.
 - **Strings ocultas**: con un `00` adelante, armadas en el stack byte a byte, o cifradas y descifradas en runtime.
 
-## Cómo se ve en CLS
+## Enfoque clásico en desensambladores
 
 El capítulo 26 analiza el ejercicio «choteado» y muestra el síntoma clásico: al abrirlo, **IDA lo muestra "todo roto"** y al forzarlo a función queda "todo feo"; en x64dbg tampoco se ve claro. Al mirar el *memory map* aparece la causa: **las secciones están cambiadas** —la primera sección está vacía y el código ejecutable recién está en la segunda—, y eso **engaña al desensamblador**. Con los símbolos cargados se empieza a navegar; sin ellos, la dificultad es la misma pero hay que apoyarse en la traza ({{src:CLS_resultados_intermedios/transcripciones/extraidos/Reversing desde cero (Ricardo y Solid)/Ricardo Narvaja y Solid - Reversing desde cero_26 Ofuscación 1_26 Ofuscación 1.txt|Reversing desde cero, cap. 26}}).
 
@@ -168,5 +168,5 @@ La desofuscación simbólica y las expresiones mixtas booleano-aritméticas (MBA
 - Conocimiento externo: [Obfuscator-LLVM, Control Flow Flattening](https://github.com/obfuscator-llvm/obfuscator/wiki/Control-Flow-Flattening) — descripción del aplanamiento con variable de estado y `switch`; [FLOSS](https://github.com/mandiant/flare-floss) — tipos de cadenas que extrae (estáticas, armadas en el stack, decodificadas).
 
 :::{nota} Capas de esta lección
-**Contenido observado en CLS:** el «choteado» de los capítulos 26 y 30, las secciones invertidas y el parche de `DLL characteristics`. **Conocimiento externo:** la taxonomía de técnicas (basura, saltos al medio, código opaco, strings ocultas), el patrón de las rutinas de descifrado y el aplanamiento del flujo de control. **Ejemplo ilustrativo:** los bytes del salto al medio y el bucle de descifrado con `xor`. **Recomendación editorial:** el método de cinco pasos, la regla de no NOPear a ciegas, la tabla de señales y la recuperación doble (estática y dinámica).
+**Núcleo conceptual:** el «choteado» de los capítulos 26 y 30, las secciones invertidas y el parche de `DLL characteristics`. **Conocimiento externo:** la taxonomía de técnicas (basura, saltos al medio, código opaco, strings ocultas), el patrón de las rutinas de descifrado y el aplanamiento del flujo de control. **Ejemplo ilustrativo:** los bytes del salto al medio y el bucle de descifrado con `xor`. **Recomendación editorial:** el método de cinco pasos, la regla de no NOPear a ciegas, la tabla de señales y la recuperación doble (estática y dinámica).
 :::

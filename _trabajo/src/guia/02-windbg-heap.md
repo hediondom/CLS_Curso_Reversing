@@ -25,7 +25,7 @@ El Curso IDA integra **WinDbg con IDA**: lo instala y lo maneja desde la interfa
 
 ## TTD: grabar y rebobinar
 
-**Time Travel Debugging** (TTD, de Microsoft; **conocimiento externo**, es posterior al material de CLS) graba **toda** la ejecución en un trace y después la reproducís **hacia adelante y hacia atrás**. Cambia el método: en vez de "¿quién va a escribir este valor?" y reiniciar mil veces, ponés un breakpoint de acceso y hacés **`g-`** (go back) hasta la escritura que lo rompió. Para "¿quién corrompió este buffer?", TTD es la herramienta: encontrás la dirección mala y **retrocedés** hasta la instrucción culpable.
+**Time Travel Debugging** (TTD, de Microsoft; **conocimiento externo**, es posterior al material de reversing) graba **toda** la ejecución en un trace y después la reproducís **hacia adelante y hacia atrás**. Cambia el método: en vez de "¿quién va a escribir este valor?" y reiniciar mil veces, ponés un breakpoint de acceso y hacés **`g-`** (go back) hasta la escritura que lo rompió. Para "¿quién corrompió este buffer?", TTD es la herramienta: encontrás la dirección mala y **retrocedés** hasta la instrucción culpable.
 
 ## Heap: Page Heap y LFH
 
@@ -101,5 +101,5 @@ Podés: (1) moverte en WinDbg con `g/p/t`, `bp/ba`, `k`, `dt`, `!heap`; (2) expl
 - {{src:CLS_Guia/_trabajo/extraido_ida/48-INTRODUCCION AL REVERSING CON IDA PRO DESDE CERO.txt|Curso IDA, tute 48}} — alocación en LFH vs. heap estándar.
 
 :::{nota} Capas de esta lección
-**Contenido observado en CLS:** WinDbg+IDA (tute 32), heap con WinDbg (tute 44) y LFH (tute 48). **Conocimiento externo:** TTD, Page Heap/Application Verifier (`gflags`) y el concepto de heap spraying. **Recomendación editorial:** el ejemplo ilustrativo y la práctica con un bug de heap propio (sin laboratorio compilado con hashes en esta edición).
+**Núcleo conceptual:** WinDbg+IDA (tute 32), heap con WinDbg (tute 44) y LFH (tute 48). **Conocimiento externo:** TTD, Page Heap/Application Verifier (`gflags`) y el concepto de heap spraying. **Recomendación editorial:** el ejemplo ilustrativo y la práctica con un bug de heap propio (sin laboratorio compilado con hashes en esta edición).
 :::

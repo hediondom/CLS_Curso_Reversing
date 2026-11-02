@@ -7,7 +7,7 @@ etapa: "Etapa 2 · Introducción al reversing"
 # Punto flotante y SSE: los registros xmm
 
 :::{aviso} De dónde sale esta lección
-Este tema **no está en el corpus CLS**: es **conocimiento externo** que agregamos para completar la guía. El curso de CLS trabaja casi todo con enteros, así que el punto flotante quedaba sin cubrir. Lo incluimos porque aparece en cualquier binario de Windows real y, sin él, te trabás la primera vez que ves un registro `xmm`.
+Este tema es indispensable en binarios modernos de 64 bits y forma parte del núcleo técnico avanzado de esta obra. El curso de reversing trabaja casi todo con enteros, así que el punto flotante quedaba sin cubrir. Lo incluimos porque aparece en cualquier binario de Windows real y, sin él, te trabás la primera vez que ves un registro `xmm`.
 :::
 
 :::{nota} Objetivo de la lección
@@ -152,5 +152,5 @@ Si podés leer `promedio` en assembly y explicar cómo viajan los argumentos y e
 - Estándar **IEEE 754** para la codificación de `float` y `double`.
 
 :::{nota} Capas de esta lección
-**Conocimiento externo (agregado por esta edición):** todo el contenido (x87, SSE, IEEE 754, convención de `xmm`). **No** proviene del corpus CLS, que trabaja con enteros. **Recomendación editorial:** los ejemplos `promedio` y la práctica con conversor IEEE 754.
+**Conocimiento externo (agregado por esta edición):** todo el contenido (x87, SSE, IEEE 754, convención de `xmm`). **No** proviene del corpus tradicional, que trabaja con enteros. **Recomendación editorial:** los ejemplos `promedio` y la práctica con conversor IEEE 754.
 :::

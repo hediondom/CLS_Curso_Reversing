@@ -213,6 +213,6 @@ Si los ejercicios 3 a 6 te salen con seguridad, seguí con memoria y procesos. S
 - [Curso IDA · tute 2, Sistemas de numeración](../ida_tutes/2.html) — binario/decimal/hexadecimal y la barra de Python de IDA para convertir bases.
 
 :::{nota} Capas de esta lección
-**Contenido observado en CLS:** el ejemplo numérico de la VA `0x6D1372`, la fórmula del offset y el cálculo del `call` a `0x6D173B`. **Conocimiento externo:** complemento a dos, rangos y aritmética hexadecimal. **Recomendación editorial:** el orden de los ejercicios y la advertencia sobre las imprecisiones del audio.
+**Núcleo conceptual:** el ejemplo numérico de la VA `0x6D1372`, la fórmula del offset y el cálculo del `call` a `0x6D173B`. **Conocimiento externo:** complemento a dos, rangos y aritmética hexadecimal. **Recomendación editorial:** el orden de los ejercicios y la advertencia sobre las imprecisiones del audio.
 :::
 

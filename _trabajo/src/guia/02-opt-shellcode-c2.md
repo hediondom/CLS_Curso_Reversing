@@ -93,5 +93,5 @@ Podés: (1) explicar por qué la ausencia de PE/IAT no basta para demostrar que 
 - [Reconocer criptografía y encoding](04-cripto.html) (4.2) — base64/XOR en el tráfico y los payloads.
 
 :::{nota} Capas de esta lección
-**Contenido observado en CLS:** la mención de shellcode del tute 40. **Conocimiento externo:** la identificación de código sin envoltura PE, aclarando que la ausencia de IAT no demuestra por sí sola resolución dinámica, los emuladores (`scdbg`/libemu) y el modelo de C2 (beacon, protocolo, IOCs). **Recomendación editorial:** el enfoque estricto de reconocer-y-clasificar, el ejemplo ilustrativo de salida de emulador y el límite de no construir.
+**Núcleo conceptual:** la mención de shellcode del tute 40. **Conocimiento externo:** la identificación de código sin envoltura PE, aclarando que la ausencia de IAT no demuestra por sí sola resolución dinámica, los emuladores (`scdbg`/libemu) y el modelo de C2 (beacon, protocolo, IOCs). **Recomendación editorial:** el enfoque estricto de reconocer-y-clasificar, el ejemplo ilustrativo de salida de emulador y el límite de no construir.
 :::

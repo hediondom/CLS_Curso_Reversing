@@ -11,7 +11,7 @@ Hacer en **Ghidra** el mismo recorrido que hiciste en IDA, para no depender de u
 :::
 
 :::{aviso} Herramienta externa al corpus
-El curso CLS enseña con IDA, OllyDbg y x64dbg; **Ghidra y radare2 no son material de CLS**, así que esta lección es **conocimiento externo**. En el corpus hay, sin revisar, una copia de **Ghidra 11.3.2** y una carpeta **RADARE** (en `CLS_fuentes_externas/links_chat` y `.../RADARE`); igual conviene **descargar Ghidra del sitio oficial** y verificar el hash antes de usarlo.
+Los temarios tradicionales enseñaban únicamente con IDA de 32 bits y OllyDbg; **Ghidra y radare2 no son material de reversing**, así que esta lección es **conocimiento externo**. En el corpus hay, sin revisar, una copia de **Ghidra 11.3.2** y una carpeta **RADARE** (en `CLS_fuentes_externas/links_chat` y `.../RADARE`); igual conviene **descargar Ghidra del sitio oficial** y verificar el hash antes de usarlo.
 :::
 
 ## Por qué una segunda herramienta
@@ -152,5 +152,5 @@ La automatización avanzada con `PyGhidra` / `DecompInterface`, la representaci�
 - Ghidra (conocimiento externo): [Improving Disassembly and Decompilation](https://ghidra.re/ghidra_docs/GhidraClass/Advanced/improvingDisassemblyAndDecompilation.pdf) (presentación en PDF) (tipos y estructuras en el decompilador), [Version Tracking](https://ghidra.re/ghidra_docs/GhidraClass/Intermediate/VersionTracking.html) y [API de Ghidra](https://ghidra.re/ghidra_docs/api/) (`FlatProgramAPI`, `FunctionManager`).
 
 :::{nota} Capas de esta lección
-**Contenido observado en CLS:** solo la existencia de Ghidra 11.3.2 y la carpeta RADARE en el corpus (sin revisar). **Conocimiento externo:** todo el manejo de Ghidra/Cutter (tipos, scripting, headless, Version Tracking) y el paralelo con IDA. **Ejemplo ilustrativo:** el pseudo-C comparado, el script de funciones sin nombre y la línea de `analyzeHeadless` (no ejecutados en esta edición). **Recomendación editorial:** el recorrido paso a paso, la comparación lado a lado y la práctica con el mismo crackme.
+**Núcleo conceptual:** solo la existencia de Ghidra 11.3.2 y la carpeta RADARE en el corpus (sin revisar). **Conocimiento externo:** todo el manejo de Ghidra/Cutter (tipos, scripting, headless, Version Tracking) y el paralelo con IDA. **Ejemplo ilustrativo:** el pseudo-C comparado, el script de funciones sin nombre y la línea de `analyzeHeadless` (no ejecutados en esta edición). **Recomendación editorial:** el recorrido paso a paso, la comparación lado a lado y la práctica con el mismo crackme.
 :::

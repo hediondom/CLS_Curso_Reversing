@@ -129,5 +129,5 @@ Podés: (1) distinguir TLS por API de `__declspec(thread)`; (2) ubicar el direct
 - {{src:CLS_resultados_intermedios/transcripciones/extraidos/Reversing desde cero (Ricardo y Solid)/Ricardo Narvaja y Solid - Reversing desde cero_38 Apéndice teórico TLS_Apéndice teórico TLS.txt|Reversing desde cero, cap. 38}} — `EjemploTLS`: TLS por API (`TlsAlloc`/`TlsGetValue`/`TlsSetValue`) y por `__declspec(thread)`.
 
 :::{nota} Capas de esta lección
-**Contenido observado en CLS:** las dos formas de TLS del `EjemploTLS` del capítulo 38. **Conocimiento externo:** la estructura `IMAGE_TLS_DIRECTORY`, `AddressOfCallBacks`, el orden de ejecución antes del entry point y el breakpoint de TLS en x64dbg. **Recomendación editorial:** el método de búsqueda y la práctica con binario propio.
+**Núcleo conceptual:** las dos formas de TLS del `EjemploTLS` del capítulo 38. **Conocimiento externo:** la estructura `IMAGE_TLS_DIRECTORY`, `AddressOfCallBacks`, el orden de ejecución antes del entry point y el breakpoint de TLS en x64dbg. **Recomendación editorial:** el método de búsqueda y la práctica con binario propio.
 :::

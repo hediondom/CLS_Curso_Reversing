@@ -11,7 +11,7 @@ Leer un binario sencillo: números, memoria, procesos, formato PE y programas pr
 :::
 
 **Prerrequisitos:** Etapa 0.  
-**Duración estimada:** 21 a 25 horas. Es una estimación de esta guía, derivada de la suma de las lecciones; no es una duración declarada por CLS.
+**Duración estimada:** 21 a 25 horas. Es una estimación de esta guía, derivada de la suma de las lecciones; no es una duración rígida de laboratorio.
 
 ## Lecciones
 
@@ -23,7 +23,7 @@ Leer un binario sencillo: números, memoria, procesos, formato PE y programas pr
 | 1.4 | [El formato PE: cabeceras, secciones e imports](01-pe.html) | Cabecera PE, secciones, IAT y ASLR. |
 | 1.5 | [C y Python mínimos para analizar](01-c-python.html) | Programas propios en C y herramientas en Python. |
 
-## Recursos de CLS para esta etapa
+## Recursos y lecturas de referencia
 
 - [Reversing desde cero (caps. 01–05)](../fichas/reversing-desde-cero.html)
 - [Python ISO video tutes (lógica, no Python)](../fichas/python-iso.html)
@@ -44,7 +44,7 @@ Un archivo en tu bitácora con: lecciones completadas, ejercicios resueltos, dud
 
 - Memorizar la tabla hexadecimal sin entender el valor posicional.
 - Confundir dirección virtual con offset del archivo.
-- Creer que el curso de Python de CLS enseña Python (enseña lógica).
+- Creer que los tutoriales tradicionales de lógica enseñan Python moderno (enseñan lógica).
 
 ## Qué no entra en esta etapa
 

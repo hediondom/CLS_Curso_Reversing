@@ -96,5 +96,5 @@ Podés: (1) reconocer un binario MFC por imports y símbolos; (2) explicar qué 
 - {{src:CLS_resultados_intermedios/transcripciones/extraidos/Reversing desde cero (Ricardo y Solid)/Ricardo Narvaja y Solid - Reversing desde cero_28 Mensajes de Windows_28 Mensajes de Windows.txt|Reversing desde cero, cap. 28}} — base: `RegisterClassA`, `WinProc`, `WM_COMMAND` y breakpoint sobre el mensaje.
 
 :::{nota} Capas de esta lección
-**Contenido observado en CLS:** el contraste API-directa vs. MFC del capítulo 39 y el método de mensajes del 28. **Conocimiento externo:** los nombres del message map (`BEGIN_MESSAGE_MAP`, `ON_BN_CLICKED`, `OnBnClickedButton1`), las DLLs `mfc###u.dll` y `AfxWinInit`. **Recomendación editorial:** los dos caminos para llegar al handler y la práctica con binario propio.
+**Núcleo conceptual:** el contraste API-directa vs. MFC del capítulo 39 y el método de mensajes del 28. **Conocimiento externo:** los nombres del message map (`BEGIN_MESSAGE_MAP`, `ON_BN_CLICKED`, `OnBnClickedButton1`), las DLLs `mfc###u.dll` y `AfxWinInit`. **Recomendación editorial:** los dos caminos para llegar al handler y la práctica con binario propio.
 :::

@@ -10,7 +10,7 @@
 <body>
 <a class="salto" href="#contenido">Saltar al contenido</a>
 <header class="cabecera">
-  <div class="marca"><a href="../00_EMPEZAR_AQUI.html">CLS · Curso de reversing</a> <span class="edicion">edición 5 · 27/10/2026</span></div>
+  <div class="marca"><a href="../00_EMPEZAR_AQUI.html">Curso de Reversing en Windows</a> <span class="edicion">edición 5 · 27/10/2026</span></div>
   <nav class="principal" aria-label="Navegación principal">
     <a href="../00_EMPEZAR_AQUI.html">Inicio</a>
     <a href="../guia/index.html">Curso</a>
@@ -23,7 +23,7 @@
 </header>
 <main id="contenido">
 <nav class="migas" aria-label="Ubicación"><a href="../00_EMPEZAR_AQUI.html">Inicio</a><span aria-hidden="true">›</span><a href="../guia/index.html">Curso</a><span aria-hidden="true">›</span><span>Etapa 2 · Introducción al reversing</span></nav><h1 id="cómo-cambia-el-código-con-optimizaciones">Cómo cambia el código con optimizaciones</h1>
-<aside class="callout aviso"><p class="callout-titulo">De dónde sale esta lección</p><p>Este tema <strong>no está en el corpus CLS</strong>: es <strong>conocimiento externo</strong> que agregamos para completar la guía. El curso de CLS usa ejemplos compilados en modo depuración (<code>-O0</code>/Debug), donde el assembly sigue de cerca al código fuente. Los binarios reales vienen optimizados (<code>-O2</code>/Release) y se ven muy distintos. Esta lección cubre ese salto, que es donde más se traba quien recién sale de los ejercicios.</p></aside>
+<aside class="callout aviso"><p class="callout-titulo">De dónde sale esta lección</p><p>Este tema es indispensable en binarios modernos de 64 bits y forma parte del núcleo técnico avanzado de esta obra. El curso de reversing usa ejemplos compilados en modo depuración (<code>-O0</code>/Debug), donde el assembly sigue de cerca al código fuente. Los binarios reales vienen optimizados (<code>-O2</code>/Release) y se ven muy distintos. Esta lección cubre ese salto, que es donde más se traba quien recién sale de los ejercicios.</p></aside>
 <aside class="callout nota"><p class="callout-titulo">Objetivo de la lección</p><p>Al terminar vas a poder reconocer los patrones de optimización más comunes —inlining, <em>strength reduction</em>, división por constante, vectorización, <em>tail call</em>— y no confundirlos con "código raro" o con una protección.</p></aside>
 <p><strong>Prerrequisitos:</strong> instrucciones, flujo, llamadas (Etapa 2). <strong>Duración sugerida:</strong> 3 horas.</p>
 <h2 id="el-problema">El problema</h2>
@@ -82,7 +82,7 @@ shr   edx, 1              ; EDX = x / 3</code></pre>
 <aside class="callout nota"><p class="callout-titulo">Puerta de salida</p><p>Si podés mirar un listado <code>-O2</code> y decir "esto es <code>x*5</code>, esto es <code>x/3</code>, esta función está inlineada" sin frustrarte, estás listo para binarios reales.</p></aside>
 <h2 id="fuentes-de-esta-lección">Fuentes de esta lección</h2>
 <ul><li>Agner Fog, <em>Optimizing subroutines in assembly language</em> y <em>Instruction tables</em> (patrones de código generado y costos).</li><li>Documentación de <strong>GCC</strong> (<code>-O1/-O2/-O3</code>) y <strong>LLVM/Clang</strong> sobre pases de optimización.</li><li><em>Hacker's Delight</em> (Warren) para división por constantes y trucos aritméticos.</li></ul>
-<aside class="callout nota"><p class="callout-titulo">Capas de esta lección</p><p><strong>Conocimiento externo (agregado por esta edición):</strong> todos los patrones de optimización. El corpus CLS usa binarios sin optimizar, así que este salto no estaba cubierto. <strong>Recomendación editorial:</strong> la estrategia "aprendé con Debug, analizá con Release" y los ejercicios.</p></aside>
+<aside class="callout nota"><p class="callout-titulo">Capas de esta lección</p><p><strong>Conocimiento externo (agregado por esta edición):</strong> todos los patrones de optimización. El corpus tradicional usa binarios sin optimizar, así que este salto no estaba cubierto. <strong>Recomendación editorial:</strong> la estrategia "aprendé con Debug, analizá con Release" y los ejercicios.</p></aside>
 </main>
 <footer class="pie">
   <p>Material educativo y defensivo. Las prácticas se limitan a programas propios, software abierto o crackmes diseñados para aprender. No se enseña a eludir licencias, DRM ni controles de acceso.</p>

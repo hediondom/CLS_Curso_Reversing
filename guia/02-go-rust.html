@@ -10,7 +10,7 @@
 <body>
 <a class="salto" href="#contenido">Saltar al contenido</a>
 <header class="cabecera">
-  <div class="marca"><a href="../00_EMPEZAR_AQUI.html">CLS · Curso de reversing</a> <span class="edicion">edición 5 · 27/10/2026</span></div>
+  <div class="marca"><a href="../00_EMPEZAR_AQUI.html">Curso de Reversing en Windows</a> <span class="edicion">edición 5 · 27/10/2026</span></div>
   <nav class="principal" aria-label="Navegación principal">
     <a href="../00_EMPEZAR_AQUI.html">Inicio</a>
     <a href="../guia/index.html">Curso</a>
@@ -66,7 +66,7 @@ echo _ZN4core3fmt9Formatter3pad17h0123456789abcdefE | rustfilt
 <aside class="callout nota"><p class="callout-titulo">Puerta de salida</p><p>Podés: (1) recuperar nombres de un Go «stripeado» con la pclntab; (2) leer una interfaz Go como par (itab, data); (3) desmanglar símbolos Rust y reconocer monomorfización; (4) identificar un <code>dyn Trait</code> por su vtable y describir el layout de strings en ambos.</p></aside>
 <h2 id="fuentes-de-esta-lección">Fuentes de esta lección</h2>
 <ul><li><a href="https://github.com/mandiant/GoReSym" rel="noopener" target="_blank">github.com/mandiant/GoReSym</a> — recuperar pclntab, tipos y metadatos de Go (conocimiento externo).</li><li><a href="https://go.dev/src/runtime/symtab.go" rel="noopener" target="_blank">go.dev · runtime/symtab.go</a> — formato de la pclntab y moduledata.</li><li><a href="https://rust-lang.github.io/rfcs/2603-rust-symbol-name-mangling-v0.html" rel="noopener" target="_blank">RFC 2603 · Rust symbol mangling v0</a> y <a href="https://github.com/luser/rustfilt" rel="noopener" target="_blank">rustfilt</a>.</li><li><a href="02-huella-compilador.html">2.13 Huella de compilador</a> (identificación) y <a href="02-cpp-profundo.html">2.18 C++ profundo</a> (vtables y layouts).</li></ul>
-<aside class="callout nota"><p class="callout-titulo">Capas de esta lección</p><p><strong>Contenido observado en CLS:</strong> la identificación de Go/Rust/Delphi incorporada a 2.13 en la revisión de esta edición. <strong>Conocimiento externo (agregado por esta edición):</strong> pclntab/itab, manglado v0, monomorfización, trait objects y layouts, con documentación primaria. <strong>Recomendación editorial:</strong> ejemplos y práctica ilustrativos, sobre binarios propios.</p></aside>
+<aside class="callout nota"><p class="callout-titulo">Capas de esta lección</p><p><strong>Núcleo conceptual:</strong> la identificación de Go/Rust/Delphi incorporada a 2.13 en la revisión de esta edición. <strong>Conocimiento externo (agregado por esta edición):</strong> pclntab/itab, manglado v0, monomorfización, trait objects y layouts, con documentación primaria. <strong>Recomendación editorial:</strong> ejemplos y práctica ilustrativos, sobre binarios propios.</p></aside>
 </main>
 <footer class="pie">
   <p>Material educativo y defensivo. Las prácticas se limitan a programas propios, software abierto o crackmes diseñados para aprender. No se enseña a eludir licencias, DRM ni controles de acceso.</p>

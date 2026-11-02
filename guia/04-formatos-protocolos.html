@@ -10,7 +10,7 @@
 <body>
 <a class="salto" href="#contenido">Saltar al contenido</a>
 <header class="cabecera">
-  <div class="marca"><a href="../00_EMPEZAR_AQUI.html">CLS · Curso de reversing</a> <span class="edicion">edición 5 · 27/10/2026</span></div>
+  <div class="marca"><a href="../00_EMPEZAR_AQUI.html">Curso de Reversing en Windows</a> <span class="edicion">edición 5 · 27/10/2026</span></div>
   <nav class="principal" aria-label="Navegación principal">
     <a href="../00_EMPEZAR_AQUI.html">Inicio</a>
     <a href="../guia/index.html">Curso</a>
@@ -36,7 +36,7 @@
 <p>Un entero de dos bytes 05 00 vale 5 en little-endian; 00 05 vale 5 en big-endian. En tráfico IP, los campos numéricos de Winsock usan orden de red (big-endian), aunque el host x86/x64 use little-endian. Un formato puede mezclar órdenes: documenta el orden <strong>por campo</strong>.</p>
 <p>En un esquema <strong>TLV</strong> (type, length, value), cada elemento indica tipo, longitud y valor. Confirma el ancho de tipo/longitud, si la longitud incluye el encabezado y cómo se representa un elemento desconocido.</p>
 <h2 id="ejemplo-trabajado-formato-sintético-clsf">Ejemplo trabajado: formato sintético CLSF</h2>
-<p><em>(Ejemplo <strong>ilustrativo</strong>, generado para la lección; no proviene de un archivo CLS.)</em> Supongamos un programa propio que escribe estos bytes:</p>
+<p><em>(Ejemplo <strong>ilustrativo</strong> y sintético, generado para la práctica de esta lección.)</em> Supongamos un programa propio que escribe estos bytes:</p>
 <pre><code class="lenguaje-text">Offset  Bytes                                      Lectura provisional
 00      43 4C 53 46                                 firma ASCII «CLSF»
 04      01                                          versión candidata = 1

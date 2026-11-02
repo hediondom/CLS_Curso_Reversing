@@ -10,7 +10,7 @@
 <body>
 <a class="salto" href="#contenido">Saltar al contenido</a>
 <header class="cabecera">
-  <div class="marca"><a href="../00_EMPEZAR_AQUI.html">CLS · Curso de reversing</a> <span class="edicion">edición 5 · 27/10/2026</span></div>
+  <div class="marca"><a href="../00_EMPEZAR_AQUI.html">Curso de Reversing en Windows</a> <span class="edicion">edición 5 · 27/10/2026</span></div>
   <nav class="principal" aria-label="Navegación principal">
     <a href="../00_EMPEZAR_AQUI.html">Inicio</a>
     <a href="../guia/index.html">Curso</a>
@@ -39,7 +39,7 @@
 <tr><td><code>!heap</code></td><td>estado del heap (ver abajo)</td></tr>
 </tbody></table></div>
 <h2 id="ttd-grabar-y-rebobinar">TTD: grabar y rebobinar</h2>
-<p><strong>Time Travel Debugging</strong> (TTD, de Microsoft; <strong>conocimiento externo</strong>, es posterior al material de CLS) graba <strong>toda</strong> la ejecución en un trace y después la reproducís <strong>hacia adelante y hacia atrás</strong>. Cambia el método: en vez de "¿quién va a escribir este valor?" y reiniciar mil veces, ponés un breakpoint de acceso y hacés <strong><code>g-</code></strong> (go back) hasta la escritura que lo rompió. Para "¿quién corrompió este buffer?", TTD es la herramienta: encontrás la dirección mala y <strong>retrocedés</strong> hasta la instrucción culpable.</p>
+<p><strong>Time Travel Debugging</strong> (TTD, de Microsoft; <strong>conocimiento externo</strong>, es posterior al material de reversing) graba <strong>toda</strong> la ejecución en un trace y después la reproducís <strong>hacia adelante y hacia atrás</strong>. Cambia el método: en vez de "¿quién va a escribir este valor?" y reiniciar mil veces, ponés un breakpoint de acceso y hacés <strong><code>g-</code></strong> (go back) hasta la escritura que lo rompió. Para "¿quién corrompió este buffer?", TTD es la herramienta: encontrás la dirección mala y <strong>retrocedés</strong> hasta la instrucción culpable.</p>
 <h2 id="heap-page-heap-y-lfh">Heap: Page Heap y LFH</h2>
 <p>El heap es donde más cuesta ver la corrupción, porque el síntoma (un crash) aparece <strong>lejos</strong> de la causa. Dos ayudas:</p>
 <ul><li><strong>Page Heap / Application Verifier</strong> (se activan con <code>gflags</code>; <strong>conocimiento externo</strong>): ponen cada bloque al <strong>final de una página</strong>, con una página de guardia detrás. Así un overflow de heap <strong>crashea en el acto</strong>, en la instrucción que escribe de más, no páginas después. El modo <em>full</em> consume más memoria, pero te da el crash exacto.</li><li><strong>LFH</strong> (<em>Low Fragmentation Heap</em>): Windows agrupa las alocaciones chicas en <em>buckets</em>. El Curso IDA dedica una parte a distinguir si una alocación cae en el <strong>LFH o en el heap estándar</strong>, porque cambia cómo se ven los bloques (<a class="fuente" href="../../CLS_Guia/_trabajo/extraido_ida/48-INTRODUCCION%20AL%20REVERSING%20CON%20IDA%20PRO%20DESDE%20CERO.txt">Curso IDA, tute 48</a>). En WinDbg lo mirás con <code>!heap</code>.</li></ul>
@@ -73,7 +73,7 @@ prog!copiar+0x2e:
 <aside class="callout nota"><p class="callout-titulo">Puerta de salida</p><p>Podés: (1) moverte en WinDbg con <code>g/p/t</code>, <code>bp/ba</code>, <code>k</code>, <code>dt</code>, <code>!heap</code>; (2) explicar qué resuelve Page Heap y usarlo para cazar un overflow de heap propio; (3) decir cómo TTD ayuda a ir a la causa; (4) distinguir LFH de heap estándar; (5) explicar qué es el heap spraying sin construirlo.</p></aside>
 <h2 id="fuentes-de-esta-lección">Fuentes de esta lección</h2>
 <ul><li><a class="fuente" href="../../CLS_Guia/_trabajo/extraido_ida/32-INTRODUCCION%20AL%20REVERSING%20CON%20IDA%20PRO%20DESDE%20CERO.txt">Curso IDA, tute 32</a> — WinDbg manejado desde IDA.</li><li><a class="fuente" href="../../CLS_Guia/_trabajo/extraido_ida/44-INTRODUCCION%20AL%20REVERSING%20CON%20IDA%20PRO%20DESDE%20CERO.txt">Curso IDA, tute 44</a> — info de heap con WinDbg dentro de IDA.</li><li><a class="fuente" href="../../CLS_Guia/_trabajo/extraido_ida/48-INTRODUCCION%20AL%20REVERSING%20CON%20IDA%20PRO%20DESDE%20CERO.txt">Curso IDA, tute 48</a> — alocación en LFH vs. heap estándar.</li></ul>
-<aside class="callout nota"><p class="callout-titulo">Capas de esta lección</p><p><strong>Contenido observado en CLS:</strong> WinDbg+IDA (tute 32), heap con WinDbg (tute 44) y LFH (tute 48). <strong>Conocimiento externo:</strong> TTD, Page Heap/Application Verifier (<code>gflags</code>) y el concepto de heap spraying. <strong>Recomendación editorial:</strong> el ejemplo ilustrativo y la práctica con un bug de heap propio (sin laboratorio compilado con hashes en esta edición).</p></aside>
+<aside class="callout nota"><p class="callout-titulo">Capas de esta lección</p><p><strong>Núcleo conceptual:</strong> WinDbg+IDA (tute 32), heap con WinDbg (tute 44) y LFH (tute 48). <strong>Conocimiento externo:</strong> TTD, Page Heap/Application Verifier (<code>gflags</code>) y el concepto de heap spraying. <strong>Recomendación editorial:</strong> el ejemplo ilustrativo y la práctica con un bug de heap propio (sin laboratorio compilado con hashes en esta edición).</p></aside>
 
 <aside class="ampliacion-ext">
 <p class="callout-titulo">Ampliación editorial basada en fuentes externas — NT Heap (0xEEFFEEFF) vs. Segment Heap (0xDDEEDDEE) en Windows 10/11</p>
