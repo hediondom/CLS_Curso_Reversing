@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>2D.14 · El Subsistema Gráfico en Modo Kernel (win32k) y la Tabla de Servicios Sombra</title>
+<meta name="description" content="Arquitectura de win32kbase.sys y win32kfull.sys, despacho a través de KeServiceDescriptorTableShadow, callbacks de kernel a usuario (KeUserModeCallback) y mitigaciones Win32k Lockdown.">
+<link rel="stylesheet" href="../guia/estilo.css">
+</head>
+<body>
+<a class="salto" href="#contenido">Saltar al contenido</a>
+<header class="cabecera">
+  <div class="marca"><a href="../00_EMPEZAR_AQUI.html">CLS · Curso de reversing</a> <span class="edicion">edición 5 · 27/10/2026</span></div>
+  <nav class="principal" aria-label="Navegación principal">
+    <a href="../00_EMPEZAR_AQUI.html">Inicio</a>
+    <a href="../guia/index.html">Curso</a>
+    <a href="../materiales.html">Materiales</a>
+    <a href="../fichas/index.html">Fichas</a>
+    <a href="../glosario.html">Glosario</a>
+    <a href="../preguntas_y_respuestas.html">Repaso</a>
+    <a href="../buscar.html">Buscar</a>
+  </nav>
+</header>
+<main id="contenido">
+<nav class="migas" aria-label="Ubicación"><a href="../00_EMPEZAR_AQUI.html">Inicio</a><span aria-hidden="true">›</span><a href="../guia/index.html">Curso</a><span aria-hidden="true">›</span><span>Etapa 2 · 2D · Windows internals (optativa)</span></nav><h1 id="el-subsistema-gráfico-en-modo-kernel-win32k-y-la-tabla-de-servicios-sombra">El Subsistema Gráfico en Modo Kernel (win32k) y la Tabla de Servicios Sombra</h1>
+<aside class="callout nota"><p class="callout-titulo">Propósito y Relevancia</p><p>En la arquitectura de Windows, el modo kernel no solo alberga los servicios de sistema estándar del ejecutivo y del gestor de memoria (<code>ntoskrnl.exe</code>). También aloja el subsistema de ventanas, interfaz gráfica y gestión de dispositivos de entrada (<strong>GDI y USER</strong>). Este subsistema está implementado en controladores de sistema especiales (<code>win32kbase.sys</code>, <code>win32kfull.sys</code> y el driver legado <code>win32k.sys</code>). Con más de 1.200 llamadas al sistema que históricamente han constituido la mayor superficie de ataques de escalada local de privilegios (LPE) en Windows, su análisis es obligatorio para cualquier investigador de seguridad.</p></aside>
+<hr>
+<h2 id="1-descomposición-de-win32k-y-arquitectura-modular">1. Descomposición de Win32k y Arquitectura Modular</h2>
+<p>En versiones antiguas de Windows (hasta Windows 7 y 8.1), toda la lógica gráfica residía en un único driver monolítico de gran tamaño: <code>win32k.sys</code>. Desde Windows 10, Microsoft refactorizó el subsistema en módulos especializados para reducir el acoplamiento y mejorar la telemetría:</p>
+<pre><code class="lenguaje-text">+─────────────────────────────────────────────────────────────────────────────+
+|                         ESPACIO DE USUARIO (x64)                            |
+|  [ user32.dll ]               [ gdi32.dll / gdi32full.dll ]                 |
+|         │                                    │                              |
+|         ▼                                    ▼                              |
+|  [ win32u.dll ] ─── (Stubs de syscall gráfica: 0x1000 + Servicio)           |
++─────────────────────────────────────────────────────────────────────────────+
+                                       │ (syscall)
++──────────────────────────────────────┼──────────────────────────────────────+
+|                         ESPACIO DE KERNEL (x64)                             |
+|                                      ▼                                      |
+|  KeServiceDescriptorTableShadow [Índice 1: Descriptor de Servicios Win32k]  |
+|                                      │                                      |
+|         ┌────────────────────────────┴─────────────────────────────┐        |
+|         ▼                                                          ▼        |
+|  win32kbase.sys                                             win32kfull.sys  |
+|  (Gestión de memoria gráfica,                               (Lógica pesada: |
+|   handles de ventana, threads GUI,                          mensajes WM_*,  |
+|   DirectComposition y primitivas base)                      renderizado GDI)|
++─────────────────────────────────────────────────────────────────────────────+</code></pre>
+<h3 id="el-módulo-de-transición-en-modo-usuario-win32u-dll">El Módulo de Transición en Modo Usuario: <code>win32u.dll</code></h3>
+<p>Históricamente, las funciones de <code>user32.dll</code> (como <code>CreateWindowExW</code>) invocaban directamente la instrucción <code>syscall</code>. En Windows 10 y 11 modernos, Microsoft centralizó todos los stubs de llamadas al sistema gráficas dentro de una DLL de bajo nivel llamada <strong><code>win32u.dll</code></strong>. Cualquier llamada de alto nivel en <code>user32.dll</code> o <code>gdi32.dll</code> pasa primero por un stub <code>NtUser*</code> o <code>NtGdi*</code> dentro de <code>win32u.dll</code>.</p>
+<hr>
+<h2 id="2-despacho-por-la-tabla-sombra-keservicedescriptortableshadow">2. Despacho por la Tabla Sombra: <code>KeServiceDescriptorTableShadow</code></h2>
+<p>En la Lección 2.15 vimos cómo las llamadas al sistema nativas (<code>NtOpenProcess</code>, <code>NtAllocateVirtualMemory</code>) se despachan mediante la tabla global exportada <code>KeServiceDescriptorTable</code>. Sin embargo, los servicios gráficos utilizan una tabla extendida no exportada: <strong><code>KeServiceDescriptorTableShadow</code></strong>.</p>
+<h3 id="estructura-de-la-tabla-sombra">Estructura de la Tabla Sombra</h3>
+<p>La estructura contiene un arreglo de dos descriptores de servicio (<code>KSERVICE_TABLE_DESCRIPTOR</code>):</p>
+<ul><li><strong>Entrada 0 (Servicios Nativos del Kernel):</strong> Apunta a las funciones <code>ntoskrnl.exe</code> (<code>Nt*</code> clásicas con SSN <code>0x0000</code> a <code>0x0200+</code>).</li><li><strong>Entrada 1 (Servicios Gráficos Win32k):</strong> Apunta a las funciones despachadas por <code>win32kbase.sys</code> y <code>win32kfull.sys</code>.</li></ul>
+<h3 id="conversión-de-números-de-servicio-ssn-gráfico">Conversión de Números de Servicio (SSN Gráfico)</h3>
+<p>Las syscalls de Win32k poseen un bit indicador activo (<code>0x1000</code>). Cuando una instrucción <code>syscall</code> se ejecuta con <code>EAX = 0x1000 + N</code>:</p>
+<ol><li>El despachador <code>nt!KiSystemCall64</code> comprueba si el número de servicio excede <code>0x0FFF</code>.</li><li>Si es así, verifica si el hilo actual ya ha sido promovido a <strong>GUI Thread</strong> (es decir, si el campo <code>KTHREAD-&gt;Win32Thread</code> en <code>GS:[0x188]</code> no es nulo).</li><li>Si el hilo es estándar, el kernel invoca <code>nt!PsConvertToGuiThread</code> para asignar el stack de kernel extendido requerido por win32k (un stack de 64 KB en lugar del stack estándar de 24 KB).</li><li>El kernel toma la entrada 1 de <code>KeServiceDescriptorTableShadow</code> y salta a la función correspondiente indexando el offset <code>N</code> en la tabla de despacho.</li></ol>
+<hr>
+<h2 id="3-el-fenómeno-crítico-inversión-de-control-con-keusermodecallback">3. El Fenómeno Crítico: Inversión de Control con <code>KeUserModeCallback</code></h2>
+<p>La razón principal por la cual Win32k ha sido la mayor fuente histórica de vulnerabilidades de kernel (Use-After-Free y elevación de privilegios) es su necesidad de interactuar con el espacio de usuario mientras procesa llamadas de kernel:</p>
+<h3 id="mecánica-de-inversión">Mecánica de Inversión</h3>
+<p>Cuando una función en modo kernel dentro de <code>win32kfull.sys</code> necesita notificar a una ventana (por ejemplo, para ejecutar un hook de ventana global o despachar un mensaje <code>WM_NCCREATE</code>), el kernel no puede ejecutar la función de ventana directamente en modo kernel.</p>
+<ol><li>El driver de kernel invoca <strong><code>nt!KeUserModeCallback</code></strong>.</li><li>Esta función guarda el estado actual del stack de kernel, prepara un frame de retorno hacia el modo usuario y salta a la rutina <code>ntdll!KiUserCallbackDispatcher</code> en el proceso.</li><li>El código de usuario procesa el mensaje (ejecutando callbacks como <code>__ClientLoadLibrary</code>).</li><li>Al concluir, el modo usuario invoca la syscall nativa <code>NtCallbackReturn</code> para devolver el control al driver de kernel en el punto exacto donde se suspendió.</li></ol>
+<h3 id="el-riesgo-de-seguridad-race-conditions-y-reentrancia">El Riesgo de Seguridad (Race Conditions y Reentrancia)</h3>
+<p>Durante el tiempo en que el control está en espacio de usuario a través de <code>KeUserModeCallback</code>, el proceso puede ejecutar código malicioso que destruya o libere la ventana o el objeto GDI (<code>DestroyWindow</code>) sobre el cual el kernel estaba operando. Cuando el control regresa a <code>win32kfull.sys</code>, si el driver asume que el objeto sigue existiendo en el puntero original sin revalidar su estado de bloqueo, se produce un fallo clásico de <strong>Use-After-Free (UAF)</strong> en espacio de kernel.</p>
+<hr>
+<h2 id="4-mitigaciones-modernas-win32k-lockdown">4. Mitigaciones Modernas: Win32k Lockdown</h2>
+<p>Para neutralizar esta inmensa superficie de ataque, Microsoft introdujo en Windows 10/11 la política <strong>Win32k System Call Disablement Policy</strong> (también conocida como <strong>Win32k Lockdown</strong>):</p>
+<ul><li>Mediante la API <code>SetProcessMitigationPolicy</code> con la clase <code>ProcessSystemCallDisablePolicy</code>, un proceso puede auto-despojarse permanentemente del derecho de invocar llamadas a la tabla sombra.</li><li>Procesos altamente expuestos a contenido no confiable (como los procesos de renderizado de Google Chrome, Microsoft Edge y sandboxes de visualización) activan esta mitigación. Si un exploit intenta invocar cualquier syscall gráfica (<code>0x1000+</code>), el despachador de kernel lanza inmediatamente una excepción de violación de acceso y termina el proceso.</li></ul>
+<h3 id="inspección-en-windbg">Inspección en WinDbg</h3>
+<pre><code class="lenguaje-text">$$ Inspeccionar si un proceso tiene deshabilitadas las llamadas a Win32k
+dt nt!_EPROCESS &lt;ProcessAddress&gt; MitigationFlags
+$$ El bit 0x04 (DisallowWin32kSystemCalls) indica que el proceso tiene Win32k bloqueado</code></pre>
+</main>
+<footer class="pie">
+  <p>Material educativo y defensivo. Las prácticas se limitan a programas propios, software abierto o crackmes diseñados para aprender. No se enseña a eludir licencias, DRM ni controles de acceso.</p>
+  <p><a href="../00_EMPEZAR_AQUI.html">Inicio</a> · <a href="../guia/etapa-0.html">Etapas</a> · <a href="../fuentes_y_limites.html">Fuentes y límites</a> · <a href="../registro_de_cobertura.csv">Registro de cobertura</a></p>
+</footer>
+</body>
+</html>

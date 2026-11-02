@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>2D.15 · Reversing de Arranque Temprano, UEFI y Cadena de Carga (bootmgfw, winload, LOADER_PARAMETER_BLOCK)</title>
+<meta name="description" content="Formato PE32+ de aplicaciones EFI, cadena de inicialización de arranque (bootmgfw.efi, winload.efi, hvloader.efi), estructura LOADER_PARAMETER_BLOCK y análisis de bootkits en Ghidra/IDA.">
+<link rel="stylesheet" href="../guia/estilo.css">
+</head>
+<body>
+<a class="salto" href="#contenido">Saltar al contenido</a>
+<header class="cabecera">
+  <div class="marca"><a href="../00_EMPEZAR_AQUI.html">CLS · Curso de reversing</a> <span class="edicion">edición 5 · 27/10/2026</span></div>
+  <nav class="principal" aria-label="Navegación principal">
+    <a href="../00_EMPEZAR_AQUI.html">Inicio</a>
+    <a href="../guia/index.html">Curso</a>
+    <a href="../materiales.html">Materiales</a>
+    <a href="../fichas/index.html">Fichas</a>
+    <a href="../glosario.html">Glosario</a>
+    <a href="../preguntas_y_respuestas.html">Repaso</a>
+    <a href="../buscar.html">Buscar</a>
+  </nav>
+</header>
+<main id="contenido">
+<nav class="migas" aria-label="Ubicación"><a href="../00_EMPEZAR_AQUI.html">Inicio</a><span aria-hidden="true">›</span><a href="../guia/index.html">Curso</a><span aria-hidden="true">›</span><span>Etapa 2 · 2D · Windows internals (optativa)</span></nav><h1 id="reversing-de-arranque-temprano-uefi-y-cadena-de-carga">Reversing de Arranque Temprano, UEFI y Cadena de Carga</h1>
+<aside class="callout nota"><p class="callout-titulo">Propósito y Alcance</p><p>El análisis del sistema operativo no comienza cuando el kernel ya está en ejecución. Para comprender las amenazas más persistentes (Bootkits UEFI, técnicas de desactivación temprana de DSE, y el despliegue del hipervisor VBS antes de <code>ntoskrnl.exe</code>), el analista de ingeniería inversa debe dominar el proceso de arranque temprano de Windows en plataformas de 64 bits con firmware <strong>UEFI</strong>. Esta lección disecciona la cadena de cargadores EFI, el formato de los módulos DXE y la estructura de transición fundamental: el bloque <strong><code>LOADER_PARAMETER_BLOCK</code></strong>.</p></aside>
+<hr>
+<h2 id="1-el-formato-pe32-de-las-aplicaciones-efi">1. El Formato PE32+ de las Aplicaciones EFI</h2>
+<p>Los archivos ejecutables del cargador de arranque de Windows (como <code>bootmgfw.efi</code>, <code>winload.efi</code> y <code>hvloader.efi</code>) no son formatos binarios propietarios exóticos: son archivos estándar <strong>PE32+ (PE de 64 bits)</strong> con características específicas en sus cabeceras:</p>
+<ol><li><strong><code>Subsystem</code> en OptionalHeader:</strong></li></ol>
+<ul><li><code>IMAGE_SUBSYSTEM_EFI_APPLICATION</code> (<code>10</code> / <code>0x000A</code>): Aplicaciones que se ejecutan directamente bajo el entorno UEFI antes de que el sistema operativo tome el control.</li><li><code>IMAGE_SUBSYSTEM_EFI_BOOT_SERVICE_DRIVER</code> (<code>11</code> / <code>0x000B</code>): Controladores DXE que extienden los servicios de arranque de la placa madre.</li></ul>
+<ol><li><strong>Punto de Entrada EFI:</strong></li></ol>
+<p>La función de inicio de un ejecutable EFI recibe siempre dos parámetros estandarizados en la convención x64 de Microsoft:</p>
+<pre><code class="lenguaje-c">   EFI_STATUS EFIAPI EfiMain(
+       IN EFI_HANDLE ImageHandle,       // RCX: Handle del binario cargado en memoria
+       IN EFI_SYSTEM_TABLE *SystemTable // RDX: Puntero a la tabla global de servicios UEFI
+   );</code></pre>
+<p>A través de <code>SystemTable-&gt;BootServices</code> (<code>EFI_BOOT_SERVICES</code>), el binario puede asignar páginas de memoria física (<code>AllocatePages</code>), abrir archivos en la partición ESP (<code>EFI_SIMPLE_FILE_SYSTEM_PROTOCOL</code>) y registrar protocolos de bajo nivel.</p>
+<hr>
+<h2 id="2-la-cadena-de-carga-de-windows-en-sistemas-x64-uefi">2. La Cadena de Carga de Windows en Sistemas x64 / UEFI</h2>
+<p>El proceso de arranque moderno desde el encendido de la máquina hasta la primera instrucción del kernel sigue una secuencia estricta de componentes encadenados y firmados bajo <strong>Secure Boot</strong>:</p>
+<pre><code class="lenguaje-text">[ Encendido / Reset ]
+         │
+         ▼
+[ Firmware UEFI (SEC -&gt; PEI -&gt; DXE -&gt; BDS) ]
+         │ (Carga desde partición ESP FAT32: \EFI\Microsoft\Boot\bootmgfw.efi)
+         ▼
+[ Windows Boot Manager (bootmgfw.efi) ]
+         │ 1. Parsea la base de datos BCD (\EFI\Microsoft\Boot\BCD)
+         │ 2. Si BitLocker está activo: desbloquea la clave TPM mediante llamadas EFI
+         │ 3. Carga y verifica la firma digital del cargador del SO
+         ▼
+[ Windows OS Loader (winload.efi) ]
+         │ 1. Configura el mapa preliminar de tablas de páginas de 4 niveles (PML4)
+         │ 2. Carga la colmena de registro SYSTEM (HKLM\SYSTEM) desde el disco
+         │ 3. Carga ntoskrnl.exe, hal.dll y drivers con StartType = 0 (SERVICE_BOOT_START)
+         │ 4. Si VBS está habilitado: invoca a hvloader.efi para iniciar Hyper-V
+         │ 5. Llama a EFI_BOOT_SERVICES-&gt;ExitBootServices() (Termina el firmware)
+         ▼
+[ Kernel EntryPoint: ntoskrnl.exe!KiSystemStartup(LOADER_PARAMETER_BLOCK* pLpb) ]</code></pre>
+<hr>
+<h2 id="3-la-estructura-de-transición-loader-parameter-block">3. La Estructura de Transición: <code>LOADER_PARAMETER_BLOCK</code></h2>
+<p>Cuando <code>winload.efi</code> invoca la función de arranque del kernel (<code>nt!KiSystemStartup</code>), el hardware ya no tiene acceso a los servicios de UEFI (se ha llamado a <code>ExitBootServices</code>). La única vía por la cual el cargador transfiere información vital al kernel es mediante un puntero único pasado en el registro <strong><code>RCX</code></strong>: la estructura <strong><code>LOADER_PARAMETER_BLOCK</code></strong>.</p>
+<h3 id="offsets-críticos-de-loader-parameter-block-en-x64">Offsets Críticos de <code>LOADER_PARAMETER_BLOCK</code> en x64:</h3>
+<ul><li><strong><code>+0x010</code> <code>LoadOrderListHead</code> (<code>LIST_ENTRY</code>):</strong> Lista doblemente enlazada de estructuras <code>KLDR_DATA_TABLE_ENTRY</code> que enumera todos los módulos y drivers cargados en memoria por <code>winload.efi</code> (incluyendo <code>ntoskrnl.exe</code>, <code>hal.dll</code>, <code>kd.dll</code> y drivers de arranque).</li><li><strong><code>+0x050</code> <code>MemoryDescriptorListHead</code> (<code>LIST_ENTRY</code>):</strong> Mapa de memoria física del sistema clasificado por tipos (memoria utilizable, memoria reservada por firmware, memoria ACPI).</li><li><strong><code>+0x098</code> <code>Extension</code> (<code>Ptr64 _LOADER_PARAMETER_EXTENSION</code>):</strong> Puntero a la extensión del bloque de arranque. En Windows 10/11 modernos, este campo contiene las estructuras de configuración de <strong>VBS/HVCI</strong>, el estado de inicialización de <strong>Hyper-V</strong> y los metadatos de integridad de código (<em>Code Integrity</em>).</li><li><strong><code>+0x0A0</code> <code>BootDriverListHead</code> (<code>LIST_ENTRY</code>):</strong> Lista ordenada de controladores de arranque que deben ser inicializados por <code>IoInitSystem</code> antes de montar el sistema de archivos raíz.</li></ul>
+<h3 id="inspección-en-windbg-durante-el-arranque-temprano">Inspección en WinDbg durante el Arranque Temprano</h3>
+<p>Si estás depurando una máquina virtual con WinDbg y configuras un breakpoint inicial (<code>sxe ibp</code> o <code>break</code> antes del kernel):</p>
+<pre><code class="lenguaje-text">$$ Inspeccionar el bloque de parámetros pasado a KiSystemStartup en RCX
+dt nt!_LOADER_PARAMETER_BLOCK @rcx
+$$ Volcar la lista de módulos cargados en el arranque
+!list -t nt!_KLDR_DATA_TABLE_ENTRY.InLoadOrderLinks -x "dps @$extret+0x30 L2" (poi(@rcx+0x10))</code></pre>
+<hr>
+<h2 id="4-metodología-de-análisis-de-módulos-efi-y-bootkits-en-ida-ghidra">4. Metodología de Análisis de Módulos EFI y Bootkits en IDA / Ghidra</h2>
+<p>Los bootkits modernos (como BlackLotus o Bootkm) buscan infectar la cadena de arranque antes de que <code>ntoskrnl.exe</code> active los mecanismos de protección de PatchGuard o las políticas de EDR.</p>
+<h3 id="pasos-de-reversing-para-un-binario-efi">Pasos de Reversing para un Binario <code>.efi</code>:</h3>
+<ol><li><strong>Carga en el Desensamblador:</strong> Seleccionar el formato PE. En Ghidra o IDA Pro, utilizar los tipos de datos de UEFI (importando los headers de EDK2 o utilizando el plugin <em>EFISeek</em> / <em>Ghidra-EFI</em>).</li><li><strong>Localización de <code>SystemTable</code>:</strong></li></ol>
+<p>En el prólogo de <code>EfiMain</code>, identificar la instrucción que salva el registro <code>RDX</code> en una variable global. Ese puntero es <code>gST</code> (<code>EFI_SYSTEM_TABLE</code>). En el offset <code>+0x60</code> de <code>gST</code> reside el puntero a <code>gBS</code> (<code>EFI_BOOT_SERVICES</code>).</p>
+<ol><li><strong>Identificación de Protocolos Hijackeados:</strong></li></ol>
+<p>Los bootkits suelen instalar ganchos sobre funciones críticas de <code>EFI_BOOT_SERVICES</code> antes de que se cargue <code>winload.efi</code>:</p>
+<ul><li>Ganchos sobre <strong><code>LocateProtocol</code></strong> o <strong><code>OpenProtocol</code></strong>: interceptan la carga de protocolos para devolver punteros a rutinas modificadas.</li><li>Ganchos sobre <strong><code>ExitBootServices</code></strong>: capturan el momento exacto en que <code>winload.efi</code> va a transferir el control al kernel. En este punto, el bootkit parchea en memoria viva las rutinas de validación de firmas de <code>winload.efi</code> o inyecta código en <code>ntoskrnl!KiSystemStartup</code> para deshabilitar DSE antes de que el kernel arranque.</li></ul>
+<ol><li><strong>Verificación Defensiva:</strong> En sistemas corporativos, la integridad de esta cadena se audita mediante <strong>Measured Boot</strong> (el chip TPM registra los hashes SHA-256 de cada componente de arranque en los registros PCR 0 a 7, permitiendo a la red verificar remotamente que ningún binario EFI fue alterado).</li></ol>
+</main>
+<footer class="pie">
+  <p>Material educativo y defensivo. Las prácticas se limitan a programas propios, software abierto o crackmes diseñados para aprender. No se enseña a eludir licencias, DRM ni controles de acceso.</p>
+  <p><a href="../00_EMPEZAR_AQUI.html">Inicio</a> · <a href="../guia/etapa-0.html">Etapas</a> · <a href="../fuentes_y_limites.html">Fuentes y límites</a> · <a href="../registro_de_cobertura.csv">Registro de cobertura</a></p>
+</footer>
+</body>
+</html>

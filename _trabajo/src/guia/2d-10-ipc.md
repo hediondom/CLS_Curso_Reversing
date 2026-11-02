@@ -67,6 +67,40 @@ Tres lecturas de seguridad que Microsoft documenta y que cambian conclusiones:
 
 Microsoft remarca que `ncalrpc` no es “seguro por ser local”: en un servidor de terminales, cientos de usuarios pueden llegar a un servicio local.
 
+### Anatomía Interna de Stubs RPC y Decodificación de NDR (Format Strings)
+
+Para el analista de ingeniería inversa que audita un binario sin símbolos ni archivos `.idl`, reconstruir la firma exacta de las funciones expuestas por un servidor RPC requiere inspeccionar las estructuras internas que MIDL compila en la sección `.data` o `.rdata`:
+
+```text
+RPC_SERVER_INTERFACE (puntero exportado o registrado con RpcServerRegisterIf2):
+   +0x00: Length: 0x60 (96 bytes en x64)
+   +0x04: InterfaceId.SyntaxGUID (UUID de 16 bytes de la interfaz)
+   +0x14: InterfaceId.SyntaxVersion (Major/Minor version)
+   +0x50: InterpreterInfo (Ptr64 a MIDL_SERVER_INFO)
+
+MIDL_SERVER_INFO:
+   +0x00: pStubDesc (Ptr64 a MIDL_STUB_DESC)
+   +0x08: DispatchTable (Ptr64 a arreglo de punteros a funciones C del servidor)
+   +0x10: ProcFormatString (Ptr64 a tabla de formatos de procedimiento NDR)
+   +0x18: FmtStringOffset (Ptr64 a tabla de índices a ProcFormatString)
+```
+
+#### Decodificación de `ProcFormatString` y `TypeFormatString`
+El compilador MIDL genera secuencias de bytes compactas que codifican los parámetros de cada método mediante la máquina de tipos de **NDR (Network Data Representation)**:
+1. **Cabecera de Procedimiento:** En `ProcFormatString`, cada rutina arranca con una cabecera de 6 bytes en modo `-Oicf` que define el tamaño del marco en la pila (`stack_size`) y el número de parámetros.
+2. **Descriptores de Parámetros (6 bytes por parámetro):**
+   - **Flags de Dirección:** Los primeros 2 bytes indican si el parámetro es entrante o saliente (`0x0048` = `[in]`, `0x0158` = `[out]`, `0x0050` = `[in, out]`).
+   - **Offset en el Stack:** Los siguientes 2 bytes indican la posición relativa en el marco de la llamada.
+   - **Descriptor de Tipo:** Los 2 bytes finales contienen el tipo básico (`FC_LONG = 0x08`, `FC_HYPER = 0x0b`, `FC_CHAR = 0x02`) o un offset relativo hacia **`TypeFormatString`** (almacenado en `MIDL_STUB_DESC+0x28`).
+3. **Tipos Complejos en `TypeFormatString`:**
+   - `0x11` (`FC_RP`): Puntero de referencia (no puede ser nulo).
+   - `0x12` (`FC_UP`): Puntero único (puede ser nulo).
+   - `0x21` (`FC_C_CSTRING`): Cadena ASCII conformante terminada en nulo (`char*`).
+   - `0x22` (`FC_C_WSTRING`): Cadena UTF-16 conformante terminada en nulo (`wchar_t*`).
+   - `0x1a` (`FC_BOGUS_STRUCT`): Estructura compleja con alineación manual y punteros anidados.
+
+El laboratorio `plantillas_codigo/rpc_com_server_lab.c` y su definición `rpc_com_server_lab.idl` permiten compilar un servidor local sobre `ncalrpc` y verificar la disposición exacta de estas tablas en memoria.
+
 ## ALPC
 
 ALPC es el mecanismo de mensajes locales que usan muchos componentes de Windows. Su contrato no está documentado para uso general y cambia entre versiones, así que el curso solo pide **reconocerlo**: qué proceso lo usa, que existe una clase de eventos ETW para ALPC (ver [2D.12](2d-12-etw.html)) y que, si un análisis llega a ALPC, la conclusión debe apoyarse en la documentación del componente, no en suposiciones sobre el formato de los mensajes.

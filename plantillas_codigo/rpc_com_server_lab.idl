@@ -1,0 +1,21 @@
+// rpc_com_server_lab.idl — Definición de interfaz RPC para laboratorio defensivo (Lección 2D.10)
+// Compilación con MIDL:
+//   midl /app_config /x64 rpc_com_server_lab.idl
+// Genera: rpc_com_server_lab_s.c (servidor), rpc_com_server_lab_c.c (cliente), rpc_com_server_lab.h
+
+[
+    uuid(9A4E7812-32B5-4D6F-9C81-123456789ABC),
+    version(1.0)
+]
+interface LabRpcDefensivo
+{
+    // Procedimiento 0: Obtiene versión (retorna DWORD)
+    unsigned long RpcObtenerVersion(void);
+
+    // Procedimiento 1: Valida buffer de entrada con codificación NDR
+    // ProcFormatString define la firma [in, string] y [out]
+    unsigned long RpcValidarToken(
+        [in, string] const char* pszToken,
+        [out] unsigned long* pdwStatus
+    );
+}

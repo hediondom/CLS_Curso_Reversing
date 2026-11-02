@@ -109,6 +109,36 @@ Cronología de lectura (ilustrativa) del mismo caso, en el orden en que aparece 
 > 0:000> ub <Call_Site> L1                   ; Desensambla la instrucción inmediatamente ANTERIOR al retorno (debe ser CALL)
 > ```
 
+### Anatomía Binaria de UNWIND_INFO y Decodificación de UNWIND_CODE en x64
+
+En arquitecturas x64, la estructura `UNWIND_INFO` almacenada en la sección `.xdata` gobierna cómo el kernel y los depuradores desenrollan la pila hacia atrás. Cada registro de desenrollado tiene la siguiente estructura binaria en memoria:
+
+```text
+Estructura UNWIND_INFO (.xdata):
+   +0x00: UBYTE Version : 3;      // Versión de unwind (típicamente 1 o 2)
+   +0x00: UBYTE Flags   : 5;      // 0x01=EHANDLER (__except), 0x02=UHANDLER (__finally), 0x04=CHAININFO
+   +0x01: UBYTE SizeOfProlog;     // Longitud del prólogo de la función en bytes
+   +0x02: UBYTE CountOfCodes;     // Número de entradas en el arreglo UnwindCode[]
+   +0x03: UBYTE FrameRegister : 4;// Registro de marco (0=ninguno, 5=RBP, etc.)
+   +0x03: UBYTE FrameOffset   : 4;// Offset del registro de marco escalado (*16)
+   +0x04: UNWIND_CODE UnwindCode[CountOfCodes]; // Arreglo de operaciones de desenrollado
+```
+
+#### Decodificación de Slots de `UNWIND_CODE` (2 bytes por slot)
+Cada elemento de `UnwindCode` ocupa exactamente 16 bits (2 bytes) y describe una operación que el prólogo ejecutó y que el desenrollador debe revertir:
+- **`CodeOffset` (8 bits bajos):** Offset en bytes desde el inicio de la función donde se realizó la operación.
+- **`UnwindOp` (4 bits):** Operación de reversión de pila:
+  * `0` = `UWOP_PUSH_NONVOL`: El prólogo hizo un `push` de un registro no volátil. Operación inversa: pop del registro indicado en `OpInfo`.
+  * `1` = `UWOP_ALLOC_LARGE`: Asignó un tamaño grande en stack (ocupa 2 o 3 slots sucesivos de `UNWIND_CODE` para especificar el tamaño).
+  * `2` = `UWOP_ALLOC_SMALL`: Asignó entre 8 y 128 bytes en la pila. Operación inversa: sumar `(OpInfo * 8 + 8)` a `RSP`.
+  * `3` = `UWOP_SET_FPREG`: Estableció el puntero de marco de pila. Operación inversa: restaurar `RSP` desde `FrameRegister`.
+  * `4` = `UWOP_SAVE_NONVOL`: Guardó un registro no volátil en la pila usando `mov` en lugar de `push` (ocupa 2 slots para codificar el offset).
+  * `10` = `UWOP_EPILOG`: Define los epílogos de la función (Windows 10 21H1+ para soporte de Time Travel Debugging).
+- **`OpInfo` (4 bits altos):** Índice del registro x64 involucrado (`0`=RAX, `1`=RCX, `2`=RDX, `3`=RBX, `4`=RSP, `5`=RBP, `6`=RSI, `7`=RDI, `8..15`=R8..R15).
+
+#### Verificación Forense frente a Call Stack Spoofing
+Cuando una herramienta de seguridad (EDR) o un analista en WinDbg valida una pila con `!fnent`, el kernel simula la ejecución inversa de cada `UNWIND_CODE`. Si un atacante utilizó *Call Stack Spoofing* fabricando una dirección de retorno falsa pero no ajustó `RSP` para coincidir exactamente con la sumatoria de los `UWOP_ALLOC_SMALL`/`UWOP_PUSH_NONVOL` de la función invocadora, o si la instrucción previa a la dirección de retorno no es un opcode `CALL` legítimo (`E8 rel32` o `FF /2`), el desenrollado falla con inconsistencia de marco y delata la intrusión.
+
 ## Práctica
 
 1. Compilá o usá un programa propio mínimo que lance/capture una excepción prevista, sin leer datos externos.

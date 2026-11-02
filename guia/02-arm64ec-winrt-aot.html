@@ -58,8 +58,40 @@
 +0x0C: ULONG Reserved2;        // Relleno de alineación
 +0x10: PCWSTR StringRef;       // Puntero directo al buffer de caracteres UTF-16</code></pre>
 <p>Para activar una clase en WinRT, el binario invoca <code>combase.dll!RoActivateInstance</code> pasando el <code>HSTRING</code> del nombre de clase y recibiendo un puntero a <code>IInspectable</code>.</p>
-<h3 id="sandboxing-moderno-appcontainer-y-lpac">Sandboxing Moderno: AppContainer y LPAC</h3>
-<p>Los procesos protegidos en Windows 11 ya no confían únicamente en el nivel de integridad (Low/Medium/High). Se ejecutan en un <strong>AppContainer</strong> o en un <strong>LPAC</strong> (<em>Less Privileged AppContainer</em>). Un token de AppContainer posee un SID de paquete (<code>PackageSid</code>) y una lista de permisos explícitos en <code>TokenCapabilities</code> (por ejemplo, <code>internetClient</code>, <code>privateNetworkClientServer</code>). Si un binario intenta acceder a recursos fuera de su directorio de datos o de sus capacidades asignadas, el kernel bloquea la operación sin registrar error en el proceso llamador.</p>
+<h3 id="sandboxing-moderno-appcontainer-y-lpac-con-capacidades-sid">Sandboxing Moderno: AppContainer y LPAC con Capacidades SID</h3>
+<p>Los procesos protegidos en Windows 11 (aplicaciones MSIX, procesos de pestañas de navegadores, servicios de sistema aislados) ya no confían únicamente en el modelo clásico de niveles de integridad de Windows Vista (Low/Medium/High). En su lugar, el kernel de Windows confina el proceso dentro de un <strong>AppContainer</strong> o un <strong>LPAC</strong> (<em>Less Privileged AppContainer</em>).</p>
+<h4 id="anatomía-interna-del-token-de-appcontainer">Anatomía Interna del Token de AppContainer</h4>
+<p>En el espacio de kernel, la estructura <code>_TOKEN</code> (<code>nt!_TOKEN</code>) contiene campos específicos que definen el aislamiento del contenedor:</p>
+<ol><li><strong><code>TokenIsAppContainer</code> (<code>TOKEN_INFORMATION_CLASS = 29</code>):</strong> Booleano que indica si el token está restringido por sandbox.</li><li><strong><code>TokenAppContainerSid</code> (<code>TOKEN_INFORMATION_CLASS = 31</code>):</strong> Retorna el SID de paquete exclusivo (<code>S-1-15-2-...</code>) asignado a la aplicación.</li><li><strong><code>TokenCapabilities</code> (<code>TOKEN_INFORMATION_CLASS = 30</code>):</strong> Apunta a una estructura <code>TOKEN_GROUPS</code> que contiene el arreglo de SIDs de permisos o <em>Capabilities</em> asignados explícitamente (<code>SID_AND_ATTRIBUTES</code> con atributos <code>SE_GROUP_ENABLED</code>).</li></ol>
+<pre><code class="lenguaje-text">Estructura de Seguridad del Token en WinDbg:
+dt nt!_TOKEN &lt;Direccion_Token&gt;
+   +0x0a0 UserAndGroups    : Ptr64 _SID_AND_ATTRIBUTES
+   +0x100 RestrictedSids   : Ptr64 _SID_AND_ATTRIBUTES
+   +0x118 Capabilities     : Ptr64 _SID_AND_ATTRIBUTES  &lt;--- Arreglo de SIDs de permisos
+   +0x120 TokenFlags       : Uint4                      &lt;--- Bit 0x20 activo en LPAC</code></pre>
+<h4 id="sids-de-capacidades-conocidos-well-known-capability-sids">SIDs de Capacidades Conocidos (Well-Known Capability SIDs)</h4>
+<p>En ingeniería inversa de aplicaciones UWP/WinRT y binarios empaquetados, el analista debe contrastar los SIDs del token contra la tabla de permisos del manifiesto <code>AppxManifest.xml</code>:</p>
+<div class="tabla"><table>
+<thead><tr>
+<th>SID de Capacidad</th>
+<th>Identificador Declarativo</th>
+<th>Privilegio Otorgado al Proceso</th>
+</tr></thead><tbody>
+<tr><td><code>S-1-15-3-1</code></td><td><code>internetClient</code></td><td>Acceso a conexiones de red salientes hacia Internet.</td></tr>
+<tr><td><code>S-1-15-3-2</code></td><td><code>internetClientServer</code></td><td>Servidor y cliente en redes públicas (abrir puertos de escucha).</td></tr>
+<tr><td><code>S-1-15-3-3</code></td><td><code>privateNetworkClientServer</code></td><td>Comunicación entrante/saliente en redes domésticas o corporativas.</td></tr>
+<tr><td><code>S-1-15-3-4</code></td><td><code>picturesLibrary</code></td><td>Acceso al directorio de imágenes del usuario.</td></tr>
+<tr><td><code>S-1-15-3-5</code></td><td><code>videosLibrary</code></td><td>Acceso al directorio de videos del usuario.</td></tr>
+<tr><td><code>S-1-15-3-7</code></td><td><code>documentsLibrary</code></td><td>Acceso al almacén general de documentos (restringido).</td></tr>
+</tbody></table></div>
+<h4 id="diferencia-crítica-appcontainer-estándar-vs-lpac">Diferencia Crítica: AppContainer Estándar vs. LPAC</h4>
+<ul><li><strong>AppContainer Estándar:</strong> El proceso tiene denegado el acceso a la mayor parte del sistema de archivos y registro, pero <strong>conserva acceso de lectura implícito</strong> a objetos que tengan en su lista de control de acceso discrecional (DACL) el SID de grupo bien conocido <code>ALL APPLICATION PACKAGES</code> (<code>S-1-15-2-1</code>).</li><li><strong>LPAC (Less Privileged AppContainer):</strong> Diseñado para componentes con alto riesgo de explotación (como los motores de renderizado de Edge o WebView2). Un token LPAC posee activo el flag <code>0x20</code> en <code>TokenFlags</code>. Para un LPAC, el kernel <strong>ignora el SID <code>ALL APPLICATION PACKAGES</code></strong>: solo permite acceder a recursos que tengan explícitamente concedido el SID <code>ALL RESTRICTED APPLICATION PACKAGES</code> (<code>S-1-15-2-2</code>) y los SIDs de capacidades específicos declarados en su lista.</li></ul>
+<h4 id="auditoría-dinámica-del-token">Auditoría Dinámica del Token</h4>
+<p>Para inspeccionar las capacidades de un proceso desde WinDbg:</p>
+<pre><code class="lenguaje-text">!process &lt;PID&gt; 1
+!token &lt;TokenAddress&gt;
+dt nt!_TOKEN &lt;TokenAddress&gt; Capabilities</code></pre>
+<p>En modo usuario, la función <code>GetTokenInformation</code> con la clase <code>TokenCapabilities</code> devuelve el listado completo de SIDs para comprobar si un proceso confinado intenta eludir sus fronteras de red o almacenamiento.</p>
 <hr>
 <h2 id="3-reversing-de-net-native-aot-y-jit-hooking-por-método">3. Reversing de .NET Native AOT y JIT Hooking por Método</h2>
 <h3 id="net-native-aot">.NET Native AOT</h3>

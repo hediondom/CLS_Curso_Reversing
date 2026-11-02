@@ -70,7 +70,24 @@
 <ul><li>Su handle de registro global está en <code>nt!EtwThreatIntProvRegHandle</code>.</li><li>Apunta a una estructura <code>_ETW_REG_ENTRY</code>. En el offset <strong><code>+0x10</code></strong> reside el puntero a <code>_ETW_GUID_ENTRY</code>.</li><li>Dentro de <code>_ETW_GUID_ENTRY</code>, el campo <code>ProviderEnableInfo</code> define si el proveedor está activo (<code>EnableMask != 0</code>) y a qué nivel de detalle registra eventos de kernel.</li></ul>
 <p>El script completo para auditar estos tres vectores de una sola vez se encuentra en <code>plantillas_codigo/auditar_callbacks.wdbg</code>.</p>
 <hr>
-<h2 id="3-condiciones-de-carrera-y-reversing-de-mdls-en-drivers-kmdf">3. Condiciones de Carrera y Reversing de MDLs en Drivers KMDF</h2>
+<h2 id="3-mecánicas-byovd-bring-your-own-vulnerable-driver-y-detección-defensiva">3. Mecánicas BYOVD (Bring Your Own Vulnerable Driver) y Detección Defensiva</h2>
+<p>Una de las tácticas más críticas en el análisis de amenazas de bajo nivel es el vector <strong>BYOVD</strong> (<em>Bring Your Own Vulnerable Driver</em>).</p>
+<h3 id="por-qué-ocurre-byovd">Por qué ocurre BYOVD</h3>
+<p>En sistemas Windows modernos de 64 bits con Secure Boot activo, el kernel exige que todo driver esté firmado digitalmente (<em>Driver Signature Enforcement - DSE</em>). Para eludir esta restricción sin explotar una vulnerabilidad en <code>ntoskrnl.exe</code>, los adversarios cargan legítimamente un <strong>driver antiguo o comercial firmado por un fabricante legítimo</strong> (fabricantes de placas madre, utilidades de diagnóstico, software antivirus antiguo o herramientas de overclocking) que contiene una vulnerabilidad de diseño:</p>
+<ul><li>Primitivas de lectura y escritura física o virtual arbitraria (<code>MmMapIoSpace</code>, <code>ZwMapViewOfSection</code>).</li><li>Despacho de IOCTLs que exponen instrucciones privilegiadas como <code>wrmsr</code> o lectura/escritura en puertos de E/S (<code>__inbyte</code>, <code>__outbyte</code>).</li><li>Copia de memoria sin validación de buffers mediante <code>RtlCopyMemory</code>.</li></ul>
+<p>Una vez cargado el driver firmado con éxito bajo la política de DSE, el proceso en espacio de usuario envía IOCTLs hacia el driver vulnerable para alterar estructuras de seguridad del kernel (como el token del proceso en <code>EPROCESS-&gt;Token</code> para elevar privilegios a SYSTEM, desarmar los ganchos de EDR en <code>PspCreateProcessNotifyRoutine</code> o limpiar los registros de telemetría de <code>ETWti</code>).</p>
+<h3 id="detección-defensiva-la-tabla-de-caché-de-drivers-nt-piddbcachetable">Detección Defensiva: La Tabla de Caché de Drivers <code>nt!PiDDBCacheTable</code></h3>
+<p>Para mitigar la carga de drivers vulnerables conocidos, Microsoft implementa dos líneas de defensa:</p>
+<ol><li><strong>Microsoft Vulnerable Driver Blocklist (WDAC):</strong> Una lista denegada de hashes SHA-256 de archivos y certificados de firma revocados que el kernel comprueba al invocar <code>NtLoadDriver</code>.</li><li><strong>Estructura Interna <code>nt!PiDDBCacheTable</code>:</strong> El cargador de drivers de Windows mantiene una tabla hash interna en memoria protegida por el recurso <code>nt!PiDDBLock</code>. Cada vez que un driver <code>.sys</code> se carga en el sistema, Windows calcula un hash de su nombre y timestamp y lo inserta en <code>PiDDBCacheTable</code>.</li></ol>
+<ul><li><strong>Técnica de evasión conocida:</strong> Protectores o utilidades de carga ilícita intentan localizar <code>nt!PiDDBCacheTable</code> y eliminar su entrada (<code>RtlDeleteElementGenericTableAvl</code>) para borrar la evidencia de carga.</li><li><strong>Auditoría Defensiva en WinDbg:</strong> Un analista de respuesta a incidentes (DFIR) o auditor de kernel puede examinar <code>PiDDBCacheTable</code> para verificar qué drivers fueron inicializados en el sistema, contrastando sus timestamps contra la lista oficial de drivers vulnerables conocidos:</li></ul>
+<pre><code class="lenguaje-text">$$ Localizar la tabla de caché de drivers y su lock en WinDbg KDNET
+x nt!PiDDBCacheTable
+x nt!PiDDBLock
+
+$$ Inspeccionar los primeros elementos de la tabla genérica AVL
+dt nt!_RTL_AVL_TABLE poi(nt!PiDDBCacheTable)</code></pre>
+<hr>
+<h2 id="4-condiciones-de-carrera-y-reversing-de-mdls-en-drivers-kmdf">4. Condiciones de Carrera y Reversing de MDLs en Drivers KMDF</h2>
 <p>En la Lección 6.4 se abordó la estructura de despacho de IOCTLs en KMDF. Sin embargo, en drivers reales el análisis de seguridad debe verificar el manejo de <strong>MDLs (Memory Descriptor Lists)</strong> y la sincronización asíncrona.</p>
 <h3 id="el-peligro-del-double-fetch-en-method-in-direct-method-out-direct">El Peligro del <em>Double Fetch</em> en <code>METHOD_IN_DIRECT</code> / <code>METHOD_OUT_DIRECT</code></h3>
 <p>Cuando un driver utiliza E/S directa (<code>METHOD_IN_DIRECT</code> o <code>METHOD_OUT_DIRECT</code>):</p>

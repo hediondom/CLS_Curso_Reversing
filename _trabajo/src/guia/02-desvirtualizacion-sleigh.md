@@ -38,7 +38,76 @@ loc_handler_xor:
 
 ---
 
-## 2. Lifting Simbólico con Z3 para Resolver Expresiones MBA
+## 2. Pipeline Completo de Desvirtualización: Tracing, Taint y Lifting con Triton / Z3
+
+El desmontaje de una máquina virtual compleja se estructura en un pipeline industrial de tres etapas:
+
+```text
+[ Binario VM ] 
+      │
+      ▼ (Etapa 1: Tracing Dinámico con Frida Stalker / DynamoRIO)
+Secuencia de Handlers e Instrucciones Ejecutadas (RIP Trace)
+      │
+      ▼ (Etapa 2: Dynamic Taint Analysis y Lifting a AST con Triton)
+Árbol de Sintaxis Abstracta (AST) de la Semántica Virtual
+      │
+      ▼ (Etapa 3: Simplificación de Identidades MBA y Resolución SMT con Z3)
+Fórmula Aritmética Canónica Colapsada y Preimagen Despejada
+```
+
+### Etapa 1: Tracing Dinámico con Frida Stalker
+Para registrar la secuencia exacta de handlers ejecutados sin desarmar estáticamente toda la tabla de saltos, se utiliza **Frida Stalker** interceptando las transferencias indirectas de control:
+
+```javascript
+// trace_vm_handlers.js — Rastreo de handlers en ejecución
+Stalker.follow(Process.getCurrentThreadId(), {
+    events: { call: false, ret: false, exec: false, block: false, compile: true },
+    transform(iterator) {
+        let instruction = iterator.next();
+        do {
+            // Si la instrucción es un salto indirecto por tabla (jmp [r12 + rax*8])
+            if (instruction.mnemonic === "jmp" && instruction.opStr.includes("r12")) {
+                iterator.putCallout(function(context) {
+                    const opcode = context.rax.toInt32();
+                    const vip = context.rsi;
+                    console.log(`[VM Trace] VIP=${vip} -> Handler Opcode: ${opcode}`);
+                });
+            }
+            iterator.keep();
+        } while ((instruction = iterator.next()) !== null);
+    }
+});
+```
+
+### Etapa 2: Dynamic Taint Analysis y AST Simbólico con Triton (`solve_vm_triton.py`)
+Una vez capturada la secuencia, el framework **Triton** permite marcar la memoria de entrada del usuario como *contaminada* (`tainted`) y ejecutar simbólicamente las instrucciones de los handlers. Triton propaga la contaminación a través de los registros del procesador y genera automáticamente el AST simbólico simplificado, descartando el código muerto del dispatcher de la VM:
+
+```python
+# solve_vm_triton.py — Taint dinámico y lifting con Triton
+from triton import TritonContext, ARCH, MemoryAccess, CPUSIZE
+
+ctx = TritonContext(ARCH.X86_64)
+# 1. Contaminar el byte de entrada del usuario
+ctx.symbolizeMemory(MemoryAccess(INPUT_ADDR, CPUSIZE.BYTE), "user_input")
+ctx.setTaintMemory(MemoryAccess(INPUT_ADDR, CPUSIZE.BYTE), True)
+
+# 2. Emulación simbólica de la semántica de handlers
+# Triton resuelve automáticamente la contaminación sobre R13B (acumulador)
+# y construye el AST combinando las operaciones XOR, ADD y la identidad MBA:
+acc_ast = ctx.getSymbolicMemory(INPUT_ADDR).getAst()
+acc_ast = acc_ast ^ ctx.getAstContext().bv(0x23, 8)
+acc_ast = acc_ast + ctx.getAstContext().bv(0x07, 8)
+
+# Identidad MBA: (acc ^ 0x5A) + 2*(acc & 0x5A)
+y = ctx.getAstContext().bv(0x5A, 8)
+acc_ast = (acc_ast ^ y) + (ctx.getAstContext().bv(2, 8) * (acc_ast & y))
+
+# Restricción hacia la bifurcación de éxito (CMP 0x87)
+condicion_exito = (acc_ast == ctx.getAstContext().bv(0x87, 8))
+modelo = ctx.getModel(condicion_exito)
+```
+
+### Etapa 3: Lifting Directo a Z3 para Resolver Expresiones MBA
 
 Cuando la máquina virtual ejecuta operaciones aritmético-lógicas entrelazadas con identidades **Mixed Boolean-Arithmetic (MBA)**, el análisis estático se vuelve intratable manualmente. Por ejemplo, la identidad:
 

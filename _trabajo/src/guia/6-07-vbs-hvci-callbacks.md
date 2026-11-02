@@ -83,7 +83,37 @@ El script completo para auditar estos tres vectores de una sola vez se encuentra
 
 ---
 
-## 3. Condiciones de Carrera y Reversing de MDLs en Drivers KMDF
+## 3. Mecánicas BYOVD (Bring Your Own Vulnerable Driver) y Detección Defensiva
+
+Una de las tácticas más críticas en el análisis de amenazas de bajo nivel es el vector **BYOVD** (*Bring Your Own Vulnerable Driver*).
+
+### Por qué ocurre BYOVD
+En sistemas Windows modernos de 64 bits con Secure Boot activo, el kernel exige que todo driver esté firmado digitalmente (*Driver Signature Enforcement - DSE*). Para eludir esta restricción sin explotar una vulnerabilidad en `ntoskrnl.exe`, los adversarios cargan legítimamente un **driver antiguo o comercial firmado por un fabricante legítimo** (fabricantes de placas madre, utilidades de diagnóstico, software antivirus antiguo o herramientas de overclocking) que contiene una vulnerabilidad de diseño:
+- Primitivas de lectura y escritura física o virtual arbitraria (`MmMapIoSpace`, `ZwMapViewOfSection`).
+- Despacho de IOCTLs que exponen instrucciones privilegiadas como `wrmsr` o lectura/escritura en puertos de E/S (`__inbyte`, `__outbyte`).
+- Copia de memoria sin validación de buffers mediante `RtlCopyMemory`.
+
+Una vez cargado el driver firmado con éxito bajo la política de DSE, el proceso en espacio de usuario envía IOCTLs hacia el driver vulnerable para alterar estructuras de seguridad del kernel (como el token del proceso en `EPROCESS->Token` para elevar privilegios a SYSTEM, desarmar los ganchos de EDR en `PspCreateProcessNotifyRoutine` o limpiar los registros de telemetría de `ETWti`).
+
+### Detección Defensiva: La Tabla de Caché de Drivers `nt!PiDDBCacheTable`
+Para mitigar la carga de drivers vulnerables conocidos, Microsoft implementa dos líneas de defensa:
+1. **Microsoft Vulnerable Driver Blocklist (WDAC):** Una lista denegada de hashes SHA-256 de archivos y certificados de firma revocados que el kernel comprueba al invocar `NtLoadDriver`.
+2. **Estructura Interna `nt!PiDDBCacheTable`:** El cargador de drivers de Windows mantiene una tabla hash interna en memoria protegida por el recurso `nt!PiDDBLock`. Cada vez que un driver `.sys` se carga en el sistema, Windows calcula un hash de su nombre y timestamp y lo inserta en `PiDDBCacheTable`.
+   - **Técnica de evasión conocida:** Protectores o utilidades de carga ilícita intentan localizar `nt!PiDDBCacheTable` y eliminar su entrada (`RtlDeleteElementGenericTableAvl`) para borrar la evidencia de carga.
+   - **Auditoría Defensiva en WinDbg:** Un analista de respuesta a incidentes (DFIR) o auditor de kernel puede examinar `PiDDBCacheTable` para verificar qué drivers fueron inicializados en el sistema, contrastando sus timestamps contra la lista oficial de drivers vulnerables conocidos:
+
+```text
+$$ Localizar la tabla de caché de drivers y su lock en WinDbg KDNET
+x nt!PiDDBCacheTable
+x nt!PiDDBLock
+
+$$ Inspeccionar los primeros elementos de la tabla genérica AVL
+dt nt!_RTL_AVL_TABLE poi(nt!PiDDBCacheTable)
+```
+
+---
+
+## 4. Condiciones de Carrera y Reversing de MDLs en Drivers KMDF
 
 En la Lección 6.4 se abordó la estructura de despacho de IOCTLs en KMDF. Sin embargo, en drivers reales el análisis de seguridad debe verificar el manejo de **MDLs (Memory Descriptor Lists)** y la sincronización asíncrona.
 

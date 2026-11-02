@@ -61,8 +61,50 @@ HSTRING_HEADER (24 bytes en x64):
 
 Para activar una clase en WinRT, el binario invoca `combase.dll!RoActivateInstance` pasando el `HSTRING` del nombre de clase y recibiendo un puntero a `IInspectable`.
 
-### Sandboxing Moderno: AppContainer y LPAC
-Los procesos protegidos en Windows 11 ya no confían únicamente en el nivel de integridad (Low/Medium/High). Se ejecutan en un **AppContainer** o en un **LPAC** (*Less Privileged AppContainer*). Un token de AppContainer posee un SID de paquete (`PackageSid`) y una lista de permisos explícitos en `TokenCapabilities` (por ejemplo, `internetClient`, `privateNetworkClientServer`). Si un binario intenta acceder a recursos fuera de su directorio de datos o de sus capacidades asignadas, el kernel bloquea la operación sin registrar error en el proceso llamador.
+### Sandboxing Moderno: AppContainer y LPAC con Capacidades SID
+
+Los procesos protegidos en Windows 11 (aplicaciones MSIX, procesos de pestañas de navegadores, servicios de sistema aislados) ya no confían únicamente en el modelo clásico de niveles de integridad de Windows Vista (Low/Medium/High). En su lugar, el kernel de Windows confina el proceso dentro de un **AppContainer** o un **LPAC** (*Less Privileged AppContainer*).
+
+#### Anatomía Interna del Token de AppContainer
+En el espacio de kernel, la estructura `_TOKEN` (`nt!_TOKEN`) contiene campos específicos que definen el aislamiento del contenedor:
+
+1. **`TokenIsAppContainer` (`TOKEN_INFORMATION_CLASS = 29`):** Booleano que indica si el token está restringido por sandbox.
+2. **`TokenAppContainerSid` (`TOKEN_INFORMATION_CLASS = 31`):** Retorna el SID de paquete exclusivo (`S-1-15-2-...`) asignado a la aplicación.
+3. **`TokenCapabilities` (`TOKEN_INFORMATION_CLASS = 30`):** Apunta a una estructura `TOKEN_GROUPS` que contiene el arreglo de SIDs de permisos o *Capabilities* asignados explícitamente (`SID_AND_ATTRIBUTES` con atributos `SE_GROUP_ENABLED`).
+
+```text
+Estructura de Seguridad del Token en WinDbg:
+dt nt!_TOKEN <Direccion_Token>
+   +0x0a0 UserAndGroups    : Ptr64 _SID_AND_ATTRIBUTES
+   +0x100 RestrictedSids   : Ptr64 _SID_AND_ATTRIBUTES
+   +0x118 Capabilities     : Ptr64 _SID_AND_ATTRIBUTES  <--- Arreglo de SIDs de permisos
+   +0x120 TokenFlags       : Uint4                      <--- Bit 0x20 activo en LPAC
+```
+
+#### SIDs de Capacidades Conocidos (Well-Known Capability SIDs)
+En ingeniería inversa de aplicaciones UWP/WinRT y binarios empaquetados, el analista debe contrastar los SIDs del token contra la tabla de permisos del manifiesto `AppxManifest.xml`:
+
+| SID de Capacidad | Identificador Declarativo | Privilegio Otorgado al Proceso |
+| :--- | :--- | :--- |
+| `S-1-15-3-1` | `internetClient` | Acceso a conexiones de red salientes hacia Internet. |
+| `S-1-15-3-2` | `internetClientServer` | Servidor y cliente en redes públicas (abrir puertos de escucha). |
+| `S-1-15-3-3` | `privateNetworkClientServer` | Comunicación entrante/saliente en redes domésticas o corporativas. |
+| `S-1-15-3-4` | `picturesLibrary` | Acceso al directorio de imágenes del usuario. |
+| `S-1-15-3-5` | `videosLibrary` | Acceso al directorio de videos del usuario. |
+| `S-1-15-3-7` | `documentsLibrary` | Acceso al almacén general de documentos (restringido). |
+
+#### Diferencia Crítica: AppContainer Estándar vs. LPAC
+- **AppContainer Estándar:** El proceso tiene denegado el acceso a la mayor parte del sistema de archivos y registro, pero **conserva acceso de lectura implícito** a objetos que tengan en su lista de control de acceso discrecional (DACL) el SID de grupo bien conocido `ALL APPLICATION PACKAGES` (`S-1-15-2-1`).
+- **LPAC (Less Privileged AppContainer):** Diseñado para componentes con alto riesgo de explotación (como los motores de renderizado de Edge o WebView2). Un token LPAC posee activo el flag `0x20` en `TokenFlags`. Para un LPAC, el kernel **ignora el SID `ALL APPLICATION PACKAGES`**: solo permite acceder a recursos que tengan explícitamente concedido el SID `ALL RESTRICTED APPLICATION PACKAGES` (`S-1-15-2-2`) y los SIDs de capacidades específicos declarados en su lista.
+
+#### Auditoría Dinámica del Token
+Para inspeccionar las capacidades de un proceso desde WinDbg:
+```text
+!process <PID> 1
+!token <TokenAddress>
+dt nt!_TOKEN <TokenAddress> Capabilities
+```
+En modo usuario, la función `GetTokenInformation` con la clase `TokenCapabilities` devuelve el listado completo de SIDs para comprobar si un proceso confinado intenta eludir sus fronteras de red o almacenamiento.
 
 ---
 

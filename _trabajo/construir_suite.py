@@ -819,6 +819,8 @@ def generar_pdf_completo():
         ("guia/2d-11-excepciones.html", "2D.11 Excepciones"),
         ("guia/2d-12-etw.html", "2D.12 ETW"),
         ("guia/2d-13-integrador.html", "2D.13 Integrador"),
+        ("guia/2d-14-win32k-shadow.html", "2D.14 Win32k y Shadow Table"),
+        ("guia/2d-15-uefi-boot-chain.html", "2D.15 Arranque temprano, UEFI y bootkits"),
         ("2d-hyperv.html", "Extensión optativa Hyper-V"),
     ]
 
@@ -1418,7 +1420,7 @@ def generar_tomos_y_separata(ctx):
     toc_t1.append('</ol>')
     toc_t1.append('<div class="etapa" style="margin-top:10pt; color:#555;">En el Tomo II (Ramas Especializadas)</div><ol>')
     toc_t1.append('<li><span>Etapa 6 · Kernel y drivers en Windows (6.1 a 6.7)</span><span class="toc-pag">ver Tomo II</span></li>')
-    toc_t1.append('<li><span>Rama 2D · Windows internals y Hyper-V (2D.1 a 2D.13)</span><span class="toc-pag">ver Tomo II</span></li>')
+    toc_t1.append('<li><span>Rama 2D · Windows internals y Hyper-V (2D.1 a 2D.15)</span><span class="toc-pag">ver Tomo II</span></li>')
     toc_t1.append('</ol></div></section>')
     partes_t1.append("".join(toc_t1))
 
@@ -1531,8 +1533,8 @@ VM con Windows x64 aislada, Visual Studio Developer Command Prompt (<code>cl.exe
 <section class="print-sec portada-pdf" id="portada">
 <p class="kicker">Ingeniería Inversa en Windows · Edición Libre y Abierta · Revisión 5.4 (Ampliada) · TOMO II DE II</p>
 <h1>Curso de reversing<br><span style="font-size: 20pt; font-weight: 600; color: #0b5f6b;">Tomo II · Ramas Especializadas: Kernel, Drivers y Windows Internals</span></h1>
-<p class="sub">Profundización avanzada en el sistema operativo Windows: arquitectura del kernel NT, drivers WDM/KMDF, IOCTLs, depuración kernel con WinDbg (KDNET), minifiltros, mitigaciones HVCI/VBS, objetos del ejecutivo, procesos/hilos, Registro, servicios, Task Scheduler, COM/DCOM, RPC, WMI, IPC, SEH/VEH/WER, ETW y Hyper-V.</p>
-<p class="sub"><strong>Contenido de este volumen (Tomo II):</strong> <strong>Etapa 6 completa (6.1 a 6.7)</strong> · <strong>Rama 2D completa (2D.1 a 2D.13 + Anexo Hyper-V)</strong>.</p>
+<p class="sub">Profundización avanzada en el sistema operativo Windows: arquitectura del kernel NT, drivers WDM/KMDF, IOCTLs, depuración kernel con WinDbg (KDNET), minifiltros, mitigaciones HVCI/VBS, objetos del ejecutivo, procesos/hilos, Registro, servicios, Task Scheduler, COM/DCOM, RPC, WMI, IPC, SEH/VEH/WER, ETW, Hyper-V, subsistema gráfico Win32k (KeServiceDescriptorTableShadow) y cadena de arranque UEFI/bootkits (bootmgfw.efi, winload.efi, LOADER_PARAMETER_BLOCK).</p>
+<p class="sub"><strong>Contenido de este volumen (Tomo II):</strong> <strong>Etapa 6 completa (6.1 a 6.7)</strong> · <strong>Rama 2D completa (2D.1 a 2D.15 + Anexo Hyper-V)</strong>.</p>
 <p class="sub"><strong>Requisitos previos y consulta rápida:</strong> Este tomo asume el dominio del tronco principal (Etapas 0 a 4 del <strong>Tomo I</strong>). Durante las prácticas con WinDbg, KMDF y estructuras del sistema, mantené abierta la <strong>Separata de Escritorio</strong> (especialmente la <em>Hoja 2: Offsets PEB/LDR</em> y la <em>Hoja 3: CTL_CODE, IRQL y comandos de WinDbg</em>).</p>
 <div class="aviso"><strong>Seguridad de laboratorio obligatoria.</strong> Toda práctica con drivers de kernel (<code>.sys</code>), <code>bcdedit /debug on</code>, Driver Verifier, servicios o mecanismos de persistencia debe realizarse exclusivamente dentro de una <strong>máquina virtual descartable y aislada</strong>, nunca en el equipo anfitrión.</div>
 </section>
@@ -1855,7 +1857,7 @@ def imprimir_resumen_suite(base_dir):
         ("Curso_Reversing_Windows.pdf", "Edición Unificada Completa (Rev. 5.4)"),
         ("Tomo_1_Tronco_y_Apoyo.pdf", "Tomo I: Tronco y Apoyo"),
         ("Tomo_1_Parte_A_pags_1-172.pdf", "Tomo I · Parte A (Fundamentos a Packers)"),
-        ("Tomo_1_Parte_B_pags_173-380.pdf", "Tomo I · Parte B (Windows Avanzado a Apoyo)"),
+        (sorted([f for f in os.listdir(base_dir) if f.startswith("Tomo_1_Parte_B_pags_173-") and f.endswith(".pdf")])[-1] if [f for f in os.listdir(base_dir) if f.startswith("Tomo_1_Parte_B_pags_173-") and f.endswith(".pdf")] else "Tomo_1_Parte_B.pdf", "Tomo I · Parte B (Windows Avanzado a Apoyo)"),
         ("Tomo_2_Kernel_e_Internals.pdf", "Tomo II: Kernel, Drivers e Internals"),
         ("Separata_Escritorio.pdf", "Separata de Escritorio (Cheat Sheets y Rutas)"),
     ]
