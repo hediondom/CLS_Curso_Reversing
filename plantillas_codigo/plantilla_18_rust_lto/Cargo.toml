@@ -1,0 +1,16 @@
+[package]
+name = "plantilla_18_rust_lto"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+
+# Configuración de compilación endurecida para producción (Hardened Release Profile)
+# Obra: Reversing en Windows — Tomo III (Módulo 1)
+[profile.release]
+opt-level = 3           # Máxima optimización de velocidad
+lto = "fat"             # Link-Time Optimization en todo el árbol de dependencias
+codegen-units = 1       # Una sola unidad de generación para habilitar inlining agresivo
+panic = "abort"         # Eliminar el sistema de desenrollado de excepciones (unwind SEH)
+strip = true            # Remover todos los símbolos de debug, tablas PDB y metadatos
+incremental = false
