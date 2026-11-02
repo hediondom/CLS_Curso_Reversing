@@ -83,21 +83,12 @@ kd&gt; dps poi(nt!KeServiceDescriptorTableShadow + 0x20) L20</code></pre>
 <h3 id="el-riesgo-de-seguridad-race-conditions-y-reentrancia">El Riesgo de Seguridad (Race Conditions y Reentrancia)</h3>
 <p>Durante el tiempo en que el control está en espacio de usuario a través de <code>KeUserModeCallback</code>, el proceso puede ejecutar código malicioso que destruya o libere la ventana o el objeto GDI (<code>DestroyWindow</code>) sobre el cual el kernel estaba operando. Cuando el control regresa a <code>win32kfull.sys</code>, si el driver asume que el objeto sigue existiendo en el puntero original sin revalidar su estado de bloqueo, se produce un fallo clásico de <strong>Use-After-Free (UAF)</strong> en espacio de kernel.</p>
 <hr>
-<h2 id="4-mitigaciones-modernas-win32k-lockdown">4. Mitigaciones Modernas: Win32k Lockdown</h2>
-<p>Para neutralizar esta inmensa superficie de ataque, Microsoft introdujo en Windows 10/11 la política <strong>Win32k System Call Disablement Policy</strong> (también conocida como <strong>Win32k Lockdown</strong>):</p>
-<ul><li>Mediante la API <code>SetProcessMitigationPolicy</code> con la clase <code>ProcessSystemCallDisablePolicy</code>, un proceso puede auto-despojarse permanentemente del derecho de invocar llamadas a la tabla sombra.</li><li>Procesos altamente expuestos a contenido no confiable (como los procesos de renderizado de Google Chrome, Microsoft Edge y sandboxes de visualización) activan esta mitigación. Si un exploit intenta invocar cualquier syscall gráfica (<code>0x1000+</code>), el despachador de kernel lanza inmediatamente una excepción de violación de acceso y termina el proceso.</li></ul>
-<h3 id="inspección-en-windbg">Inspección en WinDbg</h3>
-<pre><code class="lenguaje-text">$$ Inspeccionar si un proceso tiene deshabilitadas las llamadas a Win32k
-dt nt!_EPROCESS &lt;ProcessAddress&gt; MitigationFlags
-$$ El bit 0x04 (DisallowWin32kSystemCalls) indica que el proceso tiene Win32k bloqueado</code></pre>
-
-<hr>
-
-<h2 id="5-mitigacion-de-superficie-de-ataque-win32k-system-call-lockdown">5. Mitigación de Superficie de Ataque: Win32k System Call Lockdown</h2>
+<h2 id="4-mitigacion-de-superficie-de-ataque-win32k-system-call-lockdown">4. Mitigación de Superficie de Ataque: Win32k System Call Lockdown</h2>
 <p>Dado que el subsistema gráfico en modo kernel (<code>win32k.sys</code>, <code>win32kfull.sys</code> y <code>win32kbase.sys</code>) expone más de 1.100 syscalls en la <code>KeServiceDescriptorTableShadow</code> y ha concentrado históricamente el mayor volumen de vulnerabilidades de elevación de privilegios (EoP) utilizadas para escapar de sandboxes de navegadores, Windows 10/11 incorpora la política de mitigación de proceso <strong>Win32k System Call Disable Policy</strong> (conocida como <em>Win32k Lockdown</em>).</p>
+<p>Procesos altamente expuestos a contenido no confiable (como los procesos de renderizado de Google Chrome, Microsoft Edge y sandboxes de visualización) activan esta mitigación para auto-despojarse permanentemente del derecho de invocar llamadas a la tabla sombra. Si un exploit intenta invocar cualquier syscall gráfica (<code>0x1000+</code>), el despachador de kernel intercepta la transición y devuelve acceso denegado.</p>
 
-<h3 id="5-1-mecanismo-interno-en-kiconverttoguithread-y-eprocess">5.1. Mecanismo Interno en <code>KiConvertToGuiThread</code> y <code>_EPROCESS</code></h3>
-<p>Cuando un proceso habilita esta política mediante <code>SetProcessMitigationPolicy(ProcessSystemCallDisablePolicy, ...)</code> o al ser creado por un broker mediante el atributo <code>PROC_THREAD_ATTRIBUTE_MITIGATION_POLICY</code> con la bandera <code>PROCESS_CREATION_MITIGATION_POLICY_WIN32K_SYSTEM_CALL_DISABLE_ALWAYS_ON</code>, el kernel activa el bit <strong><code>DisableWin32kSystemCalls</code></strong> dentro del campo <code>MitigationFlags</code> de la estructura <code>nt!_EPROCESS</code>.</p>
+<h3 id="4-1-mecanismo-interno-en-kiconverttoguithread-y-eprocess">4.1. Mecanismo Interno en <code>KiConvertToGuiThread</code> y <code>_EPROCESS</code></h3>
+<p>Cuando un proceso habilita esta política mediante <code>SetProcessMitigationPolicy(ProcessSystemCallDisablePolicy, ...)</code> o al ser creado por un broker mediante el atributo <code>PROC_THREAD_ATTRIBUTE_MITIGATION_POLICY</code> con la bandera <code>PROCESS_CREATION_MITIGATION_POLICY_WIN32K_SYSTEM_CALL_DISABLE_ALWAYS_ON</code>, el kernel activa el bit <strong><code>DisableWin32kSystemCalls</code></strong> (bit <code>0x04</code>) dentro del campo <code>MitigationFlags</code> de la estructura <code>nt!_EPROCESS</code>.</p>
 <p>El bloqueo no ocurre parcheando la tabla SSDT Shadow, sino cortando de raíz la transición del hilo en <code>PsConvertToGuiThread</code> / <code>KiConvertToGuiThread</code>:</p>
 <ol>
   <li>Un hilo no-GUI (cuyo <code>KTHREAD-&gt;ServiceTable</code> apunta a <code>KeServiceDescriptorTable</code>) intenta invocar cualquier syscall del rango <code>0x1000..0x1FFF</code> (por ejemplo, <code>NtUserCreateWindowEx</code> o <code>NtGdiBitBlt</code>).</li>
@@ -119,7 +110,7 @@ BOOL EnableWin32kLockdown(void) {
     );
 }</code></pre>
 
-<h3 id="5-2-verificacion-en-windbg-de-la-mitigacion-en-procesos-sandbox">5.2. Verificación en WinDbg de la Mitigación en Procesos Sandbox</h3>
+<h3 id="4-2-verificacion-en-windbg-de-la-mitigacion-en-procesos-sandbox">4.2. Verificación en WinDbg de la Mitigación en Procesos Sandbox</h3>
 <p><em>Nota de entorno:</em> <code>Laboratorio verificado: no; requiere VM/toolchain</code>. En procesos de renderizado de navegadores basados en Chromium (<code>msedge.exe --type=renderer</code> o <code>chrome.exe</code>), la verificación del bit en la estructura <code>_EPROCESS</code> muestra:</p>
 
 <pre><code class="lenguaje-text">kd&gt; dt nt!_EPROCESS &lt;EPROCESS_RENDERER&gt; MitigationFlagsValues.DisableWin32kSystemCalls

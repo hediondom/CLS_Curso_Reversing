@@ -308,7 +308,8 @@ figure img { cursor: zoom-in; }
   body { background: #fff; font-size: 11pt; }
   main { max-width: none; padding: 0; }
   a { color: #000; text-decoration: none; }
-  pre { white-space: pre-wrap; }
+  pre { white-space: pre-wrap; color: #111111 !important; -webkit-text-fill-color: #111111 !important; background: #f6f8fa !important; border: 1px solid #d0d7de !important; }
+  code { color: #111111 !important; -webkit-text-fill-color: #111111 !important; }
   .callout, .gate, .tarjeta { break-inside: avoid; }
   h2 { break-after: avoid; }
 }

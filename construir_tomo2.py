@@ -87,6 +87,9 @@ for rel, _ in LECCIONES_2D:
     mapa[rel] = ancla(rel)
     mapa[os.path.basename(rel)] = ancla(rel)
 
+mapa["2d-hyperv.html"] = ancla("guia/2d-16-hyper-v.html")
+mapa["guia/2d-hyperv.html"] = ancla("guia/2d-16-hyper-v.html")
+
 mapa["ERRATAS_TOMO_II.md"] = "tomo2-anexo-erratas"
 mapa["PLAN_DE_AMPLIACION.md"] = "tomo2-anexo-plan"
 
@@ -154,7 +157,29 @@ main { max-width: none; padding: 0; }
 .print-sec h1 { font-size: 20pt; margin-top: 0; }
 .print-sec h2 { font-size: 13pt; margin-top: 1.4em; }
 .print-sec h3 { font-size: 11.5pt; }
-.print-sec pre { font-size: 8.3pt; white-space: pre-wrap; break-inside: avoid; page-break-inside: avoid; }
+.print-sec pre, .print-sec code, .print-sec pre code {
+  color: #111111 !important;
+  -webkit-text-fill-color: #111111 !important;
+}
+.print-sec pre {
+  font-size: 8.3pt;
+  white-space: pre-wrap;
+  break-inside: avoid;
+  page-break-inside: avoid;
+  background-color: #f6f8fa !important;
+  border: 1px solid #d0d7de !important;
+  border-radius: 4px;
+  padding: 6px 10px;
+}
+.print-sec code {
+  font-family: "Cascadia Code", "Consolas", monospace !important;
+}
+.print-sec :not(pre) > code {
+  background-color: #f0f2f5 !important;
+  padding: 1px 4px;
+  border-radius: 3px;
+  border: 1px solid #e1e4e8;
+}
 .print-sec pre.arbol-triage { font-size: 6.5pt; line-height: 1.17; padding: 6px 10px; margin: 4px 0; }
 .print-sec table { font-size: 8.6pt; width: 100%; table-layout: auto; word-wrap: break-word; overflow-wrap: break-word; word-break: normal; }
 .print-sec th, .print-sec td { overflow-wrap: break-word; word-break: normal; hyphens: none; }

@@ -24,7 +24,7 @@
 
     <div class="lesson-breadcrumb">Tomo II · Módulo 2D: Internals Avanzados y Mitigaciones de Plataforma · Lección 2D-17</div>
 
-    <h1>2D-17 · Virtualization-Based Security (VBS) Profundo: VTL 1, Secure Kernel (`securekernel.exe`), HVCI y Trustlets (IUM)</h1>
+    <h1>2D-17 · Virtualization-Based Security (VBS) Profundo: VTL 1, Secure Kernel (<code>securekernel.exe</code>), HVCI y Trustlets (IUM)</h1>
 
     <div class="meta-box">
 
@@ -96,7 +96,7 @@
 
       <p>
 
-        El aislamiento entre VTL 0 y VTL 1 no depende de las tablas de páginas del sistema operativo (`CR3` / `PML4`), ya que `ntoskrnl.exe` en VTL 0 tiene control total sobre su propio `CR3`. En cambio, el hipervisor mantiene **dos conjuntos independientes de tablas SLAT** (<em>Second Level Address Translation</em>: **EPT** en Intel, **NPT** en AMD). Las páginas físicas asignadas a VTL 1 (`securekernel.exe`, `skci.dll` y procesos IUM) tienen sus entradas marcadas como **No Presentes (`---`)** en la tabla EPT de VTL 0. Si un rootkit en Ring 0 (VTL 0) intenta mapear la dirección física (SPA/GPA) de VTL 1 mediante `MmMapIoSpace` o construyendo una PTE manual, la CPU genera inmediatamente una **EPT Violation (`VMEXIT`)** interceptada por Hyper-V, bloqueando el acceso.
+        El aislamiento entre VTL 0 y VTL 1 no depende de las tablas de páginas del sistema operativo (<code>CR3</code> / <code>PML4</code>), ya que <code>ntoskrnl.exe</code> en VTL 0 tiene control total sobre su propio <code>CR3</code>. En cambio, el hipervisor mantiene <strong>dos conjuntos independientes de tablas SLAT</strong> (<em>Second Level Address Translation</em>: <strong>EPT</strong> en Intel, <strong>NPT</strong> en AMD). Las páginas físicas asignadas a VTL 1 (<code>securekernel.exe</code>, <code>skci.dll</code> y procesos IUM) tienen sus entradas marcadas como <strong>No Presentes (<code>---</code>)</strong> en la tabla EPT de VTL 0. Si un rootkit en Ring 0 (VTL 0) intenta mapear la dirección física (SPA/GPA) de VTL 1 mediante <code>MmMapIoSpace</code> o construyendo una PTE manual, la CPU genera inmediatamente una <strong>EPT Violation (<code>VMEXIT</code>)</strong> interceptada por Hyper-V, bloqueando el acceso.
 
       </p>
 
@@ -106,7 +106,7 @@
 
     <section class="theory-block">
 
-      <h2>2. El Secure Kernel (`securekernel.exe`) y el Puente de Transición VTL</h2>
+      <h2>2. El Secure Kernel (<code>securekernel.exe</code>) y el Puente de Transición VTL</h2>
 
       <p>
 
@@ -116,7 +116,7 @@
 
 
 
-      <h3>2.1. Anatomía de una Transición VTL 0 → VTL 1 (`VtlCall`)</h3>
+      <h3>2.1. Anatomía de una Transición VTL 0 → VTL 1 (<code>VtlCall</code>)</h3>
 
       <p>
 
@@ -128,11 +128,11 @@
 
         <li><strong>Empaquetado en VTL 0:</strong> <code>ntoskrnl.exe</code> invoca <code>nt!VslpEnterIumSecureMode</code> rellenando un bloque de transferencia (<em>Secure Call Parameter Block</em>) con el código de operación (<code>SecureServiceId</code>) y los argumentos.</li>
 
-        <li><strong>Hiperllamada (`HvCallVtlCall`):</strong> Se invoca la rutina de la página de hiperllamadas (<code>nt!HvcallCodeVa</code>) que ejecuta la instrucción <code>vmcall</code> (Intel) o <code>vmmcall</code> (AMD) con el código de hiperllamada <code>HvCallVtlCall (0x0011)</code>.</li>
+        <li><strong>Hiperllamada (<code>HvCallVtlCall</code>):</strong> Se invoca la rutina de la página de hiperllamadas (<code>nt!HvcallCodeVa</code>) que ejecuta la instrucción <code>vmcall</code> (Intel) o <code>vmmcall</code> (AMD) con el código de hiperllamada <code>HvCallVtlCall (0x0011)</code>.</li>
 
-        <li><strong>Conmutación en el Hipervisor (`hvix64.exe`):</strong> Hyper-V intercepta el <code>VMEXIT</code>, guarda el contexto de registros de VTL 0 (incluyendo `RIP`, `RSP`, `CR3` y MSRs en la estructura del procesador virtual), conmuta el puntero EPT (`EPTP`) del VMCS hacia la tabla EPT de VTL 1 y reanuda la ejecución (`VMRESUME`) en el punto de entrada registrado de VTL 1 (`securekernel!SkKiVtlCall`).</li>
+        <li><strong>Conmutación en el Hipervisor (<code>hvix64.exe</code>):</strong> Hyper-V intercepta el <code>VMEXIT</code>, guarda el contexto de registros de VTL 0 (incluyendo <code>RIP</code>, <code>RSP</code>, <code>CR3</code> y MSRs en la estructura del procesador virtual), conmuta el puntero EPT (<code>EPTP</code>) del VMCS hacia la tabla EPT de VTL 1 y reanuda la ejecución (<code>VMRESUME</code>) en el punto de entrada registrado de VTL 1 (<code>securekernel!SkKiVtlCall</code>).</li>
 
-        <li><strong>Retorno a VTL 0 (`HvCallVtlReturn`):</strong> Una vez completada la operación en `securekernel.exe`, VTL 1 invoca `HvCallVtlReturn (0x0012)`, restaurando el contexto y la tabla EPT de VTL 0.</li>
+        <li><strong>Retorno a VTL 0 (<code>HvCallVtlReturn</code>):</strong> Una vez completada la operación en <code>securekernel.exe</code>, VTL 1 invoca <code>HvCallVtlReturn (0x0012)</code>, restaurando el contexto y la tabla EPT de VTL 0.</li>
 
       </ol>
 
@@ -166,7 +166,7 @@
 
             <th>Estado de la Página Física</th>
 
-            <th>Permisos en Tabla de Páginas de VTL 0 (`PTE`)</th>
+            <th>Permisos en Tabla de Páginas de VTL 0 (<code>PTE</code>)</th>
 
             <th>Permisos en Tabla SLAT / EPT de VTL 0</th>
 
@@ -182,23 +182,23 @@
 
             <td>Datos del Kernel (<code>NonPagedPoolNx</code>, Stack, <code>.data</code>)</td>
 
-            <td><code>RW-</code> (`NX = 1`, `Write = 1`)</td>
+            <td><code>RW-</code> (<code>NX = 1</code>, <code>Write = 1</code>)</td>
 
-            <td><code>RW-</code> (`EPT_READ | EPT_WRITE`)</td>
+            <td><code>RW-</code> (<code>EPT_READ | EPT_WRITE</code>)</td>
 
-            <td>Incluso si un atacante en Ring 0 modifica la PTE en VTL 0 para poner `NX = 0` e intenta saltar a su shellcode en el Pool, el procesador sufre un `EPT Violation` porque la tabla EPT del hipervisor carece del permiso `EPT_EXECUTE`.</td>
+            <td>Incluso si un atacante en Ring 0 modifica la PTE en VTL 0 para poner <code>NX = 0</code> e intenta saltar a su shellcode en el Pool, el procesador sufre un <code>EPT Violation</code> porque la tabla EPT del hipervisor carece del permiso <code>EPT_EXECUTE</code>.</td>
 
           </tr>
 
           <tr>
 
-            <td>Código de Kernel Verificado (`.text` de `ntoskrnl.exe` y drivers)</td>
+            <td>Código de Kernel Verificado (<code>.text</code> de <code>ntoskrnl.exe</code> y drivers)</td>
 
-            <td><code>R-X</code> (`NX = 0`, `Write = 0`)</td>
+            <td><code>R-X</code> (<code>NX = 0</code>, <code>Write = 0</code>)</td>
 
-            <td><code>R-X</code> (`EPT_READ | EPT_EXECUTE`)</td>
+            <td><code>R-X</code> (<code>EPT_READ | EPT_EXECUTE</code>)</td>
 
-            <td>Si un rootkit desactiva el bit `WP` (`CR0.WP = 0`) o remapea la página física mediante una nueva MDL/PTE con permiso de escritura para instalar un *inline hook* en `ntoskrnl.exe`, el intento de escritura falla en el hardware por ausencia de `EPT_WRITE`.</td>
+            <td>Si un rootkit desactiva el bit <code>WP</code> (<code>CR0.WP = 0</code>) o remapea la página física mediante una nueva MDL/PTE con permiso de escritura para instalar un *inline hook* en <code>ntoskrnl.exe</code>, el intento de escritura falla en el hardware por ausencia de <code>EPT_WRITE</code>.</td>
 
           </tr>
 
@@ -208,11 +208,11 @@
 
 
 
-      <h3>3.1. Flujo de Validación de una Página Ejecutable (`VslVerifyPage`)</h3>
+      <h3>3.1. Flujo de Validación de una Página Ejecutable (<code>VslVerifyPage</code>)</h3>
 
       <p>
 
-        Cuando <code>ntoskrnl.exe</code> carga un nuevo driver en VTL 0, <code>ci.dll</code> no puede otorgar permisos de ejecución por sí mismo. En su lugar, realiza una llamada VTL hacia <code>skci.dll</code> (`SkciValidateImagePages`). <code>skci.dll</code> mapea las páginas físicas de la imagen en VTL 1, revoca temporalmente el permiso de escritura de VTL 0 sobre dichas páginas en el EPT (para impedir condiciones de carrera TOCTOU desde VTL 0), calcula el hash SHA-256 de la página comparándolo con el catálogo firmado o la tabla de hashes del certificado PE, y solo si es válido solicita a Hyper-V (`HvModifySparseGpaPageHostVisibility` / `HvCallModifyVtlProtectionMask`) que active el bit `EPT_EXECUTE` manteniendo `EPT_WRITE = 0`.
+        Cuando <code>ntoskrnl.exe</code> carga un nuevo driver en VTL 0, <code>ci.dll</code> no puede otorgar permisos de ejecución por sí mismo. En su lugar, realiza una llamada VTL hacia <code>skci.dll</code> (<code>SkciValidateImagePages</code>). <code>skci.dll</code> mapea las páginas físicas de la imagen en VTL 1, revoca temporalmente el permiso de escritura de VTL 0 sobre dichas páginas en el EPT (para impedir condiciones de carrera TOCTOU desde VTL 0), calcula el hash SHA-256 de la página comparándolo con el catálogo firmado o la tabla de hashes del certificado PE, y solo si es válido solicita a Hyper-V (<code>HvModifySparseGpaPageHostVisibility</code> / <code>HvCallModifyVtlProtectionMask</code>) que active el bit <code>EPT_EXECUTE</code> manteniendo <code>EPT_WRITE = 0</code>.
 
       </p>
 
@@ -222,7 +222,7 @@
 
     <section class="theory-block">
 
-      <h2>4. Isolated User Mode (IUM) y Credential Guard (`lsaiso.exe`)</h2>
+      <h2>4. Isolated User Mode (IUM) y Credential Guard (<code>lsaiso.exe</code>)</h2>
 
       <p>
 
@@ -232,7 +232,7 @@
 
       <ul>
 
-        <li>Un contenedor objeto <code>_EPROCESS</code> en VTL 0 marcado con el bit <code>MinimalProcess = 1</code> (sin páginas de usuario legibles en VTL 0, sirviendo únicamente para que el planificador de hilos de `ntoskrnl.exe` pueda asignar tiempo de CPU a sus hilos `_ETHREAD`).</li>
+        <li>Un contenedor objeto <code>_EPROCESS</code> en VTL 0 marcado con el bit <code>MinimalProcess = 1</code> (sin páginas de usuario legibles en VTL 0, sirviendo únicamente para que el planificador de hilos de <code>ntoskrnl.exe</code> pueda asignar tiempo de CPU a sus hilos <code>_ETHREAD</code>).</li>
 
         <li>Una estructura de proceso seguro (<code>_SKPROCESS</code>) dentro de <code>securekernel.exe</code> en VTL 1, cuyas páginas de código y pila residen exclusivamente en memoria física protegida por la tabla EPT de VTL 1.</li>
 
@@ -240,7 +240,7 @@
 
       <p>
 
-        El caso de uso emblemático es <strong>Credential Guard (`lsaiso.exe`)</strong>. Cuando un usuario inicia sesión, <code>lsass.exe</code> (en VTL 0) nunca almacena en texto claro el hash NTLM ni las claves de largo plazo de Kerberos en su propio heap; en su lugar, los envía por un canal RPC/ALPC inter-VTL hacia el Trustlet <code>lsaiso.exe</code> (en VTL 1). Si un atacante con privilegios `SYSTEM` o acceso de driver en VTL 0 vuelca la memoria de `lsass.exe` con Mimikatz o `MiniDumpWriteDump`, únicamente obtiene <em>blobs</em> cifrados cuya clave maestra reside exclusivamente dentro de `securekernel.exe` / `lsaiso.exe` en VTL 1.
+        El caso de uso emblemático es <strong>Credential Guard (<code>lsaiso.exe</code>)</strong>. Cuando un usuario inicia sesión, <code>lsass.exe</code> (en VTL 0) nunca almacena en texto claro el hash NTLM ni las claves de largo plazo de Kerberos en su propio heap; en su lugar, los envía por un canal RPC/ALPC inter-VTL hacia el Trustlet <code>lsaiso.exe</code> (en VTL 1). Si un atacante con privilegios <code>SYSTEM</code> o acceso de driver en VTL 0 vuelca la memoria de <code>lsass.exe</code> con Mimikatz o <code>MiniDumpWriteDump</code>, únicamente obtiene <em>blobs</em> cifrados cuya clave maestra reside exclusivamente dentro de <code>securekernel.exe</code> / <code>lsaiso.exe</code> en VTL 1.
 
       </p>
 
@@ -254,13 +254,13 @@
 
       <div class="warning-box">
 
-        <strong>Declaración de Entorno:</strong> <code>Laboratorio verificado: no; requiere VM/toolchain</code>. Requiere una VM con virtualización anidada habilitada (`Set-VMProcessor -VMName "LabWin11" -ExposeVirtualizationExtensions $true`), VBS/HVCI activos en el registro (`EnableVirtualizationBasedSecurity = 1`) y depurador de kernel conectado a VTL 0.
+        <strong>Declaración de Entorno:</strong> <code>Laboratorio verificado: no; requiere VM/toolchain</code>. Requiere una VM con virtualización anidada habilitada (<code>Set-VMProcessor -VMName "LabWin11" -ExposeVirtualizationExtensions $true</code>), VBS/HVCI activos en el registro (<code>EnableVirtualizationBasedSecurity = 1</code>) y depurador de kernel conectado a VTL 0.
 
       </div>
 
 
 
-      <h3>Paso 1: Verificación del Estado Global de VSM/VBS y Hiperllamadas en `ntoskrnl.exe`</h3>
+      <h3>Paso 1: Verificación del Estado Global de VSM/VBS y Hiperllamadas en <code>ntoskrnl.exe</code></h3>
 
       <pre class="code-block"><code>kd&gt; ? poi(nt!VslVsmEnabled) &amp; 0xff
 
@@ -290,11 +290,11 @@ fffff802`4142108e c3              ret</code></pre>
 
 
 
-      <h3>Paso 2: Inspección del Proceso Trustlet `LsaIso.exe` en VTL 0</h3>
+      <h3>Paso 2: Inspección del Proceso Trustlet <code>LsaIso.exe</code> en VTL 0</h3>
 
       <p>
 
-        Al examinar el objeto <code>_EPROCESS</code> de <code>LsaIso.exe</code> desde un depurador en VTL 0, observaremos que sus banderas reflejan un proceso IUM (<code>SecureProcess</code>) y que la lectura de su espacio de direcciones de usuario devuelve errores de acceso (`???`) debido a la protección EPT de VTL 1:
+        Al examinar el objeto <code>_EPROCESS</code> de <code>LsaIso.exe</code> desde un depurador en VTL 0, observaremos que sus banderas reflejan un proceso IUM (<code>SecureProcess</code>) y que la lectura de su espacio de direcciones de usuario devuelve errores de acceso (<code>???</code>) debido a la protección EPT de VTL 1:
 
       </p>
 
