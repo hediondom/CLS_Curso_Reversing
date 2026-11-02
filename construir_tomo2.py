@@ -138,7 +138,7 @@ def generar_html_tomo2():
     css_print = """
 @page {
   size: A4;
-  margin: 16mm 14mm 18mm 14mm;
+  margin: 18mm 16mm 20mm 16mm;
   @bottom-center {
     content: counter(page);
     font-family: Helvetica, Arial, sans-serif;
@@ -147,34 +147,34 @@ def generar_html_tomo2():
   }
 }
 html { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-body { background: #fff; font-size: 9.6pt; line-height: 1.34; color: #222; }
-p { margin: 1.8mm 0; }
+body { background: #fff; font-size: 10.5pt; line-height: 1.5; }
 main { max-width: none; padding: 0; }
-.print-sec { break-before: page; page-break-before: always; }
-.portada-pdf { break-before: auto; page-break-before: auto; padding-top: 24mm; }
-.portada-pdf .kicker { font-size: 9pt; font-weight: 700; color: #0b5f6b; letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 5mm; }
-.portada-pdf h1 { font-size: 30pt; line-height: 1.1; margin-bottom: 6mm; color: #111; }
-.portada-pdf .sub { font-size: 9.6pt; line-height: 1.4; color: #444; margin-bottom: 4mm; }
-.portada-pdf .aviso { margin-top: 8mm; padding: 3mm 5mm; border-left: 3px solid #b73229; background: #fdf5f4; font-size: 8.8pt; color: #444; }
-.toc { margin-top: 6mm; }
-.toc .etapa { font-weight: 700; font-size: 10.5pt; color: #0b5f6b; margin-top: 4mm; margin-bottom: 2mm; border-bottom: 1px solid #ccc; padding-bottom: 1mm; }
+.print-sec { break-before: page; }
+.print-sec:first-of-type { break-before: auto; }
+.print-sec h1 { font-size: 20pt; margin-top: 0; }
+.print-sec h2 { font-size: 13pt; margin-top: 1.4em; }
+.print-sec h3 { font-size: 11.5pt; }
+.print-sec pre { font-size: 8.3pt; white-space: pre-wrap; break-inside: avoid; page-break-inside: avoid; }
+.print-sec pre.arbol-triage { font-size: 6.5pt; line-height: 1.17; padding: 6px 10px; margin: 4px 0; }
+.print-sec table { font-size: 8.6pt; width: 100%; table-layout: auto; word-wrap: break-word; overflow-wrap: break-word; word-break: normal; }
+.print-sec th, .print-sec td { overflow-wrap: break-word; word-break: normal; hyphens: none; }
+.print-sec td:not(:first-child) code, .print-sec th:not(:first-child) code { word-break: break-word; }
+.print-sec .tabla { overflow-x: visible !important; break-inside: avoid; page-break-inside: avoid; }
+.print-sec tr { break-inside: avoid; page-break-inside: avoid; }
+.print-sec .callout, .print-sec .gate, .print-sec details, .print-sec .ampliacion-ext, .print-sec .nota-ed { break-inside: avoid; page-break-inside: avoid; }
+.print-sec h2, .print-sec h3, .print-sec h4 { break-after: avoid; page-break-after: avoid; }
+.print-sec a { color: #000; text-decoration: none; }
+.portada-pdf { text-align: left; padding-top: 26mm; }
+.portada-pdf .kicker { color: #0b5f6b; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; font-size: 9pt; }
+.portada-pdf h1 { font-size: 34pt; line-height: 1.05; margin: .2em 0 .3em; }
+.portada-pdf .sub { font-size: 11.5pt; color: #333; max-width: 165mm; line-height: 1.5; margin-bottom: 5mm; }
+.portada-pdf .aviso { border-left: 4px solid #8a1c1c; background: #fbe7e7; padding: 8pt 10pt; margin: 16pt 0; font-size: 9.5pt; }
+.toc { margin-top: 14pt; }
+.toc .etapa { font-weight: 700; font-size: 11pt; color: #0b5f6b; margin-top: 5mm; margin-bottom: 2mm; border-bottom: 1px solid #ccc; padding-bottom: 1mm; }
 .toc ol { list-style: none; padding-left: 0; margin: 0; }
-.toc li { display: flex; justify-content: space-between; align-items: baseline; font-size: 9pt; padding: 1mm 0; border-bottom: 1px dotted #e0e0e0; }
+.toc li { display: flex; justify-content: space-between; align-items: baseline; font-size: 9.5pt; padding: 1.2mm 0; border-bottom: 1px dotted #e0e0e0; }
 .toc li a { color: #222; text-decoration: none; flex-grow: 1; padding-right: 4mm; }
-.toc-pag { font-weight: 700; color: #0b5f6b; font-size: 8.5pt; text-align: right; min-width: 14mm; }
-pre, code { font-family: "Cascadia Code", "Consolas", monospace; font-size: 8.4pt; }
-pre { background: #f6f8fa; border: 1px solid #e1e4e8; border-radius: 4px; padding: 2.2mm 3.2mm; overflow-x: auto; margin: 2.2mm 0; white-space: pre-wrap; word-break: break-all; }
-.callout { padding: 2.5mm 4mm; margin: 3mm 0; border-left: 4px solid #0b5f6b; background: #f3f9fa; border-radius: 0 4px 4px 0; font-size: 9pt; }
-.callout.aviso { border-left-color: #d97706; background: #fffbeb; }
-.callout.nota { border-left-color: #4b5563; background: #f9fafb; }
-.callout-titulo { font-weight: 700; margin-top: 0; margin-bottom: 1.2mm; }
-table { width: 100%; border-collapse: collapse; margin: 2.5mm 0; font-size: 8.4pt; }
-th, td { border: 1px solid #d1d5db; padding: 1.5mm 2.5mm; text-align: left; }
-th { background: #f3f4f6; font-weight: 700; }
-h1 { font-size: 18pt; margin-top: 0; margin-bottom: 3mm; color: #111; }
-h2 { font-size: 12pt; margin-top: 4mm; margin-bottom: 2mm; color: #0b5f6b; border-bottom: 1px solid #eee; padding-bottom: 1mm; }
-h3 { font-size: 10.5pt; margin-top: 3mm; margin-bottom: 1.5mm; color: #333; }
-h4 { font-size: 9.6pt; margin-top: 2.5mm; margin-bottom: 1mm; }
+.toc-pag { font-weight: 700; color: #0b5f6b; font-size: 9pt; text-align: right; min-width: 14mm; }
 """
 
     partes = [f'<!doctype html><html lang="es"><head><meta charset="utf-8"><title>Reversing en Windows — Tomo II</title><style>{css}\n{css_print}</style></head><body><main>']
@@ -185,7 +185,7 @@ h4 { font-size: 9.6pt; margin-top: 2.5mm; margin-bottom: 1mm; }
 <p class="kicker">Ingeniería Inversa en Windows · Edición Libre y Abierta · Revisión 5.4 (Ampliada) · TOMO II DE III</p>
 <h1>Reversing en Windows<br><span style="font-size: 19pt; font-weight: 600; color: #0b5f6b;">Tomo II — Ramas Especializadas: Kernel, Drivers e Internals</span></h1>
 <p class="sub">Profundización avanzada en el sistema operativo Windows a nivel Ring 0 y subsistemas de plataforma: arquitectura del kernel NT, drivers WDM/KMDF, IOCTLs, depuración de kernel con WinDbg (KDNET), minifiltros de sistema de archivos, mitigaciones HVCI/VBS, Windows Filtering Platform (WFP), kCFG a nivel ISA y CET/IBT, Fuzzing de drivers en kernel (WTF, kAFL/Nyx), objetos del ejecutivo, procesos/hilos, Registro, servicios, Task Scheduler, COM/DCOM, RPC, WMI, ALPC, excepciones x64 (.pdata/UNWIND_INFO), ETW/ETWti, virtualización con Hyper-V/VMBus, mitigación Win32k System Call Lockdown y cadena de arranque segura UEFI/bootkits.</p>
-<p class="sub"><strong>Contenido y Balance Editorial de este Volumen:</strong> Comprende la <strong>Etapa 6 completa (Lecciones 6.1 a 6.10)</strong>, la <strong>Rama 2D completa (Lecciones 2D.1 a 2D.17)</strong> y el <strong>Anexo A (Fe de Erratas Técnica y Trazabilidad con Tomo I)</strong>, consolidado bajo el límite máximo estricto de 200 páginas físicas para encuadernación técnica.</p>
+<p class="sub"><strong>Contenido y Balance Editorial de este Volumen:</strong> Comprende la <strong>Etapa 6 completa (Lecciones 6.1 a 6.10)</strong>, la <strong>Rama 2D completa (Lecciones 2D.1 a 2D.17)</strong> y el <strong>Anexo A (Fe de Erratas Técnica y Trazabilidad con Tomo I)</strong>, en su versión íntegra, exhaustiva y sin condensación de formato.</p>
 <p class="sub"><strong>Requisitos previos:</strong> Este tomo asume el dominio del tronco principal (Etapas 0 a 4 del <strong>Tomo I</strong>). Para las sesiones prácticas de laboratorio en Ring 0 se recomienda tener abierta la <strong>Separata de Escritorio</strong> (Hojas 1 a 6).</p>
 <div class="aviso"><strong>Seguridad de Laboratorio Obligatoria:</strong> Toda práctica con controladores de kernel (<code>.sys</code>), depuración con <code>bcdedit /debug on</code>, Driver Verifier, Special Pool o interceptores de red debe realizarse exclusivamente dentro de una <strong>máquina virtual aislada y descartable</strong>, nunca en la estación de trabajo física.</div>
 </section>
@@ -381,7 +381,7 @@ def compilar_tomo2_pdf():
     print(f"TOMO II COMPILADO EXITOSAMENTE:")
     print(f"  Archivo: {salida_pdf}")
     print(f"  Tamaño: {tam:,} bytes ({tam/(1024*1024):.2f} MB)")
-    print(f"  Páginas totales: {total} págs. (<= 200 págs. CUMPLIDO: {total <= 200})")
+    print(f"  Páginas totales: {total} págs. (Paridad par: {total % 2 == 0})")
     print(f"=======================================================\n")
 
 if __name__ == "__main__":
