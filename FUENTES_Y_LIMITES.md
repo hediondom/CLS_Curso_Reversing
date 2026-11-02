@@ -68,7 +68,7 @@ El contenido de esta obra se fundamenta directamente en fuentes técnicas oficia
 - **Rama 2D:** 13 lecciones completas sobre objetos y seguridad, PEB/TEB, registro, servicios Win32 nativos (`svclab_min.c`), tareas programadas, COM, DCOM/RPC, WMI, IPC (Named Pipes y ALPC con inspección en WinDbg), excepciones estructuradas (SEH, VEH y tablas `.pdata`/`UNWIND_INFO`) y ETW.
 - **Etapa 6:** 6 lecciones sobre arquitectura del kernel de Windows, programación de drivers KMDF (`bloclab_kmdf_min.c`), depuración con WinDbg KDNET, revisión de seguridad en controladores y minifilters de sistema de archivos.
 
-### 4.4 Bloque 2E · Desofuscación y análisis dinámico avanzado (2.25–2.33) y 4.6
+### 4.4 Bloque 2E — Desofuscación, arquitecturas y ecosistemas modernos (2.25–2.35), 4.6 y 6.7
 - **2.25** Ejecución simbólica y concólica (angr, Triton, Miasm, solvers SMT Z3, simplificación de expresiones MBA).
 - **2.26** Ofuscación basada en máquina virtual (VM-based: dispatcher, bytecode y handlers).
 - **2.27** Reconocimiento de protectores multicapa comerciales (taxonomía de VMProtect, Themida, Enigma).
@@ -76,9 +76,12 @@ El contenido de esta obra se fundamenta directamente en fuentes técnicas oficia
 - **2.29** Instrumentación binaria dinámica (DBI) con DynamoRIO e Intel Pin.
 - **2.30** Trazas dinámicas y cobertura de código con Frida Stalker.
 - **2.31** Extensiones de Ghidra y modelado de arquitecturas con SLEIGH.
-- **2.32** Reversing avanzado de binarios Go y Rust.
+- **2.32** Reversing avanzado de binarios Go (slices, hmap, itab, concurrencia) y Rust (dyn Trait, async/await).
 - **2.33** Análisis de ejecutables Visual Basic 6 en p-code y código nativo.
+- **2.34** Desvirtualización práctica, lifting simbólico con Z3 y arquitecturas completas en SLEIGH (.slaspec, .cspec, .pspec, .ldefs).
+- **2.35** Ecosistemas modernos en Windows 11: binarios híbridos ARM64EC, Windows Runtime (WinRT / IInspectable) y .NET Native AOT con JIT Hooking en clrjit.dll.
 - **4.6** Protocolos de red propietarios de terceros (captura, hooks de sockets y disectores Lua en Wireshark).
+- **6.7** Seguridad profunda en kernel x64: arquitectura VBS/HVCI (VTL0 vs VTL1, securekernel.exe, kCFG), auditoría de telemetría de kernel (PspCreateProcessNotifyRoutine, ObRegisterCallbacks, ETWti) en WinDbg y condiciones de carrera en MDLs.
 
 ## 5. Limitaciones declaradas
 

@@ -10,7 +10,7 @@
 <body>
 <a class="salto" href="#contenido">Saltar al contenido</a>
 <header class="cabecera">
-  <div class="marca"><a href="../00_EMPEZAR_AQUI.html">Curso de Reversing en Windows</a> <span class="edicion">edición 5 · 27/10/2026</span></div>
+  <div class="marca"><a href="../00_EMPEZAR_AQUI.html">CLS · Curso de reversing</a> <span class="edicion">edición 5 · 27/10/2026</span></div>
   <nav class="principal" aria-label="Navegación principal">
     <a href="../00_EMPEZAR_AQUI.html">Inicio</a>
     <a href="../guia/index.html">Curso</a>
@@ -32,6 +32,23 @@
 <p>Herramienta clave: <strong>GoReSym</strong> (Mandiant) recupera pclntab, tipos y metadatos y los exporta para IDA/Ghidra.</p>
 <h2 id="rust-manglado-monomorfización-y-traits">Rust: manglado, monomorfización y traits</h2>
 <ul><li><strong>Name mangling:</strong> dos esquemas. El <strong>legacy</strong> (estilo Itanium, <code>_ZN...E</code> con longitudes y un hash) y el <strong>v0</strong> (<code>_R...</code>, RFC 2603). Se desmanglan con <strong><code>rustfilt</code></strong> (o el soporte de Ghidra/IDA).</li><li><strong>Monomorfización:</strong> los genéricos no existen en runtime: el compilador genera <strong>una copia por cada tipo</strong> usado. Por eso un <code>Vec&lt;T&gt;</code> aparece muchas veces, una por <code>T</code>: no te confundas creyendo que son funciones distintas.</li><li><strong>Trait objects (<code>dyn Trait</code>):</strong> un <em>fat pointer</em> = <strong>puntero a datos + puntero a vtable</strong>. La vtable trae <em>drop</em>, tamaño, alineación y los métodos. Es el despacho dinámico de Rust y se lee parecido a una vtable de C++ (2.18).</li><li><strong>Strings y colecciones:</strong> <code>&amp;str</code> es <code>(ptr, len)</code> UTF-8; <code>String</code> es <code>(ptr, len, cap)</code>; <code>Vec&lt;T&gt;</code> igual. <strong>Sin NUL</strong>.</li><li><strong><code>Option</code>/<code>Result</code>:</strong> con <em>niche optimization</em>, un <code>Option&lt;&amp;T&gt;</code> no ocupa un byte extra: usa el valor <code>0</code> (puntero nulo) como <code>None</code>.</li><li>**Los <em>panics</em> son oráculos:<strong> en modo seguro, Rust inyecta antes de indexar un array/slice una llamada a <code>core::panicking::panic_bounds_check</code> (y a <code>panic_fmt</code>/<code>panic</code> en otros casos), muchas veces con el <code>file:line</code> del fuente embebido. Esas comprobaciones te </strong>revelan la longitud esperada de los buffers** y marcan dónde empieza cada acceso a datos: un regalo para reconstruir estructuras.</li></ul>
+<h2 id="layouts-internos-en-memoria-go-y-rust-x64">Layouts Internos en Memoria (Go y Rust x64)</h2>
+<h3 id="go-slices-maps-concurrencia-e-itab">Go: Slices, Maps, Concurrencia e itab</h3>
+<ol><li><strong>Slices (24 bytes en x64):</strong> Se pasan en 3 registros (ABI 1.17+) o 3 slots de pila:</li></ol>
+<ul><li><code>+0x00</code>: <code>array *T</code> (puntero al arreglo de elementos subyacente).</li><li><code>+0x08</code>: <code>len int</code> (longitud lógica accesible).</li><li><code>+0x10</code>: <code>cap int</code> (capacidad física asignada antes de reasignación).</li></ul>
+<ol><li><strong>Tablas Hash (<code>hmap</code>):</strong> Las operaciones de acceso a mapas se resuelven mediante funciones como <code>runtime.mapaccess1_faststr(t, h, key)</code>. En memoria, <code>hmap</code> contiene en <code>+0x00</code> el conteo de elementos (<code>count</code>), en <code>+0x09</code> el número de buckets (B), y en <code>+0x18</code> el puntero al arreglo de buckets.</li><li><strong>Layout Interno de <code>itab</code>:</strong></li></ol>
+<ul><li><code>+0x00</code>: <code>inter *interfacetype</code> (descriptor de la interfaz).</li><li><code>+0x08</code>: <code>_type *_type</code> (descriptor del tipo concreto que implementa la interfaz).</li><li><code>+0x10</code>: <code>hash uint32</code> (copia del hash de tipo para type assertions rápidas).</li><li><code>+0x18+</code>: <code>fun [1]uintptr</code> (tabla de punteros a funciones que implementan los métodos de la interfaz).</li></ul>
+<ol><li><strong>Concurrencia del Runtime:</strong></li></ol>
+<ul><li>Invocación <code>go fn()</code>: Se compila como llamada a <code>runtime.newproc(siz, fn, args)</code>.</li><li>Canales (<code>chan</code>): Envío con <code>runtime.chansend1(c, elem)</code> y recepción con <code>runtime.chanrecv1(c, elem)</code>.</li><li>Sentencias <code>select</code>: Compiladas como inicialización de array de casos y llamada a <code>runtime.selectgo</code>.</li></ul>
+<h3 id="rust-vtables-de-dyn-trait-y-máquinas-de-estado-async-await">Rust: Vtables de dyn Trait y Máquinas de Estado async/await</h3>
+<ol><li><strong>Layout de la Vtable de un <code>dyn Trait</code>:</strong></li></ol>
+<p>A diferencia de C++, la vtable de un <em>trait object</em> en Rust no incluye RTTI complejo por defecto:</p>
+<ul><li><code>+0x00</code>: Puntero a función <code>core::ptr::drop_in_place&lt;T&gt;</code> (destructor).</li><li><code>+0x08</code>: Tamaño de la estructura concreta <code>size: usize</code>.</li><li><code>+0x10</code>: Requisito de alineación en memoria <code>align: usize</code>.</li><li><code>+0x18+</code>: Punteros a las funciones correspondientes a cada método declarado en el trait.</li></ul>
+<ol><li><strong>Reversing de Corrutinas y <code>async/await</code>:</strong></li></ol>
+<p>Cuando una función se declara <code>async fn</code>, el compilador de Rust no genera una rutina convencional: sintetiza una estructura anónima que encapsula todas las variables vivas entre puntos de suspensión y le implementa el trait <code>core::future::Future</code>. En el desensamblado:</p>
+<ul><li>Toda la lógica reside en el método <code>poll(Pin&lt;&amp;mut Self&gt;, &amp;mut Context)</code>.</li><li>En el prólogo de <code>poll</code>, el registro del receptor (<code>RCX</code>/<code>RDI</code>) se utiliza para leer el campo discriminante de estado:</li></ul>
+<p><code>movzx eax, byte ptr [rcx + offset_estado] ; switch(eax) ...</code></p>
+<ul><li>El estado <code>0</code> representa el inicio no pollado; los estados <code>1..N</code> corresponden a cada <code>.await</code> pendiente; el estado final marca la terminación (o panic). Identificar este <code>switch</code> desmantela la máquina de estados de cualquier binario asíncrono en Rust.</li></ul>
 <h2 id="cómo-se-ve-cada-cosa-en-memoria">Cómo se ve cada cosa en memoria</h2>
 <div class="tabla"><table>
 <thead><tr>

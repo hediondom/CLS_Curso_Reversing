@@ -1,0 +1,62 @@
+# minivm.slaspec — Definición SLEIGH completa para el procesador didáctico MiniVM (Lección 2.34)
+
+define endian=little;
+define alignment=2;
+
+# Definición de espacios de memoria
+define space ram      type=ram_space      size=4 default;
+define space register type=register_space size=4;
+
+# Registros virtuales del procesador
+define register offset=0x00 size=4 [ acc vip vsp zf cf ];
+define register offset=0x20 size=4 [ contextreg ];
+
+# Definición de tokens de instrucción (16 bits: 8 bits opcode, 8 bits valor inmediato)
+define token instr (16)
+    op   = (0, 7)
+    imm8 = (8, 15)
+;
+
+# Macros auxiliares
+macro update_flags(result) {
+    zf = (result == 0);
+    cf = 0; # Simplificado para fines didácticos
+}
+
+# --- Instrucciones de la VM ---
+
+# Opcode 1: OP_SET imm
+:SET imm8 is op=1; imm8 {
+    acc = zext(imm8);
+    update_flags(acc);
+}
+
+# Opcode 2: OP_XOR imm
+:XOR imm8 is op=2; imm8 {
+    acc = acc ^ zext(imm8);
+    update_flags(acc);
+}
+
+# Opcode 3: OP_ADD imm
+:ADD imm8 is op=3; imm8 {
+    acc = acc + zext(imm8);
+    update_flags(acc);
+}
+
+# Opcode 4: OP_CMP imm
+:CMP imm8 is op=4; imm8 {
+    local tmp:4 = acc - zext(imm8);
+    update_flags(tmp);
+}
+
+# Opcode 5: OP_MBA imm (Identidad MBA: acc + imm)
+:MBA imm8 is op=5; imm8 {
+    local y:4 = zext(imm8);
+    acc = (acc ^ y) + 2 * (acc & y);
+    update_flags(acc);
+}
+
+# Opcode 6: OP_HALT
+:HALT is op=6 {
+    return [vip];
+}

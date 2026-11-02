@@ -10,7 +10,7 @@
 <body>
 <a class="salto" href="#contenido">Saltar al contenido</a>
 <header class="cabecera">
-  <div class="marca"><a href="../00_EMPEZAR_AQUI.html">Curso de Reversing en Windows</a> <span class="edicion">edición 5 · 27/10/2026</span></div>
+  <div class="marca"><a href="../00_EMPEZAR_AQUI.html">CLS · Curso de reversing</a> <span class="edicion">edición 5 · 27/10/2026</span></div>
   <nav class="principal" aria-label="Navegación principal">
     <a href="../00_EMPEZAR_AQUI.html">Inicio</a>
     <a href="../guia/index.html">Curso</a>
@@ -82,42 +82,43 @@ Cola: una cola por defecto; la solicitud se completa en el mismo callback
 Cancelación: no aplica (no se retienen solicitudes)
 Conclusión: diseño acotado en el fragmento revisado; falta validar build/configuración INF</code></pre>
 <p>El código <code>0x80006000</code> sale del contrato <strong>ilustrativo</strong> de la 6.2; en un driver real se toma de su header, no se supone.</p>
-
-<aside class="ampliacion-ext">
-<p class="callout-titulo">Ampliación editorial basada en fuentes externas — Resolución de la tabla WdfFunctions (WDFFUNCTIONS) en drivers KMDF sin símbolos en IDA y Ghidra</p>
-<p>Al analizar estáticamente un driver KMDF sin archivo <code>.pdb</code>, las llamadas a la API del framework (<code>WdfDriverCreate</code>, <code>WdfDeviceCreate</code>, <code>WdfIoQueueCreate</code>, <code>WdfRequestRetrieveInputBuffer</code>, etc.) <strong>no aparecen en la tabla de importaciones (IAT)</strong> (<em>Microsoft Learn: KMDF Driver Entry and Binding / wdffuncenum.h del WDK</em>) <em>(Hecho confirmado)</em>:</p>
-<ol>
-<li><strong>Mecanismo de enlace dinámico de KMDF:</strong> El binario solo importa <code>WdfVersionBind</code> desde <code>WdfLdr.sys</code>. Durante el arranque, el stub del compilador llena una estructura <code>WDF_BIND_INFO</code> que contiene la versión del framework (p. ej. <code>1.15</code> o <code>1.33</code>) y un puntero a un puntero global en <code>.data</code>: <code>WdfFunctions</code> (de tipo <code>const WDFFUNCTIONS*</code>), junto con <code>WdfDriverGlobals</code> (<code>PWDF_DRIVER_GLOBALS</code>).</li>
-<li><strong>Patrón en ensamblador x64:</strong> Toda llamada a una función <code>Wdf*</code> se compila como una llamada indirecta indexada sobre esa tabla global, pasando siempre <code>WdfDriverGlobals</code> como primer argumento oculto en <code>RCX</code> (lo que desplaza un lugar todos los argumentos documentados de la función):
-<pre><code class="lenguaje-assembly">; Llamada en código C: WdfIoQueueCreate(device, &amp;q, WDF_NO_OBJECT_ATTRIBUTES, WDF_NO_HANDLE);
+<blockquote><p><strong>Ampliación editorial basada en fuentes externas — Resolución de la tabla <code>WdfFunctions</code> (<code>WDFFUNCTIONS</code>) en drivers KMDF sin símbolos en IDA y Ghidra</strong></p>
+<p>Al analizar estáticamente un driver KMDF sin archivo <code>.pdb</code>, las llamadas a la API del framework (<code>WdfDriverCreate</code>, <code>WdfDeviceCreate</code>, <code>WdfIoQueueCreate</code>, <code>WdfRequestRetrieveInputBuffer</code>, etc.) <strong>no aparecen en la tabla de importaciones (IAT)</strong> (<em>Microsoft Learn: KMDF Driver Entry and Binding / <code>wdffuncenum.h</code> del WDK</em>) (<strong>Hecho confirmado</strong>):</p>
+<ol><li><strong>Mecanismo de enlace dinámico de KMDF:</strong></li></ol>
+<p>El binario solo importa <code>WdfVersionBind</code> desde <code>WdfLdr.sys</code>. Durante el arranque, el stub del compilador llena una estructura <code>WDF_BIND_INFO</code> que contiene la versión del framework (p. ej. <code>1.15</code> o <code>1.33</code>) y un puntero a un puntero global en <code>.data</code>: <code>WdfFunctions</code> (de tipo <code>const WDFFUNCTIONS*</code>), junto con <code>WdfDriverGlobals</code> (<code>PWDF_DRIVER_GLOBALS</code>).</p>
+<ol><li><strong>Patrón en ensamblador x64:</strong></li></ol>
+<p>Toda llamada a una función <code>Wdf*</code> se compila como una llamada indirecta indexada sobre esa tabla global, pasando siempre <code>WdfDriverGlobals</code> como primer argumento oculto en <code>RCX</code> (lo que desplaza un lugar todos los argumentos documentados de la función):</p>
+<pre><code class="lenguaje-nasm">; Llamada en código C: WdfIoQueueCreate(device, &amp;q, WDF_NO_OBJECT_ATTRIBUTES, WDF_NO_HANDLE);
 mov     rax, cs:WdfFunctions_01015   ; Carga la base de la tabla de punteros KMDF
 mov     rcx, cs:WdfDriverGlobals     ; 1.er arg oculto (RCX): PWDF_DRIVER_GLOBALS
 mov     rdx, rbx                     ; 2.º arg (RDX): WDFDEVICE Device
 lea     r8, [rsp+40h]                ; 3.er arg (R8) : PWDF_IO_QUEUE_CONFIG Config (+0x28 = EvtIoDeviceControl)
 xor     r9d, r9d                     ; 4.º arg (R9) : WDF_NO_OBJECT_ATTRIBUTES
 mov     qword ptr [rsp+20h], 0       ; 5.º arg (stack): Queue (NULL)
-call    qword ptr [rax+4C0h]         ; Offset +0x4C0 (índice 152 * 8) = pfnWdfIoQueueCreate</code></pre></li>
-<li><strong>Tabla de offsets de funciones críticas en <code>WDFFUNCTIONS</code> (<code>wdffuncenum.h</code>, KMDF 1.15–1.33):</strong>
+call    qword ptr [rax+4C0h]         ; Offset +0x4C0 (índice 152 * 8) = pfnWdfIoQueueCreate</code></pre>
+<ol><li><strong>Tabla de offsets de funciones críticas en <code>WDFFUNCTIONS</code> (<code>wdffuncenum.h</code>, KMDF 1.15–1.33):</strong></li></ol>
 <div class="tabla"><table>
-<thead><tr><th>Función KMDF (<code>WDFFUNCENUM</code>)</th><th>Índice decimal</th><th>Offset en x64</th><th>Offset en x86</th><th>Qué recibe en <code>RDX</code> / <code>R8</code> (x64, tras <code>DriverGlobals</code> en <code>RCX</code>)</th></tr></thead>
-<tbody>
-<tr><td><code>WdfDeviceInitAssignName</code></td><td>29</td><td><code>+0x0E8</code></td><td><code>+0x074</code></td><td><code>RDX</code> = <code>DeviceInit</code>, <code>R8</code> = <code>PCUNICODE_STRING</code> (<code>\Device\...</code>)</td></tr>
-<tr><td><code>WdfDeviceInitAssignSDDLString</code></td><td>31</td><td><code>+0x0F8</code></td><td><code>+0x07C</code></td><td><code>RDX</code> = <code>DeviceInit</code>, <code>R8</code> = <code>PCUNICODE_STRING</code> (cadena SDDL)</td></tr>
-<tr><td><code>WdfDeviceCreate</code></td><td>45</td><td><code>+0x168</code></td><td><code>+0x0B4</code></td><td><code>RDX</code> = <code>&amp;DeviceInit</code>, <code>R8</code> = <code>Attributes</code>, <code>R9</code> = <code>&amp;Device</code></td></tr>
-<tr><td><code>WdfDeviceCreateSymbolicLink</code></td><td>46</td><td><code>+0x170</code></td><td><code>+0x0B8</code></td><td><code>RDX</code> = <code>Device</code>, <code>R8</code> = <code>PCUNICODE_STRING</code> (<code>\DosDevices\...</code>)</td></tr>
-<tr><td><code>WdfDeviceCreateDeviceInterface</code></td><td>47</td><td><code>+0x178</code></td><td><code>+0x0BC</code></td><td><code>RDX</code> = <code>Device</code>, <code>R8</code> = <code>const GUID* InterfaceClassGUID</code></td></tr>
-<tr><td><code>WdfDriverCreate</code></td><td>118</td><td><code>+0x3B0</code></td><td><code>+0x1D8</code></td><td><code>RDX</code> = <code>DriverObject</code>, <code>R8</code> = <code>RegistryPath</code>, <code>R9</code> = <code>Attributes</code>, <code>[rsp+20h]</code> = <code>WDF_DRIVER_CONFIG*</code></td></tr>
-<tr><td><code>WdfIoQueueCreate</code></td><td>152</td><td><code>+0x4C0</code></td><td><code>+0x260</code></td><td><code>RDX</code> = <code>Device</code>, <code>R8</code> = <code>WDF_IO_QUEUE_CONFIG*</code> (<code>+0x28</code> = <code>EvtIoDeviceControl</code>)</td></tr>
-<tr><td><code>WdfRequestComplete</code></td><td>263</td><td><code>+0x838</code></td><td><code>+0x41C</code></td><td><code>RDX</code> = <code>Request</code>, <code>R8D</code> = <code>NTSTATUS</code></td></tr>
-<tr><td><code>WdfRequestCompleteWithInformation</code></td><td>265</td><td><code>+0x848</code></td><td><code>+0x424</code></td><td><code>RDX</code> = <code>Request</code>, <code>R8D</code> = <code>NTSTATUS</code>, <code>R9</code> = <code>ULONG_PTR Information</code></td></tr>
-<tr><td><code>WdfRequestRetrieveInputBuffer</code></td><td>275</td><td><code>+0x898</code></td><td><code>+0x44C</code></td><td><code>RDX</code> = <code>Request</code>, <code>R8</code> = <code>MinimumRequiredSize</code>, <code>R9</code> = <code>&amp;Buffer</code></td></tr>
-<tr><td><code>WdfRequestRetrieveOutputBuffer</code></td><td>276</td><td><code>+0x8A0</code></td><td><code>+0x450</code></td><td><code>RDX</code> = <code>Request</code>, <code>R8</code> = <code>MinimumRequiredSize</code>, <code>R9</code> = <code>&amp;Buffer</code></td></tr>
-</tbody></table></div></li>
-<li><strong>Tipado rápido en IDA 9.0+ y Ghidra:</strong> Si asignás el tipo <code>WDFFUNCTIONS*</code> a la variable global <code>WdfFunctions</code> (o importás <code>wdf.h</code> / <code>wdffuncenum.h</code>), el decompilador convierte instantáneamente <code>(*(void (**)(...))(WdfFunctions + 0x4C0))(...)</code> en <code>WdfFunctions-&gt;pfnWdfIoQueueCreate(...)</code>.</li>
-</ol>
-</aside>
-
-
+<thead><tr>
+<th>Función KMDF (<code>WDFFUNCENUM</code>)</th>
+<th>Índice decimal (<code>TableIndex</code>)</th>
+<th>Offset en x64 (<code>Índice * 8</code>)</th>
+<th>Offset en x86 (<code>Índice * 4</code>)</th>
+<th>Qué recibe en <code>RDX</code> / <code>R8</code> (x64, tras <code>DriverGlobals</code> en <code>RCX</code>)</th>
+</tr></thead><tbody>
+<tr><td><code>WdfDeviceInitAssignName</code></td><td><code>29</code></td><td><code>+0x0E8</code></td><td><code>+0x074</code></td><td><code>RDX</code> = <code>DeviceInit</code>, <code>R8</code> = <code>PCUNICODE_STRING</code> (<code>\Device\...</code>)</td></tr>
+<tr><td><code>WdfDeviceInitAssignSDDLString</code></td><td><code>31</code></td><td><code>+0x0F8</code></td><td><code>+0x07C</code></td><td><code>RDX</code> = <code>DeviceInit</code>, <code>R8</code> = <code>PCUNICODE_STRING</code> (cadena SDDL)</td></tr>
+<tr><td><code>WdfDeviceCreate</code></td><td><code>45</code></td><td><code>+0x168</code></td><td><code>+0x0B4</code></td><td><code>RDX</code> = <code>&amp;DeviceInit</code>, <code>R8</code> = <code>Attributes</code>, <code>R9</code> = <code>&amp;Device</code></td></tr>
+<tr><td><code>WdfDeviceCreateSymbolicLink</code></td><td><code>46</code></td><td><code>+0x170</code></td><td><code>+0x0B8</code></td><td><code>RDX</code> = <code>Device</code>, <code>R8</code> = <code>PCUNICODE_STRING</code> (<code>\DosDevices\...</code>)</td></tr>
+<tr><td><code>WdfDeviceCreateDeviceInterface</code></td><td><code>47</code></td><td><code>+0x178</code></td><td><code>+0x0BC</code></td><td><code>RDX</code> = <code>Device</code>, <code>R8</code> = <code>const GUID* InterfaceClassGUID</code></td></tr>
+<tr><td><code>WdfDriverCreate</code></td><td><code>118</code></td><td><code>+0x3B0</code></td><td><code>+0x1D8</code></td><td><code>RDX</code> = <code>DriverObject</code>, <code>R8</code> = <code>RegistryPath</code>, <code>R9</code> = <code>Attributes</code>, <code>[rsp+20h]</code> = <code>WDF_DRIVER_CONFIG*</code></td></tr>
+<tr><td><code>WdfIoQueueCreate</code></td><td><code>152</code></td><td><code>+0x4C0</code></td><td><code>+0x260</code></td><td><code>RDX</code> = <code>Device</code>, <code>R8</code> = <code>WDF_IO_QUEUE_CONFIG*</code> (<code>+0x28</code> = <code>EvtIoDeviceControl</code>)</td></tr>
+<tr><td><code>WdfRequestComplete</code></td><td><code>263</code></td><td><code>+0x838</code></td><td><code>+0x41C</code></td><td><code>RDX</code> = <code>Request</code>, <code>R8D</code> = <code>NTSTATUS</code></td></tr>
+<tr><td><code>WdfRequestCompleteWithInformation</code></td><td><code>265</code></td><td><code>+0x848</code></td><td><code>+0x424</code></td><td><code>RDX</code> = <code>Request</code>, <code>R8D</code> = <code>NTSTATUS</code>, <code>R9</code> = <code>ULONG_PTR Information</code></td></tr>
+<tr><td><code>WdfRequestRetrieveInputBuffer</code></td><td><code>275</code></td><td><code>+0x898</code></td><td><code>+0x44C</code></td><td><code>RDX</code> = <code>Request</code>, <code>R8</code> = <code>MinimumRequiredSize</code>, <code>R9</code> = <code>&amp;Buffer</code></td></tr>
+<tr><td><code>WdfRequestRetrieveOutputBuffer</code></td><td><code>276</code></td><td><code>+0x8A0</code></td><td><code>+0x450</code></td><td><code>RDX</code> = <code>Request</code>, <code>R8</code> = <code>MinimumRequiredSize</code>, <code>R9</code> = <code>&amp;Buffer</code></td></tr>
+</tbody></table></div>
+<ol><li><strong>Tipado rápido en IDA 9.0+ y Ghidra:</strong></li></ol>
+<p>Si asignás el tipo <code>WDFFUNCTIONS*</code> a la variable global <code>WdfFunctions</code> (o importás <code>wdf.h</code> / <code>wdffuncenum.h</code>), el decompilador convierte instantáneamente <code>(*(void (**)(...))(WdfFunctions + 0x4C0))(...)</code> en <code>WdfFunctions-&gt;pfnWdfIoQueueCreate(...)</code>.</p></blockquote>
 <h2 id="práctica">Práctica</h2>
 <p>Revisá el source de tu driver o una muestra didáctica de Microsoft:</p>
 <ol><li>Enumerá device interfaces, SDDL, definiciones de IOCTL (con método y acceso) y callbacks.</li><li>Trazá un IOCTL desde la entrada hasta la finalización.</li><li>Si hay <code>METHOD_NEITHER</code> o punteros embebidos, completá la tabla de preguntas del patrón para cada uno. Si no hay, decilo explícitamente.</li><li>Armá la tabla de colas (modo, callbacks, tipos de solicitud) y, para cada solicitud que el driver retenga, dibujá las rutas de finalización y de cancelación.</li><li>Verificá casos límite por pruebas unitarias en user mode, sin fuzzing contra un kernel cargado.</li></ol>

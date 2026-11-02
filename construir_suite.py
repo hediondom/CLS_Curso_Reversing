@@ -771,6 +771,8 @@ def generar_pdf_completo():
         ("guia/02-ghidra-sleigh.html", "2.31 Extensiones de Ghidra y SLEIGH"),
         ("guia/02-go-rust.html", "2.32 Go y Rust en profundidad"),
         ("guia/02-vb6-pcode.html", "2.33 VB6 y p-code"),
+        ("guia/02-desvirtualizacion-sleigh.html", "2.34 Desvirtualización y SLEIGH"),
+        ("guia/02-arm64ec-winrt-aot.html", "2.35 ARM64EC, WinRT y Native AOT"),
         ("guia/03-dotnet-runtime.html", "3.1 .NET runtime"),
         ("guia/03-dotnet-il.html", "3.2 Leer IL"),
         ("guia/04-metodo.html", "4.1 Método de análisis"),
@@ -789,6 +791,7 @@ def generar_pdf_completo():
         ("guia/6-04-revision-driver.html", "6.4 Revisión defensiva de drivers"),
         ("guia/6-05-minifilters.html", "6.5 Minifilters"),
         ("guia/6-06-mitigaciones.html", "6.6 Mitigaciones para drivers"),
+        ("guia/6-07-vbs-hvci-callbacks.html", "6.7 VBS, HVCI, callbacks ETWti y MDLs"),
     ]
 
     ETAPAS = [
@@ -987,7 +990,7 @@ details.qa summary { font-size: 10pt; }
     orden = [
         ("Etapa 0", ["guia/00-laboratorio.html"]),
         ("Etapa 1", ["guia/01-numeros.html", "guia/01-memoria.html", "guia/01-procesos.html", "guia/01-pe.html", "guia/01-c-python.html"]),
-        ("Etapa 2", ["guia/02-registros.html", "guia/02-instrucciones.html", "guia/02-flotante.html", "guia/02-flujo.html", "guia/02-llamadas.html", "guia/02-debugger.html", "guia/02-ida.html", "guia/02-optimizaciones.html", "guia/02-herramientas.html", "guia/02-ofuscacion.html", "guia/02-tls.html", "guia/02-mfc.html", "guia/02-huella-compilador.html", "guia/02-pe-fino.html", "guia/02-anti-analisis.html", "guia/02-ghidra.html", "guia/02-packers.html", "guia/02-cpp-profundo.html", "guia/02-windbg-heap.html", "guia/02-patch-diffing.html", "guia/02-scripting-debugger.html", "guia/02-opt-malware-dinamico.html", "guia/02-opt-shellcode-c2.html", "guia/02-opt-fuzzing.html", "guia/02-simbolico-desofuscacion.html", "guia/02-ofuscacion-vm.html", "guia/02-protectores-multicapa.html", "guia/02-anti-analisis-neutralizar.html", "guia/02-dbi-dynamorio-pin.html", "guia/02-frida-stalker.html", "guia/02-ghidra-sleigh.html", "guia/02-go-rust.html", "guia/02-vb6-pcode.html"]),
+        ("Etapa 2", ["guia/02-registros.html", "guia/02-instrucciones.html", "guia/02-flotante.html", "guia/02-flujo.html", "guia/02-llamadas.html", "guia/02-debugger.html", "guia/02-ida.html", "guia/02-optimizaciones.html", "guia/02-herramientas.html", "guia/02-ofuscacion.html", "guia/02-tls.html", "guia/02-mfc.html", "guia/02-huella-compilador.html", "guia/02-pe-fino.html", "guia/02-anti-analisis.html", "guia/02-ghidra.html", "guia/02-packers.html", "guia/02-cpp-profundo.html", "guia/02-windbg-heap.html", "guia/02-patch-diffing.html", "guia/02-scripting-debugger.html", "guia/02-opt-malware-dinamico.html", "guia/02-opt-shellcode-c2.html", "guia/02-opt-fuzzing.html", "guia/02-simbolico-desofuscacion.html", "guia/02-ofuscacion-vm.html", "guia/02-protectores-multicapa.html", "guia/02-anti-analisis-neutralizar.html", "guia/02-dbi-dynamorio-pin.html", "guia/02-frida-stalker.html", "guia/02-ghidra-sleigh.html", "guia/02-go-rust.html", "guia/02-vb6-pcode.html", "guia/02-desvirtualizacion-sleigh.html", "guia/02-arm64ec-winrt-aot.html"]),
         ("Etapa 3", ["guia/03-dotnet-runtime.html", "guia/03-dotnet-il.html"]),
         ("Etapa 4", ["guia/04-metodo.html", "guia/04-cripto.html", "guia/04-informe.html", "guia/04-dinamico-seguro.html", "guia/04-formatos-protocolos.html", "guia/04-protocolos-terceros.html"]),
         ("Etapa 5", ["guia/05-malware.html", "guia/05-vulnerabilidades.html", "guia/05-automatizacion.html", "guia/05-fuera-de-alcance.html"]),
@@ -1165,7 +1168,8 @@ details.qa summary { font-size: 10pt; }
     pdf_cls = os.path.join(DST_GUIA, "CLS_Curso_Reversing.pdf")
     pdf_v51 = os.path.join(DST_GUIA, "CLS_Curso_Reversing_v5.1_Ampliada.pdf")
     pdf_v54 = os.path.join(DST_GUIA, "CLS_Curso_Reversing_v5.4_Ampliada.pdf")
-    pdf_art1 = os.path.join(ARTIFACT_DIR, "Curso_Reversing_Windows.pdf") if ARTIFACT_DIR else None
+    pdf_artifact = os.path.join(ARTIFACT_DIR, "Curso_Reversing_Windows.pdf") if ARTIFACT_DIR else None
+    pdf_art1 = pdf_artifact
     pdf_art2 = os.path.join(ARTIFACT_DIR, "CLS_Curso_Reversing_v5.4_Ampliada.pdf") if ARTIFACT_DIR else None
     html_v54 = os.path.join(DST_GUIA, "CLS_Curso_Reversing_v5.4_Ampliada.html")
 
@@ -1378,7 +1382,7 @@ def generar_tomos_y_separata(ctx):
 <p class="kicker">Ingeniería Inversa en Windows · Edición Libre y Abierta · Revisión 5.4 (Ampliada) · TOMO I DE II</p>
 <h1>Curso de reversing<br><span style="font-size: 20pt; font-weight: 600; color: #0b5f6b;">Tomo I · Tronco Principal (Etapas 0 a 5) y Material de Apoyo</span></h1>
 <p class="sub">De los fundamentos al análisis guiado en user-mode: arquitectura x86/x64, formato PE y DLLs (ciclo de vida y sideloading), IDA, Ghidra, x64dbg (flujo táctico y extracción masiva de strings), reversing de Go y Rust, evasión en user-mode (API hooking, direct/indirect syscalls y call stack spoofing), inyección de procesos en memoria, criptografía híbrida y APIs nativas (CryptoAPI/CNG), .NET, C++ profundo, WinDbg/TTD, malware y vulnerabilidades.</p>
-<p class="sub"><strong>Contenido de este volumen (Tomo I):</strong> Apertura y 3 Rutas de Estudio · Etapas 0, 1, 2 (2A, 2B, 2C, bloque avanzado 2E con 2.25–2.33, y optativas 2.22–2.24), 3, 4 (incluida 4.6 Protocolos de terceros) y 5 · Hilo conductor multi-nivel y Kit de 7 plantillas C/C++ · 3 Hojas de referencia rápida (<em>Cheat Sheets</em>, con la Hoja 3.4 de desofuscación y DBI) · Glosario · Preguntas y respuestas · Fuentes y límites.</p>
+<p class="sub"><strong>Contenido de este volumen (Tomo I):</strong> Apertura y 3 Rutas de Estudio · Etapas 0, 1, 2 (2A, 2B, 2C, bloque avanzado 2E con 2.25–2.35, y optativas 2.22–2.24), 3, 4 (incluida 4.6 Protocolos de terceros) y 5 · Hilo conductor multi-nivel y Kit de 7 plantillas C/C++ · 3 Hojas de referencia rápida (<em>Cheat Sheets</em>, con la Hoja 3.4 de desofuscación y DBI) · Glosario · Preguntas y respuestas · Fuentes y límites.</p>
 <p class="sub"><strong>En el Tomo II y Separata:</strong> La <strong>Etapa 6 (Kernel y drivers KMDF)</strong> y la <strong>Rama 2D (Windows internals y Hyper-V)</strong> se encuentran encuadernadas en el <strong>Tomo II</strong>. Para consulta rápida junto al teclado, usá la <strong>Separata de Escritorio</strong>.</p>
 <div class="aviso"><strong>Material educativo y defensivo.</strong> Las prácticas usan programas propios, software abierto o crackmes diseñados para aprender. No se enseña a eludir licencias, DRM ni controles de acceso.</div>
 </section>
@@ -1393,7 +1397,7 @@ def generar_tomos_y_separata(ctx):
     orden_t1 = [
         ("Etapa 0", ["guia/00-laboratorio.html"]),
         ("Etapa 1", ["guia/01-numeros.html", "guia/01-memoria.html", "guia/01-procesos.html", "guia/01-pe.html", "guia/01-c-python.html"]),
-        ("Etapa 2", ["guia/02-registros.html", "guia/02-instrucciones.html", "guia/02-flotante.html", "guia/02-flujo.html", "guia/02-llamadas.html", "guia/02-debugger.html", "guia/02-ida.html", "guia/02-optimizaciones.html", "guia/02-herramientas.html", "guia/02-ofuscacion.html", "guia/02-tls.html", "guia/02-mfc.html", "guia/02-huella-compilador.html", "guia/02-pe-fino.html", "guia/02-anti-analisis.html", "guia/02-ghidra.html", "guia/02-packers.html", "guia/02-cpp-profundo.html", "guia/02-windbg-heap.html", "guia/02-patch-diffing.html", "guia/02-scripting-debugger.html", "guia/02-opt-malware-dinamico.html", "guia/02-opt-shellcode-c2.html", "guia/02-opt-fuzzing.html", "guia/02-simbolico-desofuscacion.html", "guia/02-ofuscacion-vm.html", "guia/02-protectores-multicapa.html", "guia/02-anti-analisis-neutralizar.html", "guia/02-dbi-dynamorio-pin.html", "guia/02-frida-stalker.html", "guia/02-ghidra-sleigh.html", "guia/02-go-rust.html", "guia/02-vb6-pcode.html"]),
+        ("Etapa 2", ["guia/02-registros.html", "guia/02-instrucciones.html", "guia/02-flotante.html", "guia/02-flujo.html", "guia/02-llamadas.html", "guia/02-debugger.html", "guia/02-ida.html", "guia/02-optimizaciones.html", "guia/02-herramientas.html", "guia/02-ofuscacion.html", "guia/02-tls.html", "guia/02-mfc.html", "guia/02-huella-compilador.html", "guia/02-pe-fino.html", "guia/02-anti-analisis.html", "guia/02-ghidra.html", "guia/02-packers.html", "guia/02-cpp-profundo.html", "guia/02-windbg-heap.html", "guia/02-patch-diffing.html", "guia/02-scripting-debugger.html", "guia/02-opt-malware-dinamico.html", "guia/02-opt-shellcode-c2.html", "guia/02-opt-fuzzing.html", "guia/02-simbolico-desofuscacion.html", "guia/02-ofuscacion-vm.html", "guia/02-protectores-multicapa.html", "guia/02-anti-analisis-neutralizar.html", "guia/02-dbi-dynamorio-pin.html", "guia/02-frida-stalker.html", "guia/02-ghidra-sleigh.html", "guia/02-go-rust.html", "guia/02-vb6-pcode.html", "guia/02-desvirtualizacion-sleigh.html", "guia/02-arm64ec-winrt-aot.html"]),
         ("Etapa 3", ["guia/03-dotnet-runtime.html", "guia/03-dotnet-il.html"]),
         ("Etapa 4", ["guia/04-metodo.html", "guia/04-cripto.html", "guia/04-informe.html", "guia/04-dinamico-seguro.html", "guia/04-formatos-protocolos.html", "guia/04-protocolos-terceros.html"]),
         ("Etapa 5", ["guia/05-malware.html", "guia/05-vulnerabilidades.html", "guia/05-automatizacion.html", "guia/05-fuera-de-alcance.html"]),
@@ -1413,7 +1417,7 @@ def generar_tomos_y_separata(ctx):
     toc_t1.append(t1_row("fuentes", "Fuentes y límites"))
     toc_t1.append('</ol>')
     toc_t1.append('<div class="etapa" style="margin-top:10pt; color:#555;">En el Tomo II (Ramas Especializadas)</div><ol>')
-    toc_t1.append('<li><span>Etapa 6 · Kernel y drivers en Windows (6.1 a 6.6)</span><span class="toc-pag">ver Tomo II</span></li>')
+    toc_t1.append('<li><span>Etapa 6 · Kernel y drivers en Windows (6.1 a 6.7)</span><span class="toc-pag">ver Tomo II</span></li>')
     toc_t1.append('<li><span>Rama 2D · Windows internals y Hyper-V (2D.1 a 2D.13)</span><span class="toc-pag">ver Tomo II</span></li>')
     toc_t1.append('</ol></div></section>')
     partes_t1.append("".join(toc_t1))
@@ -1528,14 +1532,14 @@ VM con Windows x64 aislada, Visual Studio Developer Command Prompt (<code>cl.exe
 <p class="kicker">Ingeniería Inversa en Windows · Edición Libre y Abierta · Revisión 5.4 (Ampliada) · TOMO II DE II</p>
 <h1>Curso de reversing<br><span style="font-size: 20pt; font-weight: 600; color: #0b5f6b;">Tomo II · Ramas Especializadas: Kernel, Drivers y Windows Internals</span></h1>
 <p class="sub">Profundización avanzada en el sistema operativo Windows: arquitectura del kernel NT, drivers WDM/KMDF, IOCTLs, depuración kernel con WinDbg (KDNET), minifiltros, mitigaciones HVCI/VBS, objetos del ejecutivo, procesos/hilos, Registro, servicios, Task Scheduler, COM/DCOM, RPC, WMI, IPC, SEH/VEH/WER, ETW y Hyper-V.</p>
-<p class="sub"><strong>Contenido de este volumen (Tomo II):</strong> <strong>Etapa 6 completa (6.1 a 6.6)</strong> · <strong>Rama 2D completa (2D.1 a 2D.13 + Anexo Hyper-V)</strong>.</p>
+<p class="sub"><strong>Contenido de este volumen (Tomo II):</strong> <strong>Etapa 6 completa (6.1 a 6.7)</strong> · <strong>Rama 2D completa (2D.1 a 2D.13 + Anexo Hyper-V)</strong>.</p>
 <p class="sub"><strong>Requisitos previos y consulta rápida:</strong> Este tomo asume el dominio del tronco principal (Etapas 0 a 4 del <strong>Tomo I</strong>). Durante las prácticas con WinDbg, KMDF y estructuras del sistema, mantené abierta la <strong>Separata de Escritorio</strong> (especialmente la <em>Hoja 2: Offsets PEB/LDR</em> y la <em>Hoja 3: CTL_CODE, IRQL y comandos de WinDbg</em>).</p>
 <div class="aviso"><strong>Seguridad de laboratorio obligatoria.</strong> Toda práctica con drivers de kernel (<code>.sys</code>), <code>bcdedit /debug on</code>, Driver Verifier, servicios o mecanismos de persistencia debe realizarse exclusivamente dentro de una <strong>máquina virtual descartable y aislada</strong>, nunca en el equipo anfitrión.</div>
 </section>
 """)
 
     toc_t2 = ['<section class="print-sec" id="toc"><h1>Contenido — Tomo II</h1><div class="toc" style="columns: 1; max-width: 165mm;">']
-    lecs_e6 = ["guia/6-01-arquitectura-kernel.html", "guia/6-02-kmdf-ioctl.html", "guia/6-03-debug-kernel.html", "guia/6-04-revision-driver.html", "guia/6-05-minifilters.html", "guia/6-06-mitigaciones.html"]
+    lecs_e6 = ["guia/6-01-arquitectura-kernel.html", "guia/6-02-kmdf-ioctl.html", "guia/6-03-debug-kernel.html", "guia/6-04-revision-driver.html", "guia/6-05-minifilters.html", "guia/6-06-mitigaciones.html", "guia/6-07-vbs-hvci-callbacks.html"]
     toc_t2.append(t2_heading(mapa["guia/etapa-6.html"], "Etapa 6 · Kernel y drivers en Windows (rama optativa)") + '<ol>')
     for rel in lecs_e6:
         toc_t2.append(t2_row(mapa[rel], nombres[rel]))
@@ -1668,7 +1672,7 @@ VM con Windows x64 aislada, Visual Studio Developer Command Prompt (<code>cl.exe
 <tr><td><strong>Etapa 2A · Núcleo x86/x64, IDA y x64dbg</strong> (<code>2.1–2.9</code>)</td><td>Principiante</td><td><strong>Tomo I</strong></td><td>{rango_en(info_t1, ancla("guia/etapa-2.html"), ancla("guia/02-ofuscacion.html"))}</td><td>{rango_en(ctx, ancla("guia/etapa-2.html"), ancla("guia/02-ofuscacion.html"))}</td></tr>
 <tr><td><strong>Etapa 2B · Ofuscación, TLS, MFC, PEB, Anti-debug, Ghidra</strong> (<code>2.10–2.16</code>)</td><td>Intermedio</td><td><strong>Tomo I</strong></td><td>{rango_en(info_t1, ancla("guia/02-ofuscacion.html"), ancla("guia/02-packers.html"))}</td><td>{rango_en(ctx, ancla("guia/02-ofuscacion.html"), ancla("guia/02-packers.html"))}</td></tr>
 <tr><td><strong>Etapa 2C · Packers, C++ profundo, WinDbg/TTD, Diffing, Frida</strong> (<code>2.17–2.21</code>)</td><td>Interm. / Avanzado</td><td><strong>Tomo I</strong></td><td>{rango_en(info_t1, ancla("guia/02-packers.html"), ancla("guia/02-opt-malware-dinamico.html"))}</td><td>{rango_en(ctx, ancla("guia/02-packers.html"), ancla("guia/02-opt-malware-dinamico.html"))}</td></tr>
-<tr><td><strong>Etapa 2 Optativas (2.22–2.24) y Bloque 2E Avanzado (2.25–2.33)</strong></td><td>Interm. / Avanzado</td><td><strong>Tomo I</strong></td><td>{rango_en(info_t1, ancla("guia/02-opt-malware-dinamico.html"), ancla("guia/etapa-3.html"))}</td><td>{rango_en(ctx, ancla("guia/02-opt-malware-dinamico.html"), ancla("guia/etapa-3.html"))}</td></tr>
+<tr><td><strong>Etapa 2 Optativas (2.22–2.24) y Bloque 2E Avanzado (2.25–2.35)</strong></td><td>Interm. / Avanzado</td><td><strong>Tomo I</strong></td><td>{rango_en(info_t1, ancla("guia/02-opt-malware-dinamico.html"), ancla("guia/etapa-3.html"))}</td><td>{rango_en(ctx, ancla("guia/02-opt-malware-dinamico.html"), ancla("guia/etapa-3.html"))}</td></tr>
 <tr><td><strong>Etapa 3 · Reversing en .NET e IL</strong> (<code>3.1–3.2</code>)</td><td>Principiante</td><td><strong>Tomo I</strong></td><td>{rango_en(info_t1, ancla("guia/etapa-3.html"), ancla("guia/etapa-4.html"))}</td><td>{rango_en(ctx, ancla("guia/etapa-3.html"), ancla("guia/etapa-4.html"))}</td></tr>
 <tr><td><strong>Etapa 4 · Método de 5 pasos, protocolos, cripto e informe</strong> (<code>4.1–4.6</code>)</td><td>Princ. / Intermedio</td><td><strong>Tomo I</strong></td><td>{rango_en(info_t1, ancla("guia/etapa-4.html"), ancla("guia/etapa-5.html"))}</td><td>{rango_en(ctx, ancla("guia/etapa-4.html"), ancla("guia/etapa-5.html"))}</td></tr>
 <tr><td><strong>Etapa 5 · Malware estático, vulnerabilidades, automatización</strong> (<code>5.1–5.4</code>)</td><td>Interm. / Avanzado</td><td><strong>Tomo I</strong></td><td>{rango_en(info_t1, ancla("guia/etapa-5.html"), "hilo-plantillas")}</td><td>{rango_en(ctx, ancla("guia/etapa-5.html"), ancla("guia/etapa-6.html"))}</td></tr>

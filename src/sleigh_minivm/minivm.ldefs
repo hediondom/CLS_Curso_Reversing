@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<language_definitions>
+    <language processor="MiniVM"
+              endian="little"
+              size="32"
+              variant="default"
+              version="1.0"
+              slafile="minivm.sla"
+              processorspec="minivm.pspec"
+              id="MiniVM:LE:32:default">
+        <description>Procesador Didactico MiniVM de Bytecode (Leccion 2.34)</description>
+        <compiler name="default" id="default" cspec="minivm.cspec"/>
+    </language>
+</language_definitions>

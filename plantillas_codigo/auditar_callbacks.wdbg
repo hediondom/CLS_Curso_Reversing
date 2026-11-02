@@ -1,0 +1,51 @@
+$$ auditar_callbacks.wdbg — Script de auditoría de callbacks y telemetría de Kernel en WinDbg KDNET (Lección 6.7)
+$$ Ejecución: $$><auditar_callbacks.wdbg
+
+.printf "\n========================================================================\n"
+.printf "[+] 1. AUDITORIA DE CALLS EN PspCreateProcessNotifyRoutine (x64)\n"
+.printf "========================================================================\n"
+
+$$ Cada slot es un puntero _EX_FAST_REF (8 bytes)
+$$ En x64, los 4 bits inferiores son una máscara de referencia (& ~0xF)
+$$ El puntero resultante apunta a _EX_CALLBACK_ROUTINE_BLOCK; en +0x08 está el Callback
+
+r $t0 = nt!PspCreateProcessNotifyRoutine
+.for (r $t1 = 0; @$t1 < 0x40; r $t1 = @$t1 + 1) {
+    r $t2 = poi(@$t0 + @$t1 * 8) & 0xfffffffffffffff0
+    .if (@$t2 != 0) {
+        r $t3 = poi(@$t2 + 8)
+        .printf "[PspCreateProcess Slot %02d] Bloque=%p -> Callback=%p : ", @$t1, @$t2, @$t3
+        ln @$t3
+    }
+}
+
+.printf "\n========================================================================\n"
+.printf "[+] 2. AUDITORIA DE CALLBACKS DE OBJETOS (ObRegisterCallbacks sobre PsProcessType)\n"
+.printf "========================================================================\n"
+
+$$ Obtenemos el objeto _OBJECT_TYPE para procesos
+r $t4 = poi(nt!PsProcessType)
+.printf "[*] PsProcessType en: %p\n", @$t4
+
+$$ En Windows 10/11 x64, CallbackListHead está en el offset +0xC8 de _OBJECT_TYPE
+$$ Recorremos la lista encadenada LIST_ENTRY
+!list -t nt!_LIST_ENTRY.Flink -x "r $t5 = @$extret; .printf \"[ObCallback Context: %p] PreOp=%p PostOp=%p : \", @$t5, poi(@$t5+0x28), poi(@$t5+0x30); ln poi(@$t5+0x28)" (@$t4 + 0xc8)
+
+.printf "\n========================================================================\n"
+.printf "[+] 3. AUDITORIA DE TELEMETRIA ETWti (Microsoft-Windows-Threat-Intelligence)\n"
+.printf "========================================================================\n"
+
+r $t6 = poi(nt!EtwThreatIntProvRegHandle)
+.if (@$t6 == 0) {
+    .printf "[-] El proveedor ETWti no se encuentra registrado en este arranque.\n"
+} .else {
+    .printf "[+] Handle de registro ETWti: %p\n", @$t6
+    dt nt!_ETW_REG_ENTRY @$t6 GuidEntry
+    r $t7 = poi(@$t6 + 0x10)
+    .printf "[+] _ETW_GUID_ENTRY en: %p\n", @$t7
+    dt nt!_ETW_GUID_ENTRY @$t7 ProviderEnableInfo
+}
+
+.printf "\n========================================================================\n"
+.printf "[+] Fin de la auditoria de vectores de kernel.\n"
+.printf "========================================================================\n"

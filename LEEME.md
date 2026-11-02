@@ -12,14 +12,14 @@ Para estudiar desde el navegador, abrí **`00_EMPEZAR_AQUI.html`** o **`index.ht
 Funciona 100% sin conexión a internet y da acceso a:
 - Portada, metodología de estudio y recorrido estructurado por etapas.
 - Buscador temático offline (`buscar.html`).
-- 46 lecciones base + 13 lecciones avanzadas de Kernel (Rama 2D) y extensión Hyper-V.
+- 48 lecciones base + 14 lecciones avanzadas de Kernel (Rama 2D y Etapa 6) y extensión Hyper-V.
 - 69 tutoriales ilustrados de IDA Pro (`ida_tutes/`).
-- 7 plantillas de código listas para compilar (`src/`).
+- Kit completo de plantillas C/C++ y scripts de laboratorio (`src/` y `plantillas_codigo/`).
 - Fichas de herramientas, glosario técnico y preguntas/respuestas de autoevaluación.
 
 ---
 
-## 📚 Materiales Impresos y Formato PDF (Revisión 5.4)
+## 📚 Materiales Impresos y Formato PDF (Revisión 5.4 Consolidada)
 
 El material está optimizado para lectura digital e impresión profesional en gráfica (formato A4, márgenes simétricos para anillado o encuadernación rústica pegada al lomo, control estricto de orfandad, paridad para doble faz y contraste optimizado).
 
@@ -29,17 +29,17 @@ Para facilitar la manipulación física y el uso diario en el escritorio, la obr
 
 | Archivo PDF | Páginas | Hojas (doble faz) | Encuadernación / Contenido |
 | :--- | :---: | :---: | :--- |
-| **`Tomo_1_Parte_A_pags_1-172.pdf`** | **172 págs.** | **86 hojas** | **Tomo I · Parte A:** Fundamentos de arquitectura x86/x64, ciclo de vida del PE y DLLs, desensamblado estático (IDA Pro / Ghidra), depuración dinámica táctica con x64dbg (breakpoints `$ptr`), y análisis de anti-análisis y packers (Etapas 0 a 2C).<br>*(Anillado metálico Ring Wire / espiral o binder con tapa dura/polipropileno)*. |
-| **`Tomo_1_Parte_B_pags_173-380.pdf`** | **208 págs.** | **104 hojas** | **Tomo I · Parte B:** C++ moderno en bajo nivel (vtables, RTTI, SSO, Smart Pointers, `std::function`), WinDbg y análisis de Heap, .NET/CLR, Criptografía híbrida (CryptoAPI vs. CNG con discrepancia de endianness), Metodología de Triage de 5 pasos, Bloque 2E avanzado (angr/Z3, VM bytecode, protectores multicapa, Go/Rust a bajo nivel, VB6 p-code), Casos prácticos y Material de Apoyo (Glosario, Q&A, Fichas de recursos).<br>*(Anillado metálico Ring Wire / espiral o binder con tapa dura/polipropileno)*. |
-| **`Tomo_2_Kernel_e_Internals.pdf`** | **132 págs.** | **66 hojas** | **Tomo II · Ramas Especializadas:** Rama Optativa 2D completa (Internals de Windows, Objetos del Kernel, Procesos, COM/DCOM, RPC, WMI, IPC, SEH/VEH, ETW y Extensión Hyper-V) y Etapa 6 completa (Arquitectura de Drivers WDF/KMDF, tabla `WdfFunctions`, despacho de IOCTLs, depuración de Kernel con WinDbg/KDNET y Minifiltros de sistema de archivos).<br>*(Anillado metálico Ring Wire / espiral o binder con tapa dura/polipropileno)*. |
-| **`Separata_Escritorio.pdf`** | **18 págs.** | **9 hojas** | **Separata de Escritorio (Cheat Sheets y Referencia Rápida):** Cuadernillo de consulta rápida junto al teclado. Contiene: Árbol de Triage Defensivo de 1 pág., Mapa y Anatomía del Formato PE x86/x64, Atajos y comandos de WinDbg, x64dbg, GDB, IDA Pro y Ghidra, Hojas 1 a 5 de tablas de bajo nivel (C++, WinDbg, evasión, criptografía, drivers) y Plantilla Forense.<br>*(Anillado metálico Ring Wire / espiral o binder con tapa dura/polipropileno)*. |
+| **`Tomo_1_Parte_A_pags_1-172.pdf`** | **172 págs.** | **86 hojas** | **Tomo I · Parte A:** Fundamentos de arquitectura x86/x64, ciclo de vida del PE y DLLs (Loader Lock), desensamblado estático (IDA Pro / Ghidra), depuración dinámica táctica con x64dbg (breakpoints `$ptr`), y análisis de anti-análisis y packers (Etapas 0 a 2C).<br>*(Anillado metálico Ring Wire / espiral o binder con tapa dura/polipropileno)*. |
+| **`Tomo_1_Parte_B_pags_173-388.pdf`** | **216 págs.** | **108 hojas** | **Tomo I · Parte B:** C++ moderno en bajo nivel (vtables, RTTI, SSO, Smart Pointers, `std::function`), WinDbg y análisis de Heap, .NET/CLR, Criptografía híbrida (CryptoAPI vs. CNG), Metodología de Triage de 5 pasos, Bloque 2E avanzado (angr/Z3, VM bytecode, protectores multicapa, Go y Rust con layouts de slices/async, VB6 p-code), **Lección 2.34** (desvirtualización y SLEIGH completo), **Lección 2.35** (ARM64EC, WinRT `IInspectable` y Native AOT con JIT Hooking), Casos prácticos y Apoyo (Glosario, Q&A, Fichas).<br>*(Anillado metálico Ring Wire / espiral o binder con tapa dura/polipropileno)*. |
+| **`Tomo_2_Kernel_e_Internals.pdf`** | **136 págs.** | **68 hojas** | **Tomo II · Ramas Especializadas:** Rama Optativa 2D completa (Internals de Windows, Objetos, Procesos, COM/DCOM, RPC/NDR, WMI, IPC, SEH/VEH, ETW y Extensión Hyper-V) y Etapa 6 completa (Drivers WDF/KMDF, tabla `WdfFunctions`, despacho de IOCTLs, depuración KDNET, Minifiltros de sistema de archivos y **Lección 6.7** con VBS/HVCI en VTL1, auditoría de `PspCreateProcessNotifyRoutine`, `ObRegisterCallbacks`, `ETWti` y *Double Fetch* en MDLs).<br>*(Anillado metálico Ring Wire / espiral o binder con tapa dura/polipropileno)*. |
+| **`Separata_Escritorio.pdf`** | **18 págs.** | **9 hojas** | **Separata de Escritorio (Cheat Sheets y Referencia Rápida):** Cuadernillo de consulta rápida junto al teclado. Contiene: Árbol de Triage Defensivo de 1 pág., Mapa y Anatomía del Formato PE x86/x64, Atajos y comandos de WinDbg, x64dbg, GDB, IDA Pro y Ghidra, Hojas 1 a 5 de tablas de bajo nivel (C++, WinDbg, evasión, criptografía, ARM64EC, VTL1, callbacks de kernel) y Plantilla Forense.<br>*(Anillado metálico Ring Wire / espiral o binder con tapa dura/polipropileno)*. |
 
 ### 📑 Volúmenes Consolidados Integrales (Lectura Digital / Tablet)
 
 | Archivo PDF | Páginas | Hojas (doble faz) | Contenido y Propósito |
 | :--- | :---: | :---: | :--- |
-| **`Tomo_1_Tronco_y_Apoyo.pdf`** | **380 págs.** | **190 hojas** | **Tomo I Íntegro:** Recorrido troncal completo (Etapas 0 a 5, Bloque 2E, Casos de Estudio, Fichas, Glosario y Repaso) en un solo archivo unificado con índice general consolidado. |
-| **`Curso_Reversing_Windows.pdf`** | **530 págs.** | **265 hojas** | **Edición Completa Unificada:** Todo el material de la obra (Tomo I + Tomo II + Separata) integrado en un único volumen con índice temático unificado. |
+| **`Tomo_1_Tronco_y_Apoyo.pdf`** | **388 págs.** | **194 hojas** | **Tomo I Íntegro:** Recorrido troncal completo (Etapas 0 a 5, Bloque 2E completo con 2.34 y 2.35, Casos de Estudio, Fichas, Glosario y Repaso) en un solo archivo unificado con índice general consolidado. |
+| **`Curso_Reversing_Windows.pdf`** | **522 págs.** | **261 hojas** | **Edición Completa Unificada:** Todo el material de la obra (Tomo I + Tomo II + Separata) integrado en un único volumen con índice temático unificado. |
 
 ### 🖨️ Recomendaciones para la Gráfica / Imprenta:
 - **Papel de Interiores:** Papel obra de **80 g/m²** (estándar óptimo de imprenta) o chambril/obra de **90 g/m²** para máxima opacidad frente a bloques oscuros de desensamblado.
@@ -49,33 +49,28 @@ Para facilitar la manipulación física y el uso diario en el escritorio, la obr
 
 ---
 
-## 🌟 Novedades Técnicas Incorporadas en la Versión 5.4 (Estándar Industrial)
+## 🌟 Novedades Técnicas e Industriales Incorporadas
 
-En respuesta a la auditoría técnica experta y a los estándares contemporáneos de análisis de software en Windows, la Revisión 5.4 integró las siguientes precisiones de bajo nivel:
+La presente edición integra las siguientes áreas avanzadas de ingeniería inversa y seguridad:
 
-1. **Evolución de Evasión: Indirect Syscalls, Call Stack Walking y Call Stack Spoofing (Lección 2.15):**
-   - Justificación de por qué las *Direct Syscalls* fallan ante telemetría de kernel moderna: ETWti (*Microsoft-Windows-Threat-Intelligence*) e *Instrumentation Callbacks* que comprueban si el `RIP` proviene de memoria privada o `.text` legítima.
-   - Implementación táctica de **Indirect Syscalls**: salto (`jmp`) a la instrucción `syscall; ret` legítima dentro de `ntdll.dll` para legitimar el puntero de instrucción.
-   - Verificación estática y dinámica de Call Stack Spoofing mediante tablas `.pdata`/`UNWIND_INFO`: validación del byte previo `ReturnAddress - N` frente a opcodes de llamada válidos (`CALL rel32` / `CALL r/m64`).
-   - Detección de *Tartarus' Gate* (resolución de SSN cuando los stubs tienen ganchos desplazados al byte `+3`).
+1. **Desvirtualización y Lifting Simbólico (Lección 2.34):**
+   - Detección de *Indirect Threading* (`jmp qword ptr [r12 + rax*8]`) frente al switch tradicional.
+   - Lifting simbólico con **Z3 / Python** (`solve_minivm_z3.py`) para colapsar expresiones *Mixed Boolean-Arithmetic* (MBA).
+   - Especificación completa de procesador virtual en **SLEIGH** para Ghidra (`.ldefs`, `.pspec`, `.cspec`, `.slaspec`).
 
-2. **La Trampa del Endianness en CNG vs. CryptoAPI y Script de Reconstrucción en Python (Lección 4.2):**
-   - Cuadro comparativo de *magic bytes* en CNG (`BCRYPT_RSAPUBLIC_MAGIC = "RSA1"`, `BCRYPT_ECCPUBLIC_MAGIC = "ECK1"` / `"ECS1"` para curvas P-256).
-   - Detalle de bajo nivel: **CryptoAPI clásica almacena el módulo en Little-Endian, mientras que CNG lo hace en Big-Endian**.
-   - Script funcional de conversión en Python (`PyCryptodome`) para reconstruir claves públicas `.pem` a partir de volcados de memoria invirtiendo el *endianness*.
-   - Reconocimiento visual del OID de RSA en estructuras ASN.1 DER (`30 82 .. 30 0D 06 09 2A 86 48 86 F7 0D 01 01 01`).
+2. **Ecosistemas Modernos en Windows 11 (Lección 2.35):**
+   - Binarios híbridos **ARM64EC**: `IMAGE_DYNAMIC_RELOCATION_ARM64EC`, thunks `$$h` y mapa de registros mapeados (`RCX..R9` &harr; `X0..X3`).
+   - Reversing de **Windows Runtime (WinRT)**: interfaz `IInspectable` (+0x18, +0x20, +0x28), cabeceras `HSTRING` (24 bytes) y sandboxing con tokens AppContainer / LPAC.
+   - Reversing de **.NET Native AOT** e intercepción de compilación por método en el JIT mediante ganchos en `clrjit.dll!CILJit::compileMethod` (`dump_cil_jit.js`).
 
-3. **Doble Breakpoint en x64dbg para Funciones In-Place y Niche Optimization en Rust (Lecciones 2.6 y 2.13):**
-   - Técnica de doble breakpoint encadenado con variable de usuario en x64dbg para rutinas `void decodificar(char* buf)`: `$ptr = rcx` en el prólogo y registro `{utf8@$ptr}` en el `ret`, sorteando la sobreescritura de registros volátiles.
-   - Recomendación de plugins tácticos esenciales: **ScyllaHide**, **xAnalyzer** y **OllyDumpEx**.
-   - *Niche Optimization* en Rust: supresión del byte discriminante `tag` en tipos que garantizan no-nulidad (`Option<&T>`, `Option<Box<T>>`, `Option<NonZeroU32>`), traduciéndose en desensamblado como una simple comprobación de puntero nulo (`test rax, rax ; jz es_none`).
+3. **Seguridad Profunda en Modo Kernel (Lección 6.7):**
+   - Arquitectura **VBS y Secure Kernel**: partición VTL0 (`ntoskrnl.exe`) vs. VTL1 (`securekernel.exe`), transiciones `VtlCall` / `VtlReturn`, kCFG en `nt!guard_dispatch_icall` y cumplimiento de $W \oplus X$ en kernel mediante SLAT / EPT.
+   - Auditoría forense en WinDbg de vectores de notificación: arreglo `nt!PspCreateProcessNotifyRoutine` (`EX_FAST_REF`), callbacks de objetos `ObRegisterCallbacks` en `*PsProcessType`, y telemetría `ETWti` (`EtwThreatIntProvRegHandle`).
+   - Vulnerabilidades de *Double Fetch* en buffers compartidos con `MmGetSystemAddressForMdlSafe`, y llamadas indirectas KMDF para I/O asíncrona (`WdfRequestSend` en +0x8E8 y `WdfRequestSetCompletionRoutine` en +0x910).
 
-4. **Ampliaciones de Arquitectura en Drivers, C++ Moderno y Servicios Windows:**
-   - **Resolución de la tabla `WdfFunctions` en KMDF sin símbolos (Lección 6.4):** Localización estática y dinámica de índices y offsets para `WdfDriverCreate` (+0x3B0), `WdfIoQueueCreate` (+0x4C0), `WdfDeviceCreate` e inspección de `EvtIoDeviceControl` (+0x28).
-   - **Anatomía de `DllMain`, Loader Lock y DLL Sideloading (Lección 2.14):** Invocación bajo `LdrpCallInitRoutine`, riesgos de interbloqueo (*deadlock*) con `LoadLibrary`/`CoInitializeEx`, breakpoints en el EntryPoint de la DLL y análisis de entradas *Export Forwarding* en `.edata`.
-   - **Estructuras Modernas de C++ en MSVC x64 (Lección 2.18):** Patrones de desensamblado para `std::unique_ptr` (8 bytes), `std::shared_ptr` (16 bytes con bloque de control `_Ref_count_base`) y `std::function` (64 bytes con Small Functor Optimization y tabla `_Impl_base`).
-   - **Desofuscación Dinámica en .NET y Carga Reflexiva (Lección 3.2):** Intercepción de `Assembly.Load(byte[])` en memoria a través de `amsi.dll!AmsiScanBuffer` o `clrjit.dll!compileMethod`.
-   - **Plantilla de Laboratorio: Servicio Windows Mínimo (`svclab_min.c`):** Implementación completa de `ServiceMain`, `RegisterServiceCtrlHandler`, reporte de estados ante el SCM y depuración con WinDbg / x64dbg.
+4. **Go y Rust en Profundidad (Lección 2.32):**
+   - Layout en memoria de `slices` (24 bytes en x64), tablas `hmap`, llamadas a `runtime.newproc`, `chanrecv1` y despacho de `selectgo` en Go.
+   - Vtables de `dyn Trait` (destructor, size, align, métodos) y desmantelamiento de máquinas de estado `async/await` (`Future::poll`) en Rust.
 
 ---
 

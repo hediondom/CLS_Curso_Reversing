@@ -10,7 +10,7 @@
 <body>
 <a class="salto" href="#contenido">Saltar al contenido</a>
 <header class="cabecera">
-  <div class="marca"><a href="../00_EMPEZAR_AQUI.html">Curso de Reversing en Windows</a> <span class="edicion">edición 5 · 27/10/2026</span></div>
+  <div class="marca"><a href="../00_EMPEZAR_AQUI.html">CLS · Curso de reversing</a> <span class="edicion">edición 5 · 27/10/2026</span></div>
   <nav class="principal" aria-label="Navegación principal">
     <a href="../00_EMPEZAR_AQUI.html">Inicio</a>
     <a href="../guia/index.html">Curso</a>
@@ -70,53 +70,31 @@ Imports:                             Imports:
 Secciones: .text .rdata .data        Símbolos: __mingw_*, ___chkstk_ms
   (sin .eh_frame)</code></pre>
 <p>Con solo mirar imports y secciones ya decidís: Rich header + <code>api-ms-win-crt-*</code> + <code>__C_specific_handler</code> ⇒ <strong>MSVC</strong>; <code>msvcrt.dll</code> + <code>__mingw_*</code> + <code>.eh_frame</code> y sin Rich header ⇒ <strong>MinGW</strong> (recordá la salvedad de arriba: es indicio, no prueba).</p>
-
-<aside class="ampliacion-ext">
-<p class="callout-titulo">Ampliación editorial basada en fuentes externas — Reversing de ejecutables empaquetados de Python (PyInstaller) y aplicaciones Electron (ASAR)</p>
-<p>Un error frecuente de triage ocurre cuando el analista abre en IDA o Ghidra un <code>.exe</code> de varios megabytes y empieza a desensamblar funciones en C como <code>pyi_main</code>, <code>pyi_arch_open_archive</code> o llamadas a <code>uv_run</code>, creyendo que está viendo la lógica del programa, cuando en realidad está frente al <em>bootloader</em> nativo de un lenguaje interpretado <em>(Hecho confirmado)</em>:</p>
-<ol>
-<li><strong>Ejecutables de Python empaquetados con <code>PyInstaller</code>:</strong>
-PyInstaller empaqueta el intérprete (<code>python3XX.dll</code>), las extensiones <code>.pyd</code> y los scripts compilados a bytecode (<code>.pyc</code>) dentro de un archivo <code>CArchive</code> adjunto al final del PE (en el <em>overlay</em> o como recurso).
-<ul>
-<li><strong>Huella estática inequívoca:</strong>
-<ul>
-<li>Strings en <code>.rdata</code>: <code>"PyInstaller: FormatMessageW failed."</code>, <code>"_MEIPASS2"</code>, <code>"python311.dll"</code> (o <code>310</code>, <code>312</code>, <code>313</code>).</li>
-<li>Magic de la estructura <code>COOKIE</code> buscando desde el final del archivo: los 8 bytes <code>4D 45 49 0C 0B 0A 0B 0E</code> (<code>MEI\x0c\x0b\x0a\x0b\x0e</code>).</li>
-</ul></li>
-<li><strong>Flujo de extracción y decompilación en laboratorio (sin ejecutar el binario):</strong>
-<ol>
-<li><strong>Extraer el contenedor:</strong> Ejecutar <code>pyinstxtractor.py</code> sobre una copia del <code>.exe</code>:
+<blockquote><p><strong>Ampliación editorial basada en fuentes externas — Reversing de ejecutables empaquetados de Python (<code>PyInstaller</code>) y aplicaciones Electron (<code>ASAR</code>)</strong></p>
+<p>Un error frecuente de triage ocurre cuando el analista abre en IDA o Ghidra un <code>.exe</code> de varios megabytes y empieza a desensamblar funciones en C como <code>pyi_main</code>, <code>pyi_arch_open_archive</code> o llamadas a <code>uv_run</code>, creyendo que está viendo la lógica del programa, cuando en realidad está frente al <em>bootloader</em> nativo de un lenguaje interpretado (<strong>Hecho confirmado</strong>):</p>
+<ol><li><strong>Ejecutables de Python empaquetados con <code>PyInstaller</code>:</strong></li></ol>
+<p>PyInstaller empaqueta el intérprete (<code>python3XX.dll</code>), las extensiones <code>.pyd</code> y los scripts compilados a bytecode (<code>.pyc</code>) dentro de un archivo <code>CArchive</code> adjunto al final del PE (en el <em>overlay</em> o como recurso).</p>
+<ul><li><strong>Huella estática inequívoca:</strong></li><li>Strings en <code>.rdata</code>: <code>"PyInstaller: FormatMessageW failed."</code>, <code>"_MEIPASS2"</code>, <code>"python311.dll"</code> (o <code>310</code>, <code>312</code>, <code>313</code>).</li><li>Magic de la estructura <code>COOKIE</code> buscando desde el final del archivo: los 8 bytes <code>4D 45 49 0C 0B 0A 0B 0E</code> (<code>MEI\x0c\x0b\x0a\x0b\x0e</code>).</li><li><strong>Flujo de extracción y decompilación en laboratorio (sin ejecutar el binario):</strong></li></ul>
+<ol><li><strong>Extraer el contenedor:</strong> Ejecutar <code>pyinstxtractor.py</code> sobre una copia del <code>.exe</code>:</li></ol>
 <pre><code class="lenguaje-powershell">python pyinstxtractor.py muestra_pyinstaller.exe</code></pre>
-Esto crea la carpeta <code>muestra_pyinstaller.exe_extracted/</code>, indica la versión exacta de Python (p. ej. <code>Python 3.11</code>) y señala los posibles puntos de entrada (<code>Possible entry points: main.pyc</code>).</li>
-<li><strong>Estructura del encabezado <code>.pyc</code> (Python 3.7 a 3.13+):</strong> Todo archivo <code>.pyc</code> válido en Python 3.7+ tiene una cabecera de <strong>16 bytes</strong> antes del objeto <code>code</code> serializado con <code>marshal</code>:
-• <code>+0x00</code> (4B): <em>Magic number</em> de la versión de Python (p. ej. <code>A7 0D 0D 0A</code> en Python 3.11; <code>CB 0D 0D 0A</code> en 3.12).<br>
-• <code>+0x04</code> (4B): Bit field (<code>0x00000000</code> para timestamp).<br>
-• <code>+0x08</code> (4B): Timestamp o hash parcial.<br>
-• <code>+0x0C</code> (4B): Tamaño del archivo fuente <code>.py</code> original.<br>
-<em>(Nota: versiones recientes de <code>pyinstxtractor.py</code> ya reconstruyen estos 16 bytes automáticamente al extraer).</em></li>
-<li><strong>Decompilar o desensamblar el bytecode:</strong> Con <code>pycdc</code> (<em>Decompyle++</em>) se recupera código fuente <code>.py</code>; si el bytecode es de Python 3.11/3.12/3.13 y el decompilador falla en algún opcode nuevo, el módulo estándar <code>dis</code> + <code>marshal</code> corrido con <strong>esa misma versión de Python</strong> muestra el desensamblado exacto e infalible:
+<p>Esto crea la carpeta <code>muestra_pyinstaller.exe_extracted/</code>, indica la versión exacta de Python (p. ej. <code>Python 3.11</code>) y señala los posibles puntos de entrada (<code>Possible entry points: main.pyc</code>).</p>
+<ol><li><strong>Estructura del encabezado <code>.pyc</code> (Python 3.7 a 3.13+):</strong> Todo archivo <code>.pyc</code> válido en Python 3.7+ tiene una cabecera de <strong>16 bytes</strong> antes del objeto <code>code</code> serializado con <code>marshal</code>:</li></ol>
+<ul><li><code>+0x00</code> (4B): <em>Magic number</em> de la versión de Python (p. ej. <code>A7 0D 0D 0A</code> en Python 3.11; <code>CB 0D 0D 0A</code> en 3.12).</li><li><code>+0x04</code> (4B): Bit field (<code>0x00000000</code> para timestamp).</li><li><code>+0x08</code> (4B): Timestamp o hash parcial.</li><li><code>+0x0C</code> (4B): Tamaño del archivo fuente <code>.py</code> original.</li></ul>
+<p><em>(Nota: versiones recientes de <code>pyinstxtractor.py</code> ya reconstruyen estos 16 bytes automáticamente al extraer).</em></p>
+<ol><li><strong>Decompilar o desensamblar el bytecode:</strong> Con <code>pycdc</code> (<em>Decompyle++</em>) se recupera código fuente <code>.py</code>; si el bytecode es de Python 3.11/3.12/3.13 y el decompilador falla en algún opcode nuevo, el módulo estándar <code>dis</code> + <code>marshal</code> corrido con <strong>esa misma versión de Python</strong> muestra el desensamblado exacto e infalible:</li></ol>
 <pre><code class="lenguaje-python"># volcar_pyc.py — ejecutar con la MISMA versión menor de Python que informó pyinstxtractor
 import dis, marshal
 
 with open("main.pyc", "rb") as f:
-    f.seek(16)  # salta los 16 bytes del encabezado .pyc (Python 3.7+)
-    code_obj = marshal.load(f)
-dis.dis(code_obj)</code></pre></li>
-</ol></li>
-</ul></li>
-<li><strong>Aplicaciones empaquetadas con Electron / Node.js (<code>app.asar</code>):</strong>
-<ul>
-<li><strong>Huella:</strong> Binario PE enorme (&gt; 100 MB) que importa <code>ffmpeg.dll</code>, <code>d3dcompiler_47.dll</code>, contiene strings de <code>Chromium</code> / <code>Node.js</code> y va acompañado de una carpeta <code>resources/</code> con un archivo <code>app.asar</code> (magic header con longitud JSON prefijada).</li>
-<li><strong>Extracción estática:</strong> La lógica no está en el <code>.exe</code>, sino en el JavaScript dentro de <code>resources/app.asar</code>. Se extrae en modo lectura con <code>npx @electron/asar extract resources/app.asar ./codigo_extraido</code>.</li>
-</ul></li>
-</ol>
-</aside>
-
-
+f.seek(16)  # salta los 16 bytes del encabezado .pyc (Python 3.7+)
+code_obj = marshal.load(f)
+dis.dis(code_obj)</code></pre>
+<ol><li><strong>Aplicaciones empaquetadas con Electron / Node.js (<code>app.asar</code>):</strong></li></ol>
+<ul><li><strong>Huella:</strong> Binario PE enorme (&gt; 100 MB) que importa <code>ffmpeg.dll</code>, <code>d3dcompiler_47.dll</code>, contiene strings de <code>Chromium</code> / <code>Node.js</code> y va acompañado de una carpeta <code>resources/</code> con un archivo <code>app.asar</code> (magic header con longitud JSON prefijada).</li><li><strong>Extracción estática:</strong> La lógica no está en el <code>.exe</code>, sino en el JavaScript dentro de <code>resources/app.asar</code>. Se extrae en modo lectura con <code>npx @electron/asar extract resources/app.asar ./codigo_extraido</code>.</li></ul></blockquote>
 <h2 id="práctica">Práctica</h2>
 <p>En tu VM, con <strong>programas propios</strong>:</p>
 <ol><li>Compilá el <strong>mismo</strong> <code>hola.c</code> con <strong>MSVC</strong> (<code>cl</code>) y con <strong>MinGW</strong> (<code>gcc</code>). Abrí ambos en PE-bear/IDA.</li><li>Armá una tabla comparando: DLLs de runtime en imports, presencia de Rich header, strings de rutas, secciones (<code>.eh_frame</code> vs. no).</li><li>Si tenés cómo, compilá algo mínimo en <strong>Delphi</strong> o abrí un binario VB6 de práctica y buscá <code>MSVBVM60.DLL</code> o <code>TForm</code>/<code>TObject</code>.</li><li>Escribí en una línea, para cada binario, "esto es X porque veo Y".</li><li>Si tenés Go o Rust instalados, compilá un programa propio mínimo que compare una cadena ingresada con una fija. En el de Go, ubicá <code>main.main</code> y la comprobación de pila del inicio; en el de Rust, buscá las rutas <code>.rs</code> y mirá si hay Rich header. En ambos, encontrá la cadena fija y anotá dónde está su longitud.</li></ol>
-<aside class="callout nota"><p class="callout-titulo">Dónde profundizar cada lenguaje (Bloque 2E)</p><p>Esta lección enseña a identificar el compilador en el triage inicial. Para reconstruir tipos e interfaces (<code>itab</code>, <code>pclntab</code>) en Go y <em>trait objects</em> (<code>dyn Trait</code>), monomorfización y mangling <code>v0</code> en Rust, seguí a la lección <a href="02-go-rust.html"><strong>2.32 · Go y Rust en profundidad</strong></a>. Para analizar <code>VBHeader</code>, llamadas <code>__vba*</code> y bytecode <em>p-code</em> en Visual Basic 6, consultá la lección <a href="02-vb6-pcode.html"><strong>2.33 · VB6 y p-code</strong></a>.</p></aside>
+<aside class="callout nota"><p class="callout-titulo">Dónde profundizar cada lenguaje (Bloque 2E)</p><p>Esta lección enseña a identificar el compilador en el triage inicial. Para reconstruir tipos e interfaces (<code>itab</code>, <code>pclntab</code>) en Go y <em>trait objects</em> (<code>dyn Trait</code>), monomorfización y mangling <code>v0</code> en Rust, seguí a la lección <strong>2.32 · Go y Rust en profundidad</strong>. Para analizar <code>VBHeader</code>, llamadas <code>__vba*</code> y bytecode <em>p-code</em> en Visual Basic 6, consultá la lección <strong>2.33 · VB6 y p-code</strong>.</p></aside>
 <h2 id="preguntas-de-repaso">Preguntas de repaso</h2>
 <details class="qa"><summary>¿Por qué conviene identificar el compilador antes de leer el código?</summary><div class="respuesta"><p>Porque determina <strong>dónde está la lógica y cómo se ve</strong>: un binario Delphi, uno VB6 p-code y uno MSVC se analizan de formas distintas. Saberlo evita buscar un <code>main</code> clásico donde no lo hay.</p></div></details>
 <details class="qa"><summary>¿Qué pista distingue MSVC de MinGW de un vistazo?</summary><div class="respuesta"><p>MSVC trae <strong>Rich header</strong> y runtime <code>vcruntime</code>/<code>ucrtbase</code> con <code>__security_cookie</code>; MinGW usa <code>msvcrt.dll</code>, símbolos <code>__mingw_*</code>, <code>.eh_frame</code> y <strong>no</strong> tiene Rich header.</p></div></details>

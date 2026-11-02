@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>2.35 · Ecosistemas Modernos en Windows 11: ARM64EC, WinRT (IInspectable) y .NET Native AOT</title>
+<meta name="description" content="Reversing de binarios híbridos ARM64EC en Windows 11, interfaz IInspectable y cadenas HSTRING en WinRT, y reversing de .NET Native AOT con JIT Hooking en clrjit.dll.">
+<link rel="stylesheet" href="../guia/estilo.css">
+</head>
+<body>
+<a class="salto" href="#contenido">Saltar al contenido</a>
+<header class="cabecera">
+  <div class="marca"><a href="../00_EMPEZAR_AQUI.html">CLS · Curso de reversing</a> <span class="edicion">edición 5 · 27/10/2026</span></div>
+  <nav class="principal" aria-label="Navegación principal">
+    <a href="../00_EMPEZAR_AQUI.html">Inicio</a>
+    <a href="../guia/index.html">Curso</a>
+    <a href="../materiales.html">Materiales</a>
+    <a href="../fichas/index.html">Fichas</a>
+    <a href="../glosario.html">Glosario</a>
+    <a href="../preguntas_y_respuestas.html">Repaso</a>
+    <a href="../buscar.html">Buscar</a>
+  </nav>
+</header>
+<main id="contenido">
+<nav class="migas" aria-label="Ubicación"><a href="../00_EMPEZAR_AQUI.html">Inicio</a><span aria-hidden="true">›</span><a href="../guia/index.html">Curso</a><span aria-hidden="true">›</span><span>Etapa 2 · Reversing (Bloque 2E: Técnicas avanzadas e industriales)</span></nav><h1 id="ecosistemas-modernos-en-windows-11-arm64ec-winrt-y-net-native-aot">Ecosistemas Modernos en Windows 11: ARM64EC, WinRT y .NET Native AOT</h1>
+<aside class="callout nota"><p class="callout-titulo">Propósito y Relevancia</p><p>En Windows 11 contemporáneo, los analistas de software ya no se enfrentan únicamente a ejecutables x64 estándar. El ecosistema empresarial y de consumo incorpora tres nuevas realidades técnicas: binarios híbridos <strong>ARM64EC</strong> (<em>Emulation Compatible</em>) para dispositivos Copilot+ y portátiles basados en ARM, APIs de sistema basadas en <strong>Windows Runtime (WinRT / IInspectable)</strong> con sandboxes <strong>AppContainer / LPAC</strong>, y binarios <strong>.NET compilados a código nativo estricto (Native AOT)</strong> o protegidos con cifrado de métodos en el JIT. Esta lección aporta los patrones exactos de bajo nivel para auditar estos componentes.</p></aside>
+<hr>
+<h2 id="1-binarios-híbridos-arm64ec-emulation-compatible">1. Binarios Híbridos ARM64EC (<em>Emulation Compatible</em>)</h2>
+<p>Con el despliegue de procesadores Snapdragon X Elite y procesadores ARM64 en Windows 11, Microsoft desarrolló la arquitectura <strong>ARM64EC</strong>. Un ejecutable ARM64EC no es un binario x64 emulado por completo ni un binario ARM64 puro: es un <strong>PE híbrido</strong> donde funciones en código máquina x64 y funciones en código máquina ARM64 conviven dentro del mismo espacio virtual de memoria y pueden llamarse entre sí sin sobrecosto de cambio de contexto de proceso.</p>
+<h3 id="anatomía-del-pe-arm64ec">Anatomía del PE ARM64EC</h3>
+<ol><li><strong>Machine Type en FileHeader:</strong> <code>IMAGE_FILE_MACHINE_ARM64</code> (<code>0xAA64</code>).</li><li><strong>Directorio Load Config:</strong> El campo <code>CHPEMetadataPointer</code> apunta a <code>IMAGE_ARM64EC_METADATA</code>, que gobierna las tablas de reubicación dinámica <code>IMAGE_DYNAMIC_RELOCATION_ARM64EC</code>.</li><li><strong>Mapeo de Registros en Transiciones:</strong></li></ol>
+<p>Cuando el emulador JIT (<code>xtajit64.dll</code>) o los thunks de transición transfieren el control entre código x64 y código ARM64, los primeros 4 argumentos de llamada se mapean directamente:</p>
+<div class="tabla"><table>
+<thead><tr>
+<th>Argumento ABI</th>
+<th>Registro x64</th>
+<th>Registro ARM64</th>
+<th>Propósito</th>
+</tr></thead><tbody>
+<tr><td><strong>1º Parámetro</strong></td><td><code>RCX</code></td><td><code>X0</code></td><td>Puntero a objeto / Primer argumento entero o puntero</td></tr>
+<tr><td><strong>2º Parámetro</strong></td><td><code>RDX</code></td><td><code>X1</code></td><td>Segundo argumento entero o puntero</td></tr>
+<tr><td><strong>3º Parámetro</strong></td><td><code>R8</code></td><td><code>X2</code></td><td>Tercer argumento entero</td></tr>
+<tr><td><strong>4º Parámetro</strong></td><td><code>R9</code></td><td><code>X3</code></td><td>Cuarto argumento entero</td></tr>
+<tr><td><strong>Puntero de Pila</strong></td><td><code>RSP</code></td><td><code>SP</code></td><td>Alineación estricta a 16 bytes</td></tr>
+</tbody></table></div>
+<h3 id="entry-y-exit-thunks-h">Entry y Exit Thunks (<code>$$h</code>)</h3>
+<p>Cuando una función x64 llama a una función ARM64 nativa, la invocación no salta directamente a la rutina destino: salta a un <strong>Entry Thunk</strong> (identificado con el prefijo o símbolo <code>$$h</code> o <code>#entry_thunk</code>). Este stub de 8 a 16 bytes salva el estado del contexto de emulación x64, reajusta la pila y salta al código ARM64 nativo en <code>X16</code> / <code>X17</code>. Para el analista en IDA Pro o Ghidra, reconocer estos thunks evita interpretar el código de ajuste de ABI como lógica de ofuscación.</p>
+<hr>
+<h2 id="2-windows-runtime-winrt-y-la-interfaz-iinspectable">2. Windows Runtime (WinRT) y la Interfaz <code>IInspectable</code></h2>
+<p>Las aplicaciones modernas de Windows 11, los servicios del sistema y los componentes empaquetados (MSIX) implementan <strong>WinRT</strong>, una evolución orientada a objetos de COM clásico. A diferencia de las interfaces COM estándar que heredan únicamente de <code>IUnknown</code> (3 slots de vtable), toda interfaz WinRT debe heredar obligatoriamente de <strong><code>IInspectable</code></strong>, la cual añade 3 métodos fundamentales en los slots 3, 4 y 5:</p>
+<h3 id="layout-de-la-vtable-de-iinspectable-en-x64">Layout de la Vtable de <code>IInspectable</code> en x64:</h3>
+<ul><li><strong><code>+0x00</code> (Slot 0):</strong> <code>QueryInterface(REFIID riid, void** ppv)</code></li><li><strong><code>+0x08</code> (Slot 1):</strong> <code>AddRef()</code></li><li><strong><code>+0x10</code> (Slot 2):</strong> <code>Release()</code></li><li><strong><code>+0x18</code> (Slot 3):</strong> <code>GetIids(ULONG* iidCount, IID** iids)</code> &amp;rarr; Enumera las interfaces implementadas.</li><li><strong><code>+0x20</code> (Slot 4):</strong> <code>GetRuntimeClassName(HSTRING* className)</code> &amp;rarr; Devuelve el nombre calificado de la clase en WinRT (ej. <code>"Windows.Storage.StorageFile"</code>).</li><li><strong><code>+0x28</code> (Slot 5):</strong> <code>GetTrustLevel(TrustLevel* trustLevel)</code> &amp;rarr; Informa el nivel de confianza (BaseTrust, PartialTrust, FullTrust).</li><li><strong><code>+0x30+</code> (Slot 6 en adelante):</strong> Métodos propios de la interfaz concreta.</li></ul>
+<h3 id="manejo-de-cadenas-inmutables-hstring">Manejo de Cadenas Inmutables <code>HSTRING</code></h3>
+<p>En WinRT, las cadenas de texto no son punteros crudos <code>wchar_t*</code> terminados en nulo, sino handles opacos de tipo <code>HSTRING</code>. Internamente, una cadena rápida de solo lectura se define mediante una cabecera <code>HSTRING_HEADER</code> de 24 bytes en x64:</p>
+<pre><code class="lenguaje-text">HSTRING_HEADER (24 bytes en x64):
++0x00: PVOID Reserved1;        // Flags internos (0x01 = Fast-pass / Buffer no asignado en heap)
++0x08: ULONG Length;           // Longitud de la cadena en caracteres UTF-16
++0x0C: ULONG Reserved2;        // Relleno de alineación
++0x10: PCWSTR StringRef;       // Puntero directo al buffer de caracteres UTF-16</code></pre>
+<p>Para activar una clase en WinRT, el binario invoca <code>combase.dll!RoActivateInstance</code> pasando el <code>HSTRING</code> del nombre de clase y recibiendo un puntero a <code>IInspectable</code>.</p>
+<h3 id="sandboxing-moderno-appcontainer-y-lpac">Sandboxing Moderno: AppContainer y LPAC</h3>
+<p>Los procesos protegidos en Windows 11 ya no confían únicamente en el nivel de integridad (Low/Medium/High). Se ejecutan en un <strong>AppContainer</strong> o en un <strong>LPAC</strong> (<em>Less Privileged AppContainer</em>). Un token de AppContainer posee un SID de paquete (<code>PackageSid</code>) y una lista de permisos explícitos en <code>TokenCapabilities</code> (por ejemplo, <code>internetClient</code>, <code>privateNetworkClientServer</code>). Si un binario intenta acceder a recursos fuera de su directorio de datos o de sus capacidades asignadas, el kernel bloquea la operación sin registrar error en el proceso llamador.</p>
+<hr>
+<h2 id="3-reversing-de-net-native-aot-y-jit-hooking-por-método">3. Reversing de .NET Native AOT y JIT Hooking por Método</h2>
+<h3 id="net-native-aot">.NET Native AOT</h3>
+<p>En .NET 7, 8 y versiones superiores, las aplicaciones pueden compilarse con la opción <code>PublishAot=true</code> (utilizando el compilador <code>ilc.exe</code>). En estos binarios:</p>
+<ul><li><strong>No existe bytecode CIL (MSIL):</strong> El archivo PE contiene exclusivamente código máquina nativo x64 en la sección <code>.text</code>. Herramientas como <code>dnSpy</code> o <code>ILSpy</code> no reconocen el binario como ensamblado administrado.</li><li><strong>Estructura <code>__ReadyToRunHeader</code>:</strong> Presenta la firma <code>0x00525452</code> (<code>"RTR\0"</code>).</li><li><strong>Tablas de Tipos <code>MethodTable</code> (antes <code>EEType</code>):</strong> Los objetos en el heap contienen en el offset <code>-0x08</code> (en x64) un puntero a su <code>MethodTable</code>. La estructura no contiene nombres en texto claro, pero agrupa punteros a funciones nativas correspondientes a los métodos de la clase.</li></ul>
+<h3 id="jit-unpacking-por-método-con-frida-dump-cil-jit-js">JIT Unpacking por Método con Frida (<code>dump_cil_jit.js</code>)</h3>
+<p>Cuando un protector .NET avanzado cifra el código CIL método por método (de modo que volcar <code>Assembly.Load(byte[])</code> devuelve métodos vacíos), el único punto de convergencia es el propio compilador JIT del runtime de .NET (<code>clrjit.dll</code>).</p>
+<p>Justo antes de que un método sea compilado a ensamblador x64, el JIT recibe una estructura <code>CORINFO_METHOD_INFO</code> donde el bytecode CIL original se encuentra descifrado en memoria viva. Interceptando <code>compileMethod</code> con el script <code>plantillas_codigo/dump_cil_jit.js</code>:</p>
+<pre><code class="lenguaje-javascript">// Localizar el slot 0 de la vtable de CILJit
+const clrjit = Process.getModuleByName("clrjit.dll");
+const getJit = new NativeFunction(clrjit.getExportByName("getJit"), "pointer", []);
+const compileMethodPtr = getJit().readPointer().readPointer();
+
+Interceptor.attach(compileMethodPtr, {
+    onEnter(args) {
+        const info = args[1]; // RDX = CORINFO_METHOD_INFO*
+        const ilCodePtr = info.add(0x10).readPointer();  // +0x10: Puntero al bytecode CIL en claro
+        const ilCodeSize = info.add(0x18).readU32();      // +0x18: Tamaño del método en bytes
+        if (ilCodeSize &gt; 0) {
+            console.log(`[JIT Dump] Método: ${info.readPointer()} | Tam: ${ilCodeSize} bytes`);
+            console.log(hexdump(ilCodePtr, { length: ilCodeSize }));
+        }
+    }
+});</code></pre>
+<p>Este procedimiento garantiza la extracción del bytecode original de cualquier método administrado sin importar el grado de empaquetado del cargador.</p>
+</main>
+<footer class="pie">
+  <p>Material educativo y defensivo. Las prácticas se limitan a programas propios, software abierto o crackmes diseñados para aprender. No se enseña a eludir licencias, DRM ni controles de acceso.</p>
+  <p><a href="../00_EMPEZAR_AQUI.html">Inicio</a> · <a href="../guia/etapa-0.html">Etapas</a> · <a href="../fuentes_y_limites.html">Fuentes y límites</a> · <a href="../registro_de_cobertura.csv">Registro de cobertura</a></p>
+</footer>
+</body>
+</html>

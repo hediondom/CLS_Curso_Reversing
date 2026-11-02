@@ -3,3 +3,5 @@ __pycache__/
 _trabajo/chrome-prof/
 chrome-perfil/
 *.tmp
+CLS_*
+_trabajo/print/

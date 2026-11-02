@@ -10,7 +10,7 @@
 <body>
 <a class="salto" href="#contenido">Saltar al contenido</a>
 <header class="cabecera">
-  <div class="marca"><a href="../00_EMPEZAR_AQUI.html">Curso de Reversing en Windows</a> <span class="edicion">edición 5 · 27/10/2026</span></div>
+  <div class="marca"><a href="../00_EMPEZAR_AQUI.html">CLS · Curso de reversing</a> <span class="edicion">edición 5 · 27/10/2026</span></div>
   <nav class="principal" aria-label="Navegación principal">
     <a href="../00_EMPEZAR_AQUI.html">Inicio</a>
     <a href="../guia/index.html">Curso</a>
@@ -27,7 +27,7 @@
 <p><strong>Prerrequisitos:</strong> etapas 0 a 4, stack y formato PE. <strong>Duración sugerida:</strong> 5 horas. Estimación aproximada.</p>
 <h2 id="alcance">Alcance</h2>
 <p>Esta rama <strong>no enseña a explotar sistemas ajenos</strong>. Enseña a entender una clase de defecto, reconocerlo en código propio y explicar por qué las mitigaciones funcionan. Las prácticas se hacen con programas que escribís vos, en una VM local, sin red y sin datos reales.</p>
-<p><p>En recopilaciones y foros de seguridad circulan diversas carpetas de exploiting antiguo y tutoriales sobre binarios vulnerables. Esta lección no depende de material externo de terceros: aborda el defecto de memoria, la mitigación defensiva y su reconocimiento analítico desde principios fundamentales de arquitectura de computadoras.</p>
+<p>En recopilaciones y foros de seguridad circulan diversas carpetas de exploiting antiguo y tutoriales sobre binarios vulnerables. Esta lección no depende de material externo de terceros: aborda el defecto de memoria, la mitigación defensiva y su reconocimiento analítico desde principios fundamentales de arquitectura de computadoras.</p>
 <h2 id="el-defecto-escribir-más-de-lo-que-entra">El defecto: escribir más de lo que entra</h2>
 <pre><code class="lenguaje-c">#include &lt;string.h&gt;
 void copiar(char *entrada) {

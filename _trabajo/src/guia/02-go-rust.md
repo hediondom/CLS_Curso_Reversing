@@ -36,6 +36,38 @@ Herramienta clave: **GoReSym** (Mandiant) recupera pclntab, tipos y metadatos y 
 - **`Option`/`Result`:** con *niche optimization*, un `Option<&T>` no ocupa un byte extra: usa el valor `0` (puntero nulo) como `None`.
 - **Los *panics* son oráculos:** en modo seguro, Rust inyecta antes de indexar un array/slice una llamada a `core::panicking::panic_bounds_check` (y a `panic_fmt`/`panic` en otros casos), muchas veces con el `file:line` del fuente embebido. Esas comprobaciones te **revelan la longitud esperada de los buffers** y marcan dónde empieza cada acceso a datos: un regalo para reconstruir estructuras.
 
+## Layouts Internos en Memoria (Go y Rust x64)
+
+### Go: Slices, Maps, Concurrencia e itab
+1. **Slices (24 bytes en x64):** Se pasan en 3 registros (ABI 1.17+) o 3 slots de pila:
+   - `+0x00`: `array *T` (puntero al arreglo de elementos subyacente).
+   - `+0x08`: `len int` (longitud lógica accesible).
+   - `+0x10`: `cap int` (capacidad física asignada antes de reasignación).
+2. **Tablas Hash (`hmap`):** Las operaciones de acceso a mapas se resuelven mediante funciones como `runtime.mapaccess1_faststr(t, h, key)`. En memoria, `hmap` contiene en `+0x00` el conteo de elementos (`count`), en `+0x09` el número de buckets (B), y en `+0x18` el puntero al arreglo de buckets.
+3. **Layout Interno de `itab`:**
+   - `+0x00`: `inter *interfacetype` (descriptor de la interfaz).
+   - `+0x08`: `_type *_type` (descriptor del tipo concreto que implementa la interfaz).
+   - `+0x10`: `hash uint32` (copia del hash de tipo para type assertions rápidas).
+   - `+0x18+`: `fun [1]uintptr` (tabla de punteros a funciones que implementan los métodos de la interfaz).
+4. **Concurrencia del Runtime:**
+   - Invocación `go fn()`: Se compila como llamada a `runtime.newproc(siz, fn, args)`.
+   - Canales (`chan`): Envío con `runtime.chansend1(c, elem)` y recepción con `runtime.chanrecv1(c, elem)`.
+   - Sentencias `select`: Compiladas como inicialización de array de casos y llamada a `runtime.selectgo`.
+
+### Rust: Vtables de dyn Trait y Máquinas de Estado async/await
+1. **Layout de la Vtable de un `dyn Trait`:**
+   A diferencia de C++, la vtable de un *trait object* en Rust no incluye RTTI complejo por defecto:
+   - `+0x00`: Puntero a función `core::ptr::drop_in_place<T>` (destructor).
+   - `+0x08`: Tamaño de la estructura concreta `size: usize`.
+   - `+0x10`: Requisito de alineación en memoria `align: usize`.
+   - `+0x18+`: Punteros a las funciones correspondientes a cada método declarado en el trait.
+2. **Reversing de Corrutinas y `async/await`:**
+   Cuando una función se declara `async fn`, el compilador de Rust no genera una rutina convencional: sintetiza una estructura anónima que encapsula todas las variables vivas entre puntos de suspensión y le implementa el trait `core::future::Future`. En el desensamblado:
+   - Toda la lógica reside en el método `poll(Pin<&mut Self>, &mut Context)`.
+   - En el prólogo de `poll`, el registro del receptor (`RCX`/`RDI`) se utiliza para leer el campo discriminante de estado:
+     `movzx eax, byte ptr [rcx + offset_estado] ; switch(eax) ...`
+   - El estado `0` representa el inicio no pollado; los estados `1..N` corresponden a cada `.await` pendiente; el estado final marca la terminación (o panic). Identificar este `switch` desmantela la máquina de estados de cualquier binario asíncrono en Rust.
+
 ## Cómo se ve cada cosa en memoria
 
 | Concepto | Go | Rust |

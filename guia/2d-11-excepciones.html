@@ -10,7 +10,7 @@
 <body>
 <a class="salto" href="#contenido">Saltar al contenido</a>
 <header class="cabecera">
-  <div class="marca"><a href="../00_EMPEZAR_AQUI.html">Curso de Reversing en Windows</a> <span class="edicion">edición 5 · 27/10/2026</span></div>
+  <div class="marca"><a href="../00_EMPEZAR_AQUI.html">CLS · Curso de reversing</a> <span class="edicion">edición 5 · 27/10/2026</span></div>
   <nav class="principal" aria-label="Navegación principal">
     <a href="../00_EMPEZAR_AQUI.html">Inicio</a>
     <a href="../guia/index.html">Curso</a>
@@ -64,30 +64,29 @@ x64: .pdata señala RuntimeFunction; .xdata describe unwind del prólogo</code><
 <tr><td>4</td><td>El programa continúa y no hay segunda oportunidad</td><td>Ejecución</td><td>Un <code>catch</code> la manejó</td></tr>
 <tr><td>5</td><td>Ejecución reanudada en <code>app!RunCase</code></td><td>Breakpoint en el <code>catch</code></td><td>Coincide con el handler esperado</td></tr>
 </tbody></table></div>
-
-<aside class="ampliacion-ext">
-<p class="callout-titulo">Ampliación editorial basada en fuentes externas — Verificación de marcos de pila y detección de Call Stack Spoofing mediante .pdata y validación de sitios de CALL</p>
-<p>En la lección 2.15 vimos que las técnicas de <em>Call Stack Spoofing</em> fabrican marcos de pila sintéticos para ocultar el origen real de una llamada al sistema, y en 2D.11 vimos el layout binario de <code>RUNTIME_FUNCTION</code> (<code>.pdata</code>) y <code>UNWIND_INFO</code> (<code>.xdata</code>) (<em>Microsoft Learn: x64 stack usage y RtlVirtualUnwind</em>) <em>(Hecho confirmado)</em>. Un analista o motor defensivo verifica la autenticidad de una pila de llamadas en x64 aplicando tres comprobaciones encadenadas sobre cada marco:</p>
-<ol>
-<li><strong>Respaldo de módulo (<code>RtlLookupFunctionEntry</code>):</strong> Para cada <code>ControlPc</code> (<code>RIP</code> actual o dirección de retorno en la pila), debe existir una entrada <code>RUNTIME_FUNCTION</code> válida dentro de la sección <code>.pdata</code> de un módulo PE firmado/respaldado en disco (<code>Image</code> en el VAD, no <code>MEM_PRIVATE</code>). Las únicas funciones x64 sin <code>.pdata</code> son las <em>funciones hoja</em> (<em>leaf functions</em>), que por definición de la ABI <strong>no pueden modificar <code>RSP</code> ni llamar a ninguna otra función</strong> (solo pueden estar en el frame <code>0</code> del tope de la pila, nunca en un frame intermedio).</li>
-<li><strong>Coherencia del tamaño de marco (<code>UNWIND_CODE</code>):</strong> La distancia entre el <code>RSP</code> de un marco y el <code>RSP</code> del marco padre debe coincidir exactamente con la suma de los códigos <code>UWOP_ALLOC_SMALL</code> (<code>OpInfo * 8 + 8</code>), <code>UWOP_ALLOC_LARGE</code> y <code>UWOP_PUSH_NONVOL</code> (<code>8</code> bytes por registro no volátil salvado) declarados en <code>UNWIND_INFO</code>.</li>
-<li><strong>Validación de la instrucción previa a <code>ReturnAddress</code> (detección de <em>Gadgets</em>):</strong> Cuando <code>call destino</code> se ejecuta, empuja en la pila la dirección de la instrucción inmediatamente siguiente (<code>ReturnAddress</code>). Por lo tanto, los <strong>2 a 7 bytes anteriores a <code>ReturnAddress</code></strong> en memoria ejecutable deben decodificarse como una instrucción <code>CALL</code> legítima:
+<blockquote><p>**Ampliación editorial basada en fuentes externas — Verificación de marcos de pila y detección de <em>Call Stack Spoofing</em> mediante <code>.pdata</code> y validación de sitios de <code>CALL</code>**</p>
+<p>En la lección 2.15 vimos que las técnicas de <em>Call Stack Spoofing</em> fabrican marcos de pila sintéticos para ocultar el origen real de una llamada al sistema, y en 2D.11 vimos el layout binario de <code>RUNTIME_FUNCTION</code> (<code>.pdata</code>) y <code>UNWIND_INFO</code> (<code>.xdata</code>) (<em>Microsoft Learn: x64 stack usage y RtlVirtualUnwind</em>) (<strong>Hecho confirmado</strong>). Un analista o motor defensivo verifica la autenticidad de una pila de llamadas en x64 aplicando tres comprobaciones encadenadas sobre cada marco:</p>
+<ol><li><strong>Respaldo de módulo (<code>RtlLookupFunctionEntry</code>):</strong></li></ol>
+<p>Para cada <code>ControlPc</code> (<code>RIP</code> actual o dirección de retorno en la pila), debe existir una entrada <code>RUNTIME_FUNCTION</code> válida dentro de la sección <code>.pdata</code> de un módulo PE firmado/respaldado en disco (<code>Image</code> en el VAD, no <code>MEM_PRIVATE</code>). Las únicas funciones x64 sin <code>.pdata</code> son las <em>funciones hoja</em> (<em>leaf functions</em>), que por definición de la ABI <strong>no pueden modificar <code>RSP</code> ni llamar a ninguna otra función</strong> (solo pueden estar en el frame <code>0</code> del tope de la pila, nunca en un frame intermedio).</p>
+<ol><li><strong>Coherencia del tamaño de marco (<code>UNWIND_CODE</code>):</strong></li></ol>
+<p>La distancia entre el <code>RSP</code> de un marco y el <code>RSP</code> del marco padre debe coincidir exactamente con la suma de los códigos <code>UWOP_ALLOC_SMALL</code> (<code>OpInfo * 8 + 8</code>), <code>UWOP_ALLOC_LARGE</code> y <code>UWOP_PUSH_NONVOL</code> (<code>8</code> bytes por registro no volátil salvado) declarados en <code>UNWIND_INFO</code>.</p>
+<ol><li>**Validación de la instrucción previa a <code>ReturnAddress</code> (detección de <em>Gadgets</em>):**</li></ol>
+<p>Cuando <code>call destino</code> se ejecuta, empuja en la pila la dirección de la instrucción inmediatamente siguiente (<code>ReturnAddress</code>). Por lo tanto, los <strong>2 a 7 bytes anteriores a <code>ReturnAddress</code></strong> en memoria ejecutable deben decodificarse como una instrucción <code>CALL</code> legítima:</p>
 <div class="tabla"><table>
-<thead><tr><th>Bytes previos a <code>ReturnAddress</code></th><th>Instrucción x64</th><th>Interpretación en auditoría de pila</th></tr></thead>
-<tbody>
+<thead><tr>
+<th>Bytes previos a <code>ReturnAddress</code></th>
+<th>Instrucción x64</th>
+<th>Interpretación en auditoría de pila</th>
+</tr></thead><tbody>
 <tr><td><code>E8 xx xx xx xx</code> (<code>ReturnAddress - 5</code>)</td><td><code>call rel32</code></td><td>Llamada directa normal. Se verifica que el destino calculado (<code>ReturnAddress + rel32</code>) coincida con el inicio de la función hija.</td></tr>
 <tr><td><code>FF 15 xx xx xx xx</code> (<code>ReturnAddress - 6</code>)</td><td><code>call qword ptr [rip+disp32]</code></td><td>Llamada indirecta vía IAT o puntero global (normal en llamadas a DLLs).</td></tr>
 <tr><td><code>FF D0</code>..<code>FF D7</code> o <code>41 FF D0</code>..<code>D7</code> (<code>-2</code> / <code>-3</code>)</td><td><code>call rax</code>..<code>r15</code></td><td>Llamada indirecta por registro (vtable, callback o <code>GetProcAddress</code>).</td></tr>
-<tr><td><code>FF 23</code> / <code>FF 26</code> / <code>FF 27</code> (<code>jmp [rbx]</code> / <code>[rsi]</code> / <code>[rdi]</code>)</td><td><code>jmp qword ptr [reg]</code></td><td><strong>Anomalía crítica (<em>Gadget de Call Stack Spoofing</em>):</strong> la dirección en la pila apunta después de un <code>JMP</code>, no de un <code>CALL</code>, o el <code>call rel32</code> apunta a una función distinta de la que está en el frame hijo.</td></tr>
-</tbody></table></div></li>
-</ol>
+<tr><td><code>FF 23</code> / <code>FF 26</code> / <code>FF 27</code> (<code>jmp [rbx]</code> / <code>[rsi]</code> / <code>[rdi]</code>)</td><td><code>jmp qword ptr [reg]</code></td><td>**Anomalía crítica (<em>Gadget de Call Stack Spoofing</em>):** la dirección en la pila apunta después de un <code>JMP</code>, no de un <code>CALL</code>, o el <code>call rel32</code> apunta a una función distinta de la que está en el frame hijo.</td></tr>
+</tbody></table></div>
 <p><strong>Inspección rápida en WinDbg ante una pila sospechosa:</strong></p>
 <pre><code class="lenguaje-text">0:000&gt; kn                                  ; Lista los números de frame, Child-SP y Call Site
 0:000&gt; !fnent &lt;Call_Site&gt;                  ; Verifica la entrada RUNTIME_FUNCTION y el tamaño del marco en .xdata
-0:000&gt; ub &lt;Call_Site&gt; L1                   ; Desensambla la instrucción inmediatamente ANTERIOR al retorno (debe ser CALL)</code></pre>
-</aside>
-
-
+0:000&gt; ub &lt;Call_Site&gt; L1                   ; Desensambla la instrucción inmediatamente ANTERIOR al retorno (debe ser CALL)</code></pre></blockquote>
 <h2 id="práctica">Práctica</h2>
 <ol><li>Compilá o usá un programa propio mínimo que lance/capture una excepción prevista, sin leer datos externos.</li><li>En WinDbg, anotá arquitectura, evento, excepción y <code>k</code>/<code>kv</code> antes y después del handler. Usá <code>.exr -1</code> y <code>.ecxr</code> para leer el registro y el contexto de la excepción.</li><li>Cambiá <strong>solo para tu sesión</strong> el estado de corte de la excepción C++ (<code>sxe eh</code>) para verla en primera oportunidad, y comparalo con el comportamiento por defecto.</li><li>En x64, inspeccioná la entrada de función/unwind con símbolos y comandos documentados para tu build; en x86, describe el frame SEH observado sin modificar la cadena.</li><li>Opcional: agregá a tu programa un VEH que solo registre el código de excepción y verificá en qué momento se llama respecto del depurador y del <code>catch</code>.</li><li>Opcional: grabá el mismo caso de user mode con TTD y navega a la excepción. Guardá el trace solo mientras lo necesites y borrá la copia al finalizar.</li></ol>
 <h2 id="entregable">Entregable</h2>

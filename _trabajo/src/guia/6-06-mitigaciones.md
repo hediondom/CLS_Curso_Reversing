@@ -128,10 +128,9 @@ Matriz control–estado–fuente–alcance–límite, con la distinción configu
 Podés explicar qué aporta firma, Secure Boot, HVCI/VBS, App Control y blocklist, leer su estado sin modificarlos, distinguir configurado de corriendo y declarar estado/fuente/límites.
 :::
 
-:::{nota} Lo que queda fuera
-Diseñar o desplegar políticas de App Control, la arquitectura interna de VBS y del kernel seguro, Credential Guard, Kernel DMA Protection y los procesos de firma del portal de hardware no se desarrollan.
+:::{nota} Continuidad y Profundización
+La arquitectura interna de VBS, el Secure Kernel en VTL1, HVCI por hardware y la auditoría en memoria viva de los vectores de notificación y telemetría de kernel (PspCreateProcessNotifyRoutine, ObRegisterCallbacks y ETWti) se desarrollan operativamente en la lección siguiente: [6.7 Seguridad profunda en kernel x64](6-07-vbs-hvci-callbacks.html).
 :::
-
 ## Fuentes
 
 - Microsoft Learn: [Driver security checklist](https://learn.microsoft.com/en-us/windows-hardware/drivers/driversecurity/driver-security-checklist), [HVCI compatible code](https://learn.microsoft.com/en-us/windows-hardware/drivers/driversecurity/driver-security-checklist#implement-hvci-compatible-code), [Microsoft recommended driver block rules](https://learn.microsoft.com/en-us/windows/security/application-security/application-control/app-control-for-business/design/microsoft-recommended-driver-block-rules), [Windows Defender Application Control](https://learn.microsoft.com/en-us/windows/security/application-security/application-control/windows-defender-application-control/).

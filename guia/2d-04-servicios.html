@@ -10,7 +10,7 @@
 <body>
 <a class="salto" href="#contenido">Saltar al contenido</a>
 <header class="cabecera">
-  <div class="marca"><a href="../00_EMPEZAR_AQUI.html">Curso de Reversing en Windows</a> <span class="edicion">edición 5 · 27/10/2026</span></div>
+  <div class="marca"><a href="../00_EMPEZAR_AQUI.html">CLS · Curso de reversing</a> <span class="edicion">edición 5 · 27/10/2026</span></div>
   <nav class="principal" aria-label="Navegación principal">
     <a href="../00_EMPEZAR_AQUI.html">Inicio</a>
     <a href="../guia/index.html">Curso</a>
@@ -52,7 +52,9 @@ Objeto servicio: Administrators — control; Users — lectura
 Carpeta del binario: solo administradores pueden modificarla</code></pre>
 <p>Lectura: es un servicio didáctico de proceso propio, detenido y de inicio manual. La cuenta elegida tiene menos privilegios que <code>LocalSystem</code>; la ruta y los permisos son coherentes con esa práctica. Esta ficha no demuestra que un servicio real sea seguro: cada hallazgo debe corroborarse con la configuración efectiva y el contexto del equipo.</p>
 <h2 id="práctica-segura-servicio-propio-y-limpieza">Práctica segura: servicio propio y limpieza</h2>
-<p>Realizá el ejercicio solo en una VM descartable con snapshot. Realizá el ejercicio en una VM descartable con snapshot. Compilá el servicio didáctico desde el archivo <code>plantillas_codigo/svclab_min.c</code> (<strong>Plantilla 7 del Kit de Código</strong>), que implementa <code>StartServiceCtrlDispatcherW</code>, <code>ServiceMain</code> y <code>RegisterServiceCtrlHandlerExW</code> para Windows x86/x64:<br><pre><code class="lenguaje-cmd">cl /Zi /O1 /DUNICODE /D_UNICODE svclab_min.c advapi32.lib /Fe:C:\ReversingLab\SvcLab.exe</code></pre>(O con MinGW: <code>gcc -O1 -g -municode svclab_min.c -ladvapi32 -o C:\ReversingLab\SvcLab.exe</code>).</p>
+<p>Realizá el ejercicio solo en una VM descartable con snapshot. Realizá el ejercicio en una VM descartable con snapshot. Compilá el servicio didáctico desde el archivo <code>plantillas_codigo/svclab_min.c</code> (<strong>Plantilla 7 del Kit de Código</strong>), que implementa <code>StartServiceCtrlDispatcherW</code>, <code>ServiceMain</code> y <code>RegisterServiceCtrlHandlerExW</code> para Windows x86/x64:</p>
+<pre><code class="lenguaje-cmd">cl /Zi /O1 /DUNICODE /D_UNICODE svclab_min.c advapi32.lib /Fe:C:\ReversingLab\SvcLab.exe</code></pre>
+<p>(O con MinGW: <code>gcc -O1 -g -municode svclab_min.c -ladvapi32 -o C:\ReversingLab\SvcLab.exe</code>).</p>
 <p><strong>Materiales y resultado esperado:</strong> VM/build registrados, snapshot recuperable, <code>sc.exe</code>, AccessChk de Sysinternals y el binario propio identificado por hash. El resultado esperado es registrar un servicio manual, verlo pasar a <code>RUNNING</code> y <code>STOPPED</code>, y confirmar que desaparece después de solicitar su eliminación. Guardá el build de Windows, hash, salidas de consulta y evidencia de limpieza; no se fija una versión de herramienta que no se haya probado.</p>
 <p><strong>Paso 1 — Preparar.</strong> Prepará <code>C:\ReversingLab</code> y colocá allí el binario propio. No uses una ruta de red ni un servicio de Windows.</p>
 <p><strong>Paso 2 — Registrar.</strong> En una consola elevada de la VM, registrá el servicio con inicio manual y una cuenta de menor privilegio:</p>

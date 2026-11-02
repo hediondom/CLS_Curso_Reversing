@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>6.7 · Seguridad Profunda en Kernel x64: VBS/HVCI (VTL1), Callbacks (ETWti) y Condiciones de Carrera en MDLs</title>
+<meta name="description" content="Arquitectura interna de VBS y Secure Kernel (VTL0/VTL1), kCFG, auditoría de vectores de telemetría de kernel en WinDbg y análisis de condiciones de carrera Double Fetch en MDLs.">
+<link rel="stylesheet" href="../guia/estilo.css">
+</head>
+<body>
+<a class="salto" href="#contenido">Saltar al contenido</a>
+<header class="cabecera">
+  <div class="marca"><a href="../00_EMPEZAR_AQUI.html">CLS · Curso de reversing</a> <span class="edicion">edición 5 · 27/10/2026</span></div>
+  <nav class="principal" aria-label="Navegación principal">
+    <a href="../00_EMPEZAR_AQUI.html">Inicio</a>
+    <a href="../guia/index.html">Curso</a>
+    <a href="../materiales.html">Materiales</a>
+    <a href="../fichas/index.html">Fichas</a>
+    <a href="../glosario.html">Glosario</a>
+    <a href="../preguntas_y_respuestas.html">Repaso</a>
+    <a href="../buscar.html">Buscar</a>
+  </nav>
+</header>
+<main id="contenido">
+<nav class="migas" aria-label="Ubicación"><a href="../00_EMPEZAR_AQUI.html">Inicio</a><span aria-hidden="true">›</span><a href="../guia/index.html">Curso</a><span aria-hidden="true">›</span><span>Etapa 6 · Kernel y drivers en Windows (rama optativa)</span></nav><h1 id="seguridad-profunda-en-kernel-x64-vbs-hvci-vtl1-callbacks-etwti-y-condiciones-de-carrera-en-mdls">Seguridad Profunda en Kernel x64: VBS/HVCI (VTL1), Callbacks (ETWti) y Condiciones de Carrera en MDLs</h1>
+<aside class="callout nota"><p class="callout-titulo">Propósito</p><p>Esta lección profundiza la arquitectura de seguridad del Kernel en Windows 11 contemporáneo, eliminando la frontera de lo que antes se consideraba "fuera de alcance". Aquí se estudian los mecanismos internos que rigen la protección por hipervisor (<strong>VBS / HVCI</strong>), las estructuras exactas en memoria que sustentan los vectores de notificación y telemetría de kernel (<strong>PspCreateProcessNotifyRoutine</strong>, <strong>ObRegisterCallbacks</strong>, <strong>ETWti</strong>), y el análisis forense de fallos por <strong>Double Fetch</strong> y solicitudes asíncronas en controladores <strong>KMDF</strong>.</p></aside>
+<hr>
+<h2 id="1-arquitectura-interna-de-vbs-y-secure-kernel-vtl0-vs-vtl1">1. Arquitectura Interna de VBS y Secure Kernel (VTL0 vs. VTL1)</h2>
+<p>Desde Windows 10 versión 1709 y por defecto en Windows 11, el modelo de seguridad del sistema operativo se basa en <strong>Virtualization-Based Security (VBS)</strong>. El hipervisor de Windows (Hyper-V) divide el hardware en dos mundos o <strong>Virtual Trust Levels (VTL)</strong>:</p>
+<pre><code class="lenguaje-text">+-------------------------------------------------------------------------------+
+|                             HIPERVISOR (HYPER-V)                              |
++-------------------------------------------------------+-----------------------+
+|                 VTL 0 (Mundo Normal)                  | VTL 1 (Mundo Seguro)  |
+|                                                       |                       |
+|  [ Modo Usuario ]         [ Modo Kernel ]             |   [ Isolated User ]   |
+|  Procesos normales        ntoskrnl.exe                |   lsaiso.exe (CredGrd)|
+|  (explorer.exe, etc.)     Drivers de terceros         |                       |
+|                                                       |   [ Secure Kernel ]   |
+|                                                       |   securekernel.exe    |
+|                                                       |   skci.dll (Policy)   |
++-------------------------------------------------------+-----------------------+
+|  SLAT / EPT (Tablas de Páginas de Segundo Nivel gobernadas solo por VTL1)    |
++-------------------------------------------------------------------------------+</code></pre>
+<h3 id="transiciones-de-privilegio-vtlcall-y-vtlreturn">Transiciones de Privilegio: <code>VtlCall</code> y <code>VtlReturn</code></h3>
+<ul><li><strong><code>VTL 0</code>:</strong> Contiene el kernel clásico (<code>ntoskrnl.exe</code>), drivers de terceros y aplicaciones de usuario.</li><li><strong><code>VTL 1</code>:</strong> Contiene el <strong>Secure Kernel</strong> (<code>securekernel.exe</code>) y bibliotecas de integridad aisladas como <code>skci.dll</code>.</li><li>Las comunicaciones entre mundos no ocurren mediante interrupciones de software clásicas, sino a través de la instrucción de hipervisor <code>vmcall</code> (en Intel) o <code>vmmcall</code> (en AMD), encapsulada en la función <code>VtlCall</code>. Cuando VTL 1 concluye la operación, devuelve el control a VTL 0 mediante <code>VtlReturn</code>.</li></ul>
+<h3 id="integridad-de-código-por-hipervisor-hvci-y-w-oplus-x">Integridad de Código por Hipervisor (HVCI) y $W \oplus X$</h3>
+<p>Bajo <strong>HVCI (Hypervisor-Protected Code Integrity)</strong>, las decisiones sobre qué páginas de memoria pueden ejecutarse en modo kernel se delegan a VTL 1. El hipervisor configura las tablas de páginas de segundo nivel (<strong>SLAT / EPT</strong>) de modo que ninguna página en VTL 0 pueda ser simultáneamente escribible y ejecutable ($W \oplus X$). Si un driver intenta asignar memoria en el pool ejecutable (<code>NonPagedPoolExecute</code>) o desproteger el bit de escritura de una página de código en <code>CR0</code>, el hipervisor intercepta el fallo de página anidado (<em>EPT Violation</em>) e interrumpe inmediatamente la ejecución antes de que el código no firmado pueda ejecutarse.</p>
+<h3 id="kcfg-kernel-control-flow-guard-respaldado-por-vtl-1">kCFG (Kernel Control Flow Guard) Respaldado por VTL 1</h3>
+<p>En modo kernel, <strong>kCFG</strong> verifica cada llamada indirecta (<code>call rax</code>) comprobando si la dirección de destino está registrada en el bitmap de funciones válidas del kernel (<code>nt!guard_dispatch_icall</code>). Bajo VBS, el mapa de bits de CFG se almacena en memoria de solo lectura para VTL 0 y solo puede ser actualizado por el Secure Kernel en VTL 1.</p>
+<hr>
+<h2 id="2-auditoría-en-memoria-de-los-vectores-de-telemetría-de-kernel">2. Auditoría en Memoria de los Vectores de Telemetría de Kernel</h2>
+<p>Tanto para la ingeniería inversa de sensores EDR como para la investigación pericial de drivers comprometidos, el analista debe ser capaz de localizar e inspeccionar en <strong>WinDbg</strong> los arreglos de callbacks no exportados en memoria viva.</p>
+<h3 id="a-notificaciones-de-creación-de-procesos-pspcreateprocessnotifyroutine">A. Notificaciones de Creación de Procesos (<code>PspCreateProcessNotifyRoutine</code>)</h3>
+<p>Windows mantiene una tabla interna de 64 punteros de tipo <code>EX_FAST_REF</code> que registran los callbacks suscritos con <code>PsSetCreateProcessNotifyRoutineEx</code>:</p>
+<ul><li>En x64, los 4 bits inferiores de cada entrada corresponden al conteo de referencias concurrentes.</li><li>Para obtener la dirección del bloque de datos se aplica una máscara de bits: <code>Puntero &amp; ~0x0F</code>.</li><li>En el bloque resultante (<code>_EX_CALLBACK_ROUTINE_BLOCK</code>), el offset <strong><code>+0x08</code></strong> contiene el puntero a la función del driver.</li></ul>
+<p><strong>Comando WinDbg para auditar todos los slots:</strong></p>
+<pre><code class="lenguaje-text">r $t0 = nt!PspCreateProcessNotifyRoutine
+.for (r $t1 = 0; @$t1 &lt; 0x40; r $t1 = @$t1 + 1) {
+    r $t2 = poi(@$t0 + @$t1 * 8) &amp; 0xfffffffffffffff0
+    .if (@$t2 != 0) {
+        r $t3 = poi(@$t2 + 8)
+        .printf "[Slot %02d] Callback en %p : ", @$t1, @$t3; ln @$t3
+    }
+}</code></pre>
+<h3 id="b-callbacks-de-objetos-de-proceso-obregistercallbacks">B. Callbacks de Objetos de Proceso (<code>ObRegisterCallbacks</code>)</h3>
+<p>Los drivers de seguridad registran rutinas <code>PreOperation</code> y <code>PostOperation</code> sobre objetos <code>PsProcessType</code> para despojar permisos peligrosos (como <code>PROCESS_VM_WRITE</code> o <code>PROCESS_VM_OPERATION</code>):</p>
+<ul><li>En Windows 10 y 11 x64, la cabeza de lista <code>CallbackListHead</code> se ubica en el offset <strong><code>+0xC8</code></strong> de la estructura <code>_OBJECT_TYPE</code> apuntada por <code>*PsProcessType</code>.</li><li>Cada elemento de la lista apunta a una estructura <code>OB_CALLBACK_CONTEXT_BLOCK</code> donde <strong><code>+0x28</code></strong> es el puntero <code>PreOperation</code> y <strong><code>+0x30</code></strong> es <code>PostOperation</code>.</li></ul>
+<h3 id="c-proveedor-de-telemetría-de-kernel-etwti-microsoft-windows-threat-intelligence">C. Proveedor de Telemetría de Kernel <code>ETWti</code> (<em>Microsoft-Windows-Threat-Intelligence</em>)</h3>
+<p>El subsistema ETWti es el canal que alimenta a los EDRs modernos con eventos de inyección de código, lectura de memoria y mapeo de hilos:</p>
+<ul><li>Su handle de registro global está en <code>nt!EtwThreatIntProvRegHandle</code>.</li><li>Apunta a una estructura <code>_ETW_REG_ENTRY</code>. En el offset <strong><code>+0x10</code></strong> reside el puntero a <code>_ETW_GUID_ENTRY</code>.</li><li>Dentro de <code>_ETW_GUID_ENTRY</code>, el campo <code>ProviderEnableInfo</code> define si el proveedor está activo (<code>EnableMask != 0</code>) y a qué nivel de detalle registra eventos de kernel.</li></ul>
+<p>El script completo para auditar estos tres vectores de una sola vez se encuentra en <code>plantillas_codigo/auditar_callbacks.wdbg</code>.</p>
+<hr>
+<h2 id="3-condiciones-de-carrera-y-reversing-de-mdls-en-drivers-kmdf">3. Condiciones de Carrera y Reversing de MDLs en Drivers KMDF</h2>
+<p>En la Lección 6.4 se abordó la estructura de despacho de IOCTLs en KMDF. Sin embargo, en drivers reales el análisis de seguridad debe verificar el manejo de <strong>MDLs (Memory Descriptor Lists)</strong> y la sincronización asíncrona.</p>
+<h3 id="el-peligro-del-double-fetch-en-method-in-direct-method-out-direct">El Peligro del <em>Double Fetch</em> en <code>METHOD_IN_DIRECT</code> / <code>METHOD_OUT_DIRECT</code></h3>
+<p>Cuando un driver utiliza E/S directa (<code>METHOD_IN_DIRECT</code> o <code>METHOD_OUT_DIRECT</code>):</p>
+<ol><li>El I/O Manager bloquea las páginas físicas del buffer de usuario en memoria mediante una estructura MDL (<code>Irp-&gt;MdlAddress</code>).</li><li>El driver mapea esas páginas en el espacio virtual del sistema llamando a <code>MmGetSystemAddressForMdlSafe(Mdl, NormalPagePriority)</code>.</li><li><strong>La trampa de seguridad:</strong> La memoria virtual devuelta por <code>MmGetSystemAddressForMdlSafe</code> comparte exactamente los mismos marcos de página física (PFNs) que el buffer en modo usuario. Si el driver lee un parámetro de tamaño o un puntero interno desde ese buffer dos veces (por ejemplo, una vez para validar y otra para copiar), un hilo atacante en espacio de usuario puede modificar el valor concurrentemente en la memoria compartida entre ambas lecturas (<strong>Double Fetch</strong>), desbordando buffers internos del kernel.</li></ol>
+<h3 id="reenvío-asíncrono-a-i-o-targets-en-kmdf">Reenvío Asíncrono a I/O Targets en KMDF</h3>
+<p>En drivers KMDF desensamblados sin símbolos, las llamadas indirectas a través de la tabla <code>WdfFunctions</code> que gestionan solicitudes asíncronas se identifican por sus índices fijos:</p>
+<ul><li><strong><code>WdfRequestSend</code> (Índice 285 / Offset <code>+0x8E8</code>):</strong> Reenvía un paquete de E/S a un dispositivo inferior o destino de E/S.</li><li><strong><code>WdfRequestSetCompletionRoutine</code> (Índice 290 / Offset <code>+0x910</code>):</strong> Registra la rutina de finalización que se ejecutará cuando el dispositivo inferior complete la operación. En el desensamblado x64:</li></ul>
+<pre><code class="lenguaje-nasm">; Registro de CompletionRoutine en KMDF (offset +0x910)
+mov     rax, [rbx]                  ; RBX = Puntero a WdfFunctions
+mov     r8, offset MiCompletionRoutine ; R8 = Puntero al callback
+mov     rdx, r14                    ; RDX = WDFREQUEST
+mov     rcx, [rbx + 0x910]          ; Índice 290 = WdfRequestSetCompletionRoutine
+call    rcx                         ; Invocación indirecta</code></pre>
+<hr>
+<h2 id="4-laboratorio-verificado">4. Laboratorio Verificado</h2>
+<ol><li>Inspeccioná la plantilla <code>plantillas_codigo/minifilter_obcallback_min.c</code>. Observá cómo interactúan las estructuras de <code>FLT_REGISTRATION</code> y <code>OB_CALLBACK_REGISTRATION</code>.</li><li>En una sesión de depuración con WinDbg KDNET en tu VM de kernel, ejecutá:</li></ol>
+<pre><code class="lenguaje-text">   $$&gt;&lt;plantillas_codigo\auditar_callbacks.wdbg</code></pre>
+<ol><li>Verificá que la lista de callbacks enumera los drivers de tu entorno y localiza el módulo exacto que atiende la creación de procesos en tu sistema.</li></ol>
+</main>
+<footer class="pie">
+  <p>Material educativo y defensivo. Las prácticas se limitan a programas propios, software abierto o crackmes diseñados para aprender. No se enseña a eludir licencias, DRM ni controles de acceso.</p>
+  <p><a href="../00_EMPEZAR_AQUI.html">Inicio</a> · <a href="../guia/etapa-0.html">Etapas</a> · <a href="../fuentes_y_limites.html">Fuentes y límites</a> · <a href="../registro_de_cobertura.csv">Registro de cobertura</a></p>
+</footer>
+</body>
+</html>
