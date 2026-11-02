@@ -72,8 +72,8 @@ kd&gt; dq nt!KeServiceDescriptorTableShadow L8
 $$ El primer QWORD en +0x20 es el puntero Base de win32k:
 kd&gt; dps poi(nt!KeServiceDescriptorTableShadow + 0x20) L20</code></pre>
 <h3 id="conversión-de-números-de-servicio-ssn-gráfico">Conversión de Números de Servicio (SSN Gráfico)</h3>
-<p>Las syscalls de Win32k poseen un bit indicador activo (<code>0x1000</code>). Cuando una instrucción <code>syscall</code> se ejecuta con <code>EAX = 0x1000 + N</code>:</p>
-<ol><li>El despachador <code>nt!KiSystemCall64</code> comprueba si el número de servicio excede <code>0x0FFF</code>.</li><li>Si es así, verifica si el hilo actual ya ha sido promovido a <strong>GUI Thread</strong> (es decir, si el campo <code>KTHREAD-&gt;Win32Thread</code> en <code>GS:[0x188]</code> no es nulo).</li><li>Si el hilo es estándar, el kernel invoca <code>nt!PsConvertToGuiThread</code> para asignar el stack de kernel extendido requerido por win32k (un stack de 64 KB en lugar del stack estándar de 24 KB).</li><li>El kernel toma la entrada 1 de <code>KeServiceDescriptorTableShadow</code> y salta a la función correspondiente indexando el offset <code>N</code> en la tabla de despacho.</li></ol>
+<p>Las syscalls de Win32k poseen el bit 12 activo (índice de tabla 1, base <code>0x1000</code>). Como los números de servicio (SSN) tanto de <code>ntoskrnl</code> como de <code>win32k</code> cambian entre builds de Windows, nunca deben asumirse como constantes fijas entre versiones. Cuando una instrucción <code>syscall</code> se ejecuta con <code>EAX = 0x1000 + N</code>:</p>
+<ol><li>El despachador <code>nt!KiSystemCall64</code> extrae el índice de tabla (<code>(EAX &gt;&gt; 12) &amp; 1</code>) y comprueba si el número de servicio pertenece al rango gráfico (<code>0x1000+</code>).</li><li>Obtiene el puntero al <code>_KTHREAD</code> actual desde <code>GS:[0x188]</code> (<code>KPCR.Prcb.CurrentThread</code>) y verifica si el hilo ya fue promovido a <strong>GUI Thread</strong> comprobando que el campo <code>_KTHREAD-&gt;Win32Thread</code> no sea nulo (ubicado en el offset <code>+0x1C8</code> de <code>nt!_KTHREAD</code> en Windows 10 22H2 Build 19045, Windows 11 23H2 Build 22631 y Windows 11 24H2 Build 26100).</li><li>Si el hilo aún es estándar (no GUI), el kernel invoca <code>nt!PsConvertToGuiThread</code>: valida que el proceso no tenga activa la política Win32k Lockdown, asigna el stack de kernel extendido requerido por el subsistema gráfico, inicializa <code>Win32Thread</code> y cambia el índice de tabla de servicios del hilo hacia <code>KeServiceDescriptorTableShadow</code>.</li><li>El kernel toma el descriptor de índice 1 de <code>KeServiceDescriptorTableShadow</code> (offset <code>+0x20</code>) y calcula la dirección destino sumando a <code>Base</code> el desplazamiento relativo con signo almacenado en <code>Base[N] &gt;&gt; 4</code>.</li></ol>
 <hr>
 <h2 id="3-el-fenómeno-crítico-inversión-de-control-con-keusermodecallback">3. El Fenómeno Crítico: Inversión de Control con <code>KeUserModeCallback</code></h2>
 <p>La razón principal por la cual Win32k ha sido la mayor fuente histórica de vulnerabilidades de kernel (Use-After-Free y elevación de privilegios) es su necesidad de interactuar con el espacio de usuario mientras procesa llamadas de kernel:</p>
@@ -90,6 +90,49 @@ kd&gt; dps poi(nt!KeServiceDescriptorTableShadow + 0x20) L20</code></pre>
 <pre><code class="lenguaje-text">$$ Inspeccionar si un proceso tiene deshabilitadas las llamadas a Win32k
 dt nt!_EPROCESS &lt;ProcessAddress&gt; MitigationFlags
 $$ El bit 0x04 (DisallowWin32kSystemCalls) indica que el proceso tiene Win32k bloqueado</code></pre>
+
+<hr>
+
+<h2 id="5-mitigacion-de-superficie-de-ataque-win32k-system-call-lockdown">5. Mitigación de Superficie de Ataque: Win32k System Call Lockdown</h2>
+<p>Dado que el subsistema gráfico en modo kernel (<code>win32k.sys</code>, <code>win32kfull.sys</code> y <code>win32kbase.sys</code>) expone más de 1.100 syscalls en la <code>KeServiceDescriptorTableShadow</code> y ha concentrado históricamente el mayor volumen de vulnerabilidades de elevación de privilegios (EoP) utilizadas para escapar de sandboxes de navegadores, Windows 10/11 incorpora la política de mitigación de proceso <strong>Win32k System Call Disable Policy</strong> (conocida como <em>Win32k Lockdown</em>).</p>
+
+<h3 id="5-1-mecanismo-interno-en-kiconverttoguithread-y-eprocess">5.1. Mecanismo Interno en <code>KiConvertToGuiThread</code> y <code>_EPROCESS</code></h3>
+<p>Cuando un proceso habilita esta política mediante <code>SetProcessMitigationPolicy(ProcessSystemCallDisablePolicy, ...)</code> o al ser creado por un broker mediante el atributo <code>PROC_THREAD_ATTRIBUTE_MITIGATION_POLICY</code> con la bandera <code>PROCESS_CREATION_MITIGATION_POLICY_WIN32K_SYSTEM_CALL_DISABLE_ALWAYS_ON</code>, el kernel activa el bit <strong><code>DisableWin32kSystemCalls</code></strong> dentro del campo <code>MitigationFlags</code> de la estructura <code>nt!_EPROCESS</code>.</p>
+<p>El bloqueo no ocurre parcheando la tabla SSDT Shadow, sino cortando de raíz la transición del hilo en <code>PsConvertToGuiThread</code> / <code>KiConvertToGuiThread</code>:</p>
+<ol>
+  <li>Un hilo no-GUI (cuyo <code>KTHREAD-&gt;ServiceTable</code> apunta a <code>KeServiceDescriptorTable</code>) intenta invocar cualquier syscall del rango <code>0x1000..0x1FFF</code> (por ejemplo, <code>NtUserCreateWindowEx</code> o <code>NtGdiBitBlt</code>).</li>
+  <li>El despachador de syscalls <code>KiSystemServiceRepeat</code> detecta que el índice pertenece a la tabla #1 (Win32k), la cual está vacía en la tabla estándar, y llama a <code>KiConvertToGuiThread</code> → <code>PsConvertToGuiThread</code>.</li>
+  <li>Al inicio de <code>PsConvertToGuiThread</code>, el kernel inspecciona <code>Process-&gt;MitigationFlagsValues.DisableWin32kSystemCalls</code>. Si el bit vale <code>1</code>, aborta inmediatamente la asignación del <code>_W32THREAD</code>, impide que <code>KTHREAD-&gt;ServiceTable</code> apunte a <code>KeServiceDescriptorTableShadow</code> y devuelve <code>STATUS_ACCESS_DENIED (0xC0000022)</code> (o genera un fallo de auditoría ETW si se configuró en modo <em>Audit</em>).</li>
+</ol>
+
+<pre><code class="lenguaje-c">// Activación programática de Win32k Lockdown desde el propio proceso en Ring 3
+#include &lt;windows.h&gt;
+
+BOOL EnableWin32kLockdown(void) {
+    PROCESS_MITIGATION_SYSTEM_CALL_DISABLE_POLICY policy = { 0 };
+    policy.DisallowWin32kSystemCalls = 1;
+
+    return SetProcessMitigationPolicy(
+        ProcessSystemCallDisablePolicy,
+        &amp;policy,
+        sizeof(policy)
+    );
+}</code></pre>
+
+<h3 id="5-2-verificacion-en-windbg-de-la-mitigacion-en-procesos-sandbox">5.2. Verificación en WinDbg de la Mitigación en Procesos Sandbox</h3>
+<p><em>Nota de entorno:</em> <code>Laboratorio verificado: no; requiere VM/toolchain</code>. En procesos de renderizado de navegadores basados en Chromium (<code>msedge.exe --type=renderer</code> o <code>chrome.exe</code>), la verificación del bit en la estructura <code>_EPROCESS</code> muestra:</p>
+
+<pre><code class="lenguaje-text">kd&gt; dt nt!_EPROCESS &lt;EPROCESS_RENDERER&gt; MitigationFlagsValues.DisableWin32kSystemCalls
+   +0x9d0 MitigationFlagsValues : 
+      +0x000 DisableWin32kSystemCalls : 0y1</code></pre>
+
+<h2 id="referencias-y-fuentes-tecnicas">Referencias y Fuentes Técnicas</h2>
+<ul>
+  <li>Forshaw, J. (2015). <em>Windows 10 Mitigation Improvements: Win32k System Call Filtering</em>. Google Project Zero.</li>
+  <li>Microsoft Learn. (2023). <em>SetProcessMitigationPolicy function</em> (ProcessSystemCallDisablePolicy).</li>
+  <li>Russinovich, M., Solomon, D., &amp; Ionescu, A. (2017). <em>Windows Internals, Part 1</em> (7th ed.). Microsoft Press.</li>
+</ul>
+
 </main>
 <footer class="pie">
   <p>Material educativo y defensivo. Las prácticas se limitan a programas propios, software abierto o crackmes diseñados para aprender. No se enseña a eludir licencias, DRM ni controles de acceso.</p>

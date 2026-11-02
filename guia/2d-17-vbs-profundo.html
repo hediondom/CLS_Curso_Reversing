@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+
+<html lang="es">
+
+<head>
+
+  <meta charset="UTF-8">
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <title>2D-17 · Arquitectura Profunda de VBS, Secure Kernel (VTL 1) y HVCI — Tomo II</title>
+
+  <link rel="stylesheet" href="../css/style.css">
+
+</head>
+
+<body>
+
+
+
+  <header class="lesson-header">
+
+    <div class="lesson-breadcrumb">Tomo II · Módulo 2D: Internals Avanzados y Mitigaciones de Plataforma · Lección 2D-17</div>
+
+    <h1>2D-17 · Virtualization-Based Security (VBS) Profundo: VTL 1, Secure Kernel (`securekernel.exe`), HVCI y Trustlets (IUM)</h1>
+
+    <div class="meta-box">
+
+      <span><strong>Nivel:</strong> Avanzado (Ring -1 / VTL 1 / VTL 0)</span> |
+
+      <span><strong>Arquitectura:</strong> Windows 10 / 11 x64 (Hyper-V SLAT / EPT / NPT)</span> |
+
+      <span><strong>Laboratorio verificado:</strong> no; requiere VM/toolchain</span>
+
+    </div>
+
+  </header>
+
+
+
+  <main class="lesson-content">
+
+
+
+    <section class="theory-block">
+
+      <h2>1. Ortogonalidad de Privilegios: Anillos de CPU vs. Virtual Trust Levels (VTL)</h2>
+
+      <p>
+
+        Históricamente, el modelo de seguridad de Windows descansaba sobre el supuesto de que el código ejecutándose en <strong>Ring 0</strong> (<code>ntoskrnl.exe</code> y los drivers cargados) constituía la frontera máxima de confianza (<em>Trusted Computing Base</em> — TCB). En cuanto un atacante explotaba un driver vulnerable (BYOVD) o una vulnerabilidad en <code>win32kfull.sys</code> para obtener una primitiva de lectura/escritura arbitraria en Ring 0, podía desactivar <code>g_CiOptions</code> en <code>ci.dll</code>, recorrer la lista <code>ActiveProcessLinks</code> para elevar tokens o extraer secretos criptográficos de <code>lsass.exe</code>.
+
+      </p>
+
+      <p>
+
+        <strong>Virtualization-Based Security (VBS)</strong> rompe este paradigma utilizando el hipervisor de Microsoft (<strong>Hyper-V</strong>, ejecutándose en <em>VMX Root Mode</em> / Ring -1 a través de <code>hvix64.exe</code> en Intel o <code>hvax64.exe</code> en AMD) para particionar la máquina virtual raíz (<em>Root Partition</em>) en niveles de confianza virtuales ortogonales denominados <strong>Virtual Trust Levels (VTLs)</strong>:
+
+      </p>
+
+
+
+      <pre class="code-block"><code>+-----------------------------------------------------------------------------------+
+
+|                     ESPACIO DE CONFIANZA DE WINDOWS (ROOT PARTITION)              |
+
++-----------------------------------------+-----------------------------------------+
+
+|        VTL 0 (Normal World)             |          VTL 1 (Secure World)           |
+
++-----------------------------------------+-----------------------------------------+
+
+| Ring 3: Procesos de Usuario Estándar    | Ring 3: Isolated User Mode (IUM)        |
+
+|   - explorer.exe, navegador, apps       |   - Trustlets: lsaiso.exe (CredGuard)   |
+
+|   - lsass.exe (Normal World portion)    |   - Trustlets: skci / Biometrics / TPM  |
+
++-----------------------------------------+-----------------------------------------+
+
+| Ring 0: Ejecutivo NT Estándar           | Ring 0: Secure Kernel                   |
+
+|   - ntoskrnl.exe, win32k.sys, hal.dll   |   - securekernel.exe                    |
+
+|   - ci.dll, drivers WDM/KMDF terceros   |   - skci.dll (Secure Code Integrity)    |
+
++-----------------------------------------+-----------------------------------------+
+
+|       Tabla SLAT / EPT #0 (VTL 0)       |       Tabla SLAT / EPT #1 (VTL 1)       |
+
++-----------------------------------------+-----------------------------------------+
+
+|              HIPERVISOR HYPER-V (Ring -1 / VMX Root: hvix64.exe)                  |
+
++-----------------------------------------------------------------------------------+</code></pre>
+
+
+
+      <p>
+
+        El aislamiento entre VTL 0 y VTL 1 no depende de las tablas de páginas del sistema operativo (`CR3` / `PML4`), ya que `ntoskrnl.exe` en VTL 0 tiene control total sobre su propio `CR3`. En cambio, el hipervisor mantiene **dos conjuntos independientes de tablas SLAT** (<em>Second Level Address Translation</em>: **EPT** en Intel, **NPT** en AMD). Las páginas físicas asignadas a VTL 1 (`securekernel.exe`, `skci.dll` y procesos IUM) tienen sus entradas marcadas como **No Presentes (`---`)** en la tabla EPT de VTL 0. Si un rootkit en Ring 0 (VTL 0) intenta mapear la dirección física (SPA/GPA) de VTL 1 mediante `MmMapIoSpace` o construyendo una PTE manual, la CPU genera inmediatamente una **EPT Violation (`VMEXIT`)** interceptada por Hyper-V, bloqueando el acceso.
+
+      </p>
+
+    </section>
+
+
+
+    <section class="theory-block">
+
+      <h2>2. El Secure Kernel (`securekernel.exe`) y el Puente de Transición VTL</h2>
+
+      <p>
+
+        Cuando VBS está activo, el cargador de arranque (<code>winload.efi</code>) inicializa tanto VTL 1 como VTL 0 antes de transferir el control a <code>ntoskrnl.exe</code>. En VTL 1 reside un micro-ejecutivo especializado: <strong><code>securekernel.exe</code></strong>. A diferencia de <code>ntoskrnl.exe</code>, el <em>Secure Kernel</em> no implementa un subsistema gráfico, ni pila de red, ni sistema de archivos, ni permite la carga de drivers de terceros; su única función es administrar la memoria de VTL 1, orquestar la ejecución de los procesos IUM (<em>Trustlets</em>) y exponer servicios criptográficos y de integridad a VTL 0.
+
+      </p>
+
+
+
+      <h3>2.1. Anatomía de una Transición VTL 0 → VTL 1 (`VtlCall`)</h3>
+
+      <p>
+
+        Un procesador lógico (VP — <em>Virtual Processor</em>) ejecuta en VTL 0 o en VTL 1 en un instante dado. Cuando <code>ntoskrnl.exe</code> necesita solicitar un servicio a <code>securekernel.exe</code> (por ejemplo, validar una página de código con HVCI o proteger una estructura crítica mediante <em>Kernel Data Protection</em> — KDP), ejecuta la siguiente secuencia:
+
+      </p>
+
+      <ol>
+
+        <li><strong>Empaquetado en VTL 0:</strong> <code>ntoskrnl.exe</code> invoca <code>nt!VslpEnterIumSecureMode</code> rellenando un bloque de transferencia (<em>Secure Call Parameter Block</em>) con el código de operación (<code>SecureServiceId</code>) y los argumentos.</li>
+
+        <li><strong>Hiperllamada (`HvCallVtlCall`):</strong> Se invoca la rutina de la página de hiperllamadas (<code>nt!HvcallCodeVa</code>) que ejecuta la instrucción <code>vmcall</code> (Intel) o <code>vmmcall</code> (AMD) con el código de hiperllamada <code>HvCallVtlCall (0x0011)</code>.</li>
+
+        <li><strong>Conmutación en el Hipervisor (`hvix64.exe`):</strong> Hyper-V intercepta el <code>VMEXIT</code>, guarda el contexto de registros de VTL 0 (incluyendo `RIP`, `RSP`, `CR3` y MSRs en la estructura del procesador virtual), conmuta el puntero EPT (`EPTP`) del VMCS hacia la tabla EPT de VTL 1 y reanuda la ejecución (`VMRESUME`) en el punto de entrada registrado de VTL 1 (`securekernel!SkKiVtlCall`).</li>
+
+        <li><strong>Retorno a VTL 0 (`HvCallVtlReturn`):</strong> Una vez completada la operación en `securekernel.exe`, VTL 1 invoca `HvCallVtlReturn (0x0012)`, restaurando el contexto y la tabla EPT de VTL 0.</li>
+
+      </ol>
+
+    </section>
+
+
+
+    <section class="theory-block">
+
+      <h2>3. HVCI (Hypervisor-Protected Code Integrity) y la Política W^X en EPT</h2>
+
+      <p>
+
+        Sin VBS, el módulo de integridad de código (<code>ci.dll</code>) corre en VTL 0 junto con el resto del kernel. Un atacante con escritura arbitraria en Ring 0 simplemente sobrescribe la variable global <code>ci!g_CiOptions</code> (poniéndola a <code>0x0</code>) para deshabilitar DSE (<em>Driver Signature Enforcement</em>) y cargar un driver sin firma.
+
+      </p>
+
+      <p>
+
+        Con <strong>HVCI</strong> (también denominado <em>Memory Integrity</em> en Windows Security), la lógica crítica de verificación criptográfica se traslada a <strong><code>skci.dll</code></strong> dentro de VTL 1, y el hipervisor impone una política estricta <strong>W^X (Write XOR Execute) a nivel de SLAT/EPT</strong> para toda la memoria accesible por VTL 0:
+
+      </p>
+
+
+
+      <table>
+
+        <thead>
+
+          <tr>
+
+            <th>Estado de la Página Física</th>
+
+            <th>Permisos en Tabla de Páginas de VTL 0 (`PTE`)</th>
+
+            <th>Permisos en Tabla SLAT / EPT de VTL 0</th>
+
+            <th>Comportamiento ante Intento de Explotación en Ring 0</th>
+
+          </tr>
+
+        </thead>
+
+        <tbody>
+
+          <tr>
+
+            <td>Datos del Kernel (<code>NonPagedPoolNx</code>, Stack, <code>.data</code>)</td>
+
+            <td><code>RW-</code> (`NX = 1`, `Write = 1`)</td>
+
+            <td><code>RW-</code> (`EPT_READ | EPT_WRITE`)</td>
+
+            <td>Incluso si un atacante en Ring 0 modifica la PTE en VTL 0 para poner `NX = 0` e intenta saltar a su shellcode en el Pool, el procesador sufre un `EPT Violation` porque la tabla EPT del hipervisor carece del permiso `EPT_EXECUTE`.</td>
+
+          </tr>
+
+          <tr>
+
+            <td>Código de Kernel Verificado (`.text` de `ntoskrnl.exe` y drivers)</td>
+
+            <td><code>R-X</code> (`NX = 0`, `Write = 0`)</td>
+
+            <td><code>R-X</code> (`EPT_READ | EPT_EXECUTE`)</td>
+
+            <td>Si un rootkit desactiva el bit `WP` (`CR0.WP = 0`) o remapea la página física mediante una nueva MDL/PTE con permiso de escritura para instalar un *inline hook* en `ntoskrnl.exe`, el intento de escritura falla en el hardware por ausencia de `EPT_WRITE`.</td>
+
+          </tr>
+
+        </tbody>
+
+      </table>
+
+
+
+      <h3>3.1. Flujo de Validación de una Página Ejecutable (`VslVerifyPage`)</h3>
+
+      <p>
+
+        Cuando <code>ntoskrnl.exe</code> carga un nuevo driver en VTL 0, <code>ci.dll</code> no puede otorgar permisos de ejecución por sí mismo. En su lugar, realiza una llamada VTL hacia <code>skci.dll</code> (`SkciValidateImagePages`). <code>skci.dll</code> mapea las páginas físicas de la imagen en VTL 1, revoca temporalmente el permiso de escritura de VTL 0 sobre dichas páginas en el EPT (para impedir condiciones de carrera TOCTOU desde VTL 0), calcula el hash SHA-256 de la página comparándolo con el catálogo firmado o la tabla de hashes del certificado PE, y solo si es válido solicita a Hyper-V (`HvModifySparseGpaPageHostVisibility` / `HvCallModifyVtlProtectionMask`) que active el bit `EPT_EXECUTE` manteniendo `EPT_WRITE = 0`.
+
+      </p>
+
+    </section>
+
+
+
+    <section class="theory-block">
+
+      <h2>4. Isolated User Mode (IUM) y Credential Guard (`lsaiso.exe`)</h2>
+
+      <p>
+
+        En Ring 3 de VTL 1 se ejecutan los <strong>Trustlets</strong> (procesos IUM). Un Trustlet se compone de dos mitades coordinadas por el sistema:
+
+      </p>
+
+      <ul>
+
+        <li>Un contenedor objeto <code>_EPROCESS</code> en VTL 0 marcado con el bit <code>MinimalProcess = 1</code> (sin páginas de usuario legibles en VTL 0, sirviendo únicamente para que el planificador de hilos de `ntoskrnl.exe` pueda asignar tiempo de CPU a sus hilos `_ETHREAD`).</li>
+
+        <li>Una estructura de proceso seguro (<code>_SKPROCESS</code>) dentro de <code>securekernel.exe</code> en VTL 1, cuyas páginas de código y pila residen exclusivamente en memoria física protegida por la tabla EPT de VTL 1.</li>
+
+      </ul>
+
+      <p>
+
+        El caso de uso emblemático es <strong>Credential Guard (`lsaiso.exe`)</strong>. Cuando un usuario inicia sesión, <code>lsass.exe</code> (en VTL 0) nunca almacena en texto claro el hash NTLM ni las claves de largo plazo de Kerberos en su propio heap; en su lugar, los envía por un canal RPC/ALPC inter-VTL hacia el Trustlet <code>lsaiso.exe</code> (en VTL 1). Si un atacante con privilegios `SYSTEM` o acceso de driver en VTL 0 vuelca la memoria de `lsass.exe` con Mimikatz o `MiniDumpWriteDump`, únicamente obtiene <em>blobs</em> cifrados cuya clave maestra reside exclusivamente dentro de `securekernel.exe` / `lsaiso.exe` en VTL 1.
+
+      </p>
+
+    </section>
+
+
+
+    <section class="lab-box">
+
+      <h2>5. Laboratorio de Auditoría: Inspección de VBS, HVCI y Trustlets desde WinDbg</h2>
+
+      <div class="warning-box">
+
+        <strong>Declaración de Entorno:</strong> <code>Laboratorio verificado: no; requiere VM/toolchain</code>. Requiere una VM con virtualización anidada habilitada (`Set-VMProcessor -VMName "LabWin11" -ExposeVirtualizationExtensions $true`), VBS/HVCI activos en el registro (`EnableVirtualizationBasedSecurity = 1`) y depurador de kernel conectado a VTL 0.
+
+      </div>
+
+
+
+      <h3>Paso 1: Verificación del Estado Global de VSM/VBS y Hiperllamadas en `ntoskrnl.exe`</h3>
+
+      <pre class="code-block"><code>kd&gt; ? poi(nt!VslVsmEnabled) &amp; 0xff
+
+Evaluate expression: 1 = 00000000`00000001
+
+
+
+kd&gt; x nt!Vsl*Secure*
+
+fffff802`4138a120 nt!VslpEnterIumSecureMode (void)
+
+fffff802`41492c40 nt!VslExchangeEntropy (void)
+
+
+
+kd&gt; u nt!KiSyscallVtlCall L8
+
+nt!KiSyscallVtlCall:
+
+fffff802`41421080 488b05992f8000  mov     rax,qword ptr [nt!HvcallCodeVa (fffff802`41c24020)]
+
+fffff802`41421087 b911000000      mov     ecx,11h          ; HvCallVtlCall = 0x0011
+
+fffff802`4142108c ffd0            call    rax              ; Ejecuta VMCALL hacia Hyper-V
+
+fffff802`4142108e c3              ret</code></pre>
+
+
+
+      <h3>Paso 2: Inspección del Proceso Trustlet `LsaIso.exe` en VTL 0</h3>
+
+      <p>
+
+        Al examinar el objeto <code>_EPROCESS</code> de <code>LsaIso.exe</code> desde un depurador en VTL 0, observaremos que sus banderas reflejan un proceso IUM (<code>SecureProcess</code>) y que la lectura de su espacio de direcciones de usuario devuelve errores de acceso (`???`) debido a la protección EPT de VTL 1:
+
+      </p>
+
+
+
+      <pre class="code-block"><code>kd&gt; !process 0 0 LsaIso.exe
+
+PROCESS ffffb60918a42080
+
+    SessionId: 0  Cid: 034c    Peb: 00000000  ParentCid: 02c8
+
+    DirBase: 104a00002  ObjectTable: ffff818452109bc0  HandleCount:   0.
+
+    Image: LsaIso.exe
+
+
+
+kd&gt; dt nt!_EPROCESS ffffb60918a42080 Flags3MinimalProcess Protection
+
+   +0x87c Flags3 : 
+
+      +0x87c Minimal          : 0y1
+
+   +0x87a Protection       : _PS_PROTECTION
+
+      +0x000 Level            : 0x52 'R' (PsProtectedSignerLsa-Light)</code></pre>
+
+    </section>
+
+
+
+    <section class="references">
+
+      <h2>6. Referencias y Fuentes Técnicas</h2>
+
+      <ul>
+
+        <li>Yosifovich, P., Ionescu, A., Russinovich, M., &amp; Solomon, D. A. (2017). <em>Windows Internals, Part 1</em> (7th ed., Cap. 2 &amp; Cap. 3: Virtualization-Based Security). Microsoft Press.</li>
+
+        <li>Allievi, A., &amp; Johnson, K. (2020). <em>Eliminating Common Pitfalls in Kernel Security with Kernel Data Protection (KDP)</em>. Microsoft Offensive Security Research (BlueHat).</li>
+
+        <li>Weston, D., &amp; Miller, M. (2016). <em>Windows 10 Mitigation Improvements: VBS, HVCI, and Credential Guard</em>. Black Hat USA.</li>
+
+        <li>Amar, S., &amp; Ionescu, A. (2021). <em>Growing Hyper-V Arguments: Attacking the Secure Kernel &amp; VTL1</em>. Black Hat USA.</li>
+
+      </ul>
+
+    </section>
+
+
+
+  </main>
+
+</body>
+
+</html>

@@ -149,8 +149,8 @@ kd&gt; !alpc /m &lt;dir_Message&gt;       ; Decodifica un mensaje ALPC en vuelo 
 <details class="qa"><summary>Un servidor RPC registra solo <code>ncalrpc</code>. ¿Queda accesible solo localmente?</summary><div class="respuesta"><p>No necesariamente: en un proceso con otros servidores RPC, la interfaz es invocable por cualquier endpoint del proceso. Se controla con un callback de seguridad.</p></div></details>
 <details class="qa"><summary>¿<code>RpcServerRegisterAuthInfo</code> impide que se conecten clientes no autenticados?</summary><div class="respuesta"><p>No. Agrega una opción de autenticación, no un requisito; hacen falta chequeos propios.</p></div></details>
 <details class="qa"><summary>¿Por qué ALPC se trata como concepto?</summary><div class="respuesta"><p>Es una interfaz interna de bajo nivel con contratos menos estables; el curso enseña reconocimiento, no clientes de endpoints del sistema.</p></div></details>
-<aside class="callout nota"><p class="callout-titulo">Puerta optativa</p><p>Podés distinguir pipe, RPC y ALPC, seguir un intercambio propio, revisar ACL, primera instancia, clientes remotos, modo e impersonación de un pipe, y explicar por qué en RPC el control debe estar en el callback de seguridad y no en el endpoint.</p></aside>
-<aside class="callout nota"><p class="callout-titulo">Lo que queda fuera</p><p>El protocolo de red de los pipes remotos, el formato interno de RPC (NDR), los mensajes ALPC, mailslots, memoria compartida y otros mecanismos IPC no se desarrollan. No se enseña a enviar datos a pipes ni a endpoints RPC ajenos.</p></aside>
+<aside class="callout nota"><p class="callout-titulo">Puerta optativa</p><p>Podés distinguir pipe, RPC y ALPC, seguir un intercambio propio, revisar ACL, primera instancia, clientes remotos, modo e impersonación de un pipe, explicar por qué en RPC el control debe estar en el callback de seguridad y no en el endpoint, e inspeccionar interfaces RPC y puertos ALPC en modo lectura.</p></aside>
+<aside class="callout nota"><p class="callout-titulo">Lo que queda fuera</p><p>El protocolo SMB de los pipes remotos en la red, la especificación completa del motor NDR64, la construcción de clientes para puertos ALPC del sistema, mailslots y otros mecanismos IPC legados no se desarrollan. No se enseña a enviar datos a pipes ni a endpoints RPC o ALPC ajenos.</p></aside>
 <h2 id="fuentes">Fuentes</h2>
 <ul><li>Microsoft Learn: <a href="https://learn.microsoft.com/en-us/windows/win32/ipc/interprocess-communications" rel="noopener" target="_blank">Interprocess Communications</a>, <a href="https://learn.microsoft.com/en-us/windows/win32/ipc/named-pipes" rel="noopener" target="_blank">Named Pipes</a>, <a href="https://learn.microsoft.com/en-us/windows/win32/rpc/rpc-start-page" rel="noopener" target="_blank">RPC</a>, <a href="https://learn.microsoft.com/en-us/windows/win32/etw/alpc" rel="noopener" target="_blank">ALPC ETW class</a>.</li><li>Microsoft Learn, pipes: <a href="https://learn.microsoft.com/en-us/windows/win32/api/winbase/nf-winbase-createnamedpipea" rel="noopener" target="_blank">CreateNamedPipe</a>, <a href="https://learn.microsoft.com/en-us/windows/win32/ipc/named-pipe-security-and-access-rights" rel="noopener" target="_blank">Named Pipe Security and Access Rights</a>, <a href="https://learn.microsoft.com/en-us/windows/win32/ipc/impersonating-a-named-pipe-client" rel="noopener" target="_blank">Impersonating a Named Pipe Client</a>, <a href="https://learn.microsoft.com/en-us/windows/win32/ipc/named-pipe-type-read-and-wait-modes" rel="noopener" target="_blank">Named Pipe Type, Read, and Wait Modes</a>.</li><li>Microsoft Learn, RPC seguro: <a href="https://learn.microsoft.com/en-us/windows/win32/rpc/writing-a-secure-rpc-client-or-server" rel="noopener" target="_blank">Writing a Secure RPC Client or Server</a>, <a href="https://learn.microsoft.com/en-us/windows/win32/rpc/be-wary-of-other-rpc-endpoints-running-in-the-same-process" rel="noopener" target="_blank">Be Wary of Other RPC Endpoints Running in the Same Process</a>, <a href="https://learn.microsoft.com/en-us/windows/win32/rpc/common-mistake-assuming-rpcserverregisterauthinfo-prevents-unauthorized-users-from-calling-your-server" rel="noopener" target="_blank">RpcServerRegisterAuthInfo doesn't deny unauthorized users</a>, <a href="https://learn.microsoft.com/en-us/windows/win32/rpc/interface-registration-flags" rel="noopener" target="_blank">Interface Registration Flags</a>, <a href="https://learn.microsoft.com/en-us/windows/win32/rpc/protocol-sequence-constants" rel="noopener" target="_blank">Protocol Sequence Constants</a>.</li><li><strong>Fundamentos previos:</strong> call stack y procesos en <a href="01-procesos.html">1.3</a>; DCOM/RPC en <a href="2d-08-dcom-rpc.html">2D.8</a>.</li></ul>
 <aside class="callout nota"><p class="callout-titulo">Etiquetas</p><p><strong>Núcleo conceptual:</strong> procesos e IPC general. <strong>Conocimiento externo:</strong> IPC Windows, seguridad de named pipes y RPC. <strong>Ejemplo ilustrativo:</strong> protocolo y ficha BlocLab. <strong>Laboratorio verificado:</strong> no; ejemplo propio propuesto.</p></aside>
@@ -172,6 +172,64 @@ kd&gt; !alpc /m &lt;dir_Message&gt;       ; Decodifica un mensaje ALPC en vuelo 
 </ul>
 <p><strong>Automatización práctica:</strong> En análisis defensivo o auditoría de servicios de Windows, herramientas de código abierto como <strong><code>RpcView</code></strong> o un script de <strong>IDAPython</strong> que automatice la navegación <code>InterfaceId &rarr; InterpreterInfo &rarr; DispatchTable</code> permiten extraer y tipar todas las rutinas del servidor RPC en cuestión de segundos.</p>
 </aside>
+
+<hr>
+
+<h2 id="5-inspeccion-practica-de-puertos-alpc-con-handle-exe-y-alpc-en-windbg">5. Inspección Práctica de Puertos ALPC con <code>handle64.exe</code> y <code>!alpc</code> en WinDbg</h2>
+<aside class="callout aviso"><p class="callout-titulo">Declaración de Entorno</p><p><code>Laboratorio verificado: no; requiere VM/toolchain</code>. Requiere Sysinternals <code>handle64.exe</code> ejecutándose con privilegios administrativos y una sesión de depuración de kernel en WinDbg.</p></aside>
+
+<h3 id="5-1-enumeracion-en-modo-usuario-con-handle64-exe">5.1. Enumeración en Modo Usuario con <code>handle64.exe</code></h3>
+<p>Desde una consola elevada, la utilidad <code>handle64.exe</code> de Sysinternals permite filtrar la tabla de handles de cualquier proceso (por ejemplo, el servicio de programación de tareas o <code>lsass.exe</code>) restringiendo la salida al tipo de objeto del ejecutivo <strong><code>ALPC Port</code></strong> mediante los modificadores <code>-a</code> (volcar todos los tipos de objetos) y <code>-p</code>:</p>
+
+<pre><code class="lenguaje-text">C:\Tools\Sysinternals&gt; handle64.exe -a -p lsass.exe | findstr /i "ALPC"
+   228: ALPC Port      \RPC Control\lsapolicylookup
+   254: ALPC Port      \RPC Control\lsasspirpc
+   2bc: ALPC Port      \RPC Control\protected_storage</code></pre>
+
+<p>Para mapear el proceso que actúa como cliente de dicho endpoint, se busca el handle de tipo <code>ALPC Port</code> en procesos cliente que apunte al mismo nombre simbólico en el directorio <code>\RPC Control</code> de la tabla de objetos del Object Manager.</p>
+
+<h3 id="5-2-inspeccion-de-estructuras-internas-kalpc-port-en-windbg-con-alpc">5.2. Inspección de Estructuras Internas (<code>_KALPC_PORT</code>) en WinDbg con <code>!alpc</code></h3>
+<p>En una sesión viva de depuración de kernel (KD), la extensión <code>!alpc</code> de WinDbg interpreta los grafos de conexión entre puertos servidor y puertos de comunicación cliente:</p>
+
+<pre><code class="lenguaje-text">kd&gt; !alpc /lpl
+Scanning connection ports ...
+  Port: ffffb609148e2c90  Owner: ffffb60912c95080 (lsass.exe)  Name: \RPC Control\lsasspirpc
+  Port: ffffb60915a1a080  Owner: ffffb609121a80c0 (services.exe) Name: \RPC Control\spoolerpc
+
+kd&gt; !alpc /p ffffb609148e2c90
+Port @ ffffb609148e2c90
+  Type                      : ConnectionPort
+  OwnerProcess              : ffffb60912c95080 (lsass.exe)
+  ConnectionPort            : ffffb609148e2c90
+  ServerCommunicationPort   : 0000000000000000
+  ClientCommunicationPort   : 0000000000000000
+  Flags                     : 0x00000000
+  State                     : 0x00000001
+  SequenceNo                : 0x00000001
+  PortContext               : 0000000000000000
+  HasCompletionList         : No
+  ConnectionRefused         : No
+  Disconnected              : No
+  Closed                    : No
+  FlushOnClose              : Yes
+  MainQueueLength           : 0x00000000
+  PendingQueueLength        : 0x00000000
+  LargeMessageQueueLength   : 0x00000000
+
+kd&gt; !alpc /c ffffb609148e2c90
+Connections for port ffffb609148e2c90
+  CommunicationInfo @ ffffb609182143a0
+    ConnectionPort          : ffffb609148e2c90 (lsasspirpc)
+    ServerCommunicationPort : ffffb60918215920 [lsass.exe]
+    ClientCommunicationPort : ffffb60918215410 [svchost.exe]</code></pre>
+
+<h2 id="referencias-y-fuentes-tecnicas">Referencias y Fuentes Técnicas</h2>
+<ul>
+  <li>Garnier, C. (2008). <em>Windows Vista / Server 2008 ALPC Internals</em>. SyScan Conference.</li>
+  <li>Russinovich, M., Solomon, D., &amp; Ionescu, A. (2012). <em>Windows Internals, Part 2</em> (6th ed.). Microsoft Press.</li>
+  <li>Microsoft Learn. (2023). <em>ALPC Reference and Port Message Structures</em>.</li>
+</ul>
+
 </main>
 <footer class="pie">
   <p>Material educativo y defensivo. Las prácticas se limitan a programas propios, software abierto o crackmes diseñados para aprender. No se enseña a eludir licencias, DRM ni controles de acceso.</p>

@@ -39,6 +39,10 @@
 <tr><td>6.4</td><td><a href="6-04-revision-driver.html">Revisión defensiva de un driver</a></td><td>device interfaces, IOCTLs, SDDL y validación de entradas.</td></tr>
 <tr><td>6.5</td><td><a href="6-05-minifilters.html">Minifilters y callbacks</a></td><td>Pila de filesystem, callbacks pre/post y límites de observación.</td></tr>
 <tr><td>6.6</td><td><a href="6-06-mitigaciones.html">Mitigaciones de Windows para drivers</a></td><td>firma, Secure Boot, HVCI/VBS, WDAC y vulnerable driver blocklist.</td></tr>
+<tr><td>6.7</td><td><a href="6-07-vbs-hvci-callbacks.html">Seguridad profunda en kernel: VBS/HVCI, Callbacks y BYOVD</a></td><td>Secure Kernel (VTL 1), telemetría defensiva (ETWti, ObRegisterCallbacks, InstrumentationCallback), PiDDBCacheTable y doble lectura en MDLs.</td></tr>
+<tr><td>6.8</td><td><a href="6-08-wfp.html">Windows Filtering Platform (WFP): capas ALE y callouts</a></td><td>BFE, fwpkclnt.sys, filtrado e inspección de paquetes en Ring 0 y clasificación con classifyFn.</td></tr>
+<tr><td>6.9</td><td><a href="6-09-kcfg-isa.html">kCFG a nivel ISA, Bitmap y contraste con CET/IBT</a></td><td>guard_dispatch_icall, bitmap CFG, tablas GuardCFFunctionTable, diagnóstico bugcheck 0x139 y endbr64.</td></tr>
+<tr><td>6.10</td><td><a href="6-10-kernel-fuzzing.html">Fuzzing de drivers en modo kernel: IOCTL, WTF y kAFL/Nyx</a></td><td>Superficie IOCTL, Special Pool en PTEs, fuzzing por snapshots con WTF y cobertura Intel PT con kAFL.</td></tr>
 </tbody></table></div>
 <h2 id="recursos-y-lecturas-de-referencia">Recursos y lecturas de referencia</h2>
 <ul><li><a href="../2d.html">2D · Windows internals (solo lecciones requeridas para esta rama)</a></li><li><a href="../2d-hyperv.html">Extensión Hyper-V (optativa, no requisito)</a></li></ul>

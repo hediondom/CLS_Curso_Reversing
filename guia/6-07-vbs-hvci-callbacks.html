@@ -96,7 +96,8 @@ r rcx, rdx
 $$ 4. Breakpoint en el Secure Kernel (VTL 1) (si el depurador está conectado a VTL1)
 bp skci!SkciValidateImagePages</code></pre>
 <h3 id="kcfg-kernel-control-flow-guard-respaldado-por-vtl-1">kCFG (Kernel Control Flow Guard) Respaldado por VTL 1</h3>
-<p>En modo kernel, <strong>kCFG</strong> verifica cada llamada indirecta (<code>call rax</code>) comprobando si la dirección de destino está registrada en el bitmap de funciones válidas del kernel (<code>nt!guard_dispatch_icall</code>). Bajo VBS, el mapa de bits de CFG se almacena en memoria de solo lectura para VTL 0 y solo puede ser actualizado por el Secure Kernel en VTL 1.</p>
+<p>En modo kernel, <strong>kCFG</strong> verifica cada llamada indirecta (<code>call rax</code>) comprobando si la dirección de destino está registrada en el bitmap de funciones válidas del kernel (<code>nt!_guard_dispatch_icall</code>). Bajo VBS, el mapa de bits de CFG se almacena en memoria de solo lectura para VTL 0 y solo puede ser actualizado por el Secure Kernel en VTL 1.</p>
+<aside class="callout aviso"><p class="callout-titulo">Precisión sobre códigos de fallo en CFG y CET (#CP)</p><p>Al auditar fallos de integridad de flujo de control en user-mode y kernel-mode (y como fe de erratas respecto de la mención en el Tomo I, Lección 5.2.b, p. 333), no confundas los códigos de estado de <code>ntstatus.h</code>: el código <strong><code>0xC0000409</code></strong> corresponde a <strong><code>STATUS_STACK_BUFFER_OVERRUN</code></strong> (invocado mediante <code>int 29h</code> / <code>__fastfail</code> con subcódigo en <code>RCX</code>, como <code>0x0A</code> = <code>FAST_FAIL_GUARD_ICALL_CHECK_FAILURE</code> en violaciones de CFG o <code>0x2A</code> / <code>0x39</code> en violaciones de retorno; en modo kernel desencadena el bugcheck <code>0x139 KERNEL_SECURITY_CHECK_FAILURE</code>). En cambio, el código <code>NTSTATUS</code> específico asignado a la excepción de hardware <strong><code>#CP</code> (Control Protection Exception, vector 21 de Intel CET / AMD Shadow Stack)</strong> es <strong><code>0xC00006A6</code> (<code>STATUS_CONTROL_PROTECTION_EXCEPTION</code>)</strong> (y en modo kernel el bugcheck <code>0x00000139</code> con parámetro <code>0x39</code> o <code>0x0000007F UNEXPECTED_KERNEL_MODE_TRAP</code> con trampa <code>0x15</code>).</p></aside>
 <hr>
 <h2 id="2-auditoría-en-memoria-de-los-vectores-de-telemetría-y-notificación-de-kernel">2. Auditoría en Memoria de los Vectores de Telemetría y Notificación de Kernel</h2>
 <p>El reverser o analista defensivo debe dominar la inspección en <strong>WinDbg</strong> de los arreglos no exportados de notificación, registro y telemetría en memoria viva.</p>
@@ -122,7 +123,7 @@ r $t0 = nt!PspCreateProcessNotifyRoutine
 !list -t nt!_CM_CALLBACK_CONTEXT_BLOCK.List -x "dps @$extret+0x28 L1" nt!CmCallbackListHead</code></pre>
 <h3 id="d-sensor-en-proceso-kprocess-instrumentationcallback">D. Sensor en Proceso: <code>KPROCESS-&gt;InstrumentationCallback</code></h3>
 <p>Para evitar el monitoreo invasivo mediante inline hooking en modo usuario, Windows expone un mecanismo nativo de instrumentación en el despachador de syscalls:</p>
-<ul><li>En la estructura <code>_KPROCESS</code> (<code>nt!_KPROCESS</code>), el campo <strong><code>InstrumentationCallback</code></strong> (offset <strong><code>+0x3D8</code></strong> en Windows 10 x64, <strong><code>+0x3E8</code></strong> en Windows 11 x64) almacena un puntero a una función en espacio de usuario.</li><li>Se configura desde user mode mediante <code>NtSetInformationProcess</code> pasando la clase no documentada <code>ProcessInstrumentationCallback</code> (<code>0x28</code>).</li><li><strong>Mecánica de intercepción:</strong> Cuando este puntero está activo, cada vez que una llamada al sistema (<code>syscall</code>) o interrupción retorna desde el kernel al modo usuario, la CPU no regresa inmediatamente a la instrucción siguiente (<code>RIP</code>), sino que desvía la ejecución a la dirección configurada en <code>InstrumentationCallback</code>. Sensores defensivos y EDRs lo utilizan para inspeccionar el estado de los registros y el stack post-syscall.</li></ul>
+<ul><li>En la estructura <code>_KPROCESS</code> (<code>nt!_KPROCESS</code>), el campo <strong><code>InstrumentationCallback</code></strong> cambia de desplazamiento según la compilación: reside en <strong><code>+0x3D8</code> en Windows 10 22H2 (Build 19045)</strong>, en <strong><code>+0x3E8</code> en Windows 11 22H2/23H2 (Builds 22621 y 22631)</strong> y en <strong><code>+0x2C8</code> en Windows 11 24H2 (Build 26100)</strong>. Almacena un puntero a la rutina de retorno en espacio de usuario.</li><li>Se configura desde user mode mediante <code>NtSetInformationProcess</code> pasando la clase no documentada <code>ProcessInstrumentationCallback</code> (<code>0x28</code>).</li><li><strong>Mecánica de intercepción:</strong> Cuando este puntero está activo, cada vez que una llamada al sistema (<code>syscall</code>) o interrupción retorna desde el kernel al modo usuario, la CPU no regresa inmediatamente a la instrucción siguiente (<code>RIP</code>), sino que desvía la ejecución a la dirección configurada en <code>InstrumentationCallback</code>. Sensores defensivos y EDRs lo utilizan para inspeccionar el estado de los registros y el stack post-syscall.</li></ul>
 <h4 id="implementación-en-c-registro-de-instrumentationcallback">Implementación en C: Registro de <code>InstrumentationCallback</code></h4>
 <pre><code class="lenguaje-c">#include &lt;windows.h&gt;
 #include &lt;stdio.h&gt;
@@ -205,7 +206,7 @@ END</code></pre>
 <h4 id="script-windbg-auditoría-de-instrumentationcallback-en-todos-los-procesos">Script WinDbg: Auditoría de <code>InstrumentationCallback</code> en Todos los Procesos</h4>
 <p>Un analista forense o investigador de evasión puede inspeccionar qué procesos del sistema tienen activo un sensor <code>InstrumentationCallback</code>:</p>
 <pre><code class="lenguaje-text">$$ Script WinDbg: Recorrer todos los procesos y detectar callbacks activos
-!for_each_process "r @$t0 = @#Process; .if (poi(@$t0+@@(#FIELD_OFFSET(nt!_KPROCESS, InstrumentationCallback))) != 0) { .printf \"PID %p (%s) -&gt; InstrumentationCallback: %p\n\", poi(@$t0+@@(#FIELD_OFFSET(nt!_EPROCESS, UniqueProcessId))), poi(@$t0+@@(#FIELD_OFFSET(nt!_EPROCESS, ImageFileName))), poi(@$t0+@@(#FIELD_OFFSET(nt!_KPROCESS, InstrumentationCallback))) }"</code></pre>
+!for_each_process "r @$t0 = @#Process; .if (poi(@$t0+@@(#FIELD_OFFSET(nt!_KPROCESS, InstrumentationCallback))) != 0) { .printf \"PID %p (%ma) -&gt; InstrumentationCallback: %p\n\", poi(@$t0+@@(#FIELD_OFFSET(nt!_EPROCESS, UniqueProcessId))), @$t0+@@(#FIELD_OFFSET(nt!_EPROCESS, ImageFileName)), poi(@$t0+@@(#FIELD_OFFSET(nt!_KPROCESS, InstrumentationCallback))) }"</code></pre>
 <h3 id="e-proveedor-de-telemetría-de-kernel-etwti-microsoft-windows-threat-intelligence">E. Proveedor de Telemetría de Kernel <code>ETWti</code> (<em>Microsoft-Windows-Threat-Intelligence</em>)</h3>
 <p>El subsistema ETWti alimenta a los EDRs con telemetría de bajo nivel:</p>
 <ul><li>Su handle de registro global reside en <code>nt!EtwThreatIntProvRegHandle</code>.</li><li>Apunta a una estructura <code>_ETW_REG_ENTRY</code>. En el offset <strong><code>+0x10</code></strong> reside el puntero a <code>_ETW_GUID_ENTRY</code>.</li><li>Dentro de <code>_ETW_GUID_ENTRY</code>, el campo <code>ProviderEnableInfo</code> define si el proveedor está activo (<code>EnableMask != 0</code>) y a qué nivel de detalle registra eventos de kernel.</li></ul>
@@ -215,7 +216,8 @@ END</code></pre>
 <h3 id="mecánica-de-abuso-de-drivers-legítimos-firmados">Mecánica de Abuso de Drivers Legítimos Firmados</h3>
 <ol><li>El atacante selecciona un driver legítimo antiguo firmado con un certificado comercial válido (utilidades de placa madre, herramientas de overclocking o versiones antiguas de antivirus).</li><li>El driver se carga en el sistema mediante la API legítima <code>NtLoadDriver</code> o a través del Service Control Manager (<code>CreateServiceW</code> / <code>StartServiceW</code>). Dado que la firma digital es válida y no ha sido explícitamente bloqueada por la lista de revocación de Windows (WDAC Blocklist), DSE permite su carga.</li><li>El proceso atacante abre un handle hacia el objeto dispositivo del driver y despacha códigos IOCTL vulnerables que exponen primitivas de lectura/escritura arbitraria de memoria física (<code>MmMapIoSpace</code>), manipulación de registros de control (desactivación del bit SMEP en <code>CR4</code>) o copia no validada de memoria (<code>RtlCopyMemory</code>).</li><li>Con estas primitivas, el atacante modifica en memoria viva las estructuras del kernel (desactiva callbacks de EDR en <code>PspCreateProcessNotifyRoutine</code>, neutraliza <code>ETWti</code> o altera el token de seguridad en <code>_EPROCESS</code>).</li></ol>
 <h3 id="detección-defensiva-la-tabla-de-caché-nt-piddbcachetable">Detección Defensiva: La Tabla de Caché <code>nt!PiDDBCacheTable</code></h3>
-<p>Para llevar un registro forense de todos los controladores cargados, el kernel NT mantiene una tabla hash en memoria protegida por el recurso <code>nt!PiDDBLock</code>: <strong><code>nt!PiDDBCacheTable</code></strong>.</p>
+<p>Para llevar un registro forense de todos los controladores cargados, el kernel NT mantiene en la sección paginada (<code>PAGE</code>) una tabla genérica basada en un árbol balanceado AVL (<code>_RTL_AVL_TABLE</code>), protegida por el recurso ejecutivo <code>nt!PiDDBLock</code> (<code>_ERESOURCE</code>): <strong><code>nt!PiDDBCacheTable</code></strong>.</p>
+<p><strong>Estructura Interna de <code>_RTL_AVL_TABLE</code> (x64, en Win10 22H2 Build 19045 y Win11 23H2/24H2 Builds 22631/26100):</strong></p>
 <h4 id="estructura-interna-de-rtl-avl-table-x64">Estructura Interna de <code>_RTL_AVL_TABLE</code> (x64):</h4>
 <pre><code class="lenguaje-text">dt nt!_RTL_AVL_TABLE
    +0x00 BalancedRoot          : _RTL_BALANCED_LINKS (Árbol balanceado AVL)
@@ -233,14 +235,17 @@ END</code></pre>
 <p>Cada entrada dentro del árbol AVL contiene los metadatos de un controlador:</p>
 <ul><li><strong><code>+0x00</code> <code>List</code> (<code>_LIST_ENTRY</code>):</strong> Enlace doble en la lista de entradas.</li><li><strong><code>+0x10</code> <code>DriverName</code> (<code>_UNICODE_STRING</code>):</strong> Nombre del archivo del driver (ej. <code>RTCore64.sys</code>, <code>gdrv.sys</code>).</li><li><strong><code>+0x20</code> <code>TimeDateStamp</code> (<code>ULONG</code>):</strong> Marca de tiempo de compilación del encabezado PE del driver.</li><li><strong><code>+0x24</code> <code>LoadStatus</code> (<code>NTSTATUS</code>):</strong> Estado de carga del controlador (<code>STATUS_SUCCESS = 0x00000000</code>).</li></ul>
 <h4 id="técnicas-de-evasión-y-auditoría-forense">Técnicas de Evasión y Auditoría Forense:</h4>
-<ul><li><strong>Técnica de evasión:</strong> Herramientas de carga clandestina intentan localizar la tabla <code>nt!PiDDBCacheTable</code>, adquirir <code>nt!PiDDBLock</code> mediante <code>ExAcquireResourceExclusiveLite</code> y desvincular el nodo del driver vulnerable llamando a <strong><code>RtlDeleteElementGenericTableAvl</code></strong> para no dejar rastro en la memoria del kernel.</li><li><strong>Auditoría Forense en WinDbg:</strong> Un analista de incidentes puede volcar la tabla para comprobar si un driver vulnerable fue cargado, incluso si el archivo ya fue eliminado del disco:</li></ul>
-<pre><code class="lenguaje-text">$$ Localizar la tabla de caché de drivers y su lock en WinDbg
+<ul><li><strong>Técnica de evasión:</strong> Herramientas de carga clandestina intentan localizar la tabla <code>nt!PiDDBCacheTable</code>, adquirir <code>nt!PiDDBLock</code> mediante <code>ExAcquireResourceExclusiveLite</code> y desvincular el nodo del driver vulnerable llamando a <strong><code>RtlDeleteElementGenericTableAvl</code></strong> para no dejar rastro en la memoria del kernel.</li><li><strong>Auditoría Forense en WinDbg:</strong> Un analista de incidentes puede volcar la tabla para comprobar si un driver vulnerable fue cargado, incluso si el archivo ya fue eliminado del disco. Notá dos detalles clave: <code>nt!PiDDBCacheTable</code> es la instancia misma de <code>_RTL_AVL_TABLE</code> (no un puntero, por lo que no se usa <code>poi()</code> sobre el símbolo), y el tipo interno <code>PiDDBCacheEntry</code> no se incluye en los símbolos públicos de <code>ntoskrnl.pdb</code>; cada nodo del árbol AVL empieza con una cabecera <code>_RTL_BALANCED_LINKS</code> de <code>0x20</code> bytes seguida inmediatamente por los datos de la entrada (<code>LIST_ENTRY</code> en <code>+0x20</code>, <code>UNICODE_STRING DriverName</code> en <code>+0x30</code> y <code>ULONG TimeDateStamp</code> en <code>+0x40</code> desde la base del nodo):</li></ul>
+<pre><code class="lenguaje-text">$$ 1. Localizar la estructura _RTL_AVL_TABLE y su ERESOURCE lock en WinDbg
 x nt!PiDDBCacheTable
 x nt!PiDDBLock
+dt nt!_RTL_AVL_TABLE nt!PiDDBCacheTable
 
-$$ Inspeccionar las entradas del árbol AVL
-dt nt!_RTL_AVL_TABLE poi(nt!PiDDBCacheTable)
-dt nt!_PiDDBCacheEntry poi(poi(nt!PiDDBCacheTable) + 0x20)</code></pre>
+$$ 2. Obtener la raíz real del árbol AVL (BalancedRoot.RightChild en +0x10)
+r $t0 = poi(nt!PiDDBCacheTable + 0x10)
+$$ 3. Mostrar el _RTL_BALANCED_LINKS (+0x00) y el DriverName (+0x20 + 0x10 = +0x30) y TimeDateStamp (+0x40)
+dt nt!_RTL_BALANCED_LINKS @$t0
+.printf "Driver: %msu | TimeDateStamp: 0x%08x\n", @$t0 + 0x30, dwo(@$t0 + 0x40)</code></pre>
 <hr>
 <h2 id="4-condiciones-de-carrera-y-reversing-de-mdls-en-drivers-kmdf">4. Condiciones de Carrera y Reversing de MDLs en Drivers KMDF</h2>
 <p>En drivers reales el análisis de seguridad debe verificar el manejo de <strong>MDLs (Memory Descriptor Lists)</strong> y la sincronización asíncrona.</p>
@@ -250,12 +255,13 @@ dt nt!_PiDDBCacheEntry poi(poi(nt!PiDDBCacheTable) + 0x20)</code></pre>
 <h3 id="reenvío-asíncrono-a-i-o-targets-en-kmdf">Reenvío Asíncrono a I/O Targets en KMDF</h3>
 <p>En drivers KMDF desensamblados sin símbolos, las llamadas indirectas a través de la tabla <code>WdfFunctions</code> que gestionan solicitudes asíncronas se identifican por sus índices fijos:</p>
 <ul><li><strong><code>WdfRequestSend</code> (Índice 285 / Offset <code>+0x8E8</code>):</strong> Reenvía un paquete de E/S a un dispositivo inferior o destino de E/S.</li><li><strong><code>WdfRequestSetCompletionRoutine</code> (Índice 290 / Offset <code>+0x910</code>):</strong> Registra la rutina de finalización que se ejecutará cuando el dispositivo inferior complete la operación. En el desensamblado x64:</li></ul>
-<pre><code class="lenguaje-nasm">; Registro de CompletionRoutine en KMDF (offset +0x910)
-mov     rax, [rbx]                  ; RBX = Puntero a WdfFunctions
-mov     r8, offset MiCompletionRoutine ; R8 = Puntero al callback
-mov     rdx, r14                    ; RDX = WDFREQUEST
-mov     rcx, [rbx + 0x910]          ; Índice 290 = WdfRequestSetCompletionRoutine
-call    rcx                         ; Invocación indirecta</code></pre>
+<pre><code class="lenguaje-asm">; Registro de CompletionRoutine en KMDF (índice 290, offset +0x910 en x64)
+mov rax, cs:WdfFunctions_01015     ; RAX = Base de la tabla WDFFUNCTIONS
+mov rcx, cs:WdfDriverGlobals       ; 1.er arg oculto (RCX): PWDF_DRIVER_GLOBALS
+mov rdx, r14                       ; 2.º arg (RDX): WDFREQUEST Request
+lea r8, MiCompletionRoutine        ; 3.er arg (R8): PFN_WDF_REQUEST_COMPLETION_ROUTINE
+xor r9d, r9d                       ; 4.º arg (R9): WDFCONTEXT CompletionContext = NULL
+call qword ptr [rax + 910h]        ; Invocación indirecta a pfnWdfRequestSetCompletionRoutine</code></pre>
 <hr>
 <hr>
 <h2 id="6-7-b-detección-de-dkom-mediante-cross-view-vtl0-vs-vtl1-y-pspcidtable">6.7.b — Detección de DKOM mediante Cross-View (VTL0 vs. VTL1 y PspCidTable)</h2>
@@ -295,7 +301,7 @@ $$ 4. Algoritmo de detección heurística en WinDbg:
 $$ Para cada handle válido en PspCidTable, desreferenciar el puntero EPROCESS:
 $$ Si EPROCESS-&gt;ActiveProcessLinks.Flink == &amp;EPROCESS-&gt;ActiveProcessLinks
 $$ o si Flink-&gt;Blink != EPROCESS, se delata una desvinculación maliciosa (DKOM).
-!for_each_process "r @$t1 = @#Process; .if (poi(@$t1 + @@(#FIELD_OFFSET(nt!_EPROCESS, ActiveProcessLinks.Flink))) == (@$t1 + @@(#FIELD_OFFSET(nt!_EPROCESS, ActiveProcessLinks)))) { .printf \"[ALERTA DKOM] Proceso oculto detectado: PID %p (%s) en %p\n\", poi(@$t1 + @@(#FIELD_OFFSET(nt!_EPROCESS, UniqueProcessId))), poi(@$t1 + @@(#FIELD_OFFSET(nt!_EPROCESS, ImageFileName))), @$t1 }"</code></pre>
+!for_each_process "r @$t1 = @#Process; .if (poi(@$t1 + @@(#FIELD_OFFSET(nt!_EPROCESS, ActiveProcessLinks.Flink))) == (@$t1 + @@(#FIELD_OFFSET(nt!_EPROCESS, ActiveProcessLinks)))) { .printf \"[ALERTA DKOM] Proceso oculto detectado: PID %p (%ma) en %p\n\", poi(@$t1 + @@(#FIELD_OFFSET(nt!_EPROCESS, UniqueProcessId))), @$t1 + @@(#FIELD_OFFSET(nt!_EPROCESS, ImageFileName)), @$t1 }"</code></pre>
 <h2 id="5-laboratorio-verificado">5. Laboratorio Verificado</h2>
 <ol><li>Inspeccioná la plantilla <code>plantillas_codigo/minifilter_obcallback_min.c</code>. Observá cómo interactúan las estructuras de <code>FLT_REGISTRATION</code> y <code>OB_CALLBACK_REGISTRATION</code>.</li><li>En una sesión de depuración con WinDbg KDNET en tu VM de kernel, ejecutá el script de auditoría completa:</li></ol>
 <pre><code class="lenguaje-text">   $$&gt;&lt;plantillas_codigo\auditar_callbacks.wdbg</code></pre>

@@ -1,0 +1,257 @@
+<!doctype html>
+
+<html lang="es">
+
+<head>
+
+<meta charset="utf-8">
+
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<title>2D.16 · Extensión optativa: Hyper-V, particiones, VMBus y señales de virtualización</title>
+
+<meta name="description" content="Comprender la arquitectura de Hyper-V (root y child partitions, VMBus, VSP/VSC), diferenciarla de las estructuras de procesador (VMCS, VMCB, EPT, NPT) y analizar señales de virtualización y sus falsos positivos sin evasión.">
+
+<link rel="stylesheet" href="../guia/estilo.css">
+
+</head>
+
+<body>
+
+<a class="salto" href="#contenido">Saltar al contenido</a>
+
+<header class="cabecera">
+
+  <div class="marca"><a href="../00_EMPEZAR_AQUI.html">CLS · Curso de reversing</a> <span class="edicion">edición 5 · 27/10/2026</span></div>
+
+  <nav class="principal" aria-label="Navegación principal">
+
+    <a href="../00_EMPEZAR_AQUI.html">Inicio</a>
+
+    <a href="../guia/index.html">Curso</a>
+
+    <a href="../materiales.html">Materiales</a>
+
+    <a href="../fichas/index.html">Fichas</a>
+
+    <a href="../glosario.html">Glosario</a>
+
+    <a href="../preguntas_y_respuestas.html">Repaso</a>
+
+    <a href="../buscar.html">Buscar</a>
+
+  </nav>
+
+</header>
+
+<main id="contenido">
+
+<nav class="migas" aria-label="Ubicación"><a href="../00_EMPEZAR_AQUI.html">Inicio</a><span aria-hidden="true">›</span><a href="../guia/index.html">Curso</a><span aria-hidden="true">›</span><span>Etapa 2 · 2D · Windows internals (extensión optativa)</span></nav><h1 id="extensión-optativa-hyper-v-particiones-vmbus-y-señales-de-virtualización">Extensión optativa: Hyper-V, particiones, VMBus y señales de virtualización</h1>
+
+<aside class="callout aviso"><p class="callout-titulo">Extensión separada y de lectura conceptual</p><p>No integra el núcleo obligatorio de 2D, no es prerrequisito de la Etapa 6 ni forma parte de la aprobación del curso. El objetivo es comprender la arquitectura del hipervisor de Windows y los límites de observación de las señales de entorno virtual; no implementar técnicas de evasión anti-VM ni modificar la configuración de Hyper-V del equipo anfitrión.</p></aside>
+
+<aside class="callout nota"><p class="callout-titulo">Propósito</p><p>Distinguir el modelo de particiones y dispositivos sintéticos de Hyper-V (root/child partition, VMBus, VSP/VSC) de las estructuras de hardware del procesador (VMCS/VMCB y EPT/NPT), y evaluar con rigor técnico qué demuestra y qué no demuestra una señal de virtualización hallada al analizar un binario en Windows 10/11.</p></aside>
+
+<p><strong>Prerrequisitos</strong></p>
+
+<ul><li><em>Obligatorios:</em> procesos y memoria (<a href="01-memoria.html">1.2</a>, <a href="01-procesos.html">1.3</a>); taxonomía anti-análisis (<a href="02-anti-analisis.html">2.15</a>).</li><li><em>Recomendados:</em> objetos y tokens (<a href="2d-01-objetos.html">2D.1</a>); arranque UEFI (<a href="2d-15-uefi-boot-chain.html">2D.15</a>); mitigaciones VBS/HVCI (<a href="6-06-mitigaciones.html">6.6</a>, <a href="6-07-vbs-hvci-callbacks.html">6.7</a>).</li></ul>
+
+<h2 id="1-arquitectura-de-particiones-root-y-child-partitions">1. Arquitectura de particiones: Root y Child Partitions</h2>
+
+<p>Hyper-V es un hipervisor de tipo 1 (<em>bare-metal</em>) basado en particiones. Cuando Hyper-V o Virtualization-Based Security (VBS) están activos, el hipervisor (<code>hvix64.exe</code> en procesadores Intel o <code>hvax64.exe</code> en procesadores AMD, cargado por <code>hvloader.efi</code> durante la fase de arranque descrita en <a href="2d-15-uefi-boot-chain.html">2D.15</a>) se sitúa directamente sobre el hardware en el modo de privilegio de virtualización del procesador (VMX root operation en Intel; SVM host mode en AMD).</p>
+
+<p>Una <strong>partición</strong> es la unidad lógica de aislamiento soportada por el hipervisor: posee su propio espacio de direcciones físicas de invitado, sus procesadores virtuales y sus políticas de temporización e interrupciones.</p>
+
+<ul><li><strong>Root Partition (Partición Raíz o Padre):</strong> Es la única partición que tiene acceso directo a los dispositivos físicos de entrada/salida y administra el ciclo de vida de las demás particiones. Ejecuta una instancia completa del sistema operativo anfitrión (Windows 10/11 o Windows Server) y aloja la pila de virtualización en modo usuario (como el servicio <code>vmms.exe</code> y un proceso trabajador <code>vmwp.exe</code> por cada máquina virtual activa) junto con el controlador de infraestructura de virtualización (<code>vid.sys</code>).</li><li><strong>Child Partitions (Particiones Hijas):</strong> Ejecutan los sistemas operativos invitados. Una partición hija no tiene acceso directo al procesador físico ni a los controladores de hardware reales; ve procesadores virtuales (VPs), un espacio de memoria física de invitado (GPA, <em>Guest Physical Address</em>) y dispositivos emulados o sintéticos.</li></ul>
+
+<pre><code class="lenguaje-text">+-------------------------------------------------------------------------+
+
+|                    ROOT PARTITION (Anfitrión Windows)                   |
+
+|  [ vmms.exe / vmwp.exe ]    [ Pila de red/almacenamiento del host ]     |
+
+|             |                                  |                        |
+
+|      [ vid.sys / winhv.sys ]        [ VSP (storvsp, netvsp) ]           |
+
+|             |                                  |                        |
+
++-------------|----------------------------------|------------------------+
+
+              | (Hiperllamadas HvCall*)          | (Canal VMBus en RAM)
+
++-------------|----------------------------------|------------------------+
+
+|             |                                  v                        |
+
+|             |                       [ VSC (storvsc, netvsc) ]           |
+
+|      [ winhv.sys ]                     [ vmbus.sys / vmbkmcl.sys ]      |
+
+|                  CHILD PARTITION (Invitado / VM de análisis)            |
+
++-------------------------------------------------------------------------+
+
+|              HIPERVISOR HYPER-V (hvix64.exe / hvax64.exe)               |
+
+|         Aislamiento de CPU (VMCS/VMCB) y Memoria (SLAT: EPT/NPT)        |
+
++-------------------------------------------------------------------------+</code></pre>
+
+<h2 id="2-dispositivos-sintéticos-vmbus-vsp-y-vsc">2. Dispositivos sintéticos: VMBus, VSP y VSC</h2>
+
+<p>Emular hardware clásico (como un controlador IDE o una placa de red DEC 21140) exige interceptar accesos a puertos de E/S o memoria mapeada, provocando constantes salidas al hipervisor (<em>VM Exits</em>). Para evitar ese costo, Hyper-V utiliza un modelo de dispositivos ilustrados o <strong>sintéticos</strong> sobre un bus compartido en memoria llamado <strong>VMBus</strong>:</p>
+
+<ul><li><strong>VMBus (<code>vmbus.sys</code>):</strong> Es un mecanismo de comunicación entre particiones basado en buffers circulares (<em>ring buffers</em>) en páginas de memoria compartida entre la partición hija y la partición raíz, notificados mediante eventos sintéticos del hipervisor (SynIC, <em>Synthetic Interrupt Controller</em>).</li><li><strong>VSC (Virtualization Service Client):</strong> Es el driver que corre dentro del kernel de la <strong>partición hija</strong> (invitado). Por ejemplo, <code>storvsc.sys</code> para almacenamiento, <code>netvsc.sys</code> para red o <code>vmbusr.sys</code> para componentes de modo usuario.</li><li><strong>VSP (Virtualization Service Provider):</strong> Es el componente que corre en la <strong>partición raíz</strong> (anfitrión), recibe las solicitudes que el VSC colocó en el ring buffer de VMBus y las traduce en operaciones sobre el hardware físico o los archivos <code>.vhdx</code> del host (por ejemplo, <code>storvsp.sys</code> o <code>vmswitch.sys</code>).</li></ul>
+
+<p>En reversing defensivo, distinguir entre VMBus y el hipervisor evita errores de atribución: VMBus no es el hipervisor ni una estructura del procesador; es un canal de transporte entre particiones para dispositivos sintéticos.</p>
+
+<h2 id="3-estructuras-de-hardware-de-la-cpu-vmcs-vmcb-y-slat-ept-npt">3. Estructuras de hardware de la CPU: VMCS/VMCB y SLAT (EPT/NPT)</h2>
+
+<p>Por debajo del modelo de software de Hyper-V, el aislamiento real descansa en extensiones de arquitectura del procesador:</p>
+
+<div class="tabla"><table>
+
+<thead><tr>
+
+<th>Concepto</th>
+
+<th>Intel VT-x (<code>hvix64.exe</code>)</th>
+
+<th>AMD-V / SVM (<code>hvax64.exe</code>)</th>
+
+<th>Función técnica</th>
+
+</tr></thead><tbody>
+
+<tr><td><strong>Estructura de control de CPU virtual</strong></td><td><strong>VMCS</strong> (<em>Virtual Machine Control Structure</em>, Intel SDM Vol. 3C Cap. 24)</td><td><strong>VMCB</strong> (<em>Virtual Machine Control Block</em>, AMD APM Vol. 2 Cap. 15)</td><td>Región de memoria por procesador virtual que guarda el estado del guest, el estado del host y qué eventos (<code>CPUID</code>, <code>RDMSR</code>, acceso a <code>CR3</code>/<code>CR4</code>, excepciones) fuerzan una transición al hipervisor (<em>VM Exit</em>).</td></tr>
+
+<tr><td><strong>Traducción de direcciones de segundo nivel (SLAT)</strong></td><td><strong>EPT</strong> (<em>Extended Page Tables</em>, Intel SDM Vol. 3C Cap. 28)</td><td><strong>NPT / RVI</strong> (<em>Nested Page Tables</em>, AMD APM Vol. 2 §15.25)</td><td>Segundo juego de tablas de páginas en hardware que traduce Direcciones Físicas de Invitado (GPA) a Direcciones Físicas del Sistema (SPA/HPA), con sus propios bits de permiso Lectura/Escritura/Ejecución.</td></tr>
+
+<tr><td><strong>Instrucción de hiperllamada</strong></td><td><code>VMCALL</code> (opcode <code>0F 01 C1</code>)</td><td><code>VMMCALL</code> (opcode <code>0F 01 D9</code>)</td><td>Transfiere explícitamente el control desde el kernel de una partición (vía la página de código de hiperllamada mapeada por <code>winhv.sys</code>) hacia el hipervisor.</td></tr>
+
+</tbody></table></div>
+
+<p>Gracias a SLAT (EPT/NPT), el hipervisor puede quitar el permiso de ejecución o escritura a una página física de la partición aun cuando las tablas de páginas del kernel invitado (<code>CR3</code>) la marquen como escribible y ejecutable. Ese mismo mecanismo es el que utiliza HVCI entre VTL0 y VTL1 (ver <a href="6-07-vbs-hvci-callbacks.html">6.7</a> y <a href="2d-17-vbs-profundo.html">2D.17</a>).</p>
+
+<h2 id="4-señales-de-virtualización-y-el-falso-positivo-de-la-root-partition">4. Señales de virtualización y el falso positivo de la Root Partition</h2>
+
+<p>La especificación pública de Microsoft (<em>Hypervisor Top-Level Functional Specification</em>, TLFS) define cómo un sistema operativo o una aplicación descubre la presencia y capacidades de un hipervisor compatible con la interfaz de Microsoft mediante la instrucción <code>CPUID</code>:</p>
+
+<div class="tabla"><table>
+
+<thead><tr>
+
+<th>Hoja <code>CPUID</code> (<code>EAX</code>)</th>
+
+<th>Registros y bits devueltos</th>
+
+<th>Qué informa según la especificación TLFS</th>
+
+<th>Por qué NO demuestra que sea una VM de análisis</th>
+
+</tr></thead><tbody>
+
+<tr><td><code>0x00000001</code></td><td><code>ECX</code> bit 31 (<code>HypervisorPresent</code>) = <code>1</code></td><td>Indica que hay un hipervisor ejecutándose debajo del sistema operativo actual.</td><td>En cualquier equipo físico moderno con Windows 10/11 que tenga activo <strong>VBS, HVCI (Integridad de memoria), Credential Guard, WSL2 o el rol Hyper-V</strong>, el sistema operativo anfitrión corre dentro de la <strong>Root Partition</strong> y este bit vale <code>1</code>.</td></tr>
+
+<tr><td><code>0x40000000</code></td><td><code>EAX</code> = máxima hoja; <code>EBX:ECX:EDX</code> = <code>"Microsoft Hv"</code></td><td>Firma de interfaz del hipervisor de Microsoft.</td><td>Aparece idéntico tanto en una VM invitada (Child Partition) como en una máquina física con VBS/HVCI (Root Partition).</td></tr>
+
+<tr><td><code>0x40000003</code></td><td><code>EAX:EBX</code> = máscara de privilegios de la partición (<code>HV_PARTITION_PRIVILEGE_MASK</code>)</td><td>El bit 0 de <code>EBX</code> (<code>CreatePartitions</code>) y flags como <code>AccessPartitionReferenceCounter</code> indican qué derechos posee la partición actual.</td><td>Permite distinguir la Root Partition (donde <code>CreatePartitions</code> vale <code>1</code>) de una Child Partition (donde vale <code>0</code>), aunque un usuario estándar no administra particiones.</td></tr>
+
+</tbody></table></div>
+
+<p>Otras señales observables en modo usuario o kernel —como la presencia de dispositivos bajo <code>HKLM\SYSTEM\CurrentControlSet\Enum\VMBUS</code>, servicios de integración (<code>vmicheartbeat</code>, <code>vmickvpexchange</code>) o cadenas ACPI/SMBIOS (<code>Virtual Machine</code>)— son consultadas de forma completamente legítima por instaladores, motores gráficos, herramientas de telemetría de rendimiento y agentes de soporte técnico.</p>
+
+<h2 id="ejemplo-trabajado">Ejemplo trabajado</h2>
+
+<p><em>(Escenario ilustrativo de lectura estática y contextual; no proviene de una muestra real ejecutada.)</em></p>
+
+<p>Al analizar un binario de diagnóstico propio (<code>DiagEntorno.exe</code>) en IDA/Ghidra, encontrás dos bloques consecutivos:</p>
+
+<pre><code class="lenguaje-text">Bloque A (0x140001180):
+
+   mov eax, 1
+
+   cpuid
+
+   bt  ecx, 1Fh                ; ¿ECX bit 31 (HypervisorPresent) == 1?
+
+   jnc entorno_fisico_sin_vbs
+
+   mov eax, 40000000h
+
+   cpuid                       ; Lee EBX="Micr", ECX="osof", EDX="t Hv"
+
+
+
+Bloque B (0x140001210):
+
+   RegOpenKeyExW(HKLM, L"SYSTEM\\CurrentControlSet\\Services\\vmbus", ...)</code></pre>
+
+<p>Registro del hallazgo separando observación, interpretación y explicación alternativa:</p>
+
+<div class="tabla"><table>
+
+<thead><tr>
+
+<th>Señal observada</th>
+
+<th>Evidencia</th>
+
+<th>Explicación alternativa legítima</th>
+
+<th>Límite de la conclusión</th>
+
+</tr></thead><tbody>
+
+<tr><td>Consulta de <code>CPUID</code> hojas <code>0x1</code> y <code>0x40000000</code></td><td>Instrucciones en <code>0x140001180</code> y constantes <code>"Micr"</code> / <code>"osof"</code> / <code>"t Hv"</code></td><td>Comprobación de soporte de virtualización o de VBS/HVCI por una herramienta de diagnóstico o instalador</td><td>Daría positivo en cualquier PC física con Windows 11 y VBS activo; por sí solo no distingue Root de Child Partition</td></tr>
+
+<tr><td>Apertura en lectura de la clave del servicio <code>vmbus</code></td><td>Referencia a cadena e import de <code>RegOpenKeyExW</code> en <code>0x140001210</code></td><td>Inventario de drivers de almacenamiento/red sintéticos para ajustar parámetros de E/S</td><td><code>vmbus.sys</code> también existe en disco en instalaciones estándar de Windows; abrir su clave no prueba evasión si el flujo posterior solo registra el dato</td></tr>
+
+</tbody></table></div>
+
+<h2 id="práctica">Práctica</h2>
+
+<p>En un equipo o VM donde ya tengas autorización, en modo de solo lectura (sin modificar Hyper-V, Secure Boot ni la configuración de las VMs):</p>
+
+<ol><li>Dibujá la arquitectura separando Root Partition, Child Partition, VSP, VSC, VMBus, hipervisor y las estructuras de CPU (VMCS/VMCB y EPT/NPT).</li><li>Escribí un programa mínimo propio en C (usando el intrínseco <code>__cpuid</code> de <code>&lt;intrin.h&gt;</code>) que consulte las hojas <code>0x00000001</code>, <code>0x40000000</code> y <code>0x40000003</code> e imprima los registros en hexadecimal.</li><li>Compilalo y miralo en tu desensamblador: ubicá las instrucciones <code>cpuid</code> y anotá cómo se comparan los registros.</li><li>Completá una tabla con dos señales de virtualización (por ejemplo, hoja <code>0x40000000</code> de <code>CPUID</code> y enumeración de <code>HKLM\SYSTEM\CurrentControlSet\Enum\VMBUS</code>), indicando para cada una qué evidencia deja en el binario, una explicación legítima y por qué no basta por sí sola para afirmar evasión.</li></ol>
+
+<h2 id="entregable">Entregable</h2>
+
+<p>Diagrama de capas de Hyper-V (root/child, VSP/VSC/VMBus vs. VMCS/EPT/NPT) y la tabla señal–evidencia–explicación alternativa–límite completada. Sin modificar el hipervisor ni proponer parches anti-detección.</p>
+
+<h2 id="repaso">Repaso</h2>
+
+<details class="qa"><summary>¿VMBus es lo mismo que VMCS o VMCB?</summary><div class="respuesta"><p>No. VMBus es un canal de comunicación en memoria compartida entre particiones de Hyper-V para dispositivos sintéticos; VMCS (Intel VT-x) y VMCB (AMD-V) son estructuras de control del procesador físico por cada CPU virtual.</p></div></details>
+
+<details class="qa"><summary>¿Qué diferencia a un VSC de un VSP?</summary><div class="respuesta"><p>El VSC (<em>Virtualization Service Client</em>) es el driver cliente dentro de la partición hija (invitado) que envía solicitudes por VMBus; el VSP (<em>Virtualization Service Provider</em>) corre en la partición raíz (anfitrión) y atiende esas solicitudes contra los recursos reales.</p></div></details>
+
+<details class="qa"><summary>¿Por qué el bit 31 de <code>ECX</code> en <code>CPUID(1)</code> y la firma <code>"Microsoft Hv"</code> dan positivo en muchas máquinas físicas con Windows 11?</summary><div class="respuesta"><p>Porque con VBS, HVCI o Credential Guard activos, el sistema operativo anfitrión corre dentro de la Root Partition sobre el hipervisor de Microsoft, por lo que el procesador informa legítimamente que hay un hipervisor presente.</p></div></details>
+
+<details class="qa"><summary>¿Para qué sirven EPT (Intel) y NPT (AMD) en un hipervisor?</summary><div class="respuesta"><p>Realizan la traducción de direcciones de segundo nivel (SLAT) en hardware, convirtiendo direcciones físicas del invitado (GPA) en direcciones físicas del sistema (SPA) y aplicando permisos de lectura, escritura y ejecución controlados por el hipervisor.</p></div></details>
+
+<details class="qa"><summary>¿Encontrar una consulta a <code>VMBUS</code> o a <code>CPUID</code> prueba que el binario evade el análisis?</summary><div class="respuesta"><p>No. Puede responder a diagnóstico, telemetría de soporte o compatibilidad. Para afirmar evasión hay que demostrar en el flujo de control que ese resultado aborta o desvía la lógica funcional del programa.</p></div></details>
+
+<aside class="callout nota"><p class="callout-titulo">Puerta optativa</p><p>Podés describir la diferencia entre Root y Child Partition, explicar el rol de VSP, VSC y VMBus, diferenciarlos de VMCS/VMCB y EPT/NPT, y evaluar señales de virtualización (<code>CPUID</code>, dispositivos sintéticos) documentando sus falsos positivos en equipos con VBS y sus límites de inferencia.</p></aside>
+
+<aside class="callout nota"><p class="callout-titulo">Lo que queda fuera</p><p>El formato interno de los paquetes de VMBus, la depuración del hipervisor (<code>hvix64.exe</code> / <code>hvax64.exe</code>), la escritura de hiperllamadas propias y las técnicas para ocultar o falsificar indicadores de máquina virtual quedan fuera del alcance del curso.</p></aside>
+
+<h2 id="fuentes">Fuentes</h2>
+
+<ul><li>Microsoft Learn: <a href="https://learn.microsoft.com/en-us/virtualization/hyper-v-on-windows/reference/hyper-v-architecture" rel="noopener" target="_blank">Hyper-V Architecture</a>, <a href="https://learn.microsoft.com/en-us/virtualization/hyper-v-on-windows/tlfs/tlfs" rel="noopener" target="_blank">Hypervisor Top-Level Functional Specification (TLFS)</a>, <a href="https://learn.microsoft.com/en-us/virtualization/hyper-v-on-windows/tlfs/feature-discovery" rel="noopener" target="_blank">Hypervisor Feature Discovery</a>.</li><li>Intel Corporation: <em>Intel 64 and IA-32 Architectures Software Developer's Manual</em>, Vol. 3C, Cap. 24 (<em>Virtual Machine Control Structures — VMCS</em>) y Cap. 28 (<em>VMX Support for Address Translation — EPT</em>).</li><li>AMD: <em>AMD64 Architecture Programmer's Manual</em>, Vol. 2: System Programming, Cap. 15 (<em>Secure Virtual Machine — VMCB y Nested Paging / NPT</em>).</li><li><strong>Fundamentos previos:</strong> taxonomía anti-análisis en <a href="02-anti-analisis.html">2.15</a>; cadena de arranque UEFI y <code>hvloader.efi</code> en <a href="2d-15-uefi-boot-chain.html">2D.15</a>.</li></ul>
+
+<aside class="callout nota"><p class="callout-titulo">Etiquetas</p><p><strong>Núcleo conceptual:</strong> señales de entorno virtual vistas como contexto en 2.15. <strong>Conocimiento externo:</strong> arquitectura de particiones Hyper-V, VMBus/VSP/VSC, hojas CPUID de la especificación TLFS y estructuras VMCS/VMCB/EPT/NPT. <strong>Recomendación editorial:</strong> matriz de falsos positivos en hosts con VBS/HVCI. <strong>Ejemplo ilustrativo:</strong> diagrama y bloques de consulta <code>DiagEntorno.exe</code>. <strong>Laboratorio verificado:</strong> no; requiere VM/toolchain (lectura conceptual, laboratorio no verificado).</p></aside>
+
+</main>
+
+<footer class="pie">
+
+  <p>Material educativo y defensivo. Las prácticas se limitan a programas propios, software abierto o crackmes diseñados para aprender. No se enseña a eludir licencias, DRM ni controles de acceso.</p>
+
+  <p><a href="../00_EMPEZAR_AQUI.html">Inicio</a> · <a href="../guia/etapa-0.html">Etapas</a> · <a href="../fuentes_y_limites.html">Fuentes y límites</a> · <a href="../registro_de_cobertura.csv">Registro de cobertura</a></p>
+
+</footer>
+
+</body>
+
+</html>

@@ -90,10 +90,10 @@ logman stop "NT Kernel Logger" -ets</code></pre>
 <p>En ciberseguridad defensiva e ingeniería inversa de malware, el análisis de telemetría debe contemplar cómo los atacantes neutralizan la generación de eventos:</p>
 <h3 id="a-parcheo-en-modo-usuario-ntdll-etweventwrite">A. Parcheo en Modo Usuario (<code>ntdll!EtwEventWrite</code>)</h3>
 <p>Cuando un proceso en modo usuario desea impedir que componentes de seguridad reciban eventos (como telemetría de inyección de código o AMSI), recurre a <strong>ETW Patching</strong>:</p>
-<ol><li>El proceso localiza la función exportada <code>ntdll!EtwEventWrite</code>.</li><li>Modifica los permisos de la página de memoria usando <code>VirtualProtect</code> a <code>PAGE_EXECUTE_READWRITE</code>.</li><li>Sobrescribe el prólogo de la función con una instrucción de retorno anticipado:</li></ol>
-<ul><li>En x64: <code>xor eax, eax; ret</code> (<code>31 C0 C3</code>) o simplemente <code>ret</code> (<code>C3</code>).</li></ul>
-<ol><li>Al retornar <code>0</code> (<code>STATUS_SUCCESS</code>), la aplicación cree que el evento se registró con éxito, pero ningún byte de telemetría llega al despachador de ETW.</li></ol>
-<p><strong>Detección Defensiva:</strong> Un monitor de integridad lee la imagen limpia de <code>ntdll.dll</code> directamente desde el disco (<code>\SystemRoot\System32\ntdll.dll</code>) y compara los primeros 16 bytes de <code>EtwEventWrite</code> contra los bytes en memoria. Cualquier discordancia (<code>0xC3</code> o <code>0x31 0xC0</code> en el primer byte) delata un parcheo activo de ETW.</p>
+<ol><li>El proceso localiza la función exportada <code>ntdll!EtwEventWrite</code>.</li><li>Modifica los permisos de la página de memoria usando <code>VirtualProtect</code> a <code>PAGE_EXECUTE_READWRITE</code>.</li><li>Sobrescribe el prólogo de la función con una instrucción de retorno anticipado:
+<ul><li>En x64: <code>xor eax, eax; ret</code> (codificado como <code>31 C0 C3</code> por ensambladores GAS/NASM o <code>33 C0 C3</code> por MSVC/MASM) o simplemente <code>ret</code> (<code>C3</code>).</li></ul></li>
+<li>Al retornar <code>0</code> (<code>STATUS_SUCCESS</code>), la aplicación cree que el evento se registró con éxito, pero ningún byte de telemetría llega al despachador de ETW.</li></ol>
+<p><strong>Detección Defensiva:</strong> Un monitor de integridad lee la imagen limpia de <code>ntdll.dll</code> directamente desde el disco (<code>\SystemRoot\System32\ntdll.dll</code>) y compara los primeros 16 bytes de <code>EtwEventWrite</code> contra los bytes en memoria. Cualquier discordancia (<code>0xC3</code>, <code>0x31 0xC0</code> o <code>0x33 0xC0</code> en los primeros bytes) delata un parcheo activo de ETW.</p>
 <h3 id="b-cegado-en-modo-kernel-etwti-blinding">B. Cegado en Modo Kernel (ETWti Blinding)</h3>
 <p>A nivel de kernel, los controladores de seguridad se alimentan del proveedor <strong><code>Microsoft-Windows-Threat-Intelligence</code></strong> (Lección 6.7). Para cegar este sensor:</p>
 <ul><li>Un atacante con primitiva de escritura en kernel (vector BYOVD) localiza el handle de registro apuntado por <code>nt!EtwThreatIntProvRegHandle</code>.</li><li>En la estructura <code>_ETW_GUID_ENTRY</code>, manipula el campo <code>ProviderEnableInfo</code>, estableciendo la máscara de habilitación a cero (<code>EnableMask = 0</code>).</li><li>Al quedar deshabilitado el proveedor a nivel de hipervisor/kernel, el sensor EDR deja de recibir eventos de inyección de hilos y acceso a memoria sin generar alertas visibles en user mode.</li></ul>
@@ -124,6 +124,44 @@ El valor guardado a través de <strong><code>R9</code></strong> (<code>REGHANDLE
 Ciertas muestras evasivas intentan silenciar la telemetría del propio proceso (como los eventos del runtime de <code>.NET CLR</code> o <code>AMSI</code>) resolviendo dinámicamente <code>ntdll!EtwEventWrite</code> (o <code>NtTraceEvent</code>), cambiando la protección de su página de memoria a <code>PAGE_EXECUTE_READWRITE</code> y sobrescribiendo su primer byte con <code>ret</code> (<code>0xC3</code>) o <code>xor eax, eax ; ret</code> (<code>33 C0 C3</code>). En el depurador, el analista lo detecta comparando los primeros bytes de <code>ntdll!EtwEventWrite</code> en memoria frente a la copia intacta de <code>ntdll.dll</code> en disco o monitoreando llamadas a <code>VirtualProtect</code> sobre rangos de memoria de <code>ntdll</code>.</li>
 </ol>
 </aside>
+
+<hr>
+
+<h2 id="5-etw-threat-intelligence-microsoft-windows-threat-intelligence-etwti">5. ETW Threat Intelligence (<code>Microsoft-Windows-Threat-Intelligence</code> / ETWti)</h2>
+<p>Introducido para alimentar directamente a Microsoft Defender for Endpoint (MDE) y sensores EDR de terceros certificados por el programa MVI (<em>Microsoft Virus Initiative</em>), el proveedor <strong><code>Microsoft-Windows-Threat-Intelligence</code> (ETWti)</strong> —identificado por el GUID <code>{f4e1897c-bb5d-5668-f1d8-040f4d8dd344}</code>— instrumenta directamente las syscalls de gestión de memoria virtual, mapeo de secciones y encolado de APCs dentro del propio ejecutivo <code>ntoskrnl.exe</code>.</p>
+
+<h3 id="5-1-restriccion-de-consumo-mediante-ppl-psprotectedsignerantimalware-light">5.1. Restricción de Consumo mediante PPL (<code>PsProtectedSignerAntimalware-Light</code>)</h3>
+<p>A diferencia de los proveedores ETW convencionales accesibles desde cualquier sesión de usuario, el registro de una sesión de traza contra el GUID de ETWti está restringido a nivel del kernel mediante una verificación de token protegido:</p>
+<ul>
+  <li>Únicamente procesos que ejecutan bajo el nivel <strong>Protected Process Light (PPL)</strong> con el firmante antimalware (<code>PsProtectedSignerAntimalware-Light</code> o superior) pueden suscribirse a este proveedor vía <code>EnableTraceEx2</code>.</li>
+  <li>Esta barrera impide que un binario no privilegiado o un atacante en Ring 3 intercepte los eventos generados por las rutinas de inyección de código de otros procesos.</li>
+</ul>
+
+<h3 id="5-2-punteros-en-kernel-y-registro-en-windbg-nt-etwthreatintprovreghandle">5.2. Punteros en Kernel y Registro en WinDbg (<code>nt!EtwThreatIntProvRegHandle</code>)</h3>
+<p><em>Nota de entorno:</em> <code>Laboratorio verificado: no; requiere VM/toolchain</code>. En una sesión de depuración con <code>ntoskrnl.pdb</code>, el puntero al registro del proveedor se almacena en el símbolo global <strong><code>nt!EtwThreatIntProvRegHandle</code></strong> (de tipo <code>_ETW_REG_ENTRY*</code>). Desde este objeto se inspecciona la estructura <code>_ETW_GUID_ENTRY</code> que controla qué palabras clave (keywords) de monitorización están habilitadas:</p>
+
+<pre><code class="lenguaje-text">kd&gt; x nt!EtwThreatIntProvRegHandle
+ffffb609`120489a0 nt!EtwThreatIntProvRegHandle = 0xffffb609`102e3a10
+
+kd&gt; dt nt!_ETW_REG_ENTRY 0xffffb609`102e3a10 GuidEntry
+   +0x020 GuidEntry : 0xffffb609`102f6840 _ETW_GUID_ENTRY
+
+kd&gt; dt nt!_ETW_GUID_ENTRY 0xffffb609`102f6840 Guid ProviderEnableInfo
+   +0x018 Guid               : {f4e1897c-bb5d-5668-f1d8-040f4d8dd344}
+   +0x060 ProviderEnableInfo : _TRACE_ENABLE_INFO
+      +0x000 IsEnabled          : 0x1
+      +0x004 Level              : 0xff ''
+      +0x008 MatchAnyKeyword    : 0x80000000`ffffffff</code></pre>
+
+<p>Si un rootkit o driver en modo kernel sobrescribe el puntero <code>nt!EtwThreatIntProvRegHandle</code> con cero o modifica <code>ProviderEnableInfo.IsEnabled = 0</code>, ciega la telemetría de kernel que reciben los agentes EDR sin disparar inmediatamente un Bugcheck de PatchGuard (aunque kernels modernos protegen este handle mediante monitorización periódica de integridad).</p>
+
+<h2 id="referencias-y-fuentes-tecnicas">Referencias y Fuentes Técnicas</h2>
+<ul>
+  <li>Baines, J., &amp; Sealighter Project. (2021). <em>Telemetry Source Analysis: Microsoft-Windows-Threat-Intelligence (ETWti)</em>.</li>
+  <li>Microsoft Learn. (2023). <em>Event Tracing for Windows (ETW) Architecture and Kernel Providers</em>.</li>
+  <li>Russinovich, M., Solomon, D., &amp; Ionescu, A. (2017). <em>Windows Internals, Part 1</em> (7th ed.). Microsoft Press.</li>
+</ul>
+
 </main>
 <footer class="pie">
   <p>Material educativo y defensivo. Las prácticas se limitan a programas propios, software abierto o crackmes diseñados para aprender. No se enseña a eludir licencias, DRM ni controles de acceso.</p>

@@ -1,0 +1,256 @@
+<!doctype html>
+
+<html lang="es">
+
+<head>
+
+<meta charset="utf-8">
+
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<title>6.9 · kCFG a nivel ISA: guard_dispatch_icall, bitmap de CFG y contraste con CET/IBT (endbr64)</title>
+
+<meta name="description" content="Analizar a nivel de instrucciones x64 cómo funciona Kernel Control Flow Guard (_guard_dispatch_icall y bitmap de CFG), su respaldo en VTL1 bajo HVCI y su diferencia con Intel CET / AMD Shadow Stack e IBT (endbr64).">
+
+<link rel="stylesheet" href="../guia/estilo.css">
+
+</head>
+
+<body>
+
+<a class="salto" href="#contenido">Saltar al contenido</a>
+
+<header class="cabecera">
+
+  <div class="marca"><a href="../00_EMPEZAR_AQUI.html">CLS · Curso de reversing</a> <span class="edicion">edición 5 · 27/10/2026</span></div>
+
+  <nav class="principal" aria-label="Navegación principal">
+
+    <a href="../00_EMPEZAR_AQUI.html">Inicio</a>
+
+    <a href="../guia/index.html">Curso</a>
+
+    <a href="../materiales.html">Materiales</a>
+
+    <a href="../fichas/index.html">Fichas</a>
+
+    <a href="../glosario.html">Glosario</a>
+
+    <a href="../preguntas_y_respuestas.html">Repaso</a>
+
+    <a href="../buscar.html">Buscar</a>
+
+  </nav>
+
+</header>
+
+<main id="contenido">
+
+<nav class="migas" aria-label="Ubicación"><a href="../00_EMPEZAR_AQUI.html">Inicio</a><span aria-hidden="true">›</span><a href="../guia/index.html">Curso</a><span aria-hidden="true">›</span><span>Etapa 6 · Kernel y drivers (optativa)</span></nav><h1 id="kcfg-a-nivel-isa-guard-dispatch-icall-bitmap-de-cfg-y-contraste-con-cet-ibt">kCFG a nivel ISA: <code>_guard_dispatch_icall</code>, bitmap de CFG y contraste con CET/IBT</h1>
+
+<aside class="callout aviso"><p class="callout-titulo">Análisis defensivo y lectura de código compilado</p><p>Esta lección estudia la instrumentación de llamadas indirectas y las protecciones de flujo de control para leer binarios de kernel en IDA/Ghidra y diagnosticar fallos en WinDbg. No se enseña a eludir CFG, kCFG ni CET.</p></aside>
+
+<aside class="callout nota"><p class="callout-titulo">Propósito</p><p>Comprender exactamente qué instrucciones emite el compilador en un driver compilado con <code>/guard:cf</code>, cómo valida <code>_guard_dispatch_icall</code> una dirección destino en el bitmap de CFG, qué metadatos guarda el directorio <code>Load Config</code> del PE y en qué se diferencia este mecanismo por software/VTL1 de las protecciones de hardware CET (Shadow Stack e Indirect Branch Tracking con <code>endbr64</code>).</p></aside>
+
+<p><strong>Prerrequisitos</strong></p>
+
+<ul><li><em>Obligatorios:</em> PE fino y Load Config (<a href="02-pe-fino.html">2.14</a>); mitigaciones de vulnerabilidades (<a href="05-vulnerabilidades.html">5.2</a>); mitigaciones de drivers y VBS/HVCI (<a href="6-06-mitigaciones.html">6.6</a>, <a href="6-07-vbs-hvci-callbacks.html">6.7</a>).</li><li><em>Recomendados:</em> llamadas y registros x64 (<a href="02-llamadas.html">2.5</a>); debugging de kernel (<a href="6-03-debug-kernel.html">6.3</a>).</li></ul>
+
+<h2 id="1-qué-cambia-en-el-ensamblador-de-call-reg-a-guard-dispatch-icall">1. Qué cambia en el ensamblador: de <code>call reg</code> a <code>_guard_dispatch_icall</code></h2>
+
+<p>En un binario x64 compilado sin Control Flow Guard (CFG), una llamada indirecta a través de un puntero de función o de una tabla (como una <code>MajorFunction</code> de WDM o un callback de KMDF) se emite como <code>call rax</code> (2 bytes: <code>FF D0</code>). Cuando el driver se compila con <code>/guard:cf</code> (requisito obligatorio para compatibilidad con HVCI), el compilador MSVC reemplaza cada llamada indirecta por una secuencia que carga la dirección destino en <code>RAX</code> e invoca al despachador guardado en la sección de importación/configuración del módulo:</p>
+
+<pre><code class="lenguaje-asm">; --- Sin /guard:cf ---
+
+mov     rax, [rbx + 28h]                      ; RAX = puntero al callback (p. ej. EvtIoDeviceControl)
+
+mov     rcx, rdi                              ; 1.er argumento
+
+call    rax                                   ; Salto indirecto sin validación previa
+
+
+
+; --- Con /guard:cf (CFG / kCFG activo) ---
+
+mov     rax, [rbx + 28h]                      ; RAX = dirección destino a verificar e invocar
+
+mov     rcx, rdi                              ; RCX, RDX, R8, R9 llevan los argumentos normales
+
+call    cs:__guard_dispatch_icall_fptr        ; Valida RAX en el bitmap de CFG y, si es válido, hace jmp rax</code></pre>
+
+<p>En el directorio <code>IMAGE_LOAD_CONFIG_DIRECTORY64</code> del archivo PE (ver <a href="02-pe-fino.html">2.14</a>), dos punteros gobiernan esta instrumentación:</p>
+
+<ul><li><strong><code>GuardCFCheckFunctionPointer</code> (offset <code>+0x070</code> en Load Config x64):</strong> Puntero a la celda que contiene la rutina de comprobación (<code>_guard_check_icall</code>, que valida el destino en <code>RCX</code> y retorna).</li><li><strong><code>GuardCFDispatchFunctionPointer</code> (offset <code>+0x078</code> en Load Config x64):</strong> Puntero a la celda que contiene el despachador (<code>_guard_dispatch_icall</code>, que recibe el destino en <code>RAX</code>, preserva los registros de argumentos <code>RCX</code>, <code>RDX</code>, <code>R8</code> y <code>R9</code>, valida <code>RAX</code> y salta directamente al destino con <code>jmp rax</code>).</li></ul>
+
+<p>Si el sistema operativo o el entorno no soporta CFG, esos punteros en memoria apuntan a un stub trivial (<code>_guard_dispatch_icall_nop</code>) que ejecuta únicamente <code>jmp rax</code>. Cuando el cargador del kernel mapea el driver con kCFG activo, parchea ambas celdas para que apunten a <code>nt!_guard_check_icall</code> y <code>nt!_guard_dispatch_icall</code>.</p>
+
+<h2 id="2-mecánica-a-nivel-isa-del-bitmap-de-cfg">2. Mecánica a nivel ISA del bitmap de CFG</h2>
+
+<p>Para validar en pocos ciclos de reloj si <code>RAX</code> es el inicio legítimo de una función exportada o tomada por dirección en tiempo de compilación, Windows mantiene un <strong>bitmap jerárquico de CFG</strong> (cuya base en kernel se almacena en <code>nt!MmCfgBitmapAddress</code> para el espacio de direcciones correspondiente):</p>
+
+<ol><li><strong>Alineación de funciones a 16 bytes:</strong> El compilador y el enlazador alinean los puntos de entrada válidos de funciones llamadas indirectamente a múltiplos de 16 bytes (los 4 bits inferiores de la dirección valen <code>0</code>: <code>RAX &amp; 0xF == 0</code>).</li><li><strong>Indexación del bitmap:</strong> Cada bit del bitmap representa un bloque de memoria de código. La rutina <code>nt!_guard_dispatch_icall</code> toma los bits superiores de <code>RAX</code> (<code>RAX &gt;&gt; 9</code>) para indexar la entrada del directorio del bitmap y los bits intermedios (<code>(RAX &gt;&gt; 3) &amp; 0x3F</code>) para seleccionar el bit exacto de 0 a 63 mediante la instrucción <strong><code>bt</code> (Bit Test)</strong>.</li><li><strong>Caso alineado (camino rápido):</strong> Si <code>RAX</code> está alineado a 16 bytes (<code>test al, 0Fh</code> da cero) y el bit correspondiente en el bitmap vale <code>1</code>, el destino es válido y <code>_guard_dispatch_icall</code> ejecuta <code>jmp rax</code>.</li><li><strong>Caso desalineado o bit en 0:</strong> Si la dirección no está alineada a 16 bytes, el despachador comprueba si la política permite destinos válidos no alineados verificando el par de bits adyacente (<code>btr</code> / <code>bts</code>). Si el bit vale <code>0</code>, el destino no figura en la tabla <code>GuardCFFunctionTable</code> de ningún módulo cargado y la validación falla.</li></ol>
+
+<pre><code class="lenguaje-asm">; Esquema conceptual ilustrativo de nt!_guard_dispatch_icall (x64)
+
+; Entrada: RAX = dirección destino; RCX, RDX, R8, R9 = argumentos de la función destino
+
+mov     r10, cs:MmCfgBitmapAddress            ; Base de la tabla del bitmap de CFG
+
+mov     r11, rax
+
+shr     r11, 9                                ; Índice de entrada en la tabla del bitmap
+
+mov     r10, [r10 + r11*8]                    ; Puntero al QWORD de 64 bits del bitmap
+
+mov     r11, rax
+
+shr     r11, 3                                ; Desplazamiento de bit (granularidad de 8/16 bytes)
+
+test    al, 0Fh                               ; ¿Está RAX alineado a 16 bytes?
+
+jnz     short comprobar_no_alineado
+
+bt      r10, r11                              ; Comprueba el bit (CF = bit del bitmap)
+
+jnc     short fallo_cfg                       ; Si CF == 0, el destino NO es un inicio de función válido
+
+jmp     rax                                   ; Destino válido -> transfiere el control
+
+
+
+comprobar_no_alineado:
+
+btr     r11, 0                                ; Ajusta al bit par y verifica par de bits
+
+bt      r10, r11
+
+jnc     short fallo_cfg
+
+or      r11, 1
+
+bt      r10, r11
+
+jnc     short fallo_cfg
+
+jmp     rax
+
+
+
+fallo_cfg:
+
+mov     ecx, 0Ah                              ; RCX = 0x0A (FAST_FAIL_GUARD_ICALL_CHECK_FAILURE)
+
+int     29h                                   ; Dispara __fastfail -> Bugcheck 0x139 en kernel</code></pre>
+
+<h3 id="por-qué-kcfg-depende-de-vbs-hvci-vtl1">Por qué kCFG depende de VBS/HVCI (VTL1)</h3>
+
+<p>En un sistema sin VBS, el bitmap de CFG reside en memoria del kernel en VTL0; si un atacante ya cuenta con una primitiva de escritura arbitraria en Ring 0, podría poner en <code>1</code> el bit correspondiente a su gadget antes de provocar la llamada indirecta. Cuando <strong>HVCI</strong> está activo (<a href="6-06-mitigaciones.html">6.6</a> y <a href="6-07-vbs-hvci-callbacks.html">6.7</a>), las páginas físicas que alojan el bitmap de kCFG y las celdas <code>GuardCFDispatchFunctionPointer</code> están protegidas en las tablas SLAT (EPT/NPT) como <strong>solo lectura para VTL0</strong>: únicamente el Secure Kernel en VTL1 (<code>securekernel.exe</code> / <code>skci.dll</code>) puede poblar los bits del bitmap cuando valida y mapea un driver firmado.</p>
+
+<h2 id="3-contraste-arquitectónico-cfg-kcfg-frente-a-cet-shadow-stack-e-ibt">3. Contraste arquitectónico: CFG/kCFG frente a CET (Shadow Stack e IBT)</h2>
+
+<p>Un error frecuente al analizar mitigaciones es confundir CFG/kCFG con <strong>Control-flow Enforcement Technology (CET)</strong> de Intel y AMD. Ambas protegen el flujo de control, pero operan en bordes y capas distintas:</p>
+
+<div class="tabla"><table>
+
+<thead><tr>
+
+<th>Propiedad</th>
+
+<th>CFG / kCFG (Software + VTL1)</th>
+
+<th>CET Shadow Stack (Hardware)</th>
+
+<th>CET IBT — Indirect Branch Tracking (Hardware)</th>
+
+</tr></thead><tbody>
+
+<tr><td><strong>Qué borde protege</strong></td><td><strong>Forward-edge</strong> (llamadas y saltos indirectos hacia adelante: <code>call reg</code>, <code>jmp reg</code>).</td><td><strong>Backward-edge</strong> (direcciones de retorno hacia atrás: <code>ret</code>).</td><td><strong>Forward-edge</strong> (saltos y llamadas indirectas hacia adelante).</td></tr>
+
+<tr><td><strong>Cómo valida el destino</strong></td><td>La rutina <code>_guard_dispatch_icall</code> consulta un bitmap en memoria antes de saltar.</td><td>La CPU empuja la dirección de retorno en el stack de datos y en un <em>Shadow Stack</em> protegido por tabla de páginas; en <code>ret</code> compara ambos en microcódigo.</td><td>Tras un <code>call</code>/<code>jmp</code> indirecto, la máquina de estados de la CPU entra en <code>WAIT_FOR_ENDBRANCH</code> y exige que la primera instrucción del destino sea <strong><code>endbr64</code></strong> (<code>F3 0F 1E FA</code>).</td></tr>
+
+<tr><td><strong>Qué se ve en IDA / Ghidra</strong></td><td><code>call cs:__guard_dispatch_icall_fptr</code> y tabla <code>GuardCFFunctionTable</code> en Load Config.</td><td>El código de la función no cambia; se lee en las banderas de mitigación del proceso/kernel.</td><td>Un prólogo de 4 bytes <code>endbr64</code> (<code>F3 0F 1E FA</code>) al comienzo de cada función direccionable indirectamente.</td></tr>
+
+<tr><td><strong>Qué excepción o código genera al fallar</strong></td><td>Ejecuta <code>int 29h</code> con <code>ECX = 0x0A</code> (<code>FAST_FAIL_GUARD_ICALL_CHECK_FAILURE</code>): en user-mode termina con <strong><code>0xC0000409</code> (<code>STATUS_STACK_BUFFER_OVERRUN</code>)</strong>; en kernel produce el bugcheck <strong><code>0x139</code> (<code>KERNEL_SECURITY_CHECK_FAILURE</code>, Arg1 = <code>0x0A</code>)</strong>.</td><td>La CPU dispara la excepción de hardware <strong><code>#CP</code> (vector 21)</strong> con código de error en pila: su <code>NTSTATUS</code> específico es <strong><code>0xC00006A6</code> (<code>STATUS_CONTROL_PROTECTION_EXCEPTION</code>)</strong> (o terminación vía fastfail <code>0xC0000409</code> con subcódigo <code>0x2A</code> / <code>0x39</code>).</td><td>La CPU dispara la excepción de hardware <strong><code>#CP</code> (vector 21)</strong> porque el destino indirecto no comenzó con <code>endbr64</code>.</td></tr>
+
+</tbody></table></div>
+
+<p>En procesadores antiguos que no implementan CET IBT, los 4 bytes de <code>endbr64</code> (<code>F3 0F 1E FA</code>) pertenecen al espacio de NOPs multibyte reservados por Intel y AMD, por lo que se ejecutan como un simple <code>NOP</code> sin afectar la compatibilidad.</p>
+
+<h2 id="4-inspección-estática-en-pe-y-dinámica-en-windbg">4. Inspección estática en PE y dinámica en WinDbg</h2>
+
+<p>Para verificar la tabla de destinos válidos de un driver propio o de sistema sin ejecutarlo, usá <code>dumpbin</code> del Visual Studio Developer Command Prompt o el visor de Load Config en PE-bear/IDA:</p>
+
+<pre><code class="lenguaje-text">:: Volcar el directorio Load Config y la tabla completa de funciones válidas para CFG/kCFG
+
+dumpbin /headers /loadconfig MiDriver.sys</code></pre>
+
+<p>En la salida de <code>dumpbin /loadconfig</code> verás <code>Guard CF address of check-function pointer</code>, <code>Guard CF address of dispatch-function pointer</code>, las banderas <code>Guard Flags</code> (por ejemplo, <code>0x00010500</code> = <code>CF Instrumented</code> + <code>CF Function Table Present</code>) y la lista numerada de RVAs bajo <code>Guard CF Function Table</code>. En una sesión de WinDbg de kernel (en tu VM de pruebas):</p>
+
+<pre><code class="lenguaje-text">$$ Ver el desensamblado real de _guard_dispatch_icall en el build de tu VM
+
+kd&gt; uf nt!_guard_dispatch_icall
+
+
+
+$$ Ver la cabecera y configuración de Load Config de un driver cargado
+
+kd&gt; !dh -l MiDriver</code></pre>
+
+<h2 id="ejemplo-trabajado">Ejemplo trabajado</h2>
+
+<p><em>(Escenario ilustrativo de lectura de un bugcheck causado por un puntero de callback corrupto en un driver de prueba propio; valores construidos.)</em></p>
+
+<pre><code class="lenguaje-text">BugCheck 139, {a, ffff89812345f810, ffff89812345f768, 0}
+
+KERNEL_SECURITY_CHECK_FAILURE (139)
+
+Arg1: 000000000000000a, FAST_FAIL_GUARD_ICALL_CHECK_FAILURE
+
+Arg2: ffff89812345f810, Dirección del trap frame (_KTRAP_FRAME)
+
+Arg3: ffff89812345f768, Dirección del registro de excepción (_EXCEPTION_RECORD)</code></pre>
+
+<p>Recorrido de análisis siguiendo el método de <a href="6-03-debug-kernel.html">6.3</a>:</p>
+
+<ol><li><strong>Parámetro 1 (<code>0x0A</code>):</strong> Confirma que el bugcheck <code>0x139</code> provino de un fallo de validación de llamada indirecta en kCFG (<code>FAST_FAIL_GUARD_ICALL_CHECK_FAILURE</code>).</li><li><strong>Contexto (<code>.trap ffff89812345f810</code>):</strong> <code>RIP</code> apunta a <code>nt!_guard_dispatch_icall+0x...</code> (la instrucción <code>int 29h</code>), y el registro <strong><code>RAX</code></strong> conserva la dirección destino inválida que se intentó llamar.</li><li><strong>Pila (<code>k</code>):</strong> El frame inmediatamente anterior a <code>nt!_guard_dispatch_icall</code> señala la línea exacta de tu driver donde se ejecutó <code>call cs:__guard_dispatch_icall_fptr</code>, indicando qué estructura tenía el puntero de función corrompido o sin inicializar.</li></ol>
+
+<h2 id="práctica">Práctica</h2>
+
+<p>En tu VM aislada, con el driver propio <code>BlocLab.sys</code> de <a href="6-02-kmdf-ioctl.html">6.2</a> (o un binario propio compilado en C):</p>
+
+<ol><li>Compilá dos versiones del mismo binario propio: una sin CFG (<code>/guard:cf-</code>) y otra con CFG activo (<code>/guard:cf</code>).</li><li>Abrí ambas en IDA o Ghidra y compará el sitio de una llamada indirecta por puntero a función: anotá los bytes de la instrucción en cada versión.</li><li>Ejecutá <code>dumpbin /loadconfig</code> sobre la versión con <code>/guard:cf</code> y verificá que tu función llamada indirectamente aparece listada en <code>Guard CF Function Table</code>.</li><li>Si tenés WinDbg conectado al kernel de la VM, ejecutá <code>uf nt!_guard_dispatch_icall</code> y anotá en tu bitácora qué instrucciones realizan el desplazamiento de bits y la prueba <code>bt</code> en ese build concreto de Windows.</li></ol>
+
+<h2 id="entregable">Entregable</h2>
+
+<p>Comparativa lado a lado del desensamblado con y sin <code>/guard:cf</code>, salida de <code>dumpbin /loadconfig</code> señalando la RVA de la función en <code>GuardCFFunctionTable</code> y cuadro comparativo entre kCFG, CET Shadow Stack y CET IBT con sus códigos de excepción.</p>
+
+<h2 id="repaso">Repaso</h2>
+
+<details class="qa"><summary>En un driver x64 compilado con <code>/guard:cf</code>, ¿en qué registro viaja la dirección destino cuando se llama a <code>__guard_dispatch_icall_fptr</code>?</summary><div class="respuesta"><p>En <code>RAX</code>, de modo que los cuatro registros de argumentos de la convención Microsoft x64 (<code>RCX</code>, <code>RDX</code>, <code>R8</code> y <code>R9</code>) lleguen intactos a la función destino tras el <code>jmp rax</code>.</p></div></details>
+
+<details class="qa"><summary>¿Por qué kCFG necesita que VBS/HVCI esté activo para ser resistente frente a una escritura arbitraria en kernel?</summary><div class="respuesta"><p>Porque sin VBS el bitmap de CFG es escribible desde Ring 0 (VTL0). Con HVCI, las páginas del bitmap están marcadas como solo lectura en las tablas SLAT (EPT/NPT) y solo el Secure Kernel en VTL1 puede modificarlas.</p></div></details>
+
+<details class="qa"><summary>¿Qué diferencia hay entre lo que protege kCFG y lo que protege el Shadow Stack de CET?</summary><div class="respuesta"><p>kCFG protege el borde hacia adelante (<em>forward-edge</em>: llamadas y saltos indirectos <code>call/jmp reg</code>) comprobando un bitmap; el Shadow Stack de CET protege el borde hacia atrás (<em>backward-edge</em>: instrucciones <code>ret</code>) comparando la dirección de retorno del stack de datos contra una pila sombra en hardware.</p></div></details>
+
+<details class="qa"><summary>¿Qué función cumple la instrucción <code>endbr64</code> (<code>F3 0F 1E FA</code>)?</summary><div class="respuesta"><p>Es el marcador de aterrizaje de CET IBT (<em>Indirect Branch Tracking</em>): tras un salto o llamada indirecta, el procesador exige que la primera instrucción ejecutada en el destino sea <code>endbr64</code>; si no lo es, dispara una excepción de hardware <code>#CP</code>.</p></div></details>
+
+<details class="qa"><summary>¿Qué diferencia hay entre los códigos <code>0xC0000409</code> y <code>0xC00006A6</code>?</summary><div class="respuesta"><p><code>0xC0000409</code> es <code>STATUS_STACK_BUFFER_OVERRUN</code> (disparado por <code>int 29h</code> / <code>__fastfail</code> con un subcódigo en <code>RCX</code>, como <code>0x0A</code> en fallos de CFG/kCFG, que en kernel produce el bugcheck <code>0x139</code>). <code>0xC00006A6</code> es <code>STATUS_CONTROL_PROTECTION_EXCEPTION</code>, el código <code>NTSTATUS</code> específico de la excepción de hardware <code>#CP</code> (vector 21 de CET).</p></div></details>
+
+<aside class="callout nota"><p class="callout-titulo">Puerta optativa</p><p>Podés leer una llamada indirecta instrumentada con <code>_guard_dispatch_icall</code>, explicar cómo se indexa el bitmap de CFG con <code>shr</code> y <code>bt</code>, extraer la tabla <code>GuardCFFunctionTable</code> del directorio Load Config, diagnosticar un bugcheck <code>0x139</code> (subcódigo <code>0x0A</code>) leyendo <code>RAX</code> en el trap frame y distinguir CFG/kCFG de CET Shadow Stack e IBT (<code>endbr64</code>).</p></aside>
+
+<aside class="callout nota"><p class="callout-titulo">Lo que queda fuera</p><p>El for
+El formateo de técnicas avanzadas de evasión de CFG en drivers comerciales, la manipulación de páginas de solo lectura respaldadas por HVCI sin llamadas VTL 1 documentadas y la implementación de analizadores binarios para tablas XFG se dejan fuera de alcance (requieren entornos de laboratorio y credenciales de prueba específicos).</p></aside>
+
+</main>
+
+<footer class="pie">
+
+  <p>Material educativo y defensivo. Las prácticas se limitan a programas propios, software abierto o crackmes diseñados para aprender. No se enseña a eludir licencias, DRM ni controles de acceso.</p>
+
+  <p><a href="../00_EMPEZAR_AQUI.html">Inicio</a> · <a href="../guia/etapa-0.html">Etapas</a> · <a href="../fuentes_y_limites.html">Fuentes y límites</a> · <a href="../registro_de_cobertura.csv">Registro de cobertura</a></p>
+
+</footer>
+
+</body>
+
+</html>

@@ -1,0 +1,581 @@
+<!DOCTYPE html>
+
+<html lang="es">
+
+<head>
+
+  <meta charset="UTF-8">
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <title>6-10 · Fuzzing de Drivers en Modo Kernel (IOCTL, WTF y kAFL/Nyx) — Tomo II</title>
+
+  <link rel="stylesheet" href="../css/style.css">
+
+</head>
+
+<body>
+
+
+
+  <header class="lesson-header">
+
+    <div class="lesson-breadcrumb">Tomo II · Módulo 6: Explotación y Auditoría Avanzada de Kernel · Lección 6-10</div>
+
+    <h1>6-10 · Fuzzing de Drivers en Modo Kernel: Superficie IOCTL, Snapshot Fuzzing y Cobertura por Hardware</h1>
+
+    <div class="meta-box">
+
+      <span><strong>Nivel:</strong> Avanzado (Ring 0 / Hypervisor-Assisted)</span> |
+
+      <span><strong>Arquitectura:</strong> Windows 10 / 11 x64</span> |
+
+      <span><strong>Laboratorio verificado:</strong> no; requiere VM/toolchain</span>
+
+    </div>
+
+  </header>
+
+
+
+  <main class="lesson-content">
+
+
+
+    <section class="theory-block">
+
+      <h2>1. Anatomía de la Superficie de Ataque en Drivers WDM y KMDF</h2>
+
+      <p>
+
+        La inmensa mayoría de vulnerabilidades alcanzables localmente en drivers de terceros (antivirus, utilidades de overclocking, anticheats y periféricos susceptibles a ataques <em>Bring Your Own Vulnerable Driver</em> — BYOVD) se exponen a través de paquetes de petición de E/S (<strong>IRP</strong>, estructura <code>nt!_IRP</code>) despachados hacia <code>MajorFunction[IRP_MJ_DEVICE_CONTROL]</code> (índice <code>0x0E</code>) o su variante interna <code>IRP_MJ_INTERNAL_DEVICE_CONTROL</code> (<code>0x0F</code>).
+
+      </p>
+
+      <p>
+
+        Para que un proceso en Ring 3 (incluso con nivel de integridad <em>Low</em> o <em>Medium</em>) pueda enviar un IOCTL mediante la syscall <code>NtDeviceIoControlFile</code>, primero debe abrir un handle válido hacia el objeto de dispositivo (<code>_DEVICE_OBJECT</code>) invocando <code>NtCreateFile</code> sobre su enlace simbólico en el directorio de objetos <code>\GLOBAL??\</code>. Si el desarrollador omitió restringir el <em>Security Descriptor</em> (SDDL) mediante <code>IoCreateDeviceSecure</code> (WDK) o <code>WdfDeviceInitAssignSDDLString</code> (KMDF), cualquier usuario local podrá alcanzar la rutina de despacho.
+
+      </p>
+
+
+
+      <h3>1.1. Decodificación del Código de Control (CTL_CODE)</h3>
+
+      <p>
+
+        El parámetro <code>IoControlCode</code> (32 bits) almacenado en <code>IrpSp-&gt;Parameters.DeviceIoControl.IoControlCode</code> (donde <code>IrpSp</code> proviene de <code>IoGetCurrentIrpStackLocation(Irp)</code>, estructura <code>_IO_STACK_LOCATION</code>) codifica cuatro campos críticos que determinan cómo el <em>I/O Manager</em> (`ntoskrnl.exe`) mapea y valida los buffers de usuario antes de ceder la ejecución al driver:
+
+      </p>
+
+
+
+      <pre class="code-block"><code>// Definición estructural de un IOCTL (32 bits) en winioctl.h / wdm.h
+
+// +------------------+------------+--------------+--------+
+
+// |   DeviceType     |   Access   |   Function   | Method |
+
+// |  Bits 31..16     | Bits 15..14|  Bits 13..2  |Bits 1.0|
+
+// +------------------+------------+--------------+--------+
+
+
+
+#define CTL_CODE(DeviceType, Function, Method, Access) ( \
+
+    ((DeviceType) &lt;&lt; 16) | ((Access) &lt;&lt; 14) | ((Function) &lt;&lt; 2) | (Method) \
+
+)
+
+
+
+#define METHOD_BUFFERED                 0
+
+#define METHOD_IN_DIRECT                1
+
+#define METHOD_OUT_DIRECT               2
+
+#define METHOD_NEITHER                  3</code></pre>
+
+
+
+      <table>
+
+        <thead>
+
+          <tr>
+
+            <th>Método (Bits 1..0)</th>
+
+            <th>Puntero de Entrada en el IRP</th>
+
+            <th>Puntero de Salida en el IRP</th>
+
+            <th>Superficie de Fallo Característica</th>
+
+          </tr>
+
+        </thead>
+
+        <tbody>
+
+          <tr>
+
+            <td><code>METHOD_BUFFERED (0)</code></td>
+
+            <td><code>Irp-&gt;AssociatedIrp.SystemBuffer</code></td>
+
+            <td><code>Irp-&gt;AssociatedIrp.SystemBuffer</code></td>
+
+            <td>El I/O Manager aloja un único buffer en NonPagedPool del tamaño <code>max(InputBufferLength, OutputBufferLength)</code>. Propenso a <em>Pool Overflow</em> si no se valida <code>InputBufferLength</code> y a <em>Info Leak</em> de memoria de kernel no inicializada si <code>IoStatus.Information</code> excede los bytes realmente escritos.</td>
+
+          </tr>
+
+          <tr>
+
+            <td><code>METHOD_IN_DIRECT (1)</code> / <code>METHOD_OUT_DIRECT (2)</code></td>
+
+            <td><code>Irp-&gt;AssociatedIrp.SystemBuffer</code></td>
+
+            <td><code>Irp-&gt;MdlAddress</code> (mapeado con <code>MmGetSystemAddressForMdlSafe</code>)</td>
+
+            <td>El buffer secundario se bloquea en páginas físicas mediante un <code>_MDL</code> (<code>MmProbeAndLockPages</code>). Sin embargo, las páginas físicas subyacentes siguen mapeadas en el espacio virtual de Ring 3: un hilo concurrente en modo usuario puede modificar el contenido en pleno procesamiento (condición <strong>TOCTOU / Double Fetch</strong>).</td>
+
+          </tr>
+
+          <tr>
+
+            <td><code>METHOD_NEITHER (3)</code></td>
+
+            <td><code>IrpSp-&gt;Parameters.DeviceIoControl.Type3InputBuffer</code></td>
+
+            <td><code>Irp-&gt;UserBuffer</code></td>
+
+            <td>El I/O Manager entrega punteros virtuales crudos de Ring 3 sin validar. Si el driver no ejecuta <code>ProbeForRead</code> / <code>ProbeForWrite</code> dentro de un bloque SEH (<code>__try / __except</code>) y copia los datos a un buffer local antes de usarlos, permite primitivas directas de <em>Arbitrary Kernel Read/Write (Write-What-Where)</em> y <em>Double Fetch</em>.</td>
+
+          </tr>
+
+        </tbody>
+
+      </table>
+
+    </section>
+
+
+
+    <section class="theory-block">
+
+      <h2>2. Amplificación Determinista de Fallos: Driver Verifier y Special Pool</h2>
+
+      <p>
+
+        Un problema fundamental al hacer fuzzing contra el kernel es la <strong>corrupción silenciosa</strong>: un desbordamiento de 4 bytes sobre un bloque del <em>Kernel Pool</em> (<code>ExAllocatePool2</code> / <code>ExAllocatePoolWithTag</code>) rara vez provoca un <em>BugCheck</em> en la instrucción exacta que escribe fuera de límites; en su lugar, corrompe los metadatos del chunk adyacente (<code>_POOL_HEADER</code>) o punteros de un objeto vecino, provocando un fallo asíncrono minutos después en un hilo del sistema completamente distinto.
+
+      </p>
+
+      <p>
+
+        Para transformar cualquier lectura o escritura fuera de límites de un solo byte en un <em>BugCheck</em> inmediato y atribuible a la instrucción culpable, es obligatorio activar <strong>Driver Verifier</strong> con la característica <strong>Special Pool</strong> sobre el driver auditado.
+
+      </p>
+
+
+
+      <h3>2.1. Mecánica a Nivel de PTE del Special Pool</h3>
+
+      <p>
+
+        Cuando el <em>Special Pool</em> intercepta una llamada a <code>ExAllocatePoolWithTag</code> / <code>ExAllocatePool2</code> (para tamaños menores a una página, es decir, menos de <code>0xFE0</code> bytes), reserva un par de páginas virtuales contiguas en la región del Special Pool:
+
+      </p>
+
+      <ul>
+
+        <li><strong>Página 1 (Asignación alineada al final):</strong> El bloque solicitado se coloca pegado al límite superior de la primera página de 4 KB (`0x1000`), y el resto inferior de la página se rellena con un patrón aleatorio repetido capaz de detectar <em>underflows</em> al liberar el bloque.</li>
+
+        <li><strong>Página 2 (Guard Page Inmediata):</strong> La entrada de tabla de páginas (<code>_MMPTE</code>) de la página inmediatamente posterior tiene el bit <code>Valid = 0</code> (no mapeada físicamente). Cualquier <em>off-by-one</em> hacia adelante cruza la frontera de página y dispara instantáneamente una excepción <code>#PF</code> (Page Fault) en la CPU, que el gestor de memoria traduce en <code>DRIVER_PAGE_FAULT_BEYOND_END_OF_ALLOCATION (0xD6)</code> o <code>PAGE_FAULT_IN_NONPAGED_AREA (0x50)</code> apuntando exactamente al <code>RIP</code> de la instrucción defectuosa.</li>
+
+      </ul>
+
+
+
+      <pre class="code-block"><code>:: Activación recomendada de Driver Verifier para Fuzzing en la VM de pruebas
+
+:: Bitmask 0x209BB activa:
+
+::   0x00001 - Special Pool
+
+::   0x00002 - Force IRQL checking
+
+::   0x00008 - Pool tracking
+
+::   0x00010 - I/O verification
+
+::   0x00020 - Deadlock detection
+
+::   0x00080 - DMA checking
+
+::   0x00100 - Security checks
+
+::   0x00800 - Miscellaneous checks
+
+::   0x20000 - DDI compliance checking
+
+
+
+verifier.exe /flags 0x209BB /driver target_driver.sys
+
+shutdown /r /t 0</code></pre>
+
+    </section>
+
+
+
+    <section class="theory-block">
+
+      <h2>3. Arquitecturas Modernas de Fuzzing en Ring 0</h2>
+
+      <p>
+
+        A diferencia de una aplicación de consola en modo usuario, un driver de kernel mantiene estado global en el sistema operativo, interactúa con el hardware y ante el primer fallo provoca un <em>Blue Screen of Death</em> (<code>KeBugCheckEx</code>) que requeriría decenas de segundos para reiniciar la máquina virtual. Las herramientas modernas resuelven esto mediante dos paradigmas complementarios:
+
+      </p>
+
+
+
+      <h3>3.1. Fuzzing Basado en Snapshots y Emulación Determinista: WTF (What The Fuzz)</h3>
+
+      <p>
+
+        Desarrollado por Axel "0vercl0k" Souchet, <strong>WTF</strong> desacopla la ejecución del caso de prueba del sistema operativo vivo:
+
+      </p>
+
+      <ol>
+
+        <li>Se prepara un <em>harness</em> en la VM que abre el dispositivo del driver y se detiene justo antes de invocar <code>NtDeviceIoControlFile</code> (o en el punto de entrada de <code>IRP_MJ_DEVICE_CONTROL</code>).</li>
+
+        <li>Con WinDbg conectado por red (KDNET), se toma un volcado completo de memoria activa y estado de registros de la CPU mediante la extensión <code>!dmp</code> (generando un estado base determinista).</li>
+
+        <li>WTF carga dicho volcado sobre un backend de ejecución ultrarrápido (<strong>Bochs</strong> para emulación pura multiplataforma o <strong>KVM / Hyper-V WHPX</strong> para ejecución nativa asistida por virtualización).</li>
+
+        <li>En cada iteración (alcanzando miles de ejecuciones por segundo por núcleo), WTF inyecta el buffer mutado en la memoria del proceso/IRP, ejecuta hasta alcanzar un breakpoint de retorno (por ejemplo, <code>IofCompleteRequest</code>) o un hook en <code>nt!KeBugCheck2</code> / <code>nt!KiPageFault</code>, registra las nuevas aristas de código descubiertas y restaura únicamente las páginas de memoria física ensuciadas (<em>dirty pages</em>) en microsegundos.</li>
+
+      </ol>
+
+
+
+      <h3>3.2. Fuzzing Guiado por Cobertura de Hardware con Intel PT: kAFL y Nyx</h3>
+
+      <p>
+
+        Cuando el driver realiza operaciones complejas de sincronización multi-hilo, timers de kernel (DPCs) o interacción con subsistemas difíciles de contener en un micro-snapshot, se emplea <strong>kAFL / Nyx</strong> sobre KVM-PT:
+
+      </p>
+
+      <ul>
+
+        <li><strong>Trazado sin instrumentación binaria:</strong> El hipervisor configura los registros MSR de <strong>Intel Processor Trace (Intel PT)</strong> (`IA32_RTIT_CTL`) filtrando por el rango de direcciones virtuales (`CR3` o rangos de IP en Ring 0 correspondientes a `target_driver.sys`).</li>
+
+        <li><strong>Decodificación en el Host:</strong> La CPU graba paquetes comprimidos de saltos condicionales (paquetes <code>TNT</code> — Taken/Not-Taken) y saltos indirectos (<code>TIP</code> — Target IP) directamente en un buffer físico del hipervisor con menos de un 5% de sobrecarga.</li>
+
+        <li><strong>Snapshots rápidos en Hypervisor (Nyx):</strong> Un agente ligero en Ring 3 dentro de la VM se comunica mediante hiperllamadas (<code>vmcall</code>) con QEMU-PT/Nyx para solicitar un <em>fast-reload</em> de las páginas sucias del EPT tras cada serie de llamadas IOCTL o en cuanto el hook de <code>KeBugCheckEx</code> detecta un fallo.</li>
+
+      </ul>
+
+    </section>
+
+
+
+    <section class="lab-box">
+
+      <h2>4. Laboratorio Práctico: Desarrollo de Harness para WTF y Triaje de Pool Overflow</h2>
+
+      <div class="warning-box">
+
+        <strong>Declaración de Entorno:</strong> <code>Laboratorio verificado: no; requiere VM/toolchain</code>. Para reproducir este laboratorio se requiere una máquina Host con soporte de virtualización anidada o CPU compatible con Bochs/WHPX, SDK de Windows (WinDbg Preview), el repositorio oficial de <a href="https://github.com/0vercl0k/wtf" target="_blank" rel="noopener noreferrer">WTF (0vercl0k)</a> y una VM Guest Windows 11 x64 con Driver Verifier activo sobre el driver de pruebas (p. ej., <code>HEVD.sys</code> — HackSys Extreme Vulnerable Driver).
+
+      </div>
+
+
+
+      <h3>Paso 1: Captura del Estado Base (Target Harness en Guest VM)</h3>
+
+      <p>
+
+        El siguiente programa se ejecuta en la VM Guest. Reserva páginas de memoria bloqueadas en RAM física (<code>VirtualLock</code>) para garantizar que tanto el código del <em>harness</em> como el buffer de entrada estén presentes en las tablas de páginas al momento de volcar el estado con WinDbg:
+
+      </p>
+
+
+
+      <pre class="code-block"><code>// harness_ioctl_snapshot.c — Compilar en x64 Release sin optimizaciones agresivas
+
+#include &lt;windows.h&gt;
+
+#include &lt;stdio.h&gt;
+
+
+
+#define DEVICE_SYMLINK L"\\\\.\\HackSysExtremeVulnerableDriver"
+
+#define HEVD_IOCTL_BUFFER_OVERFLOW_NON_PAGED_POOL CTL_CODE(0x22, 0x803, METHOD_NEITHER, FILE_ANY_ACCESS)
+
+#define MAX_FUZZ_SIZE 0x1000
+
+
+
+#pragma optimize("", off)
+
+int main(void) {
+
+    HANDLE hDevice = CreateFileW(
+
+        DEVICE_SYMLINK,
+
+        GENERIC_READ | GENERIC_WRITE,
+
+        FILE_SHARE_READ | FILE_SHARE_WRITE,
+
+        NULL,
+
+        OPEN_EXISTING,
+
+        FILE_ATTRIBUTE_NORMAL,
+
+        NULL
+
+    );
+
+
+
+    if (hDevice == INVALID_HANDLE_VALUE) {
+
+        printf("[-] Error abriendo el dispositivo: %lu\n", GetLastError());
+
+        return 1;
+
+    }
+
+
+
+    PVOID FuzzBuffer = VirtualAlloc(NULL, MAX_FUZZ_SIZE, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
+
+    VirtualLock(FuzzBuffer, MAX_FUZZ_SIZE);
+
+    RtlFillMemory(FuzzBuffer, MAX_FUZZ_SIZE, 0x41);
+
+
+
+    DWORD BytesReturned = 0;
+
+
+
+    // Dispara interrupción en el depurador de kernel justo antes del syscall
+
+    __debugbreak();
+
+
+
+    DeviceIoControl(
+
+        hDevice,
+
+        HEVD_IOCTL_BUFFER_OVERFLOW_NON_PAGED_POOL,
+
+        FuzzBuffer,
+
+        MAX_FUZZ_SIZE,
+
+        NULL,
+
+        0,
+
+        &amp;BytesReturned,
+
+        NULL
+
+    );
+
+
+
+    return 0;
+
+}
+
+#pragma optimize("", on)</code></pre>
+
+
+
+      <h3>Paso 2: Módulo de Inserción de Caso de Prueba y Hooks en WTF</h3>
+
+      <p>
+
+        En el motor de WTF, el script del objetivo intercepta el estado justo en el <code>int 3</code> (`__debugbreak()`), reemplaza el contenido de <code>FuzzBuffer</code> y el tamaño <code>nInBufferSize</code> pasado a <code>DeviceIoControl</code>, y coloca hooks de detención tanto al regresar a modo usuario como en las rutinas de pánico del kernel:
+
+      </p>
+
+
+
+      <pre class="code-block"><code>// target_hevd_wtf.cc — Fragmento de configuración de hooks en WTF
+
+bool Init(const Options_t &amp;Opts, const CpuState_t &amp;State) {
+
+    // 1. Detener la iteración y marcar CRASH si el kernel invoca KeBugCheck2 o ExRaiseAccessViolation
+
+    if (!g_Backend-&gt;SetBreakpoint("nt!KeBugCheck2", [](Backend_t *Backend) {
+
+        Backend-&gt;Stop(Crash_t( Backend-&gt;GetFormat("BugCheck_%llx", Backend-&gt;Rcx()) ));
+
+    })) {
+
+        return false;
+
+    }
+
+
+
+    // 2. Avanzar desde __debugbreak() hasta la llamada a DeviceIoControl e inyectar el testcase
+
+    // En la convención x64 de Windows, al entrar en kernel32!DeviceIoControl:
+
+    //   RCX = hDevice
+
+    //   RDX = dwIoControlCode
+
+    //   R8  = lpInBuffer
+
+    //   R9  = nInBufferSize
+
+    if (!g_Backend-&gt;SetBreakpoint("kernelbase!DeviceIoControl", [](Backend_t *Backend) {
+
+        const uint8_t *TestcaseBuffer = nullptr;
+
+        size_t TestcaseSize = 0;
+
+        Backend-&gt;GetTestcase(TestcaseBuffer, TestcaseSize);
+
+
+
+        if (TestcaseSize &lt; sizeof(uint32_t) || TestcaseSize &gt; 0x1000) {
+
+            Backend-&gt;Stop(Ok_t());
+
+            return;
+
+        }
+
+
+
+        Gva_t InBufferGva = Gva_t(Backend-&gt;R8());
+
+        uint32_t PayloadLen = static_cast&lt;uint32_t&gt;(TestcaseSize);
+
+
+
+        // Escribir el payload mutado directamente en la memoria virtual del proceso
+
+        if (!Backend-&gt;VirtWriteDirty(InBufferGva, TestcaseBuffer, PayloadLen)) {
+
+            Backend-&gt;Stop(Ok_t());
+
+            return;
+
+        }
+
+        Backend-&gt;R9(PayloadLen);
+
+    })) {
+
+        return false;
+
+    }
+
+
+
+    return true;
+
+}</code></pre>
+
+
+
+      <h3>Paso 3: Triaje del Crash en WinDbg con Special Pool</h3>
+
+      <p>
+
+        Al reproducir un caso de prueba que excede los <code>0x1F8</code> bytes del chunk del pool, Driver Verifier intercepta la escritura fuera de límites en la frontera de página del Special Pool:
+
+      </p>
+
+
+
+      <pre class="code-block"><code>kd&gt; !analyze -v
+
+DRIVER_PAGE_FAULT_BEYOND_END_OF_ALLOCATION (d6)
+
+N bytes of memory was allocated and more than N bytes are being referenced.
+
+This cannot be protected by try-except.
+
+Arguments:
+
+Arg1: ffffc98421647000, memory referenced
+
+Arg2: 0000000000000001, value 0 = read operation, 1 = write operation
+
+Arg3: fffff8056a411642, If non-zero, the instruction address which referenced the bad memory
+
+Arg4: 0000000000000000
+
+
+
+kd&gt; !pool ffffc98421647000
+
+Pool page ffffc98421647000 region is Special pool
+
+*ffffc98421646e00 size:  200 data: ffffc98421646e08 (NonPaged) *Hack
+
+        Pooltag Hack : HEVD Pool Allocation
+
+
+
+kd&gt; !pte ffffc98421647000
+
+VA ffffc98421647000
+
+PXE at FFFFF6FB7DBEDF98    PPE at FFFFF6FB7DBF3080    PDE at FFFFF6FB7E610858    PTE at FFFFF6FE4C210A38
+
+contains 0A00000104523863  contains 0A00000104524863  contains 0A00000104525863  contains 0000000000000000
+
+pfn 104523 ---DA--KWEV     pfn 104524 ---DA--KWEV     pfn 104525 ---DA--KWEV     not valid</code></pre>
+
+    </section>
+
+
+
+    <section class="references">
+
+      <h2>5. Referencias y Fuentes Técnicas</h2>
+
+      <ul>
+
+        <li>Souchet, A. (0vercl0k). (2021). <em>Building a new snapshot fuzzer: What The Fuzz (WTF)</em>. <a href="https://0vercl0k.github.io/wtf/" target="_blank" rel="noopener noreferrer">0vercl0k.github.io/wtf</a></li>
+
+        <li>Schumilo, S., Aschermann, C., Gawlik, R., Schinzel, S., &amp; Holz, T. (2017). <em>kAFL: Hardware-Assisted Feedback Fuzzing for OS Kernels</em>. USENIX Security Symposium.</li>
+
+        <li>Microsoft Learn. (2024). <em>Driver Verifier &amp; Special Pool Internals</em>. Windows Hardware Developer Documentation.</li>
+
+        <li>Yosifovich, P., Ionescu, A., Russinovich, M., &amp; Solomon, D. A. (2017). <em>Windows Internals, Part 1: System architecture, processes, threads, memory management, and more</em> (7th ed.). Microsoft Press.</li>
+
+      </ul>
+
+    </section>
+
+
+
+  </main>
+
+</body>
+
+</html>

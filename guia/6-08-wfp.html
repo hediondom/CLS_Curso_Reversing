@@ -1,0 +1,263 @@
+<!doctype html>
+
+<html lang="es">
+
+<head>
+
+<meta charset="utf-8">
+
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<title>6.8 · Windows Filtering Platform (WFP): capas ALE, callouts y auditoría de red en kernel</title>
+
+<meta name="description" content="Comprender la arquitectura de Windows Filtering Platform (BFE, fwpkclnt.sys, tcpip.sys), las capas ALE y de transporte, el registro de callouts (FwpsCalloutRegister, classifyFn) y la inspección defensiva con netsh wfp show state y WinDbg.">
+
+<link rel="stylesheet" href="../guia/estilo.css">
+
+</head>
+
+<body>
+
+<a class="salto" href="#contenido">Saltar al contenido</a>
+
+<header class="cabecera">
+
+  <div class="marca"><a href="../00_EMPEZAR_AQUI.html">CLS · Curso de reversing</a> <span class="edicion">edición 5 · 27/10/2026</span></div>
+
+  <nav class="principal" aria-label="Navegación principal">
+
+    <a href="../00_EMPEZAR_AQUI.html">Inicio</a>
+
+    <a href="../guia/index.html">Curso</a>
+
+    <a href="../materiales.html">Materiales</a>
+
+    <a href="../fichas/index.html">Fichas</a>
+
+    <a href="../glosario.html">Glosario</a>
+
+    <a href="../preguntas_y_respuestas.html">Repaso</a>
+
+    <a href="../buscar.html">Buscar</a>
+
+  </nav>
+
+</header>
+
+<main id="contenido">
+
+<nav class="migas" aria-label="Ubicación"><a href="../00_EMPEZAR_AQUI.html">Inicio</a><span aria-hidden="true">›</span><a href="../guia/index.html">Curso</a><span aria-hidden="true">›</span><span>Etapa 6 · Kernel y drivers (optativa)</span></nav><h1 id="windows-filtering-platform-wfp-capas-ale-callouts-y-auditoría-de-red-en-kernel">Windows Filtering Platform (WFP): capas ALE, callouts y auditoría de red en kernel</h1>
+
+<aside class="callout aviso"><p class="callout-titulo">Alcance de lectura y auditoría en VM descartable</p><p>No construyas ni instales un callout driver para interceptar, redirigir o bloquear tráfico de terceros. Esta lección enseña a reconocer las llamadas y estructuras de WFP al analizar un driver en IDA/Ghidra y a inventariar el estado de filtrado en una VM en modo lectura.</p></aside>
+
+<aside class="callout nota"><p class="callout-titulo">Propósito</p><p>Entender cómo el subsistema de red de Windows expone puntos de inspección en modo kernel a través de WFP, distinguir las capas de autorización de aplicación (ALE) de las capas de paquetes, reconstruir en estático qué registra un callout driver (<code>FwpsCalloutRegister</code> y su <code>classifyFn</code>) y auditar los filtros activos con <code>netsh wfp show state</code>.</p></aside>
+
+<p><strong>Prerrequisitos</strong></p>
+
+<ul><li><em>Obligatorios:</em> arquitectura del kernel e IRQL (<a href="6-01-arquitectura-kernel.html">6.1</a>); revisión defensiva de drivers (<a href="6-04-revision-drivers.html">6.4</a>); minifilters (<a href="6-05-minifilters.html">6.5</a>).</li><li><em>Recomendados:</em> debugging de kernel con WinDbg (<a href="6-03-debug-kernel.html">6.3</a>); IPC y RPC (<a href="2d-10-ipc.html">2D.10</a>).</li></ul>
+
+<h2 id="1-arquitectura-de-wfp-bfe-motor-de-kernel-y-callouts">1. Arquitectura de WFP: BFE, motor de kernel y callouts</h2>
+
+<p>Así como el Filter Manager (<code>FltMgr.sys</code>, estudiado en <a href="6-05-minifilters.html">6.5</a>) evita que los filtros de archivos se adhieran manualmente a la pila de volúmenes, <strong>Windows Filtering Platform (WFP)</strong> provee la infraestructura oficial para inspeccionar, autorizar o modificar el tráfico de red dentro de <code>tcpip.sys</code> sin recurrir a filtros NDIS intermedios ni a hooks sobre dispositivos <code>\Device\Tcp</code>.</p>
+
+<p>WFP divide sus responsabilidades entre el modo usuario y el modo kernel:</p>
+
+<ul><li><strong>Base Filtering Engine (BFE, servicio <code>BFE</code> en <code>svchost.exe</code>):</strong> Componente de modo usuario que administra las políticas, proveedores, subcapas y reglas de filtrado, exponiendo las APIs de gestión <code>Fwpm*</code> (<code>fwpuclnt.dll</code>) sobre RPC.</li><li><strong>Filter Engine en Modo Kernel (integrado en <code>tcpip.sys</code> y expuesto vía <code>fwpkclnt.sys</code>):</strong> Evalúa los paquetes y eventos de conexión en cada capa de la pila de red a medida que ocurren, y despacha la ejecución hacia los módulos de llamada (<em>callouts</em>) registrados por drivers de terceros.</li><li><strong>Callout Driver (<code>.sys</code>):</strong> Un driver de kernel (WDM o KMDF) que importa <code>fwpkclnt.sys</code>, registra uno o más objetos callout identificados por un <code>GUID</code> mediante <code>FwpsCalloutRegister*</code> (API de ejecución <code>Fwps*</code>) y vincula esos GUIDs a reglas de filtrado en las capas del motor (API de gestión <code>Fwpm*</code>).</li></ul>
+
+<pre><code class="lenguaje-text">[ Espacio de Usuario ]
+
+  App de gestión / Servicio EDR ---> fwpuclnt.dll (FwpmEngineOpen0, FwpmFilterAdd0)
+
+                                              | (RPC)
+
+                                              v
+
+                                    Servicio BFE (svchost.exe)
+
++---------------------------------------------|------------------------------------+
+
+[ Espacio de Kernel ]                         v
+
+  tcpip.sys (Pila TCP/IP) <---> Filter Engine de Kernel <---> fwpkclnt.sys
+
+        |                        (Evalúa capas y reglas)           |
+
+        |                                 | (Invoca classifyFn)    | (FwpsCalloutRegister*)
+
+        v                                 v                        v
+
+  [ NDIS / Red ]                [ Callout Driver (.sys) de seguridad / tercero ]</code></pre>
+
+<h2 id="2-capas-de-filtrado-ale-frente-a-transporte-y-paquetes">2. Capas de filtrado: ALE frente a transporte y paquetes</h2>
+
+<p>El motor de kernel de WFP está dividido en decenas de capas (<em>Filtering Layers</em>) identificadas por un identificador en tiempo de ejecución (<code>layerId</code>) y un <code>GUID</code>. Para el análisis de un driver importan sobre todo dos familias:</p>
+
+<div class="tabla"><table>
+
+<thead><tr>
+
+<th>Familia y Capa (Constante <code>FWPM_LAYER_*</code>)</th>
+
+<th>Cuándo se dispara</th>
+
+<th>Qué metadatos recibe el driver</th>
+
+<th>Uso defensivo típico</th>
+
+</tr></thead><tbody>
+
+<tr><td><strong>ALE Saliente:</strong><br><code>FWPM_LAYER_ALE_AUTH_CONNECT_V4</code> / <code>_V6</code></td><td>Cuando un proceso intenta establecer una conexión TCP saliente (antes del <code>SYN</code>) o enviar el primer datagrama UDP.</td><td><strong>Contexto de proceso:</strong> PID (<code>processId</code>), ruta completa de la imagen (<code>processPath</code>), token/SID del usuario y tupla IP/puerto local y remoto.</td><td>Firewalls basados en host y sensores EDR que autorizan o bloquean conexiones por proceso.</td></tr>
+
+<tr><td><strong>ALE Entrante:</strong><br><code>FWPM_LAYER_ALE_AUTH_RECV_ACCEPT_V4</code> / <code>_V6</code></td><td>Cuando llega una solicitud de conexión TCP entrante o un datagrama UDP hacia un socket local en escucha.</td><td>PID del proceso servidor local, ruta del binario, SID e IP/puerto del emisor remoto.</td><td>Control de acceso a puertos abiertos por servicios locales.</td></tr>
+
+<tr><td><strong>Transporte:</strong><br><code>FWPM_LAYER_INBOUND_TRANSPORT_V4</code> / <code>OUTBOUND_TRANSPORT_V4</code></td><td>Por cada paquete TCP/UDP en tránsito en la capa de transporte, tras el reensamblado de fragmentos IP.</td><td>Estructura <code>NET_BUFFER_LIST</code> (NBL) con los bytes del paquete; <strong>sin</strong> contexto directo del hilo de usuario (puede correr a <code>DISPATCH_LEVEL</code>).</td><td>Inspección profunda de paquetes (DPI), contadores de tráfico o inyección/modificación de cabeceras.</td></tr>
+
+<tr><td><strong>Datos de Datagrama / Stream:</strong><br><code>FWPM_LAYER_DATAGRAM_DATA_V4</code> / <code>FWPM_LAYER_STREAM_V4</code></td><td>Al procesar cargas útiles UDP o flujos de bytes TCP ya reensamblados.</td><td>Buffers de flujo (<code>FWPS_STREAM_CALLOUT_IO_PACKET0</code>) o listas NBL.</td><td>Inspección de protocolos de aplicación y filtrado de contenido.</td></tr>
+
+</tbody></table></div>
+
+<p><strong>Consecuencia para revisar el código de un driver (IRQL y memoria):</strong> Las llamadas a un callout pueden ocurrir desde <code>PASSIVE_LEVEL</code> hasta <code>DISPATCH_LEVEL</code> (según la capa y la ruta de red). Por lo tanto, las rutinas <code>classifyFn</code> y <code>flowDeleteFn</code> deben respetar las reglas de <code>DISPATCH_LEVEL</code> estudiadas en <a href="6-01-arquitectura-kernel.html">6.1</a>: no esperar con intervalo no nulo ni tocar memoria paginada.</p>
+
+<h2 id="3-anatomía-binaria-de-fwps-callout-y-la-rutina-classifyfn">3. Anatomía binaria de <code>FWPS_CALLOUT</code> y la rutina <code>classifyFn</code></h2>
+
+<p>Al abrir en IDA Pro o Ghidra un driver que importa <code>fwpkclnt.sys</code>, el punto de partida para encontrar su lógica de red es buscar las referencias cruzadas a <code>fwpkclnt!FwpsCalloutRegister0</code> / <code>FwpsCalloutRegister1</code> / <code>FwpsCalloutRegister2</code> / <code>FwpsCalloutRegister3</code>:</p>
+
+<pre><code class="lenguaje-c">NTSTATUS FwpsCalloutRegister3(
+
+    void                *deviceObject, // RCX (x64): PDEVICE_OBJECT asociado
+
+    const FWPS_CALLOUT3 *callout,      // RDX (x64): Puntero a la estructura con el GUID y los 3 callbacks
+
+    UINT32              *calloutId     // R8  (x64): Puntero de salida donde recibe el ID numérico
+
+);</code></pre>
+
+<p>El segundo argumento (<code>RDX</code> en x64) apunta a la estructura <code>FWPS_CALLOUT</code> (48 bytes en x64), cuyo layout binario permite localizar de inmediato las tres funciones del driver sin necesidad de símbolos PDB:</p>
+
+<div class="tabla"><table>
+
+<thead><tr>
+
+<th>Offset (x64)</th>
+
+<th>Campo en <code>FWPS_CALLOUT</code> (v0..v3)</th>
+
+<th>Tipo y propósito en el desensamblado</th>
+
+</tr></thead><tbody>
+
+<tr><td><strong><code>+0x00</code></strong></td><td><code>calloutKey</code></td><td><code>GUID</code> (16 bytes): Identificador único que enlaza este callout de código con el filtro administrativo registrado en BFE (<code>FwpmFilterAdd0</code>).</td></tr>
+
+<tr><td><strong><code>+0x10</code></strong></td><td><code>flags</code></td><td><code>UINT32</code> (4 bytes, más 4 bytes de padding de alineación en <code>+0x14</code>).</td></tr>
+
+<tr><td><strong><code>+0x18</code></strong></td><td><code>classifyFn</code></td><td><code>FWPS_CALLOUT_CLASSIFY_FN*</code> (8 bytes): <strong>Puntero a la rutina principal de inspección</strong> invocada cada vez que el tráfico coincide con las condiciones del filtro.</td></tr>
+
+<tr><td><strong><code>+0x20</code></strong></td><td><code>notifyFn</code></td><td><code>FWPS_CALLOUT_NOTIFY_FN*</code> (8 bytes): Puntero al callback notificado cuando se agrega o elimina un filtro asociado al callout.</td></tr>
+
+<tr><td><strong><code>+0x28</code></strong></td><td><code>flowDeleteFn</code></td><td><code>FWPS_CALLOUT_FLOW_DELETE_FN*</code> (8 bytes, opcional): Puntero invocado cuando termina un flujo al que el driver asoció contexto con <code>FwpsFlowAssociateContext0</code>.</td></tr>
+
+</tbody></table></div>
+
+<h3 id="lectura-de-la-decisión-en-classifyfn">Lectura de la decisión en <code>classifyFn</code></h3>
+
+<p>En <code>FWPS_CALLOUT_CLASSIFY_FN1</code>/<code>2</code>/<code>3</code> en x64, la rutina recibe siete argumentos: <code>inFixedValues</code> (<code>RCX</code>), <code>inMetaValues</code> (<code>RDX</code>), <code>layerData</code> (<code>R8</code>, que en capas de paquetes apunta al <code>NET_BUFFER_LIST</code>), <code>classifyContext</code> (<code>R9</code>), <code>filter</code> (<code>[rsp+28h]</code>), <code>flowContext</code> (<code>[rsp+30h]</code>) y <code>classifyOut</code> (<code>[rsp+38h]</code>, puntero a <code>FWPS_CLASSIFY_OUT0</code>). La decisión final se escribe en el primer campo de <code>classifyOut</code> (<code>actionType</code> en offset <code>+0x00</code>):</p>
+
+<ul><li><strong><code>FWP_ACTION_BLOCK</code> (<code>0x00001001</code>):</strong> Bloquea la conexión o descarta el paquete. Si además limpia el bit <code>FWPS_RIGHT_ACTION_WRITE</code> (<code>classifyOut-&gt;rights &amp;= ~1</code>), impide que otro filtro de menor peso en la misma subcapa revierta el bloqueo (<em>hard block</em>).</li><li><strong><code>FWP_ACTION_PERMIT</code> (<code>0x00001002</code>):</strong> Autoriza la operación en esa subcapa.</li><li><strong><code>FWP_ACTION_CONTINUE</code> (<code>0x00002003</code>):</strong> No toma decisión y pasa la evaluación al siguiente filtro.</li><li><strong>Bandera <code>FWPS_CLASSIFY_OUT_FLAG_ABSORB</code> (<code>0x00000001</code> en <code>classifyOut-&gt;flags</code>):</strong> Indica que el callout retiene o clona el paquete (con <code>FwpsAllocateCloneNetBufferList0</code>) para reinjectarlo más tarde (con <code>FwpsInjectTransportSendAsync0</code> / <code>ReceiveAsync0</code>) o descartarlo silenciosamente.</li></ul>
+
+<h2 id="4-subcapas-pesos-y-arbitraje-entre-múltiples-filtros">4. Subcapas, pesos y arbitraje entre múltiples filtros</h2>
+
+<p>En una máquina real conviven el Firewall de Windows, un agente EDR y quizás un cliente VPN, todos en la misma capa ALE. WFP ordena la evaluación mediante <strong>subcapas (<em>Sublayers</em>)</strong> y <strong>pesos (<em>Weights</em>)</strong>:</p>
+
+<ol><li>Las subcapas se evalúan en orden de peso de mayor a menor; dentro de una subcapa, se evalúa primero el filtro de mayor peso.</li><li>La regla general de arbitraje de WFP es que <strong>un bloqueo duro (<code>FWP_ACTION_BLOCK</code> que retira el derecho <code>FWPS_RIGHT_ACTION_WRITE</code>) prevalece sobre un permiso</strong> de una subcapa posterior (<em>block overrides permit</em>), salvo excepciones explícitas por política de veto.</li></ol>
+
+<h2 id="5-auditoría-defensiva-en-solo-lectura-netsh-wfp-y-windbg">5. Auditoría defensiva en solo lectura: <code>netsh wfp</code> y WinDbg</h2>
+
+<p>Para inventariar qué filtros, proveedores y callouts están activos en una VM sin modificar el estado del sistema:</p>
+
+<pre><code class="lenguaje-text">:: 1. En consola elevada de la VM: exportar el estado completo de BFE/WFP a XML
+
+netsh wfp show state file=C:\Lab\wfpstate.xml
+
+
+
+:: 2. Exportar únicamente la lista de filtros activos y sus IDs
+
+netsh wfp show filters file=C:\Lab\wfpfilters.xml</code></pre>
+
+<p>En el archivo XML generado podés buscar los nodos <code>&lt;callout&gt;</code> y <code>&lt;filter&gt;</code>: cada uno registra su <code>displayData/name</code>, su <code>calloutKey</code> (GUID), la capa (<code>layerKey</code>) y el proveedor (<code>providerKey</code>). Si estás conectado con WinDbg al kernel de la VM (ver <a href="6-03-debug-kernel.html">6.3</a>), podés correlacionar los punteros a <code>classifyFn</code> con el módulo <code>.sys</code> al que pertenecenresolviendo el símbolo más cercano con <code>ln &lt;dir_classifyFn&gt;</code>.</p>
+
+<h2 id="ejemplo-trabajado">Ejemplo trabajado</h2>
+
+<p><em>(Ejemplo ilustrativo de revisión estática de un driver didáctico propio <code>BlocNetMon.sys</code>; los valores y direcciones son esquemáticos y no provienen de una corrida real.)</em></p>
+
+<pre><code class="lenguaje-asm">; Fragmento en BlocNetMon!RegistrarCalloutAle (x64)
+
+lea     rax, BlocNetMonClassifyAleConnect
+
+mov     [rsp+48h], rax                  ; callout.classifyFn   (+0x18 de FWPS_CALLOUT3)
+
+lea     rax, BlocNetMonNotifyAle
+
+mov     [rsp+50h], rax                  ; callout.notifyFn     (+0x20 de FWPS_CALLOUT3)
+
+mov     qword ptr [rsp+58h], 0          ; callout.flowDeleteFn (+0x28 = NULL)
+
+movups  xmm0, cs:GUID_BLOCLAB_ALE_V4
+
+movups  [rsp+30h], xmm0                 ; callout.calloutKey   (+0x00)
+
+lea     r8, g_CalloutId                 ; R8  = &amp;calloutId
+
+lea     rdx, [rsp+30h]                  ; RDX = &amp;callout
+
+mov     rcx, rbx                        ; RCX = g_DeviceObject
+
+call    cs:__imp_FwpsCalloutRegister3</code></pre>
+
+<p>Al seguir <code>BlocNetMonClassifyAleConnect</code>, se observa que lee <code>inMetaValues-&gt;processId</code> y la IP/puerto remotos de <code>inFixedValues</code>, los registra en un buffer circular interno y escribe <code>0x1002</code> (<code>FWP_ACTION_PERMIT</code>) en <code>[r14]</code> (<code>classifyOut-&gt;actionType</code>) en todas las rutas. Conclusión acotada del análisis estático: el callout es puramente de observación sobre conexiones salientes IPv4 y nunca bloquea ni clona paquetes.</p>
+
+<h2 id="práctica">Práctica</h2>
+
+<p>En tu VM aislada, en modo de solo lectura:</p>
+
+<ol><li>Ejecutá <code>netsh wfp show state file=C:\Lab\wfpstate.xml</code> en una consola elevada y abrí el XML resultante.</li><li>Identificá dos proveedores registrados (<code>&lt;provider&gt;</code>) y dos callouts asociados a la capa <code>FWPM_LAYER_ALE_AUTH_CONNECT_V4</code>. Anotá su nombre descriptivo y su GUID.</li><li>En una muestra oficial de callout driver del WDK de Microsoft (por ejemplo, <em>Windows Filtering Platform Sample / Inspect</em>), ubicá estáticamente la llamada a <code>FwpsCalloutRegister*</code> y completá una tabla con el GUID, la dirección/nombre de <code>classifyFn</code>, <code>notifyFn</code> y <code>flowDeleteFn</code>, la capa a la que se asocia con <code>FwpmFilterAdd0</code> y qué valores de <code>actionType</code> puede escribir.</li><li>Verificá en el código de <code>classifyFn</code> si la rutina puede ejecutarse a <code>DISPATCH_LEVEL</code> y si realiza alguna operación prohibida en ese nivel.</li><li>Eliminá el archivo <code>wfpstate.xml</code> temporal al terminar.</li></ol>
+
+<h2 id="entregable">Entregable</h2>
+
+<p>Tabla de callouts analizados (GUID, capa, punteros de <code>FWPS_CALLOUT</code>, acciones posibles en <code>classifyOut-&gt;actionType</code>, requisitos de IRQL) y extracto anonimizado de dos entradas de <code>wfpstate.xml</code> explicando qué componente del sistema las registró.</p>
+
+<h2 id="repaso">Repaso</h2>
+
+<details class="qa"><summary>¿Qué diferencia hay entre las funciones con prefijo <code>Fwpm*</code> y las que tienen prefijo <code>Fwps*</code>?</summary><div class="respuesta"><p>Las funciones <code>Fwpm*</code> (<em>management</em>) administran objetos de política en el Base Filtering Engine (proveedores, subcapas, filtros); las funciones <code>Fwps*</code> (<em>system/callout</em>, exportadas por <code>fwpkclnt.sys</code>) registran las funciones de callback del driver en el kernel e interactúan con los paquetes y flujos en tiempo real.</p></div></details>
+
+<details class="qa"><summary>¿Por qué un sensor EDR prefiere las capas <code>FWPM_LAYER_ALE_AUTH_CONNECT_*</code> frente a una capa de transporte para auditar qué programa inicia una conexión?</summary><div class="respuesta"><p>Porque las capas ALE se evalúan en el momento de autorizar el socket/conexión y entregan en <code>inMetaValues</code> el PID, la ruta del ejecutable y el token del proceso, datos que ya no están presentes en cada paquete individual de la capa de transporte.</p></div></details>
+
+<details class="qa"><summary>En un binario x64 sin símbolos que llama a <code>FwpsCalloutRegister3</code>, ¿en qué argumento y offsets encontrás las funciones del callout?</summary><div class="respuesta"><p>En la estructura apuntada por el segundo argumento (<code>RDX</code>): <code>+0x00</code> contiene los 16 bytes del <code>calloutKey</code> (GUID), <code>+0x18</code> el puntero a <code>classifyFn</code>, <code>+0x20</code> el puntero a <code>notifyFn</code> y <code>+0x28</code> el puntero a <code>flowDeleteFn</code>.</p></div></details>
+
+<details class="qa"><summary>¿Qué diferencia un bloqueo que conserva <code>FWPS_RIGHT_ACTION_WRITE</code> de uno que limpia ese bit?</summary><div class="respuesta"><p>Si <code>classifyOut-&gt;rights</code> conserva el bit <code>FWPS_RIGHT_ACTION_WRITE</code>, es un bloqueo blando que un filtro posterior de menor prioridad podría sobrescribir; al limpiar ese bit, el bloqueo es definitivo (<em>hard block</em>) y prevalece sobre permisos posteriores.</p></div></details>
+
+<details class="qa"><summary>¿Por qué <code>classifyFn</code> no debe acceder a memoria paginada ni esperar un mutex estándar en capas de paquetes?</summary><div class="respuesta"><p>Porque el motor de filtrado de kernel puede invocar <code>classifyFn</code> a <code>DISPATCH_LEVEL</code>, donde un fallo de página o una espera bloqueante provocan un bugcheck inmediato (<code>0xD1</code> o <code>0x0A</code>).</p></div></details>
+
+<aside class="callout nota"><p class="callout-titulo">Puerta optativa</p><p>Podés explicar la relación entre BFE, <code>tcpip.sys</code>, <code>fwpkclnt.sys</code> y un callout driver; distinguir capas ALE de capas de transporte; localizar <code>classifyFn</code>, <code>notifyFn</code> y <code>flowDeleteFn</code> desde la estructura pasada a <code>FwpsCalloutRegister*</code>; interpretar las acciones de <code>FWPS_CLASSIFY_OUT0</code> y auditar el estado de WFP con <code>netsh wfp show state</code>.</p></aside>
+
+<aside class="callout nota"><p class="callout-titulo">Lo que queda fuera</p><p>La modificación e inyección de paquetes (clonado y reinyección asíncrona de <code>NET_BUFFER_LIST</code>), los callouts de IPsec, la redirección de conexiones (<code>ALE_CONNECT_REDIRECT</code>) y el filtrado en el switch virtual de Hyper-V no se desarrollan en detalle.</p></aside>
+
+<h2 id="fuentes">Fuentes</h2>
+
+<ul><li>Microsoft Learn, arquitectura y capas: <a href="https://learn.microsoft.com/en-us/windows/win32/fwp/architecture-overview" rel="noopener" target="_blank">Windows Filtering Platform Architecture Overview</a>, <a href="https://learn.microsoft.com/en-us/windows-hardware/drivers/network/ale-layers" rel="noopener" target="_blank">ALE Layers</a>, <a href="https://learn.microsoft.com/en-us/windows/win32/fwp/filter-arbitration" rel="noopener" target="_blank">Filter Arbitration</a>.</li><li>Microsoft Learn, DDI de callouts: <a href="https://learn.microsoft.com/en-us/windows-hardware/drivers/network/callout-driver-operations" rel="noopener" target="_blank">Callout Driver Operations</a>, <a href="https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/fwpsk/nf-fwpsk-fwpscalloutregister3" rel="noopener" target="_blank">FwpsCalloutRegister3</a>, <a href="https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/fwpsk/ns-fwpsk-fwps_callout3_" rel="noopener" target="_blank">FWPS_CALLOUT3 structure</a>, <a href="https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/fwpsk/nc-fwpsk-fwps_callout_classify_fn3" rel="noopener" target="_blank">classifyFn3 callout function</a>.</li><li>Microsoft Learn, diagnóstico: <a href="https://learn.microsoft.com/en-us/windows/win32/fwp/auditing-and-diagnostic-tools" rel="noopener" target="_blank">Auditing and Diagnostic Tools for WFP (netsh wfp)</a>.</li><li><strong>Fundamentos previos:</strong> IRQL y pools en <a href="6-01-arquitectura-kernel.html">6.1</a>; modelo de minifilters de filesystem en <a href="6-05-minifilters.html">6.5</a>.</li></ul>
+
+<aside class="callout nota"><p class="callout-titulo">Etiquetas</p><p><strong>Núcleo conceptual:</strong> modelo de filtrado por capas comparado con 6.5. <strong>Conocimiento externo:</strong> arquitectura WFP, BFE, <code>fwpkclnt.sys</code>, capas ALE/transporte, layout de <code>FWPS_CALLOUT</code>, arbitraje de pesos y <code>netsh wfp</code>. <strong>Recomendación editorial:</strong> pauta de revisión estática de <code>FwpsCalloutRegister*</code> en IDA/Ghidra. <strong>Ejemplo ilustrativo:</strong> fragmento de registro de <code>BlocNetMon.sys</code>. <strong>Laboratorio verificado:</strong> no; requiere VM/toolchain (especificado, pendiente de corrida).</p></aside>
+
+</main>
+
+<footer class="pie">
+
+  <p>Material educativo y defensivo. Las prácticas se limitan a programas propios, software abierto o crackmes diseñados para aprender. No se enseña a eludir licencias, DRM ni controles de acceso.</p>
+
+  <p><a href="../00_EMPEZAR_AQUI.html">Inicio</a> · <a href="../guia/etapa-0.html">Etapas</a> · <a href="../fuentes_y_limites.html">Fuentes y límites</a> · <a href="../registro_de_cobertura.csv">Registro de cobertura</a></p>
+
+</footer>
+
+</body>
+
+</html>
