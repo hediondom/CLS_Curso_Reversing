@@ -37,7 +37,8 @@ Todo lo que trae el paquete, en un solo lugar. Si no sabés por dónde empezar, 
 - [Análisis de temas faltantes](ANALISIS_TEMAS_FALTANTES.md) — diagnóstico y comparación de la versión anterior a 2D/Etapa 6; sus conclusiones históricas están señaladas y no equivalen a una reauditoría completa tras esta ampliación.
 - [Mapa de cobertura (CSV)](mapa_de_cobertura.csv) · [Registro de cobertura (CSV)](registro_de_cobertura.csv)
 - [Seguimiento (CSV)](seguimiento.csv) — tu planilla de avance.
-- [CLS_Curso_Reversing.pdf](CLS_Curso_Reversing.pdf) — edición imprimible.
+- [Curso_Reversing_Windows.pdf](Curso_Reversing_Windows.pdf) — edición completa consolidada (PDF).
+- [orden_impresion.html](orden_impresion.html) — orden de imprenta profesional (Tomo I A y B, Tomo II, Separata).
 
 :::{nota} Todo offline y portable
 Los enlaces son relativos: funcionan en cualquier PC mientras no separes las carpetas. Para compartir, mirá la nota de la [portada](00_EMPEZAR_AQUI.html).

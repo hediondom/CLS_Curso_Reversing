@@ -30,18 +30,22 @@ destinos = [
     r"D:\Guia\CLS_Guia_Gemini"
 ]
 
-# Nombres canónicos de la revisión actual
+# Nombres canónicos limpios de la revisión actual
+nombre_a_clean = "Tomo_1_Parte_A_pags_1-172.pdf"
+nombre_b_clean = f"Tomo_1_Parte_B_pags_173-{total_pages}.pdf"
 nombre_a_std = "CLS_Tomo_1_Parte_A_pags_1-172.pdf"
 nombre_b_std = f"CLS_Tomo_1_Parte_B_pags_173-{total_pages}.pdf"
 
 # Nombres compatibles para enlaces y referencias previas
 nombres_a = [
+    nombre_a_clean,
     nombre_a_std,
     "CLS_Tomo_1_Parte_A_pags_1-171.pdf",
     "CLS_Tomo_1_Parte_A_pags_1-170.pdf"
 ]
 
 nombres_b = [
+    nombre_b_clean,
     nombre_b_std,
     "CLS_Tomo_1_Parte_B_pags_172-328.pdf",
     "CLS_Tomo_1_Parte_B_pags_171-328.pdf",

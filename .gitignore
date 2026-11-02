@@ -1,0 +1,5 @@
+__pycache__/
+*.pyc
+_trabajo/chrome-prof/
+chrome-perfil/
+*.tmp

@@ -1058,10 +1058,10 @@ details.qa summary { font-size: 10pt; }
 
     partes.append("</main></body></html>")
 
-    salida_html = os.path.join(DST_GUIA, "_trabajo", "print", "CLS_Curso_Reversing_imprimible.html")
+    salida_html = os.path.join(DST_GUIA, "_trabajo", "print", "Curso_Reversing_Windows_imprimible.html")
     os.makedirs(os.path.dirname(salida_html), exist_ok=True)
-    draft_pdf = os.path.join(DST_GUIA, "_trabajo", "print", "CLS_Curso_Reversing_borrador.pdf")
-    salida_pdf = os.path.join(DST_GUIA, "CLS_Curso_Reversing.pdf")
+    draft_pdf = os.path.join(DST_GUIA, "_trabajo", "print", "Curso_Reversing_Windows_borrador.pdf")
+    salida_pdf = os.path.join(DST_GUIA, "Curso_Reversing_Windows.pdf")
 
     html_documento = "\n".join(partes)
 
@@ -1161,15 +1161,20 @@ details.qa summary { font-size: 10pt; }
     inyectar_outlines_puro(draft_pdf, arbol_marcadores, dests_oid_map)
     os.replace(draft_pdf, salida_pdf)
 
-    # Copiar a las variantes de nombre para comodidad del usuario
+    # Copiar a las variantes de nombre y copias de compatibilidad
+    pdf_cls = os.path.join(DST_GUIA, "CLS_Curso_Reversing.pdf")
     pdf_v51 = os.path.join(DST_GUIA, "CLS_Curso_Reversing_v5.1_Ampliada.pdf")
     pdf_v54 = os.path.join(DST_GUIA, "CLS_Curso_Reversing_v5.4_Ampliada.pdf")
-    pdf_artifact = os.path.join(ARTIFACT_DIR, "CLS_Curso_Reversing_v5.4_Ampliada.pdf")
+    pdf_art1 = os.path.join(ARTIFACT_DIR, "Curso_Reversing_Windows.pdf") if ARTIFACT_DIR else None
+    pdf_art2 = os.path.join(ARTIFACT_DIR, "CLS_Curso_Reversing_v5.4_Ampliada.pdf") if ARTIFACT_DIR else None
     html_v54 = os.path.join(DST_GUIA, "CLS_Curso_Reversing_v5.4_Ampliada.html")
 
+    shutil.copy2(salida_pdf, pdf_cls)
     shutil.copy2(salida_pdf, pdf_v51)
     shutil.copy2(salida_pdf, pdf_v54)
-    shutil.copy2(salida_pdf, pdf_artifact)
+    if pdf_art1 and os.path.exists(ARTIFACT_DIR):
+        shutil.copy2(salida_pdf, pdf_art1)
+        shutil.copy2(salida_pdf, pdf_art2)
     shutil.copy2(salida_html, html_v54)
 
     print(f"\nPDF FINAL GENERADO: {salida_pdf} ({os.path.getsize(salida_pdf):,} bytes, {total} páginas)")
@@ -1492,7 +1497,7 @@ VM con Windows x64 aislada, Visual Studio Developer Command Prompt (<code>cl.exe
     ])
 
     info_t1 = compilar_volumen_pdf(
-        "CLS_Tomo_1_Tronco_y_Apoyo",
+        "Tomo_1_Tronco_y_Apoyo",
         "Tomo I · Tronco Principal y Material de Apoyo",
         "\n".join(partes_t1),
         t1_anchors,
@@ -1576,7 +1581,7 @@ VM con Windows x64 aislada, Visual Studio Developer Command Prompt (<code>cl.exe
     ]
 
     info_t2 = compilar_volumen_pdf(
-        "CLS_Tomo_2_Kernel_e_Internals",
+        "Tomo_2_Kernel_e_Internals",
         "Tomo II · Kernel, Drivers y Windows Internals",
         "\n".join(partes_t2),
         t2_anchors,
@@ -1782,7 +1787,7 @@ VM con Windows x64 aislada, Visual Studio Developer Command Prompt (<code>cl.exe
     ]
 
     info_sep = compilar_volumen_pdf(
-        "CLS_Separata_Escritorio",
+        "Separata_Escritorio",
         "Separata de Escritorio · Referencia Rápida",
         "\n".join(partes_sep),
         sep_anchors,
@@ -1797,7 +1802,9 @@ VM con Windows x64 aislada, Visual Studio Developer Command Prompt (<code>cl.exe
 def particionar_tomo1_automatico(base_dir):
     """Divide el Tomo 1 en Parte A y Parte B con paridad estricta para imprenta/anillado."""
     import pypdf
-    src_pdf = os.path.join(base_dir, "CLS_Tomo_1_Tronco_y_Apoyo.pdf")
+    src_pdf = os.path.join(base_dir, "Tomo_1_Tronco_y_Apoyo.pdf")
+    if not os.path.exists(src_pdf):
+        src_pdf = os.path.join(base_dir, "CLS_Tomo_1_Tronco_y_Apoyo.pdf")
     if not os.path.exists(src_pdf):
         print(f"[Aviso] No se encontró {src_pdf} para particionar.")
         return
@@ -1815,8 +1822,8 @@ def particionar_tomo1_automatico(base_dir):
     for i in range(172, total_pages):
         writer_b.add_page(reader.pages[i])
 
-    nom_a = "CLS_Tomo_1_Parte_A_pags_1-172.pdf"
-    nom_b = f"CLS_Tomo_1_Parte_B_pags_173-{total_pages}.pdf"
+    nom_a = "Tomo_1_Parte_A_pags_1-172.pdf"
+    nom_b = f"Tomo_1_Parte_B_pags_173-{total_pages}.pdf"
 
     path_a = os.path.join(base_dir, nom_a)
     path_b = os.path.join(base_dir, nom_b)
@@ -1841,12 +1848,12 @@ def particionar_tomo1_automatico(base_dir):
 def imprimir_resumen_suite(base_dir):
     import pypdf
     archivos = [
-        ("CLS_Curso_Reversing.pdf", "Edición Unificada Completa (Rev. 5.4)"),
-        ("CLS_Tomo_1_Tronco_y_Apoyo.pdf", "Tomo I: Tronco y Apoyo"),
-        ("CLS_Tomo_1_Parte_A_pags_1-172.pdf", "Tomo I · Parte A (Fundamentos a Packers)"),
-        ("CLS_Tomo_1_Parte_B_pags_173-330.pdf", "Tomo I · Parte B (Windows Avanzado a Apoyo)"),
-        ("CLS_Tomo_2_Kernel_e_Internals.pdf", "Tomo II: Kernel, Drivers e Internals"),
-        ("CLS_Separata_Escritorio.pdf", "Separata de Escritorio (Cheat Sheets y Rutas)"),
+        ("Curso_Reversing_Windows.pdf", "Edición Unificada Completa (Rev. 5.4)"),
+        ("Tomo_1_Tronco_y_Apoyo.pdf", "Tomo I: Tronco y Apoyo"),
+        ("Tomo_1_Parte_A_pags_1-172.pdf", "Tomo I · Parte A (Fundamentos a Packers)"),
+        ("Tomo_1_Parte_B_pags_173-380.pdf", "Tomo I · Parte B (Windows Avanzado a Apoyo)"),
+        ("Tomo_2_Kernel_e_Internals.pdf", "Tomo II: Kernel, Drivers e Internals"),
+        ("Separata_Escritorio.pdf", "Separata de Escritorio (Cheat Sheets y Rutas)"),
     ]
     print("\n" + "=" * 80)
     print(f"{'Archivo PDF':<38} | {'Págs':<6} | {'Hojas':<6} | {'Tamaño':<11} | {'Paridad'}")

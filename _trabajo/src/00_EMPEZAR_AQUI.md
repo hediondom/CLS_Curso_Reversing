@@ -126,7 +126,8 @@ Cuando el audio y la teoría discrepan, se citan ambos y se explica la diferenci
 | [registro_de_cobertura.csv](registro_de_cobertura.csv) | Lotes, archivos, revisados, pendientes y motivo |
 | [seguimiento.csv](seguimiento.csv) | Tu planilla de avance |
 | [Fuentes y límites](fuentes_y_limites.html) | Criterios, alcance y limitaciones |
-| [CLS_Curso_Reversing.pdf](CLS_Curso_Reversing.pdf) | Edición de estudio (solo teoría) para leer sin pantalla; las prácticas y los materiales están acá en el HTML |
+| [Curso_Reversing_Windows.pdf](Curso_Reversing_Windows.pdf) | Edición de estudio completa consolidada (PDF) para leer sin pantalla; las prácticas y los materiales están acá en el HTML |
+| [orden_impresion.html](orden_impresion.html) | Especificación y orden técnica de imprenta (Tomo I Partes A y B, Tomo II y Separata de Escritorio) |
 | [plantilla_informe.md](plantilla_informe.md) | Base para tus informes |
 
 Todo funciona **offline**. Las fuentes locales se enlazan con rutas relativas; los enlaces a transcripciones, videos y documentos abren el archivo original. El paquete trae HTML, CSV, el PDF y las **imágenes de los tutes ilustrados y los fotogramas de las juntadas** (~130 MB). Los **videos y audios** (decenas de GB) **se vinculan, no se copian**: para que abran, mantené las carpetas del proyecto una al lado de la otra (o usá los ZIP de compartir).
