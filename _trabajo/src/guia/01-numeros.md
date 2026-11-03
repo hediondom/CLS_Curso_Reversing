@@ -22,17 +22,122 @@ La buena noticia: el reversing cotidiano usa muy pocos conceptos numéricos, y s
 
 Un **bit** es la unidad mínima: vale 0 o 1. Un **byte** son 8 bits. Un **nibble** son 4 bits, que es exactamente lo que representa un dígito hexadecimal.
 
-Por eso hexadecimal y binario se llevan tan bien: cada dígito hexadecimal equivale a cuatro bits.
+Por eso hexadecimal y binario se llevan tan bien: cada dígito hexadecimal equivale exactamente a cuatro bits.
+
+### 1. Tabla maestra: hex ↔ binario ↔ decimal (un nibble)
 
 | Hex | Binario | Decimal |
-|---|---|---|
-| 0 | 0000 | 0 |
-| 1 | 0001 | 1 |
-| 2 | 0010 | 2 |
-| 4 | 0100 | 4 |
-| 8 | 1000 | 8 |
-| A | 1010 | 10 |
-| F | 1111 | 15 |
+|-----|---------|---------|
+| `0` | 0000 | 0 |
+| `1` | 0001 | 1 |
+| `2` | 0010 | 2 |
+| `3` | 0011 | 3 |
+| `4` | 0100 | 4 |
+| `5` | 0101 | 5 |
+| `6` | 0110 | 6 |
+| `7` | 0111 | 7 |
+| `8` | 1000 | 8 |
+| `9` | 1001 | 9 |
+| `A` | 1010 | 10 |
+| `B` | 1011 | 11 |
+| `C` | 1100 | 12 |
+| `D` | 1101 | 13 |
+| `E` | 1110 | 14 |
+| `F` | 1111 | 15 |
+
+### 2. Pesos de los bits (dentro de un nibble y un byte)
+
+**Nibble (4 bits):**
+
+| bit | 3 | 2 | 1 | 0 |
+|-----|---|---|---|---|
+| peso | 8 | 4 | 2 | 1 |
+
+**Byte (8 bits):**
+
+| bit | 7 | 6 | 5 | 4 | 3 | 2 | 1 | 0 |
+|-----|---|---|---|---|---|---|---|---|
+| peso | 128 | 64 | 32 | 16 | 8 | 4 | 2 | 1 |
+
+### 3. Pesos de las posiciones hex (16^posición)
+
+| Posición (desde la derecha) | Peso | Valor |
+|-----------------------------|------|-------|
+| 0 | 16⁰ | 1 |
+| 1 | 16¹ | 16 |
+| 2 | 16² | 256 |
+| 3 | 16³ | 4.096 |
+| 4 | 16⁴ | 65.536 |
+| 5 | 16⁵ | 1.048.576 |
+| 6 | 16⁶ | 16.777.216 |
+| 7 | 16⁷ | 268.435.456 |
+
+**Regla mnemotécnica:** cada posición a la izquierda = **× 16**. Cada byte a la izquierda = **× 256**.
+
+### 4. Potencias de 2 (para binario → decimal)
+
+| 2⁰ | 2¹ | 2² | 2³ | 2⁴ | 2⁵ | 2⁶ | 2⁷ |
+|----|----|----|----|----|----|----|----|
+| 1 | 2 | 4 | 8 | 16 | 32 | 64 | 128 |
+
+| 2⁸ | 2⁹ | 2¹⁰ | 2¹¹ | 2¹² | 2¹³ | 2¹⁴ | 2¹⁵ |
+|----|----|-----|-----|-----|-----|-----|-----|
+| 256 | 512 | 1024 | 2048 | 4096 | 8192 | 16384 | 32768 |
+
+### 5. Fórmulas
+
+| Conversión | Fórmula |
+|------------|---------|
+| Hex → decimal | `Σ (dígito × 16^posición)` |
+| Binario → decimal | `Σ (bit × 2^posición)` |
+| Hex → binario | cada dígito → sus 4 bits (tabla 1) |
+| Binario → hex | agrupar de a 4 bits desde la derecha → tabla 1 |
+| Decimal → binario | dividir por 2, restos de abajo hacia arriba |
+| Decimal → hex | dividir por 16, restos de abajo hacia arriba |
+| 2 nibbles `XY` | `X·16 + Y` |
+| 2 bytes `AB CD` | `AB·256 + CD` |
+
+### 6. Tamaños y rangos
+
+| Nibbles | Bits | Bytes | Rango hex | Nombre |
+|---------|------|-------|-----------|--------|
+| 1 | 4 | — | 0x0 – 0xF | nibble |
+| 2 | 8 | 1 | 0x00 – 0xFF | byte |
+| 4 | 16 | 2 | 0x0000 – 0xFFFF | word / short |
+| 8 | 32 | 4 | 0x00000000 – 0xFFFFFFFF | dword / int |
+| 16 | 64 | 8 | 0x0 – 0xFFFFFFFFFFFFFFFF | qword / long |
+
+### 7. Ejemplos resueltos (para chequear)
+
+| Hex | Binario | Cálculo | Decimal |
+|-----|---------|---------|---------|
+| `0x8F` | 1000 1111 | 8·16 + 15 | 143 |
+| `0xFB` | 1111 1011 | 15·16 + 11 | 251 |
+| `0x2C7` | 0010 1100 0111 | 2·256 + 12·16 + 7 | 711 |
+| `0x1A3F` | 0001 1010 0011 1111 | 0x1A·256 + 0x3F = 26·256 + 63 | 6.719 |
+| `0x10` | 0001 0000 | 1·16 + 0 | 16 |
+| `0x0A` | 0000 1010 | 0·16 + 10 | 10 |
+
+### 8. Trucos rápidos
+
+- **Letra → decimal:** `A=10, B=11, C=12, D=13, E=14, F=15` (A empieza en 10).
+- **Letra → decimal (si te olvidás):** `9 + posición en el alfabeto` (A=1ª → 10).
+- **Hex → binario:** nunca dividas; usá la tabla (4 bits por dígito).
+- **Decimal → binario:** dividí por 2, leé restos de abajo hacia arriba.
+- **Decimal → hex:** dividí por 16, leé restos de abajo hacia arriba.
+- **Número par/impar en binario:** mirá el bit 0 (1 = impar, 0 = par).
+- **`0x10` no es 10:** es 16. El 10 en hex es `0x0A`.
+
+### 9. Tabla de división por 16 (para decimal → hex)
+
+| Decimal | ÷16 | Resto (hex) | Resultado |
+|---------|-----|-------------|-----------|
+| 10 | 0 | A | `0x0A` |
+| 16 | 1 | 0 | `0x10` |
+| 143 | 8 | F | `0x8F` |
+| 251 | 15 | B | `0xFB` |
+| 255 | 15 | F | `0xFF` |
+| 256 | 16 | 0 | `0x100` |
 
 Para leer un byte en hexadecimal, separá los dos dígitos y convertí cada uno por separado:
 
@@ -58,6 +163,7 @@ En el capítulo 01, alrededor de 00:22:33, la transcripción dice que "el byte m
 :::{nota} En el Curso IDA: convertir bases sin calculadora
 El Curso IDA aprovecha la **barra de Python** que IDA trae en la parte de abajo para pasar de una base a otra al instante: `hex(143)` devuelve `0x8f`, `bin(10)` te da `0b1010`, `0x8f` tipeado solo te lo muestra en decimal. Si esa barra no aparece, es que falta el soporte de Python de IDA (reinstalarlo lo soluciona) ([Curso IDA · tute 2, Sistemas de numeración](../ida_tutes/2.html)).
 :::
+
 
 ## Little-endian: cómo se guarda un número en memoria
 
